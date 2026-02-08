@@ -9,20 +9,22 @@ const orderRoutes = require("./modules/orders/order.routes");
 const paymentRoutes = require("./modules/payments/payment.routes");
 const adminRoutes = require("./modules/admin/admin.routes");
 const userAuthRoutes = require("./modules/users/userAuthRoutes")
+
 const app = express();
 
 
 /* ================= CORS CONFIG ================= */
 
-app.use(cors({
-  origin: "http://localhost:3000", // Frontend URL
-  credentials: true,              // Allow cookies / auth headers
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-  ],
-}));
+
+
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 
 /* ================= MIDDLEWARE ================= */
