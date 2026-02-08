@@ -1,0 +1,50 @@
+const express = require("express");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+
+const trackingRoutes = require("./modules/tracking/tracking.routes");
+const authRoutes = require("./modules/auth/auth.routes");
+const productRoutes = require("./modules/products/product.routes");
+const orderRoutes = require("./modules/orders/order.routes");
+const paymentRoutes = require("./modules/payments/payment.routes");
+const adminRoutes = require("./modules/admin/admin.routes");
+const userAuthRoutes = require("./modules/users/userAuthRoutes")
+const app = express();
+
+
+/* ================= CORS CONFIG ================= */
+
+app.use(cors({
+  origin: "http://localhost:3000", // Frontend URL
+  credentials: true,              // Allow cookies / auth headers
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+  ],
+}));
+
+
+/* ================= MIDDLEWARE ================= */
+
+app.use(cookieParser());
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
+/* ================= ROUTES ================= */
+
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/shop", productRoutes);
+
+app.use("/api/payments", paymentRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/tracking", trackingRoutes);
+app.use("/api/users", userAuthRoutes)
+
+
+/* ================= EXPORT ================= */
+
+module.exports = app;
