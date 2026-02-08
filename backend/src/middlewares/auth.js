@@ -5,7 +5,7 @@ module.exports = (req, res, next) => {
 
   const token = req.cookies.adminToken
 
-
+console.log(token,"token coming")
   if (!token) {
     return res.status(401).json({ message: 'Unauthorized' })
   }
