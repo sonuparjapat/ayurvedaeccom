@@ -7,10 +7,10 @@ const auth = require("../../middlewares/auth");
 const admin = require("../../middlewares/admin");
 
 // User
-router.get("/:orderId", auth, controller.getTracking);
+// router.get("/:orderId", auth, controller.getTracking);
 
-// Admin
-router.post("/", auth, admin, controller.createTracking);
-router.put("/:orderId", auth, admin, controller.updateTracking);
+// // Admin
+// router.post("/", auth, admin, controller.createTracking);
+// router.put("/:orderId", auth, admin, controller.updateTracking);
 
 module.exports = router;

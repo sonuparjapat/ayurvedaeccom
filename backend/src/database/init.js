@@ -4,24 +4,40 @@ const initDB = async () => {
   try {
 
     /* ================= USERS ================= */
+await pool.query(`
+ CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
+  role INTEGER DEFAULT 3,
 
-        id UUID PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) UNIQUE NOT NULL,
+  phone VARCHAR(20),
 
-        name VARCHAR(100),
+  password TEXT NOT NULL,
 
-        email VARCHAR(150) UNIQUE,
+  address1 TEXT,
+  address2 TEXT,
+  pincode VARCHAR(10),
+  state VARCHAR(50),
+  country VARCHAR(50),
 
-        password TEXT,
+  is_verified BOOLEAN DEFAULT FALSE,
+  verification_token TEXT,
 
-        role VARCHAR(20) DEFAULT 'USER',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+`);
 
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+// roles
+await pool.query(`CREATE TABLE IF NOT EXISTS roles (
 
-      )
-    `);
+  id SERIAL PRIMARY KEY,
+
+  name VARCHAR(30) UNIQUE NOT NULL
+
+)`)
 
 
     /* ================= PRODUCTS ================= */
@@ -29,7 +45,7 @@ const initDB = async () => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS products (
 
-        id UUID PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
 
         name VARCHAR(255) NOT NULL,
 
@@ -83,11 +99,11 @@ const initDB = async () => {
 await pool.query(`
   CREATE TABLE IF NOT EXISTS wishlist (
 
-  id UUID PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
 
-  user_id UUID REFERENCES users(id),
+  user_id SERIAL REFERENCES users(id),
 
-  product_id UUID REFERENCES products(id),
+  product_id SERIAL REFERENCES products(id),
 
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -99,11 +115,11 @@ await pool.query(`
 
 await pool.query(`CREATE TABLE IF NOT EXISTS reviews (
 
-  id UUID PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
 
-  user_id UUID REFERENCES users(id),
+  user_id SERIAL REFERENCES users(id),
 
-  product_id UUID REFERENCES products(id),
+  product_id SERIAL REFERENCES products(id),
 
   rating INT CHECK (rating BETWEEN 1 AND 5),
 
@@ -119,11 +135,11 @@ await pool.query(`CREATE TABLE IF NOT EXISTS reviews (
 
 await pool.query(`CREATE TABLE IF NOT EXISTS cart (
 
-  id UUID PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
 
-  user_id UUID REFERENCES users(id),
+  user_id SERIAL REFERENCES users(id),
 
-  product_id UUID REFERENCES products(id),
+  product_id SERIAL REFERENCES products(id),
 
   quantity INT DEFAULT 1,
 
@@ -137,9 +153,9 @@ await pool.query(`CREATE TABLE IF NOT EXISTS cart (
     await pool.query(`
       CREATE TABLE IF NOT EXISTS orders (
 
-        id UUID PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
 
-        user_id UUID REFERENCES users(id),
+        user_id SERIAL REFERENCES users(id),
 
         status VARCHAR(30) DEFAULT 'pending',
 
@@ -160,13 +176,13 @@ await pool.query(`CREATE TABLE IF NOT EXISTS cart (
     await pool.query(`
       CREATE TABLE IF NOT EXISTS order_items (
 
-        id UUID PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
 
-        order_id UUID
+        order_id SERIAL
           REFERENCES orders(id)
           ON DELETE CASCADE,
 
-        product_id UUID
+        product_id SERIAL
           REFERENCES products(id),
 
         quantity INT NOT NULL,
@@ -182,9 +198,9 @@ await pool.query(`CREATE TABLE IF NOT EXISTS cart (
     await pool.query(`
       CREATE TABLE IF NOT EXISTS payments (
 
-        id UUID PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
 
-        order_id UUID UNIQUE
+        order_id SERIAL UNIQUE
           REFERENCES orders(id),
 
         razorpay_order_id VARCHAR(200),

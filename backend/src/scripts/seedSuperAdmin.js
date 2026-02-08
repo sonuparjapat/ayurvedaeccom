@@ -1,6 +1,6 @@
 require("dotenv").config()
 
-const pool = require("../backend/src/config/db")
+const pool = require("../config/db")
 const bcrypt = require("bcryptjs")
 
 ;(async () => {

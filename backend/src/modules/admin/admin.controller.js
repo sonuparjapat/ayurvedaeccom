@@ -1,67 +1,188 @@
 const pool = require('../../config/db')
-const bcrypt = require('bcryptjs')
-const jwt = require('jsonwebtoken')
+
 const { v4: uuid } = require('uuid')
 const { deleteFromCloud } = require('../../config/cloudinary')
-const cloudinary = require('../../config/cloudinary')
-exports.login = async (req, res) => {
-
-  const { email, password } = req.body
-
-  const user = await pool.query(
-    'SELECT * FROM users WHERE email=$1',
-    [email]
-  )
 
 
 
-  if (!user.rows.length) {
-    return res.status(400).json({ message: 'Invalid credentials' })
+
+
+// update user
+exports.updateUser = async (req, res) => {
+
+  try {
+
+    const { id } = req.params
+
+    const {
+   name,
+    
+      email,
+      phone,
+      role,
+      is_verified,
+    } = req.body
+
+    let fields = []
+    let values = []
+    let i = 1
+
+
+    if (name) {
+      fields.push(`name=$${i++}`)
+      values.push(name)
+    }
+
+  
+
+
+    if (email) {
+      fields.push(`email=$${i++}`)
+      values.push(email)
+    }
+
+    if (phone) {
+      fields.push(`phone=$${i++}`)
+      values.push(phone)
+    }
+
+    if (role) {
+      fields.push(`role=$${i++}`)
+      values.push(role)
+    }
+
+    if (is_verified !== undefined) {
+      fields.push(`is_verified=$${i++}`)
+      values.push(is_verified)
+    }
+
+    if (!fields.length) {
+      return res.status(400).json({
+        message: "No data to update"
+      })
+    }
+
+    values.push(id)
+
+    const query = `
+      UPDATE users
+      SET ${fields.join(", ")},
+          updated_at=NOW()
+      WHERE id=$${i}
+    `
+
+    await pool.query(query, values)
+
+    res.json({ success: true })
+
+  } catch (err) {
+
+    console.error(err)
+
+    res.status(500).json({ message: "Server error" })
+  }
+}
+
+
+/* ================= GET USERS ================= */
+
+exports.users = async (req, res) => {
+
+  try {
+
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+
+    const search = req.query.search || ''
+    const role = req.query.role || ''
+
+    const offset = (page - 1) * limit
+
+    let where = "WHERE 1=1"
+    let values = []
+    let i = 1
+
+
+    if (search) {
+      where += ` AND (name ILIKE $${i} OR email ILIKE $${i})`
+      values.push(`%${search}%`)
+      i++
+    }
+
+
+    if (role) {
+      where += ` AND role=$${i}`
+      values.push(role)
+      i++
+    }
+
+
+    /* COUNT */
+
+    const countRes = await pool.query(
+      `SELECT COUNT(*) FROM users ${where}`,
+      values
+    )
+
+    const total = parseInt(countRes.rows[0].count)
+
+
+    /* DATA */
+
+    const usersRes = await pool.query(
+
+      `
+      SELECT 
+        id,
+        name,
+      
+        email,
+        phone,
+        role,
+        is_verified,
+        created_at
+
+      FROM users
+
+      ${where}
+
+      ORDER BY created_at DESC
+
+      LIMIT $${i} OFFSET $${i + 1}
+      `,
+
+      [...values, limit, offset]
+    )
+
+
+    res.json({
+
+      users: usersRes.rows,
+
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+
+    })
+
+  } catch (err) {
+
+    console.error(err)
+
+    res.status(500).json({ message: "Server error" })
   }
 
-  const admin = user.rows[0]
+}
 
-  if (admin.role !== 'ADMIN') {
-    return res.status(403).json({ message: 'Not admin' })
-  }
+exports.logout = (req, res) => {
 
-  const match = await bcrypt.compare(password, admin.password)
+  res.clearCookie("adminToken")
+  res.clearCookie("userToken")
 
-  if (!match) {
-    return res.status(400).json({ message: 'Invalid credentials' })
-  }
-
-
-  const token = jwt.sign(
-    {
-      id: admin.id,
-      role: admin.role,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  )
-res.cookie("adminToken", token, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-});
-// res.cookie('adminToken', token, {
-//   httpOnly: true,
-//   secure: false, // MUST be false in localhost
-//   sameSite: 'lax',
-//   maxAge: 7 * 24 * 60 * 60 * 1000,
-// })
-
-res.json({
-  success: true,
-  admin: {
-    id: admin.id,
-    name: admin.name,
-    email: admin.email,
-  },
-})
- 
+  res.json({ success: true })
 }
 
 /* STATS */
@@ -190,7 +311,6 @@ exports.create = async (req, res) => {
     await pool.query(`
       INSERT INTO products (
 
-        id,
         name,
         slug,
 
@@ -222,11 +342,9 @@ exports.create = async (req, res) => {
         $8,$9,
         $10,$11,$12,
         $13,
-        $14,$15,$16
+        $14,$15
       )
     `, [
-
-      uuid(),
       name,
       slug,
 

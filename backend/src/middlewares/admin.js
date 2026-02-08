@@ -1,12 +1,25 @@
+const jwt = require("jsonwebtoken")
 
-const bcrypt = require('bcryptjs')
-module.exports = (req, res, next) => {
+exports.admin  = (req, res, next) => {
 
-  if (req.user.role !== 'ADMIN') {
-    return res.status(403).json({ message: 'Admin only' })
+  const token = req.cookies.adminToken
+
+  if (!token) {
+    return res.status(401).json({ message: "Not authenticated" })
   }
 
+  try {
 
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+console.log(decoded,"decoded")
+    if (![1,2].includes(Number(decoded.role))) {
+      return res.status(403).json({ message: "Access denied" })
+    }
 
-  next()
+    req.admin = decoded
+    next()
+
+  } catch {
+    return res.status(401).json({ message: "Invalid token" })
+  }
 }

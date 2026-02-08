@@ -85,7 +85,7 @@ export default function AdminAuthPage() {
 
     try {
 
-      const res = await axios.post('/admin/login', {
+      const res = await axios.post('/auth/login', {
         email: formData.email,
         password: formData.password,
       })
