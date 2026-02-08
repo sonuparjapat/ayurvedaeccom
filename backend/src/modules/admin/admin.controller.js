@@ -12,7 +12,8 @@ exports.login = async (req, res) => {
     'SELECT * FROM users WHERE email=$1',
     [email]
   )
-  bcrypt.hash('admin123', 10).then(console.log)
+  console.log(user,"user")
+
 
   if (!user.rows.length) {
     return res.status(400).json({ message: 'Invalid credentials' })
