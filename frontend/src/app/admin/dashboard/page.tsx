@@ -104,9 +104,9 @@ export default function AdminDashboard() {
 
     } catch (err: any) {
 
-      if (err?.response?.status === 401) {
-        router.push('/admin/auth')
-      }
+      // if (err?.response?.status === 401) {
+      //   router.push('/admin/auth')
+      // }
 
     } finally {
       setLoading(false)
