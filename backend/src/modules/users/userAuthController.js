@@ -101,7 +101,10 @@ await mailer.send({
   })
 
 } catch (err) {
-  console.error("MAIL ERROR:", err)
+  console.error(
+    'SENDGRID ERROR:',
+    err.response?.body?.errors || err.message
+  )
 
   res.status(500).json({
     success: false,
