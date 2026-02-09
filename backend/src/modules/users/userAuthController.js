@@ -2,7 +2,7 @@ const pool = require("../../config/db")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 
-
+const path = require("path")
 const crypto = require("crypto")           // ✅ For verification token
 
 const mailer = require("../../config/mail") 
@@ -45,13 +45,45 @@ exports.userRegister = async (req, res) => {
 
     /* Send Email */
 
-    const link = `${process.env.FRONTEND_URL}/verify/${token}`
+    const link = `${process.env.FRONTEND_URL}/verify-email?token=${token}`
 
-    await mailer.sendMail({
-      to: email,
-      subject: "Verify Your Account",
-      html: `<p>Click to verify:</p><a href="${link}">Verify</a>`
-    })
+  await mailer.sendMail({
+  to: email,
+  subject: "Verify Your Account",
+  html: `
+  <div style="font-family: Arial, sans-serif; background:#f4f6fb; padding:30px">
+    <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:10px;overflow:hidden">
+      
+      <div style="background:#4f46e5;color:white;padding:20px;text-align:center">
+        <h2>Welcome to ${process.env.APP_NAME}</h2>
+      </div>
+
+      <div style="padding:30px;color:#333">
+        <p>Hi 👋,</p>
+        <p>Thank you for registering. Please verify your email to activate your account.</p>
+
+        <div style="text-align:center;margin:30px 0">
+          <a href="${link}" 
+             style="background:#4f46e5;color:#fff;padding:12px 24px;
+                    border-radius:8px;text-decoration:none;font-weight:bold">
+            Verify Email
+          </a>
+        </div>
+
+        <p style="font-size:14px;color:#666">
+          This link will expire in 15 minutes.<br/>
+          If you didn’t create an account, you can safely ignore this email.
+        </p>
+      </div>
+
+      <div style="background:#f1f1f1;padding:15px;text-align:center;font-size:12px;color:#777">
+        © ${new Date().getFullYear()} ${process.env.APP_NAME}. All rights reserved.
+      </div>
+
+    </div>
+  </div>
+  `
+})
 
     res.json({
       success: true,
@@ -143,57 +175,56 @@ exports.userLogin = async (req, res) => {
   }
 }
 exports.verifyEmail = async (req, res) => {
-
   try {
-
-    const { token } = req.params
+    const { token } = req.body   // ✅ FIXED
 
     if (!token) {
       return res.status(400).json({
-        message: "Invalid token"
+        success: false,
+        message: 'Verification token is required',
       })
     }
-
-    /* Find User */
 
     const result = await pool.query(
       `
       SELECT id
       FROM users
-      WHERE verification_token=$1
+      WHERE verification_token = $1
       `,
       [token]
     )
 
     if (!result.rows.length) {
       return res.status(400).json({
-        message: "Token expired or invalid"
+        success: false,
+        message: 'Invalid or expired verification link',
       })
     }
-
-    /* Activate */
 
     await pool.query(
       `
       UPDATE users
-      SET is_verified=true,
-          verification_token=NULL,
-          updated_at=NOW()
-      WHERE verification_token=$1
+      SET
+        is_verified = true,
+        verification_token = NULL,
+        updated_at = NOW()
+      WHERE verification_token = $1
       `,
       [token]
     )
 
-    res.json({
+    return res.status(200).json({
       success: true,
-      message: "Email verified successfully"
+      message: 'Email verified successfully',
     })
 
   } catch (err) {
+    console.error('VERIFY EMAIL ERROR:', err)
 
-    console.error(err)
-
-    res.status(500).json({ message: "Server error" })
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while verifying email',
+    })
   }
 }
 

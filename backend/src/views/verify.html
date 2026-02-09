@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Email Verification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .card {
+      background: #fff;
+      padding: 40px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 350px;
+    }
+
+    .success {
+      color: green;
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+
+    .error {
+      color: red;
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 25px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2 class="TITLE"></h2>
+    <p class="MESSAGE"></p>
+
+    <button onclick="goLogin()">Go To Login</button>
+  </div>
+
+  <script>
+    function goLogin() {
+      window.location.href = "/login";
+    }
+  </script>
+
+</body>
+</html>

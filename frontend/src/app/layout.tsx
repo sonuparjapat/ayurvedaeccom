@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/context/auth-context";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -46,6 +47,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <AuthProvider>
       <body
         suppressHydrationWarning   // ✅ THIS FIXES YOUR ERROR
         className={`${inter.variable} font-sans antialiased bg-background text-foreground`}
@@ -59,7 +61,7 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
 
-      </body>
+      </body></AuthProvider>
     </html>
   );
 }

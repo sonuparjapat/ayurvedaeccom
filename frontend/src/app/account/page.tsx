@@ -29,6 +29,7 @@ import {
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/context/auth-context'
 
 interface Order {
   id: string
@@ -67,29 +68,13 @@ export default function AccountPage() {
     email: '',
     phone: ''
   })
-
+const {login,loginuserdata,logout}=useAuth()
   useEffect(() => {
     // Check if user is logged in
-    const isLoggedIn = localStorage.getItem('isLoggedIn')
-    if (!isLoggedIn) {
-      router.push('/auth')
-      return
-    }
+  
 
     // Load user data
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      const parsedUser = JSON.parse(userData)
-      // Use setTimeout to avoid synchronous setState
-      setTimeout(() => {
-        setUser(parsedUser)
-        setEditForm({
-          name: parsedUser.name || '',
-          email: parsedUser.email || '',
-          phone: parsedUser.phone || ''
-        })
-      }, 0)
-    }
+  
 
     // Load sample data
     const loadSampleData = () => {
@@ -166,6 +151,7 @@ export default function AccountPage() {
     localStorage.removeItem('user')
     router.push('/')
   }
+  console.log(loginuserdata)
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -240,13 +226,13 @@ export default function AccountPage() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">
-                    Welcome, {user?.name || 'User'}!
+                    Welcome, {loginuserdata?.name || 'User'}!
                   </h1>
                   <p className="text-gray-600">Manage your account and orders</p>
                 </div>
               </div>
               
-              <Button variant="outline" onClick={handleLogout}>
+              <Button variant="outline" onClick={logout}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
@@ -379,19 +365,19 @@ export default function AccountPage() {
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Full Name
                               </label>
-                              <p className="text-gray-900">{user?.name || 'Not provided'}</p>
+                              <p className="text-gray-900">{loginuserdata?.name || 'Not provided'}</p>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Email Address
                               </label>
-                              <p className="text-gray-900">{user?.email || 'Not provided'}</p>
+                              <p className="text-gray-900">{loginuserdata?.email || 'Not provided'}</p>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Phone Number
                               </label>
-                              <p className="text-gray-900">{user?.phone || 'Not provided'}</p>
+                              <p className="text-gray-900">{loginuserdata?.phone || 'Not provided'}</p>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
