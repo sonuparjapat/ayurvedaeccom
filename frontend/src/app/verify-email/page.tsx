@@ -1,9 +1,7 @@
-
 'use client'
-export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import axios from '@/lib/axios'
 
@@ -26,19 +24,36 @@ import { Footer } from '@/components/layout/footer'
 type Status = 'loading' | 'success' | 'error'
 
 
-/* ======================
-   Page
-====================== */
-
 export default function VerifyEmailPage() {
 
-  const searchParams = useSearchParams()
   const router = useRouter()
 
-  const token = searchParams.get('token')
+  const [token, setToken] = useState<string | null>(null)
 
   const [status, setStatus] = useState<Status>('loading')
   const [message, setMessage] = useState('')
+
+
+  /* ======================
+     Get Token From URL
+  ====================== */
+
+  useEffect(() => {
+
+    // Runs only in browser
+    const params = new URLSearchParams(window.location.search)
+
+    const urlToken = params.get('token')
+
+    if (!urlToken) {
+      setStatus('error')
+      setMessage('Invalid or missing verification token.')
+      return
+    }
+
+    setToken(urlToken)
+
+  }, [])
 
 
   /* ======================
@@ -47,15 +62,12 @@ export default function VerifyEmailPage() {
 
   useEffect(() => {
 
+    if (!token) return
+
     let isMounted = true
 
-    if (!token) {
-      setStatus('error')
-      setMessage('Invalid or missing verification token.')
-      return
-    }
-
     const verifyEmail = async () => {
+
       try {
 
         const res = await axios.post('/users/verify-email', {
