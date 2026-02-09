@@ -6,6 +6,9 @@ const path = require("path")
 const crypto = require("crypto")           // ✅ For verification token
 
 const mailer = require("../../config/mailer") 
+const sgMail = require('@sendgrid/mail')
+
+sgMail.setApiKey(process.env.SENDGRID_KEY)
 exports.userRegister = async (req, res) => {
 
   try {
@@ -48,44 +51,48 @@ exports.userRegister = async (req, res) => {
     const link = `${process.env.FRONTEND_URL}/verify-email?token=${token}`
 
 await mailer.send({
-  from: `"${process.env.APP_NAME}" <${process.env.MAIL_FROM}>`, // REQUIRED
+  to: email, // ONLY ONCE
 
-  to: email,
-  to: email,
+  from: {
+    email: process.env.MAIL_FROM,   // must be VERIFIED in SendGrid
+    name: process.env.APP_NAME,
+  },
+
   subject: "Verify Your Account",
+
   html: `
-  <div style="font-family: Arial, sans-serif; background:#f4f6fb; padding:30px">
-    <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:10px;overflow:hidden">
-      
-      <div style="background:#4f46e5;color:white;padding:20px;text-align:center">
-        <h2>Welcome to ${process.env.APP_NAME}</h2>
-      </div>
-
-      <div style="padding:30px;color:#333">
-        <p>Hi 👋,</p>
-        <p>Thank you for registering. Please verify your email to activate your account.</p>
-
-        <div style="text-align:center;margin:30px 0">
-          <a href="${link}" 
-             style="background:#4f46e5;color:#fff;padding:12px 24px;
-                    border-radius:8px;text-decoration:none;font-weight:bold">
-            Verify Email
-          </a>
+    <div style="font-family: Arial, sans-serif; background:#f4f6fb; padding:30px">
+      <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:10px;overflow:hidden">
+        
+        <div style="background:#4f46e5;color:white;padding:20px;text-align:center">
+          <h2>Welcome to ${process.env.APP_NAME}</h2>
         </div>
 
-        <p style="font-size:14px;color:#666">
-          This link will expire in 15 minutes.<br/>
-          If you didn’t create an account, you can safely ignore this email.
-        </p>
-      </div>
+        <div style="padding:30px;color:#333">
+          <p>Hi 👋,</p>
+          <p>Thank you for registering. Please verify your email to activate your account.</p>
 
-      <div style="background:#f1f1f1;padding:15px;text-align:center;font-size:12px;color:#777">
-        © ${new Date().getFullYear()} ${process.env.APP_NAME}. All rights reserved.
-      </div>
+          <div style="text-align:center;margin:30px 0">
+            <a href="${link}" 
+              style="background:#4f46e5;color:#fff;padding:12px 24px;
+                     border-radius:8px;text-decoration:none;font-weight:bold">
+              Verify Email
+            </a>
+          </div>
 
+          <p style="font-size:14px;color:#666">
+            This link will expire in 15 minutes.<br/>
+            If you didn’t create an account, you can safely ignore this email.
+          </p>
+        </div>
+
+        <div style="background:#f1f1f1;padding:15px;text-align:center;font-size:12px;color:#777">
+          © ${new Date().getFullYear()} ${process.env.APP_NAME}. All rights reserved.
+        </div>
+
+      </div>
     </div>
-  </div>
-  `
+  `,
 })
 
    res.json({
