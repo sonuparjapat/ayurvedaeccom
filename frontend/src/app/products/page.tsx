@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import Link from "next/link"
+
 import toast from 'react-hot-toast'
 import {
   Grid,
@@ -477,122 +479,123 @@ const renderStars = (
                     exit={{ opacity: 0 }}
                   >
 
-                    <Card className="group hover:shadow-xl transition-all duration-300">
+                  <Card className="group hover:shadow-xl transition-all duration-300 rounded-xl overflow-hidden">
+
+  <CardContent className="p-4 relative flex flex-col h-full">
+
+    {/* IMAGE */}
+    <Link href={`/product/${product.id}`}>
+
+      <div className="h-52 mb-3 overflow-hidden rounded-lg cursor-pointer">
+
+        <img
+          src={getImageUrl(product.images)}
+          alt={product.name}
+          className="
+            w-full h-full object-cover
+            group-hover:scale-110
+            transition-transform duration-500
+          "
+        />
+
+      </div>
+
+    </Link>
+
+    {/* INFO */}
+
+    <Badge className="mb-1 w-fit">
+      {product.category_name}
+    </Badge>
+
+    {/* TITLE */}
+    <Link href={`/products/${product.id}`}>
+
+      <h3 className="font-semibold text-lg leading-tight hover:underline cursor-pointer">
+        {product.name}
+      </h3>
+
+    </Link>
+
+    <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+      {product.shortdescription}
+    </p>
+
+    {/* PRICE */}
+    <div className="mt-2 flex items-center gap-2">
+
+      <span className="font-bold text-emerald-600 text-lg">
+        {formatPrice(product.price)}
+      </span>
+
+      {product.compareprice && (
+        <span className="text-sm text-gray-400 line-through">
+          {formatPrice(product.compareprice)}
+        </span>
+      )}
+
+    </div>
+
+    {/* RATING */}
+    <div className="flex gap-2 mt-1 items-center">
+
+      <StarRating
+        productId={product.id}
+        avgRating={product.averagerating}
+        refresh={fetchProducts}
+      />
+
+      <span className="text-xs text-gray-500">
+        ({product.reviewcount})
+      </span>
+
+    </div>
+
+    {/* ACTIONS */}
+    <div className="flex justify-between items-center mt-auto pt-4">
+
+      {/* LIKE */}
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => toggleLike(product.id)}
+      >
+        <Heart size={16} />
+      </Button>
 
 
-                      <CardContent className="p-4 relative">
+      <div className="flex gap-2">
+
+        {/* VIEW DETAILS */}
+        <Link href={`/products/${product.id}`}>
+
+          <Button size="sm" variant="outline">
+            View
+          </Button>
+
+        </Link>
 
 
-                        {/* IMAGE */}
+        {/* ADD TO CART */}
+        <Button
+          size="sm"
+          className="bg-emerald-600 hover:bg-emerald-700"
+          disabled={product.inventory === 0}
+          onClick={() => addToCart(product.id)}
+        >
 
-                        <div className="h-52 mb-3 overflow-hidden rounded-lg">
+          <ShoppingCart size={16} className="mr-1" />
+          Add
 
-                          <img
-                            src={getImageUrl(product.images)}
-                            className="
-                              w-full h-full object-cover
-                              group-hover:scale-110
-                              transition-transform duration-500
-                            "
-                          />
+        </Button>
 
-                        </div>
+      </div>
 
+    </div>
 
-                        {/* INFO */}
+  </CardContent>
 
-                        <Badge className="mb-1">
-                          {product.category_name}
-                        </Badge>
-
-
-                        <h3 className="font-semibold text-lg leading-tight">
-                          {product.name}
-                        </h3>
-
-
-                        <p className="text-sm text-gray-600 line-clamp-2">
-                          {product.shortdescription}
-                        </p>
-
-
-                        {/* PRICE */}
-
-                        <div className="mt-2 flex items-center gap-2">
-
-                          <span className="font-bold text-emerald-600 text-lg">
-
-                            {formatPrice(product.price)}
-
-                          </span>
-
-
-                          {product.compareprice && (
-
-                            <span className="text-sm text-gray-400 line-through">
-
-                              {formatPrice(product.compareprice)}
-
-                            </span>
-
-                          )}
-
-                        </div>
-
-
-                        {/* RATING */}
-
-                        <div className="flex gap-2 mt-1 items-center">
-
-  <StarRating
-    productId={product.id}
-    avgRating={product.averagerating}
-    refresh={fetchProducts}
-  />
-
-  <span className="text-xs text-gray-500">
-
-    ({product.reviewcount})
-
-  </span>
-
-</div>
-
-
-                        {/* ACTIONS */}
-
-                        <div className="flex justify-between mt-4">
-
-
-                       <Button
-  size="sm"
-  variant="ghost"
-  onClick={() => toggleLike(product.id)}
->
-  <Heart size={16} />
-</Button>
-
-
-                          <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-700"
-                            disabled={product.inventory === 0}
-                            onClick={() =>
-                              addToCart(product.id)
-                            }
-                          >
-
-                            <ShoppingCart size={16} className="mr-1" />
-                            Add to Cart
-
-                          </Button>
-
-                        </div>
-
-
-                      </CardContent>
-
-                    </Card>
+</Card>
 
                   </motion.div>
 

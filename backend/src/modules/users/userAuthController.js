@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken")
 const path = require("path")
 const crypto = require("crypto")           // ✅ For verification token
 
-const mailer = require("../../config/mail") 
+const mailer = require("../../config/mailer") 
 exports.userRegister = async (req, res) => {
 
   try {
@@ -47,7 +47,7 @@ exports.userRegister = async (req, res) => {
 
     const link = `${process.env.FRONTEND_URL}/verify-email?token=${token}`
 
-await mailer.sendMail({
+await mailer.send({
   from: `"${process.env.APP_NAME}" <${process.env.MAIL_FROM}>`, // REQUIRED
 
   to: email,

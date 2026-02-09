@@ -95,6 +95,25 @@ exports.getAllPublic = async (req, res) => {
   }
 
 }
+
+exports.getsingleproduct=async(req,res)=>{
+  const {id}=req.params
+  console.log(id,"id coming")
+try{
+const data= await pool.query('select * from products where id=$1',[id])
+if(data?.rows?.length>=1){
+  res?.status(200).json({data:data?.rows[0],status:200})
+}else{
+  res?.status(204).json({msg:"No Data found",status:204})
+}
+}catch(err){
+    console.error(err)
+
+    res.status(500).json({
+      message: 'Fetch failed'
+    })
+}
+}
 /* GET ALL CATEGORIES */
 
 exports.getCategories = async (req, res) => {

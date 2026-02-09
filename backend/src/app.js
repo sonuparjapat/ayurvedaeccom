@@ -9,7 +9,7 @@ const orderRoutes = require("./modules/orders/order.routes");
 const paymentRoutes = require("./modules/payments/payment.routes");
 const adminRoutes = require("./modules/admin/admin.routes");
 const userAuthRoutes = require("./modules/users/userAuthRoutes")
-
+const cartRoutes = require("./modules/cart/cart.routes");
 const app = express();
 
 
@@ -45,7 +45,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/tracking", trackingRoutes);
 app.use("/api/users", userAuthRoutes)
-
+app.use("/api/cart", cartRoutes);
 
 /* ================= EXPORT ================= */
 

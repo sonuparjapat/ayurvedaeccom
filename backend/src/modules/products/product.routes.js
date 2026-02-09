@@ -8,7 +8,7 @@ const {auth} = require("../../middlewares/auth");
 
 // Public
 router.get("/public", controller.getAllPublic)
-
+router.get("/public/:id",controller.getsingleproduct)
 router.get("/categories", controller.getCategories)
 router.post('/wishlist',auth, controller.toggleWishlist)
 
