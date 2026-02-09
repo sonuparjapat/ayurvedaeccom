@@ -47,7 +47,10 @@ exports.userRegister = async (req, res) => {
 
     const link = `${process.env.FRONTEND_URL}/verify-email?token=${token}`
 
-  await mailer.sendMail({
+await mailer.sendMail({
+  from: `"${process.env.APP_NAME}" <${process.env.MAIL_FROM}>`, // REQUIRED
+
+  to: email,
   to: email,
   subject: "Verify Your Account",
   html: `
