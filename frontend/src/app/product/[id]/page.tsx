@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Head from 'next/head'
 import Link from 'next/link'
-
+import toast from 'react-hot-toast'
 import axios from '@/lib/axios'
 
 import { Button } from '@/components/ui/button'
@@ -137,7 +137,7 @@ export default function ProductDetailPage() {
       })
 
 
-      alert('Added to cart ✅')
+      toast.success('Added to cart ✅')
 
 
     } catch (err: any) {
@@ -153,7 +153,7 @@ export default function ProductDetailPage() {
       }
 
       else {
-        alert('Something went wrong')
+        toast.error('Something went wrong')
       }
 
     } finally {
