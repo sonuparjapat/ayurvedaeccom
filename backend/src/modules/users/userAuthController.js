@@ -40,7 +40,7 @@ exports.userRegister = async (req, res) => {
     await pool.query(
       `
       INSERT INTO users
-      (name,email,phone,password,role,verification_token,verified)
+      (name,email,phone,password,role,verification_token,is_verified)
       VALUES($1,$2,$3,$4,3,$5,$6)
       `,
       [name, email, phone, hash, token,true]
