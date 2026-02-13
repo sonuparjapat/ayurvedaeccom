@@ -116,10 +116,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
+
 .input {
   @apply w-full border px-4 py-2 rounded focus:ring-2 focus:ring-indigo-500;
 }

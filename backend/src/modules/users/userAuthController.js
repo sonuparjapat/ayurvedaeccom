@@ -121,12 +121,13 @@ exports.userLogin = async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT id,role,name,email,password,is_verified
-      FROM users
-      WHERE email=$1
+      SELECT u.id,u.role,u.name,u.email,password,is_verified,c.quantity
+      FROM users u left join   cart c on u.id=c.user_id
+      WHERE u.email=$1
       `,
       [email]
     )
+    console.log(result,"result coming")
 
     if (!result.rows.length) {
       return res.status(400).json({ message: "Invalid credentials" })
@@ -178,6 +179,7 @@ exports.userLogin = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        cart:user?.quantity||0
       },
     })
 
@@ -250,4 +252,46 @@ exports.logout = async (req, res) => {
   res.clearCookie("userToken")
 
   res.json({ message: "Logged out" })
+}
+exports.getMe = async (req, res) => {
+
+  try {
+
+    const userId = req.user.id
+
+    const result = await pool.query(`
+
+      SELECT
+        id,
+        name,
+        email,
+        role,
+        is_verified
+
+      FROM users
+      WHERE id=$1
+
+    `,[userId])
+
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        message:'User not found'
+      })
+    }
+
+
+    res.json({
+      success:true,
+      user: result.rows[0]
+    })
+
+  } catch (err) {
+
+    console.error(err)
+
+    res.status(500).json({
+      message:'Fetch user failed'
+    })
+  }
 }

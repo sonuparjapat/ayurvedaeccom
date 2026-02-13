@@ -32,7 +32,7 @@ export default function StarRating({
       })
 
       setRating(value)
-refresh()
+      refresh()
       toast.success('Thanks for rating ⭐')
 
     } catch {
@@ -48,7 +48,7 @@ refresh()
 
     <div className="flex gap-1 items-center">
 
-      {[1,2,3,4,5].map(i => (
+      {[1, 2, 3, 4, 5].map(i => (
 
         <button
           key={i}
@@ -61,11 +61,10 @@ refresh()
 
           <Star
             size={16}
-            className={`transition ${
-              i <= (hover || rating)
+            className={`transition ${i <= (hover || rating)
                 ? 'fill-yellow-400 text-yellow-400'
                 : 'text-gray-300'
-            }`}
+              }`}
           />
 
         </button>

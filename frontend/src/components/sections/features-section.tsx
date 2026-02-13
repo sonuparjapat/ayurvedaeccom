@@ -1,10 +1,10 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { 
-  Truck, 
-  Shield, 
-  Leaf, 
+import {
+  Truck,
+  Shield,
+  Leaf,
   Award,
   Users,
   RefreshCw
@@ -59,7 +59,7 @@ export function FeaturesSection() {
             Why Choose AyurVeda Desi Foods?
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            We're committed to bringing you the finest Ayurvedic and traditional Indian products 
+            We're committed to bringing you the finest Ayurvedic and traditional Indian products
             with unmatched quality and service.
           </p>
         </div>

@@ -25,6 +25,9 @@ import {
 } from 'lucide-react'
 
 import { motion, AnimatePresence } from 'framer-motion'
+import { notify } from '../utils/notify'
+import { useAuth } from '@/context/auth-context'
+import { useRouter } from 'next/navigation'
 
 
 /* ================= TYPES ================= */
@@ -58,7 +61,7 @@ export default function ProductsPage() {
 
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
-
+const [cartdata,setCartData]=useState<any>([])
   const [page, setPage] = useState(1)
   const limit = 9
 
@@ -68,8 +71,10 @@ export default function ProductsPage() {
     useState<'grid' | 'list'>('grid')
 
   const [showFilters, setShowFilters] = useState(false)
-
-
+const {loginuserdata, handleCart,
+        setOpencart,
+        opencart}=useAuth()
+const router=useRouter()
   /* ---------- FETCH ---------- */
 
   useEffect(() => {
@@ -78,8 +83,11 @@ export default function ProductsPage() {
     fetchProducts()
 
   }, [])
+  useEffect(()=>{
+fetchCart(loginuserdata?.id)
+  },[JSON.stringify(loginuserdata)])
 
-
+console.log(cartdata,products)
   useEffect(() => {
 
     const t = setTimeout(() => {
@@ -90,19 +98,19 @@ export default function ProductsPage() {
 
   }, [search, category, page])
 
-const toggleLike = async (id: string) => {
+  const toggleLike = async (id: string) => {
 
-  try {
+    try {
 
-    await axios.post('/shop/wishlist', {
-      productId: id,
-    })
+      await axios.post('/shop/wishlist', {
+        productId: id,
+      })
 
-  } catch (err) {
-    console.error(err)
+    } catch (err) {
+      console.error(err)
+    }
+
   }
-
-}
   const fetchProducts = async () => {
 
     try {
@@ -137,7 +145,7 @@ const toggleLike = async (id: string) => {
   }
 
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (id?:any) => {
 
     try {
 
@@ -154,7 +162,26 @@ const toggleLike = async (id: string) => {
     }
 
   }
+const fetchCart = async (id:any) => {
+  console.log(id,"id comingggggggg")
+if(id){
+ try {
 
+      const res = await axios.get(
+        `/cart`
+      )
+
+      setCartData(res?.data?.items || [])
+
+    } catch (err) {
+
+   notify.error("Something went wrong please try after some time")
+
+    }
+}
+   
+
+  }
 
   /* ---------- HELPERS ---------- */
 
@@ -185,95 +212,94 @@ const toggleLike = async (id: string) => {
   }
 
 
-const renderStars = (
-  productId: string,
-  avgRating: number
-) => {
+  const renderStars = (
+    productId: string,
+    avgRating: number
+  ) => {
 
-  const [rating, setRating] =
-    useState(Math.round(avgRating))
+    const [rating, setRating] =
+      useState(Math.round(avgRating))
 
-  const [hover, setHover] = useState(0)
+    const [hover, setHover] = useState(0)
 
-  const submitRating = async (value: number) => {
+    const submitRating = async (value: number) => {
 
-    try {
+      try {
 
-      await axios.post('/api/shop/review', {
-        productId,
-        rating: value,
-        comment: '',
-      })
+        await axios.post('/api/shop/review', {
+          productId,
+          rating: value,
+          comment: '',
+        })
 
-      setRating(value)
+        setRating(value)
 
-      toast.success('Thanks for rating ⭐')
+        toast.success('Thanks for rating ⭐')
 
-    } catch {
+      } catch {
 
-      toast.error('Login required')
+        toast.error('Login required')
+
+      }
 
     }
 
+
+    return (
+
+      <div className="flex gap-1">
+
+        {[1, 2, 3, 4, 5].map(i => (
+
+          <button
+            key={i}
+            onClick={() => submitRating(i)}
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(0)}
+            className="p-0.5"
+          >
+
+            <Star
+              size={16}
+              className={`transition ${i <= (hover || rating)
+                  ? 'fill-yellow-400 text-yellow-400'
+                  : 'text-gray-300'
+                }`}
+            />
+
+          </button>
+
+        ))}
+
+      </div>
+
+    )
+
   }
-
-
-  return (
-
-    <div className="flex gap-1">
-
-      {[1,2,3,4,5].map(i => (
-
-        <button
-          key={i}
-          onClick={() => submitRating(i)}
-          onMouseEnter={() => setHover(i)}
-          onMouseLeave={() => setHover(0)}
-          className="p-0.5"
-        >
-
-          <Star
-            size={16}
-            className={`transition ${
-              i <= (hover || rating)
-                ? 'fill-yellow-400 text-yellow-400'
-                : 'text-gray-300'
-            }`}
-          />
-
-        </button>
-
-      ))}
-
-    </div>
-
-  )
-
-}
 
 
   /* ---------- ACTIONS ---------- */
 
   const addToCart = async (id: string) => {
 
-  try {
+    try {
 
-    await axios.post('/shop/cart', {
-      productId: id,
-      quantity: 1,
-    })
+      await axios.put('/cart', {
+        productId: id,
+        quantity: 1,
+      })
 
-    toast.success('Added to cart')
+      toast.success('Added to cart')
 
-  } catch {
-    toast.error('Failed')
+    } catch {
+      toast.error('Failed')
+    }
+
   }
 
-}
 
 
 
- 
 
   const totalPages = Math.ceil(total / limit)
 
@@ -479,123 +505,136 @@ const renderStars = (
                     exit={{ opacity: 0 }}
                   >
 
-                  <Card className="group hover:shadow-xl transition-all duration-300 rounded-xl overflow-hidden">
+                    <Card className="group hover:shadow-xl transition-all duration-300 rounded-xl overflow-hidden">
 
-  <CardContent className="p-4 relative flex flex-col h-full">
+                      <CardContent className="p-4 relative flex flex-col h-full">
 
-    {/* IMAGE */}
-    <Link href={`/product/${product.id}`}>
+                        {/* IMAGE */}
+                        <Link href={`/product/${product.id}`}>
 
-      <div className="h-52 mb-3 overflow-hidden rounded-lg cursor-pointer">
+                          <div className="h-52 mb-3 overflow-hidden rounded-lg cursor-pointer">
 
-        <img
-          src={getImageUrl(product.images)}
-          alt={product.name}
-          className="
+                            <img
+                              src={getImageUrl(product.images)}
+                              alt={product.name}
+                              className="
             w-full h-full object-cover
             group-hover:scale-110
             transition-transform duration-500
           "
-        />
+                            />
 
-      </div>
+                          </div>
 
-    </Link>
+                        </Link>
 
-    {/* INFO */}
+                        {/* INFO */}
 
-    <Badge className="mb-1 w-fit">
-      {product.category_name}
-    </Badge>
+                        <Badge className="mb-1 w-fit">
+                          {product.category_name}
+                        </Badge>
 
-    {/* TITLE */}
-    <Link href={`/products/${product.id}`}>
+                        {/* TITLE */}
+                        <Link href={`/products/${product.id}`}>
 
-      <h3 className="font-semibold text-lg leading-tight hover:underline cursor-pointer">
-        {product.name}
-      </h3>
+                          <h3 className="font-semibold text-lg leading-tight hover:underline cursor-pointer">
+                            {product.name}
+                          </h3>
 
-    </Link>
+                        </Link>
 
-    <p className="text-sm text-gray-600 line-clamp-2 mt-1">
-      {product.shortdescription}
-    </p>
+                        <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+                          {product.shortdescription}
+                        </p>
 
-    {/* PRICE */}
-    <div className="mt-2 flex items-center gap-2">
+                        {/* PRICE */}
+                        <div className="mt-2 flex items-center gap-2">
 
-      <span className="font-bold text-emerald-600 text-lg">
-        {formatPrice(product.price)}
-      </span>
+                          <span className="font-bold text-emerald-600 text-lg">
+                            {formatPrice(product.price)}
+                          </span>
 
-      {product.compareprice && (
-        <span className="text-sm text-gray-400 line-through">
-          {formatPrice(product.compareprice)}
-        </span>
-      )}
+                          {product.compareprice && (
+                            <span className="text-sm text-gray-400 line-through">
+                              {formatPrice(product.compareprice)}
+                            </span>
+                          )}
 
-    </div>
+                        </div>
 
-    {/* RATING */}
-    <div className="flex gap-2 mt-1 items-center">
+                        {/* RATING */}
+                        <div className="flex gap-2 mt-1 items-center">
 
-      <StarRating
-        productId={product.id}
-        avgRating={product.averagerating}
-        refresh={fetchProducts}
-      />
+                          <StarRating
+                            productId={product.id}
+                            avgRating={product.averagerating}
+                            refresh={fetchProducts}
+                          />
 
-      <span className="text-xs text-gray-500">
-        ({product.reviewcount})
-      </span>
+                          <span className="text-xs text-gray-500">
+                            ({product.reviewcount})
+                          </span>
 
-    </div>
+                        </div>
 
-    {/* ACTIONS */}
-    <div className="flex justify-between items-center mt-auto pt-4">
+                        {/* ACTIONS */}
+                        <div className="flex justify-between items-center mt-auto pt-4">
 
-      {/* LIKE */}
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => toggleLike(product.id)}
-      >
-        <Heart size={16} />
-      </Button>
-
-
-      <div className="flex gap-2">
-
-        {/* VIEW DETAILS */}
-        <Link href={`/products/${product.id}`}>
-
-          <Button size="sm" variant="outline">
-            View
-          </Button>
-
-        </Link>
+                          {/* LIKE */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toggleLike(product.id)}
+                          >
+                            <Heart size={16} />
+                          </Button>
 
 
-        {/* ADD TO CART */}
-        <Button
-          size="sm"
-          className="bg-emerald-600 hover:bg-emerald-700"
-          disabled={product.inventory === 0}
-          onClick={() => addToCart(product.id)}
-        >
+                          <div className="flex gap-2">
 
-          <ShoppingCart size={16} className="mr-1" />
-          Add
+                            {/* VIEW DETAILS */}
+                            <Link href={`/products/${product.id}`}>
 
-        </Button>
+                              <Button size="sm" variant="outline">
+                                View
+                              </Button>
 
-      </div>
+                            </Link>
 
-    </div>
 
-  </CardContent>
+                            {/* ADD TO CART */}
+                           {cartdata?.filter((item2:any)=>item2?.product_id==product?.id)?.length>=1?
+                           <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700"
+                              disabled={product.inventory === 0}
+                              onClick={() =>handleCart(true)}
+                            >
 
-</Card>
+                              <ShoppingCart size={16} className="mr-1" />
+                              View Cart
+
+                            </Button>:<Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700"
+                              disabled={product.inventory === 0}
+                              onClick={() => addToCart(product.id)}
+                            >
+
+                              <ShoppingCart size={16} className="mr-1" />
+                              Add
+
+                            </Button>
+                          
+                          } 
+
+                          </div>
+
+                        </div>
+
+                      </CardContent>
+
+                    </Card>
 
                   </motion.div>
 

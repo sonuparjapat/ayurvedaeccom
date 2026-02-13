@@ -55,9 +55,8 @@ function StarRating({ rating }: { rating: number }) {
       {[...Array(5)].map((_, i) => (
         <Star
           key={i}
-          className={`w-4 h-4 ${
-            i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-          }`}
+          className={`w-4 h-4 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+            }`}
         />
       ))}
     </div>
@@ -95,11 +94,11 @@ export function TestimonialsSection() {
                     </div>
                     <StarRating rating={testimonial.rating} />
                   </div>
-                  
+
                   <blockquote className="text-gray-700 mb-4 leading-relaxed">
                     "{testimonial.comment}"
                   </blockquote>
-                  
+
                   <div className="pt-4 border-t border-gray-100">
                     <p className="text-sm text-emerald-600 font-medium">
                       Purchased: {testimonial.product}

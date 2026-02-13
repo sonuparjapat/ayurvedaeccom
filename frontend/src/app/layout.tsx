@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/auth-context";
 
 const inter = Inter({
@@ -48,20 +48,44 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <AuthProvider>
-      <body
-        suppressHydrationWarning   // ✅ THIS FIXES YOUR ERROR
-        className={`${inter.variable} font-sans antialiased bg-background text-foreground`}
-      >
-        {children}
+        <body
+          suppressHydrationWarning   // ✅ THIS FIXES YOUR ERROR
+          className={`${inter.variable} font-sans antialiased bg-background text-foreground`}
+        >
+          {children}
 
-        <Toaster />
+<Toaster
+  position="bottom-right"
+  reverseOrder={false}
+  toastOptions={{
+    duration: 3500,
+    style: {
+      borderRadius: '10px',
+      background: '#1f2937',
+      color: '#fff',
+      fontSize: '14px',
+    },
+    success: {
+      iconTheme: {
+        primary: '#10b981',
+        secondary: '#fff',
+      },
+    },
+    error: {
+      iconTheme: {
+        primary: '#ef4444',
+        secondary: '#fff',
+      },
+    },
+  }}
+/>
 
-        <Script
-          src="https://checkout.razorpay.com/v1/checkout.js"
-          strategy="afterInteractive"
-        />
+          <Script
+            src="https://checkout.razorpay.com/v1/checkout.js"
+            strategy="afterInteractive"
+          />
 
-      </body></AuthProvider>
+        </body></AuthProvider>
     </html>
   );
 }

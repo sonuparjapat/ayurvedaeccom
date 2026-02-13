@@ -14,8 +14,7 @@ router.post("/login", controller.userLogin)
 
 router.post("/logout",controller.logout)
 router.post("/verify-email", controller.verifyEmail)
-router.get("/me", auth, (req, res) => {
-  res.json(req.user)
-})
+/* ================= CURRENT USER ================= */
+router.get('/me',auth,controller.getMe)
 
 module.exports = router

@@ -377,7 +377,8 @@ exports.getCart = async (req, res) => {
       c.*,
       p.name,
       p.price,
-      p.images
+      p.images,
+      p.inventory
 
     FROM cart c
 

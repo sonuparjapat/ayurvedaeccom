@@ -70,7 +70,7 @@ export function CategoriesSection() {
                     {category.image}
                   </span>
                 </div>
-                
+
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xl font-bold text-gray-900">
@@ -80,13 +80,13 @@ export function CategoriesSection() {
                       {category.productCount}
                     </span>
                   </div>
-                  
+
                   <p className="text-gray-600 text-sm mb-4 leading-relaxed">
                     {category.description}
                   </p>
-                  
-                  <Button 
-                    variant="ghost" 
+
+                  <Button
+                    variant="ghost"
                     className="w-full group/btn justify-between p-0 h-auto font-semibold text-emerald-600 hover:text-emerald-700"
                     asChild
                   >
@@ -103,7 +103,7 @@ export function CategoriesSection() {
 
         {/* View All Button */}
         <div className="text-center mt-12">
-          <Button 
+          <Button
             size="lg"
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-8"
             asChild

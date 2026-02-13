@@ -6,7 +6,7 @@ const cartController = require("./cart.controller");
 const { auth } = require("../../middlewares/auth");
 
 
-router.post("/", auth, cartController.addToCart);
+router.post("/cart", auth, cartController.addToCart);
 
 router.get("/", auth, cartController.getCart);
 

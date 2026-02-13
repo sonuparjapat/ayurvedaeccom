@@ -8,7 +8,7 @@ exports.addToCart = async (req, res) => {
 
     const userId = req.user.id; // from auth middleware
     const { productId, quantity } = req.body;
-
+console.log(userId,"userid")
     if (!productId) {
       return res.status(400).json({ message: "Product ID required" });
     }
@@ -54,41 +54,37 @@ exports.addToCart = async (req, res) => {
 
 /* ================= GET USER CART ================= */
 
-exports.getCart = async (req, res) => {
-  try {
+exports.getCart = async (req,res)=>{
 
-    const userId = req.user.id;
+  const userId=req.user.id
 
-    const cart = await pool.query(
-      `
-      SELECT
-        c.id,
-        c.quantity,
+  const data = await pool.query(`
 
-        p.id AS product_id,
-        p.name,
-        p.price,
-        p.images,
-        p.inventory
+    SELECT
+      c.product_id,
+      c.quantity,
+      p.name,
+      p.price,
+      p.images,
+      p.inventory
 
-      FROM cart c
-      JOIN products p
-        ON p.id = c.product_id
+    FROM cart c
+    JOIN products p
+    ON p.id=c.product_id
+    WHERE c.user_id=$1
 
-      WHERE c.user_id = $1
+  `,[userId])
 
-      ORDER BY c.created_at DESC
-      `,
-      [userId]
-    );
+  const subtotal = data.rows.reduce(
+    (a,b)=>a + b.price*b.quantity,0
+  )
 
-    res.json({ cart: cart.rows });
-
-  } catch (err) {
-    console.error("Get cart error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+  res.json({
+    success:true,
+    items:data.rows,
+    subtotal
+  })
+}
 
 
 

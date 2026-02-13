@@ -27,6 +27,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 
 
+import toast from 'react-hot-toast'
+import { useAuth } from '@/context/auth-context'
 
 /* ================= TYPES ================= */
 
@@ -48,53 +50,19 @@ interface Cart {
 }
 
 
-
 /* ================= COMPONENT ================= */
 
-export function CartSheet() {
-
+export function CartSheet(){
   const [cart, setCart] = useState<Cart | null>(null)
 
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
-
-
+const [liked,setLiked] = useState(false)
+const [likeLoading,setLikeLoading] = useState(false)
+const {handleCart,opencart,setOpencart,totalCartProducts,fetchCart,cartdata,cartloading,loginuserdata}=useAuth()
   /* ================= FETCH CART ================= */
 
-  useEffect(() => {
-    if (isOpen) fetchCart()
-  }, [isOpen])
-
-
-  const fetchCart = async () => {
-    try {
-
-      const res = await axios.get('/cart')
-
-      const items = res.data.cart || []
-
-
-      // Calculate totals (frontend safety)
-      let subtotal = 0
-      let totalItems = 0
-
-      items.forEach((item: CartItem) => {
-        subtotal += item.price * item.quantity
-        totalItems += item.quantity
-      })
-
-
-      setCart({
-        items,
-        subtotal,
-        totalItems
-      })
-
-    } catch (err) {
-      console.error('Fetch cart error:', err)
-    }
-  }
 
 
 
@@ -105,11 +73,11 @@ export function CartSheet() {
     newQty: number,
     stock: number
   ) => {
-
+console.log(newQty,stock)
     if (newQty < 1) return
 
     const finalQty = Math.min(newQty, stock)
-
+console.log(finalQty,"finalquantity")
     try {
 
       setLoading(true)
@@ -119,7 +87,7 @@ export function CartSheet() {
         quantity: finalQty
       })
 
-      await fetchCart()
+    await fetchCart(loginuserdata?.id,true)
 
     } catch (err) {
       console.error('Update qty error:', err)
@@ -141,7 +109,7 @@ export function CartSheet() {
 
       await axios.delete(`/cart/${productId}`)
 
-      await fetchCart()
+      await fetchCart(loginuserdata?.id,true)
 
     } catch (err) {
       console.error('Remove cart error:', err)
@@ -177,7 +145,7 @@ export function CartSheet() {
 
 
 
-  const cartCount = cart?.totalItems || 0
+  const cartCount = cartdata?.totalItems || 0
 
 
 
@@ -185,7 +153,7 @@ export function CartSheet() {
 
   return (
 
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Sheet open={opencart} onOpenChange={setOpencart}>
 
 
       {/* ================= TRIGGER ================= */}
@@ -245,7 +213,7 @@ export function CartSheet() {
         <div className="flex-1 overflow-y-auto py-6">
 
 
-          {cart && cart.items.length > 0 ? (
+          {cartdata && cartdata?.items?.length > 0 ? (
 
             <div className="space-y-4 p-2">
 
@@ -253,7 +221,7 @@ export function CartSheet() {
               <AnimatePresence>
 
 
-                {cart.items.map(item => (
+                {cartdata?.items?.map(item => (
 
                   <motion.div
                     key={item.id}
@@ -427,7 +395,7 @@ export function CartSheet() {
 
         {/* FOOTER */}
 
-        {cart && cart.items.length > 0 && (
+        {cartdata && cartdata?.items?.length > 0 && (
 
           <div className="border-t pt-6 space-y-4 m-4">
 
@@ -444,7 +412,7 @@ export function CartSheet() {
 
               <span className="text-xl font-bold text-emerald-600">
 
-                {formatPrice(cart.subtotal)}
+                {formatPrice(cartdata?.subtotal)}
 
               </span>
 

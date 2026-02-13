@@ -3,10 +3,10 @@
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { 
-  Facebook, 
-  Instagram, 
-  Twitter, 
+import {
+  Facebook,
+  Instagram,
+  Twitter,
   Youtube,
   Mail,
   Phone,
@@ -79,8 +79,8 @@ export function Footer() {
                 </div>
               </div>
               <p className="text-gray-300 mb-6">
-                Bringing ancient Ayurvedic wisdom to modern wellness with 100% natural, 
-                authentic Indian products. From premium dry fruits to fresh tofu, 
+                Bringing ancient Ayurvedic wisdom to modern wellness with 100% natural,
+                authentic Indian products. From premium dry fruits to fresh tofu,
                 we connect you with the essence of traditional Indian health.
               </p>
               <div className="flex space-x-4">
@@ -157,7 +157,7 @@ export function Footer() {
                   </div>
                 ))}
               </div>
-              
+
               {/* Payment Methods */}
               <div className="mt-6">
                 <h5 className="text-sm font-semibold mb-3 text-gray-400">We Accept</h5>

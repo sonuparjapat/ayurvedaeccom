@@ -1,135 +1,117 @@
-const pool = require("../../config/db");
-const { v4: uuid } = require("uuid");
+const pool = require('../../config/db')
+const crypto = require('crypto')
 
-/**
- * Create Order
- * Body: { items: [{ productId, quantity }] }
- */
 exports.createOrder = async (req, res) => {
 
-  const userId = req.user.id;
-  const { items } = req.body;
-
-  if (!items || !items.length) {
-    return res.status(400).json({ error: "No items" });
-  }
-
-  const client = await pool.connect();
+  const client = await pool.connect()
 
   try {
 
-    await client.query("BEGIN");
+    const userId = req.user.id
+    const {
+      shippingInfo,
+      paymentMethod,
+      paymentId
+    } = req.body
 
-    let total = 0;
+    await client.query('BEGIN')
 
-    // Calculate total
-    for (let item of items) {
+    // 1️⃣ Get cart
+    const cart = await client.query(`
+      SELECT c.*, p.price, p.inventory
+      FROM cart c
+      JOIN products p ON p.id=c.product_id
+      WHERE c.user_id=$1
+    `,[userId])
 
-      const result = await client.query(
-        `SELECT price, stock FROM products WHERE id=$1`,
-        [item.productId]
-      );
-
-      if (!result.rows.length)
-        throw "Product not found";
-
-      const product = result.rows[0];
-
-      if (product.stock < item.quantity)
-        throw "Not enough stock";
-
-      total += product.price * item.quantity;
+    if (!cart.rows.length) {
+      throw new Error('Cart empty')
     }
 
-    // Create order
-    const orderId = uuid();
+    // 2️⃣ Calculate total
+    let total = 0
 
-    await client.query(
-      `INSERT INTO orders VALUES($1,$2,$3,$4)`,
-      [orderId, userId, "PENDING", total]
-    );
+    for (let item of cart.rows) {
 
-    // Insert items + reduce stock
-    for (let item of items) {
+      if (item.inventory < item.quantity) {
+        throw new Error('Out of stock')
+      }
 
-      const product = await client.query(
-        `SELECT price FROM products WHERE id=$1`,
-        [item.productId]
-      );
-
-      await client.query(
-        `INSERT INTO order_items VALUES($1,$2,$3,$4,$5)`,
-        [uuid(), orderId, item.productId, item.quantity, product.rows[0].price]
-      );
-
-      await client.query(
-        `UPDATE products SET stock = stock - $1 WHERE id=$2`,
-        [item.quantity, item.productId]
-      );
+      total += item.price * item.quantity
     }
 
-    await client.query("COMMIT");
+    // 3️⃣ Create order
+    const orderNumber =
+      'ORD' + Date.now()
 
-    res.json({ message: "Order Created", orderId });
+    const order = await client.query(`
+
+      INSERT INTO orders
+      (user_id,total_amount,order_number,
+       payment_status,payment_method,
+       shipping_address)
+
+      VALUES($1,$2,$3,$4,$5,$6)
+      RETURNING id
+
+    `,[
+      userId,
+      total,
+      orderNumber,
+      paymentMethod === 'cod' ? 'pending' : 'paid',
+      paymentMethod,
+      shippingInfo
+    ])
+
+    const orderId = order.rows[0].id
+
+    // 4️⃣ Insert items
+    for (let item of cart.rows) {
+
+      await client.query(`
+        INSERT INTO order_items
+        (order_id,product_id,quantity,price)
+        VALUES($1,$2,$3,$4)
+      `,[
+        orderId,
+        item.product_id,
+        item.quantity,
+        item.price
+      ])
+
+      // Reduce stock
+      await client.query(`
+        UPDATE products
+        SET inventory = inventory - $1
+        WHERE id=$2
+      `,[item.quantity,item.product_id])
+    }
+
+    // 5️⃣ Clear cart
+    await client.query(`
+      DELETE FROM cart WHERE user_id=$1
+    `,[userId])
+
+    await client.query('COMMIT')
+
+    res.status(201).json({
+      success:true,
+      orderId,
+      orderNumber
+    })
 
   } catch (err) {
 
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK')
 
-    res.status(400).json({ error: err });
+    console.error(err)
+
+    res.status(500).json({
+      success:false,
+      message:err.message
+    })
 
   } finally {
-
-    client.release();
+    client.release()
   }
-};
-
-
-/**
- * User Orders
- */
-exports.getMyOrders = async (req, res) => {
-
-  const userId = req.user.id;
-
-  const result = await pool.query(
-    `
-    SELECT * FROM orders
-    WHERE user_id=$1
-    ORDER BY created_at DESC
-    `,
-    [userId]
-  );
-
-  res.json(result.rows);
-};
-
-
-/**
- * Admin: All Orders
- */
-exports.getAllOrders = async (req, res) => {
-
-  const result = await pool.query(
-    `SELECT * FROM orders ORDER BY created_at DESC`
-  );
-
-  res.json(result.rows);
-};
-
-
-/**
- * Admin: Update Status
- */
-exports.updateStatus = async (req, res) => {
-
-  const { status } = req.body;
-  const { id } = req.params;
-
-  await pool.query(
-    `UPDATE orders SET status=$1 WHERE id=$2`,
-    [status, id]
-  );
-
-  res.json({ message: "Status Updated" });
-};
+}

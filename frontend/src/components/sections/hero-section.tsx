@@ -9,7 +9,7 @@ import Link from 'next/link'
 export function HeroSection() {
   const benefits = [
     "100% Natural & Organic",
-    "Traditional Ayurvedic Recipes", 
+    "Traditional Ayurvedic Recipes",
     "Sourced Directly from Farms",
     "No Preservatives or Additives"
   ]
@@ -33,17 +33,17 @@ export function HeroSection() {
             <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 mb-6">
               🌿 Authentic Ayurvedic Products
             </Badge>
-            
+
             <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
               Discover the
               <span className="text-emerald-600"> Ancient Wisdom</span>
               <br />
               of Ayurveda
             </h1>
-            
+
             <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-              Experience the healing power of nature with our premium collection of 
-              Ayurvedic herbs, dry fruits, dehydrated foods, and fresh tofu. 
+              Experience the healing power of nature with our premium collection of
+              Ayurvedic herbs, dry fruits, dehydrated foods, and fresh tofu.
               Sourced directly from Indian farms and delivered to your doorstep.
             </p>
 
@@ -64,35 +64,35 @@ export function HeroSection() {
             </div>
 
             {/* CTA Buttons */}
-        <div className="relative z-20 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            <div className="relative z-20 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
 
-  {/* Shop Now */}
-  <Button
-    size="lg"
-    className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 text-lg font-semibold"
-    asChild
-  >
-    <Link href="/products">
-      Shop Now
-      <ArrowRight className="ml-2 w-5 h-5" />
-    </Link>
-  </Button>
+              {/* Shop Now */}
+              <Button
+                size="lg"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 text-lg font-semibold"
+                asChild
+              >
+                <Link href="/products">
+                  Shop Now
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+              </Button>
 
 
-  {/* Watch Story */}
-  <Button
-    variant="outline"
-    size="lg"
-    className="border-emerald-600 text-emerald-600 hover:bg-emerald-50 px-8 py-3 text-lg font-semibold"
-    asChild
-  >
-    <Link href="/about">
-      <Play className="mr-2 w-5 h-5" />
-      Watch Story
-    </Link>
-  </Button>
+              {/* Watch Story */}
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-emerald-600 text-emerald-600 hover:bg-emerald-50 px-8 py-3 text-lg font-semibold"
+                asChild
+              >
+                <Link href="/about">
+                  <Play className="mr-2 w-5 h-5" />
+                  Watch Story
+                </Link>
+              </Button>
 
-</div>
+            </div>
 
             {/* Trust Indicators */}
             <div className="mt-12 pt-8 border-t border-gray-200">

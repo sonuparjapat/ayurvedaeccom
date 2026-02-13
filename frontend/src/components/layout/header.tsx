@@ -18,30 +18,20 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/context/auth-context'
 
 export function Header() {
   const router = useRouter()
-
+const {loginuserdata,logout}=useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [user, setUser] = useState<any>(null)
 
-  useEffect(() => {
-    const loginStatus = localStorage.getItem('isLoggedIn')
-    const userData = localStorage.getItem('user')
+console.log(loginuserdata,"loginuserdata")
 
-    setTimeout(() => {
-      setIsLoggedIn(!!loginStatus)
-      if (userData) setUser(JSON.parse(userData))
-    }, 0)
-  }, [])
 
   const handleLogout = () => {
-    localStorage.clear()
-    setIsLoggedIn(false)
-    setUser(null)
-    router.push('/')
+   logout()
   }
 
   const categories = [
@@ -91,27 +81,27 @@ export function Header() {
           <div className="flex items-center justify-between h-16 gap-2">
 
             {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 min-w-fit">
+            <Link href="/" className="flex items-center gap-2 min-w-fit">
 
-  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-600 rounded-full flex items-center justify-center">
-    <span className="text-white font-bold text-lg sm:text-xl">
-      A
-    </span>
-  </div>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-600 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-lg sm:text-xl">
+                  A
+                </span>
+              </div>
 
-  <div className="flex flex-col leading-tight">
+              <div className="flex flex-col leading-tight">
 
-    <h1 className="text-sm sm:text-lg md:text-xl font-bold">
-      AyurVeda
-    </h1>
+                <h1 className="text-sm sm:text-lg md:text-xl font-bold">
+                  AyurVeda
+                </h1>
 
-    <p className="text-[9px] sm:text-xs text-emerald-600">
-      Desi Foods
-    </p>
+                <p className="text-[9px] sm:text-xs text-emerald-600">
+                  Desi Foods
+                </p>
 
-  </div>
+              </div>
 
-</Link>
+            </Link>
 
             {/* Desktop Search */}
             <div className="hidden md:flex flex-1 max-w-xl mx-4">
@@ -148,7 +138,7 @@ export function Header() {
               </Button>
 
               {/* Account */}
-              {isLoggedIn ? (
+              {loginuserdata?.id ? (
                 <>
                   <Button variant="ghost" size="icon" asChild>
                     <Link href="/account">

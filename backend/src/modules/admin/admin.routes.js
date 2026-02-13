@@ -47,4 +47,5 @@ router.delete('/products/:id', auth, admin, controller.remove)
 router.get('/top-products', auth, admin, controller.topProducts)
 
 
+
 module.exports = router
