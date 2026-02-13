@@ -9,66 +9,52 @@ import { Footer } from '@/components/layout/footer'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import {
-  ShoppingCart,
-  Truck,
-  CreditCard,
-  User,
   CheckCircle,
-  ArrowRight,
+  MapPin,
+  Phone,
+  User,
+  Shield,
+  CreditCard,
+  Truck,
+  ShoppingBag,
   IndianRupee,
-  Shield
+  Lock,
+  Sparkles,
+  Package
 } from 'lucide-react'
 
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
-/* ================= TYPES ================= */
-
-interface CartItem {
-  product_id: number
-  name: string
-  price: number
-  images: string
-  quantity: number
+declare global {
+  interface Window {
+    Razorpay: any
+  }
 }
 
-interface Cart {
-  items: CartItem[]
-  subtotal: number
-  totalItems: number
-}
-
-/* ================= PAGE ================= */
+/* ================= COMPONENT ================= */
 
 export default function CheckoutPage() {
 
-  const [cart, setCart] = useState<Cart | null>(null)
+  const [cart, setCart] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  const [currentStep, setCurrentStep] = useState(1)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [step, setStep] = useState(1)
+  const [processing, setProcessing] = useState(false)
 
-  /* ================= FORM ================= */
-
-  const [shippingInfo, setShippingInfo] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'India'
-  })
-
-  const [paymentMethod, setPaymentMethod] = useState('cod')
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod')
 
   const [orderPlaced, setOrderPlaced] = useState(false)
-  const [orderNumber, setOrderNumber] = useState('')
+  const [orderNo, setOrderNo] = useState('')
+
+  const [shipping, setShipping] = useState({
+    name: '',
+    phone: '',
+    address: ''
+  })
 
 
   /* ================= FETCH CART ================= */
@@ -77,94 +63,206 @@ export default function CheckoutPage() {
     fetchCart()
   }, [])
 
-
   const fetchCart = async () => {
 
     try {
 
-      setLoading(true)
-
       const res = await axios.get('/cart')
 
-      if (!res.data.success) {
-        throw new Error('Cart failed')
+      if (!res.data?.items?.length) {
+        toast.error('Your cart is empty')
+        window.location.href = '/products'
+        return
       }
 
-      setCart({
-        items: res.data.items,
-        subtotal: res.data.subtotal,
-        totalItems: res.data.items.length
-      })
+      setCart(res.data)
 
     } catch (err: any) {
 
-      console.error(err)
-
       if (err?.response?.status === 401) {
-        toast.error('Login first')
+        toast.error('Login required')
         window.location.href = '/login'
       } else {
-        toast.error('Failed to load cart')
+        toast.error('Unable to load cart')
       }
 
     } finally {
+
       setLoading(false)
+
     }
   }
 
 
-  /* ================= HELPERS ================= */
+  /* ================= PRICE ================= */
 
-  const getImage = (img: string) => {
-    try {
-      return JSON.parse(img)[0]
-    } catch {
-      return '/placeholder.jpg'
+  const subtotal = cart?.subtotal || 0
+  const tax = +(subtotal * 0.05).toFixed(2)
+  const delivery = subtotal > 500 ? 0 : 50
+  const total = +(subtotal + tax + delivery).toFixed(2)
+
+
+  /* ================= VALIDATION ================= */
+
+  const validateShipping = () => {
+
+    if (!shipping.name.trim()) {
+      toast.error('Full name is required')
+      return false
     }
-  }
 
-  const formatPrice = (p: number) =>
-    new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(p)
+    if (!/^[6-9]\d{9}$/.test(shipping.phone)) {
+      toast.error('Enter valid mobile number')
+      return false
+    }
 
-  const shipping = () => cart && cart.subtotal >= 500 ? 0 : 50
-  const tax = () => cart ? cart.subtotal * 0.05 : 0
-  const total = () => cart ? cart.subtotal + shipping() + tax() : 0
+    if (shipping.address.trim().length < 10) {
+      toast.error('Enter complete address')
+      return false
+    }
 
-
-  /* ================= SUBMIT ================= */
-
-  const handleShippingSubmit = (e: any) => {
-    e.preventDefault()
-    setCurrentStep(2)
+    return true
   }
 
 
-  const handlePaymentSubmit = async (e: any) => {
-    e.preventDefault()
+  /* ================= PLACE ORDER ================= */
+
+  const placeOrder = async () => {
+
+    if (!validateShipping()) return
+
+    if (processing) return
+
 
     try {
 
-      setIsProcessing(true)
+      setProcessing(true)
 
-      // Fake order for now (we'll connect backend later)
-      await new Promise(r => setTimeout(r, 1500))
 
-      const num = 'ORD' + Date.now().toString().slice(-7)
+      /* CREATE ORDER */
 
-      setOrderNumber(num)
-      setOrderPlaced(true)
+      const res = await axios.post('/orders/create', {
+        shipping,
+        paymentMethod
+      })
 
-      toast.success('Order placed')
 
-    } catch {
+      if (!res.data?.success) {
+        throw new Error('Order creation failed')
+      }
 
-      toast.error('Order failed')
+
+      /* ================= COD ================= */
+
+      if (paymentMethod === 'cod') {
+
+        toast.success('Order placed successfully')
+
+        setOrderNo('ORD' + res.data.orderId)
+        setOrderPlaced(true)
+
+        return
+      }
+
+
+      /* ================= ONLINE ================= */
+
+      if (!window.Razorpay) {
+        toast.error('Payment gateway not loaded')
+        return
+      }
+
+
+      const options = {
+
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY,
+
+        order_id: res.data.razorpay.id,
+
+        amount: res.data.razorpay.amount,
+
+        currency: 'INR',
+
+        name: 'Your Store',
+
+        description: 'Secure Checkout',
+
+        image: '/logo.png',
+
+
+        handler: async (response: any) => {
+
+          try {
+
+            const verify = await axios.post('/orders/verify', {
+              ...response,
+              orderId: res.data.orderId
+            })
+
+
+            if (verify.data?.success) {
+
+              toast.success('Payment successful')
+
+              setOrderNo('ORD' + res.data.orderId)
+              setOrderPlaced(true)
+
+            } else {
+
+              toast.error('Payment verification failed')
+
+            }
+
+          } catch {
+
+            toast.error('Payment verification error')
+
+          }
+        },
+
+
+        modal: {
+          ondismiss: () => {
+            toast.error('Payment cancelled')
+          }
+        },
+
+
+        theme: {
+          color: '#10b981'
+        }
+
+      }
+
+
+      const rz = new window.Razorpay(options)
+
+      rz.open()
+
+
+    } catch (err: any) {
+
+      if (err?.response?.status === 400) {
+        toast.error(err.response.data?.message || 'Bad request')
+      }
+
+      else if (err?.response?.status === 401) {
+        toast.error('Unauthorized')
+        window.location.href = '/login'
+      }
+
+      else if (err?.response?.status === 500) {
+        toast.error('Server error')
+      }
+
+      else {
+        toast.error('Checkout failed')
+      }
 
     } finally {
-      setIsProcessing(false)
+
+      setProcessing(false)
+
     }
   }
 
@@ -172,41 +270,13 @@ export default function CheckoutPage() {
   /* ================= LOADING ================= */
 
   if (loading) {
-    return (
-      <div className="h-screen flex justify-center items-center">
-        <div className="animate-spin h-12 w-12 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
-      </div>
-    )
-  }
-
-
-  /* ================= EMPTY ================= */
-
-  if (!cart || cart.items.length === 0) {
 
     return (
-      <div className="h-screen flex flex-col">
-        <Header />
-
-        <main className="flex-1 flex justify-center items-center">
-
-          <div className="text-center">
-
-            <ShoppingCart size={60} className="mx-auto mb-4 text-gray-300" />
-
-            <h2 className="text-2xl font-bold mb-2">
-              Cart is Empty
-            </h2>
-
-            <Button asChild>
-              <a href="/products">Shop Now</a>
-            </Button>
-
-          </div>
-
-        </main>
-
-        <Footer />
+      <div className="h-screen flex justify-center items-center bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full blur-xl opacity-30 animate-pulse" />
+          <div className="relative animate-spin h-16 w-16 border-4 border-emerald-200 border-t-emerald-600 rounded-full" />
+        </div>
       </div>
     )
   }
@@ -218,37 +288,63 @@ export default function CheckoutPage() {
 
     return (
 
-      <div className="h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-emerald-50 via-white to-teal-50">
 
         <Header />
 
-        <main className="flex-1 flex justify-center items-center bg-gray-50">
+        <main className="flex-1 flex justify-center items-center p-6">
 
-          <div className="bg-white p-8 rounded-xl shadow-xl text-center max-w-md">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="relative bg-white p-12 rounded-3xl shadow-2xl text-center max-w-md w-full"
+          >
 
-            <CheckCircle className="mx-auto text-green-600" size={70} />
+            <div className="relative inline-block">
 
-            <h1 className="text-2xl font-bold mt-4">
-              Order Placed
+              <div className="absolute inset-0 bg-emerald-400 rounded-full blur-xl opacity-40 animate-pulse" />
+
+              <div className="relative bg-gradient-to-br from-emerald-400 to-teal-500 p-5 rounded-full">
+                <CheckCircle size={56} className="text-white" />
+              </div>
+
+            </div>
+
+            <h1 className="text-4xl font-bold mt-6 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              Order Confirmed!
             </h1>
 
-            <p className="mt-2 text-gray-600">
-              Order No: {orderNumber}
-            </p>
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-full">
+              <Package size={16} className="text-emerald-600" />
+              <p className="text-emerald-700 font-semibold">
+                #{orderNo}
+              </p>
+            </div>
 
-            <p className="mt-4 font-bold">
-              {formatPrice(total())}
-            </p>
+            <div className="mt-6 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl">
+              <p className="text-sm text-gray-600 mb-1">Total Amount</p>
+              <p className="text-3xl font-bold text-emerald-600">
+                ₹{total}
+              </p>
+            </div>
 
-            <Button className="mt-6 w-full" asChild>
-              <a href="/">Continue Shopping</a>
+            <Button
+              className="mt-8 w-full bg-gradient-to-r from-emerald-500 to-teal-500"
+              asChild
+            >
+              <a href="/" className="flex items-center justify-center gap-2">
+                <Sparkles size={18} />
+                Continue Shopping
+              </a>
             </Button>
 
-          </div>
+          </motion.div>
 
         </main>
 
         <Footer />
+
       </div>
     )
   }
@@ -258,248 +354,245 @@ export default function CheckoutPage() {
 
   return (
 
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-emerald-50/30">
 
       <Header />
 
-      <main className="flex-1 bg-gray-50">
 
-        <div className="max-w-6xl mx-auto p-6 grid lg:grid-cols-3 gap-6">
+      {/* PROGRESS BAR */}
+
+      <div className="bg-white/80 backdrop-blur-lg border-b border-gray-200/50 py-6 sticky top-0 z-10">
+
+        <div className="max-w-6xl mx-auto px-6">
+
+          <div className="flex justify-between items-center relative">
+
+            <div className="absolute top-5 left-0 right-0 h-1 bg-gray-200 rounded-full">
+              <motion.div
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
+                animate={{
+                  width: step === 1 ? '0%' : step === 2 ? '50%' : '100%'
+                }}
+              />
+            </div>
+
+            {[
+              { id: 1, name: 'Shipping', icon: Truck },
+              { id: 2, name: 'Payment', icon: CreditCard },
+              { id: 3, name: 'Confirm', icon: CheckCircle }
+            ].map((s, i) => (
+
+              <div
+                key={s.id}
+                className="relative flex flex-col items-center gap-2 z-10"
+              >
+
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    step >= s.id
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-white text-gray-400 border'
+                  }`}
+                >
+
+                  {step > s.id
+                    ? <CheckCircle size={20} />
+                    : <s.icon size={20} />
+                  }
+
+                </div>
+
+                <span className="text-xs hidden sm:block">
+                  {s.name}
+                </span>
+
+              </div>
+
+            ))}
+
+          </div>
+
+        </div>
+
+      </div>
 
 
-          {/* FORM */}
+      <main className="flex-1 max-w-6xl mx-auto p-6 grid lg:grid-cols-3 gap-8 py-12">
 
-          <div className="lg:col-span-2">
 
-            {currentStep === 1 && (
+        {/* LEFT */}
 
-              <Card>
+        <div className="lg:col-span-2 space-y-6">
 
-                <CardHeader>
-                  <CardTitle>Shipping</CardTitle>
-                </CardHeader>
 
-                <CardContent>
+          {/* ADDRESS */}
 
-                  <form
-                    onSubmit={handleShippingSubmit}
-                    className="space-y-4"
-                  >
+          <AnimatePresence>
+
+            {step === 1 && (
+
+              <motion.div>
+
+                <Card className="rounded-3xl shadow-xl border-0 bg-white">
+
+                  <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6">
+                    <CardTitle className="text-white text-2xl flex gap-2">
+                      <MapPin /> Shipping Address
+                    </CardTitle>
+                  </div>
+
+                  <CardContent className="p-8 space-y-5">
 
                     <Input
-                      required
-                      placeholder="First Name"
-                      value={shippingInfo.firstName}
+                      placeholder="Full Name"
+                      value={shipping.name}
                       onChange={e =>
-                        setShippingInfo({
-                          ...shippingInfo,
-                          firstName: e.target.value
-                        })
+                        setShipping({ ...shipping, name: e.target.value })
                       }
                     />
 
                     <Input
-                      required
                       placeholder="Phone"
-                      value={shippingInfo.phone}
+                      value={shipping.phone}
                       onChange={e =>
-                        setShippingInfo({
-                          ...shippingInfo,
-                          phone: e.target.value
-                        })
+                        setShipping({ ...shipping, phone: e.target.value })
                       }
                     />
 
                     <Input
-                      required
                       placeholder="Address"
-                      value={shippingInfo.address}
+                      value={shipping.address}
                       onChange={e =>
-                        setShippingInfo({
-                          ...shippingInfo,
-                          address: e.target.value
-                        })
+                        setShipping({ ...shipping, address: e.target.value })
                       }
                     />
 
-                    <Button className="w-full">
-                      Continue
-                      <ArrowRight className="ml-2" />
+                    <Button
+                      onClick={() => {
+                        if (validateShipping()) setStep(2)
+                      }}
+                      className="w-full h-14"
+                    >
+                      Continue to Payment
+                      <Truck className="ml-2" />
                     </Button>
 
-                  </form>
+                  </CardContent>
 
-                </CardContent>
+                </Card>
 
-              </Card>
+              </motion.div>
 
             )}
 
+          </AnimatePresence>
 
-            {currentStep === 2 && (
 
-              <Card>
+          {/* PAYMENT */}
 
-                <CardHeader>
-                  <CardTitle>Payment</CardTitle>
-                </CardHeader>
+          <AnimatePresence>
 
-                <CardContent>
+            {step === 2 && (
 
-                  <form
-                    onSubmit={handlePaymentSubmit}
-                    className="space-y-6"
-                  >
+              <motion.div>
+
+                <Card className="rounded-3xl shadow-xl border-0 bg-white">
+
+                  <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6">
+                    <CardTitle className="text-white text-2xl flex gap-2">
+                      <Shield /> Payment Method
+                    </CardTitle>
+                  </div>
+
+                  <CardContent className="p-8">
 
                     <Tabs
                       value={paymentMethod}
                       onValueChange={setPaymentMethod}
                     >
 
-                      <TabsList className="grid grid-cols-2">
+                      <TabsList className="grid grid-cols-2 gap-4">
 
                         <TabsTrigger value="cod">
-                          COD
+                          <IndianRupee /> COD
                         </TabsTrigger>
 
                         <TabsTrigger value="online">
-                          Online
+                          <CreditCard /> Online
                         </TabsTrigger>
 
                       </TabsList>
 
-
-                      <TabsContent value="cod">
-
-                        <div className="text-center py-6">
-
-                          <IndianRupee size={40} className="mx-auto" />
-
-                          Pay on delivery
-
-                        </div>
-
-                      </TabsContent>
-
-
-                      <TabsContent value="online">
-
-                        <div className="text-center py-6">
-
-                          <Shield size={40} className="mx-auto" />
-
-                          Secure Payment
-
-                        </div>
-
-                      </TabsContent>
-
                     </Tabs>
 
 
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 mt-8">
 
                       <Button
-                        type="button"
                         variant="outline"
-                        onClick={() => setCurrentStep(1)}
+                        onClick={() => setStep(1)}
                         className="flex-1"
                       >
                         Back
                       </Button>
 
-
                       <Button
-                        type="submit"
-                        disabled={isProcessing}
-                        className="flex-1"
+                        onClick={placeOrder}
+                        disabled={processing}
+                        className="flex-1 bg-emerald-600"
                       >
-                        {isProcessing ? 'Processing...' : 'Place Order'}
+                        {processing ? 'Processing...' : 'Complete Order'}
                       </Button>
 
                     </div>
 
-                  </form>
+                  </CardContent>
 
-                </CardContent>
+                </Card>
 
-              </Card>
+              </motion.div>
 
             )}
 
-          </div>
+          </AnimatePresence>
+
+        </div>
 
 
-          {/* SUMMARY */}
+        {/* SUMMARY */}
 
-          <Card className="h-fit">
+        <div className="lg:sticky lg:top-32 h-fit">
 
-            <CardHeader>
-              <CardTitle>Summary</CardTitle>
-            </CardHeader>
+          <Card className="rounded-3xl shadow-2xl border-0 bg-white">
 
-            <CardContent className="space-y-3">
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6">
+              <CardTitle className="text-white flex gap-2">
+                <ShoppingBag /> Summary
+              </CardTitle>
+            </div>
 
-              {cart.items.map(i => (
-
-                <div
-                  key={i.product_id}
-                  className="flex gap-3"
-                >
-
-                  <img
-                    src={getImage(i.images)}
-                    className="w-14 h-14 rounded"
-                  />
-
-                  <div className="flex-1">
-
-                    <p className="font-medium">
-                      {i.name}
-                    </p>
-
-                    <p className="text-sm">
-                      Qty: {i.quantity}
-                    </p>
-
-                  </div>
-
-                  <p>
-                    {formatPrice(i.price * i.quantity)}
-                  </p>
-
-                </div>
-
-              ))}
-
-
-              <hr />
+            <CardContent className="p-6 space-y-3">
 
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>{formatPrice(cart.subtotal)}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Shipping</span>
-                <span>
-                  {shipping() === 0
-                    ? 'FREE'
-                    : formatPrice(shipping())}
-                </span>
+                <span>₹{subtotal.toFixed(2)}</span>
               </div>
 
               <div className="flex justify-between">
                 <span>Tax</span>
-                <span>{formatPrice(tax())}</span>
+                <span>₹{tax.toFixed(2)}</span>
               </div>
 
+              <div className="flex justify-between">
+                <span>Delivery</span>
+                <span>{delivery === 0 ? 'FREE' : `₹${delivery}`}</span>
+              </div>
 
               <hr />
 
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span>{formatPrice(total())}</span>
+                <span>₹{total}</span>
               </div>
 
             </CardContent>

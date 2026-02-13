@@ -4,40 +4,45 @@ const initDB = async () => {
   try {
 
     /* ================= USERS ================= */
-await pool.query(`
- CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
 
-  role INTEGER DEFAULT 3,
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
 
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(150) UNIQUE NOT NULL,
-  phone VARCHAR(20),
+        id SERIAL PRIMARY KEY,
 
-  password TEXT NOT NULL,
+        role INTEGER DEFAULT 3,
 
-  address1 TEXT,
-  address2 TEXT,
-  pincode VARCHAR(10),
-  state VARCHAR(50),
-  country VARCHAR(50),
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(150) UNIQUE NOT NULL,
+        phone VARCHAR(20),
 
-  is_verified BOOLEAN DEFAULT FALSE,
-  verification_token TEXT,
+        password TEXT NOT NULL,
 
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
-`);
+        address1 TEXT,
+        address2 TEXT,
+        pincode VARCHAR(10),
+        state VARCHAR(50),
+        country VARCHAR(50),
 
-// roles
-await pool.query(`CREATE TABLE IF NOT EXISTS roles (
+        is_verified BOOLEAN DEFAULT FALSE,
+        verification_token TEXT,
 
-  id SERIAL PRIMARY KEY,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-  name VARCHAR(30) UNIQUE NOT NULL
 
-)`)
+    /* ================= ROLES ================= */
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS roles (
+
+        id SERIAL PRIMARY KEY,
+
+        name VARCHAR(30) UNIQUE NOT NULL
+      )
+    `);
 
 
     /* ================= PRODUCTS ================= */
@@ -51,37 +56,29 @@ await pool.query(`CREATE TABLE IF NOT EXISTS roles (
 
         slug VARCHAR(255) UNIQUE,
 
-
         shortdescription TEXT,
 
         longdescription TEXT,
-
 
         price NUMERIC(10,2) NOT NULL,
 
         compareprice NUMERIC(10,2),
 
-
         inventory INT DEFAULT 0,
 
         sku VARCHAR(100),
-
 
         category_name VARCHAR(100),
 
         brand VARCHAR(100),
 
-
         status VARCHAR(20) DEFAULT 'draft',
 
-
         images JSONB,
-
 
         averagerating NUMERIC(2,1) DEFAULT 0,
 
         reviewcount INT DEFAULT 0,
-
 
         meta_title VARCHAR(255),
 
@@ -89,65 +86,71 @@ await pool.query(`CREATE TABLE IF NOT EXISTS roles (
 
         meta_keywords TEXT,
 
-
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
       )
     `);
 
-// wishlists
-await pool.query(`
-  CREATE TABLE IF NOT EXISTS wishlist (
 
-  id SERIAL PRIMARY KEY,
+    /* ================= WISHLIST ================= */
 
-  user_id SERIAL REFERENCES users(id),
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wishlist (
 
-  product_id SERIAL REFERENCES products(id),
+        id SERIAL PRIMARY KEY,
 
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
 
-  UNIQUE(user_id, product_id)
+        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
 
-)`)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-// reviews table
+        UNIQUE(user_id, product_id)
+      )
+    `);
 
-await pool.query(`CREATE TABLE IF NOT EXISTS reviews (
 
-  id SERIAL PRIMARY KEY,
+    /* ================= REVIEWS ================= */
 
-  user_id SERIAL REFERENCES users(id),
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reviews (
 
-  product_id SERIAL REFERENCES products(id),
+        id SERIAL PRIMARY KEY,
 
-  rating INT CHECK (rating BETWEEN 1 AND 5),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
 
-  comment TEXT,
+        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
 
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        rating INT CHECK (rating BETWEEN 1 AND 5),
 
-  UNIQUE(user_id, product_id)
+        comment TEXT,
 
-)`)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-// cart section
+        UNIQUE(user_id, product_id)
+      )
+    `);
 
-await pool.query(`CREATE TABLE IF NOT EXISTS cart (
 
-  id SERIAL PRIMARY KEY,
+    /* ================= CART ================= */
 
-  user_id SERIAL REFERENCES users(id),
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS cart (
 
-  product_id SERIAL REFERENCES products(id),
+        id SERIAL PRIMARY KEY,
 
-  quantity INT DEFAULT 1,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
 
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
 
-  UNIQUE(user_id, product_id)
+        quantity INT DEFAULT 1,
 
-)`)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+        UNIQUE(user_id, product_id)
+      )
+    `);
+
+
     /* ================= ORDERS ================= */
 
     await pool.query(`
@@ -155,18 +158,25 @@ await pool.query(`CREATE TABLE IF NOT EXISTS cart (
 
         id SERIAL PRIMARY KEY,
 
-        user_id SERIAL REFERENCES users(id),
+        user_id INTEGER REFERENCES users(id),
 
         status VARCHAR(30) DEFAULT 'pending',
 
         total_amount NUMERIC(10,2) NOT NULL,
 
+        payment_method VARCHAR(20),
+
         payment_status VARCHAR(30) DEFAULT 'unpaid',
+
+        razorpay_order_id VARCHAR(200),
+
+        razorpay_payment_id VARCHAR(200),
+
+        razorpay_signature TEXT,
 
         shipping_address JSONB,
 
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
       )
     `);
 
@@ -178,17 +188,16 @@ await pool.query(`CREATE TABLE IF NOT EXISTS cart (
 
         id SERIAL PRIMARY KEY,
 
-        order_id SERIAL
+        order_id INTEGER
           REFERENCES orders(id)
           ON DELETE CASCADE,
 
-        product_id SERIAL
+        product_id INTEGER
           REFERENCES products(id),
 
         quantity INT NOT NULL,
 
         price NUMERIC(10,2) NOT NULL
-
       )
     `);
 
@@ -200,8 +209,9 @@ await pool.query(`CREATE TABLE IF NOT EXISTS cart (
 
         id SERIAL PRIMARY KEY,
 
-        order_id SERIAL UNIQUE
-          REFERENCES orders(id),
+        order_id INTEGER UNIQUE
+          REFERENCES orders(id)
+          ON DELETE CASCADE,
 
         razorpay_order_id VARCHAR(200),
 
@@ -214,7 +224,6 @@ await pool.query(`CREATE TABLE IF NOT EXISTS cart (
         status VARCHAR(30),
 
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
       )
     `);
 

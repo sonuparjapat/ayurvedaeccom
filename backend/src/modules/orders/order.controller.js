@@ -1,117 +1,181 @@
-const pool = require('../../config/db')
-const crypto = require('crypto')
+const pool = require("../../config/db");
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
+
+/* ================= RAZORPAY ================= */
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY,
+  key_secret: process.env.RAZORPAY_SECRET,
+});
+
+/* ================= CREATE ORDER ================= */
 
 exports.createOrder = async (req, res) => {
-
-  const client = await pool.connect()
+  const client = await pool.connect();
 
   try {
+    const userId = req.user.id;
+    const { shipping, paymentMethod } = req.body;
 
-    const userId = req.user.id
-    const {
-      shippingInfo,
-      paymentMethod,
-      paymentId
-    } = req.body
+    await client.query("BEGIN");
 
-    await client.query('BEGIN')
-
-    // 1️⃣ Get cart
+    /* Fetch Cart */
     const cart = await client.query(`
       SELECT c.*, p.price, p.inventory
       FROM cart c
-      JOIN products p ON p.id=c.product_id
+      JOIN products p ON p.id = c.product_id
       WHERE c.user_id=$1
-    `,[userId])
+    `, [userId]);
 
     if (!cart.rows.length) {
-      throw new Error('Cart empty')
+      throw new Error("Cart empty");
     }
 
-    // 2️⃣ Calculate total
-    let total = 0
+    let total = 0;
 
-    for (let item of cart.rows) {
+    for (let i of cart.rows) {
 
-      if (item.inventory < item.quantity) {
-        throw new Error('Out of stock')
+      if (i.inventory < i.quantity) {
+        throw new Error("Out of stock");
       }
 
-      total += item.price * item.quantity
+      total += i.price * i.quantity;
     }
 
-    // 3️⃣ Create order
-    const orderNumber =
-      'ORD' + Date.now()
+    total += total * 0.05; // tax
 
+    /* Create Order */
     const order = await client.query(`
-
       INSERT INTO orders
-      (user_id,total_amount,order_number,
-       payment_status,payment_method,
-       shipping_address)
+      (user_id,total_amount,payment_method,shipping_address)
+      VALUES($1,$2,$3,$4)
+      RETURNING *
+    `,
+      [
+        userId,
+        total,
+        paymentMethod,
+        shipping
+      ]
+    );
 
-      VALUES($1,$2,$3,$4,$5,$6)
-      RETURNING id
+    const orderId = order.rows[0].id;
 
-    `,[
-      userId,
-      total,
-      orderNumber,
-      paymentMethod === 'cod' ? 'pending' : 'paid',
-      paymentMethod,
-      shippingInfo
-    ])
-
-    const orderId = order.rows[0].id
-
-    // 4️⃣ Insert items
-    for (let item of cart.rows) {
+    /* Order Items + Reduce Stock */
+    for (let i of cart.rows) {
 
       await client.query(`
         INSERT INTO order_items
         (order_id,product_id,quantity,price)
         VALUES($1,$2,$3,$4)
-      `,[
-        orderId,
-        item.product_id,
-        item.quantity,
-        item.price
-      ])
+      `, [orderId, i.product_id, i.quantity, i.price]);
 
-      // Reduce stock
       await client.query(`
         UPDATE products
         SET inventory = inventory - $1
         WHERE id=$2
-      `,[item.quantity,item.product_id])
+      `, [i.quantity, i.product_id]);
     }
 
-    // 5️⃣ Clear cart
-    await client.query(`
-      DELETE FROM cart WHERE user_id=$1
-    `,[userId])
+    /* Razorpay */
+    let razorpayOrder = null;
 
-    await client.query('COMMIT')
+    if (paymentMethod === "online") {
 
-    res.status(201).json({
-      success:true,
+      razorpayOrder = await razorpay.orders.create({
+        amount: total * 100,
+        currency: "INR",
+        receipt: `ORD_${orderId}`
+      });
+
+      await client.query(`
+        UPDATE orders
+        SET razorpay_order_id=$1
+        WHERE id=$2
+      `, [razorpayOrder.id, orderId]);
+    }
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
       orderId,
-      orderNumber
-    })
+      razorpay: razorpayOrder
+    });
 
   } catch (err) {
 
-    await client.query('ROLLBACK')
+    await client.query("ROLLBACK");
 
-    console.error(err)
+    console.error(err);
 
-    res.status(500).json({
-      success:false,
-      message:err.message
-    })
+    res.status(400).json({
+      success: false,
+      message: err.message
+    });
 
   } finally {
-    client.release()
+    client.release();
   }
-}
+};
+
+/* ================= VERIFY PAYMENT ================= */
+
+exports.verifyPayment = async (req, res) => {
+
+  try {
+
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      orderId
+    } = req.body;
+
+    const body =
+      razorpay_order_id + "|" + razorpay_payment_id;
+
+    const expected = crypto
+      .createHmac("sha256", process.env.RAZORPAY_SECRET)
+      .update(body)
+      .digest("hex");
+
+    if (expected !== razorpay_signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid signature"
+      });
+    }
+
+    await pool.query(`
+      UPDATE orders
+      SET
+        payment_status='paid',
+        status='confirmed',
+        razorpay_payment_id=$1,
+        razorpay_signature=$2
+      WHERE id=$3
+    `, [
+      razorpay_payment_id,
+      razorpay_signature,
+      orderId
+    ]);
+
+    /* Clear Cart */
+    await pool.query(
+      "DELETE FROM cart WHERE user_id=$1",
+      [req.user.id]
+    );
+
+    res.json({ success: true });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      success: false
+    });
+  }
+};
