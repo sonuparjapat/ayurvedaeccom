@@ -2,29 +2,34 @@
 
 import { useState, useEffect } from 'react'
 import axios from '@/lib/axios'
+import Link from 'next/link'
+import toast from 'react-hot-toast'
 
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import StarRating from '@/components/StartRatings'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import Link from "next/link"
 
-import toast from 'react-hot-toast'
 import {
   Grid,
   List,
   ShoppingCart,
   Heart,
-  Star,
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
+  Search,
+  Eye,
+  AlertCircle,
+  Check,
+  Package
 } from 'lucide-react'
 
 import { motion, AnimatePresence } from 'framer-motion'
+
 import { notify } from '../utils/notify'
 import { useAuth } from '@/context/auth-context'
 import { useRouter } from 'next/navigation'
@@ -61,20 +66,23 @@ export default function ProductsPage() {
 
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
-const [cartdata,setCartData]=useState<any>([])
+
+
   const [page, setPage] = useState(1)
   const limit = 9
-
   const [total, setTotal] = useState(0)
 
   const [viewMode, setViewMode] =
     useState<'grid' | 'list'>('grid')
 
   const [showFilters, setShowFilters] = useState(false)
-const {loginuserdata, handleCart,
-        setOpencart,
-        opencart}=useAuth()
-const router=useRouter()
+
+
+  const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata } = useAuth()
+
+  const router = useRouter()
+
+
   /* ---------- FETCH ---------- */
 
   useEffect(() => {
@@ -83,11 +91,11 @@ const router=useRouter()
     fetchProducts()
 
   }, [])
-  useEffect(()=>{
-fetchCart(loginuserdata?.id)
-  },[JSON.stringify(loginuserdata)])
 
-console.log(cartdata,products)
+
+
+
+
   useEffect(() => {
 
     const t = setTimeout(() => {
@@ -98,19 +106,9 @@ console.log(cartdata,products)
 
   }, [search, category, page])
 
-  const toggleLike = async (id: string) => {
 
-    try {
+  /* ---------- API ---------- */
 
-      await axios.post('/shop/wishlist', {
-        productId: id,
-      })
-
-    } catch (err) {
-      console.error(err)
-    }
-
-  }
   const fetchProducts = async () => {
 
     try {
@@ -134,7 +132,7 @@ console.log(cartdata,products)
 
     } catch (err) {
 
-      console.error('Fetch Error:', err)
+      notify.error('Unable to load products')
 
     } finally {
 
@@ -145,43 +143,25 @@ console.log(cartdata,products)
   }
 
 
-  const fetchCategories = async (id?:any) => {
+  const fetchCategories = async () => {
 
     try {
 
-      const res = await axios.get(
-        '/shop/categories'
-      )
+      const res = await axios.get('/shop/categories')
 
       setCategories(res.data.categories || [])
 
-    } catch (err) {
+    } catch {
 
-      console.error(err)
+      notify.error('Category load failed')
 
     }
 
   }
-const fetchCart = async (id:any) => {
-  console.log(id,"id comingggggggg")
-if(id){
- try {
+  console.log(cartdata, products, "coming")
 
-      const res = await axios.get(
-        `/cart`
-      )
 
-      setCartData(res?.data?.items || [])
 
-    } catch (err) {
-
-   notify.error("Something went wrong please try after some time")
-
-    }
-}
-   
-
-  }
 
   /* ---------- HELPERS ---------- */
 
@@ -212,93 +192,55 @@ if(id){
   }
 
 
-  const renderStars = (
-    productId: string,
-    avgRating: number
-  ) => {
+  /* ---------- ACTIONS ---------- */
 
-    const [rating, setRating] =
-      useState(Math.round(avgRating))
+  const toggleLike = async (id: string) => {
 
-    const [hover, setHover] = useState(0)
+    try {
 
-    const submitRating = async (value: number) => {
+      await axios.post('/shop/wishlist', {
+        productId: id,
+      })
 
-      try {
+      notify.success('Wishlist updated')
 
-        await axios.post('/api/shop/review', {
-          productId,
-          rating: value,
-          comment: '',
-        })
+    } catch {
 
-        setRating(value)
-
-        toast.success('Thanks for rating ⭐')
-
-      } catch {
-
-        toast.error('Login required')
-
-      }
+      notify.error('Login required')
 
     }
-
-
-    return (
-
-      <div className="flex gap-1">
-
-        {[1, 2, 3, 4, 5].map(i => (
-
-          <button
-            key={i}
-            onClick={() => submitRating(i)}
-            onMouseEnter={() => setHover(i)}
-            onMouseLeave={() => setHover(0)}
-            className="p-0.5"
-          >
-
-            <Star
-              size={16}
-              className={`transition ${i <= (hover || rating)
-                  ? 'fill-yellow-400 text-yellow-400'
-                  : 'text-gray-300'
-                }`}
-            />
-
-          </button>
-
-        ))}
-
-      </div>
-
-    )
 
   }
 
 
-  /* ---------- ACTIONS ---------- */
-
   const addToCart = async (id: string) => {
+
+    if (!loginuserdata?.id) {
+
+      notify.error('Login first')
+      router.push('/login')
+      return
+    }
 
     try {
 
-      await axios.put('/cart', {
+      await axios.post('/cart', {
         productId: id,
         quantity: 1,
       })
 
-      toast.success('Added to cart')
+      notify.success('Added to cart')
+
+      fetchCart(loginuserdata?.id)
+
 
     } catch {
-      toast.error('Failed')
+
+      notify.error('Add to cart failed')
+
     }
 
   }
-
-
-
 
 
   const totalPages = Math.ceil(total / limit)
@@ -308,89 +250,88 @@ if(id){
 
   return (
 
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-amber-50/30 to-stone-100">
 
 
       <Header />
 
 
-      <main className="flex-1 bg-gradient-to-b from-gray-50 to-white">
+      {/* ================= HERO ================= */}
 
+      <div className="bg-gradient-to-r from-stone-900 via-stone-800 to-amber-900 text-white py-16">
 
-        {/* HEADER */}
+        <div className="max-w-7xl mx-auto px-6 text-center">
 
-        <div className="bg-white border-b">
+          <h1 className="text-5xl md:text-6xl font-bold mb-3">
+            Our Products
+          </h1>
 
-          <div className="container mx-auto px-4 py-8">
-
-            <h1 className="text-3xl font-bold tracking-tight">
-              Our Products
-            </h1>
-
-            <p className="text-gray-600 mt-1">
-              Discover premium Ayurvedic products
-            </p>
-
-          </div>
+          <p className="text-stone-300">
+            Premium Ayurvedic Collection
+          </p>
 
         </div>
 
-
-        <div className="container mx-auto px-4 py-8">
-
-
-          {/* TOP BAR */}
-
-          <div className="flex flex-col lg:flex-row gap-4 mb-8 justify-between items-start lg:items-center">
+      </div>
 
 
-            {/* SEARCH + FILTER */}
 
-            <div className="flex gap-3 flex-wrap">
-
-              <Input
-                value={search}
-                onChange={e => {
-                  setSearch(e.target.value)
-                  setPage(1)
-                }}
-                placeholder="Search products..."
-                className="w-72"
-              />
+      <div className="max-w-7xl mx-auto px-6 py-12">
 
 
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setShowFilters(!showFilters)
-                }
-              >
-                <SlidersHorizontal size={16} />
-                Filters
-              </Button>
+        {/* ================= CONTROLS ================= */}
 
-            </div>
+        <div className="bg-white rounded-2xl p-6 shadow-lg mb-10 flex flex-col lg:flex-row gap-4 justify-between items-center">
+
+
+          {/* SEARCH */}
+
+          <div className="relative w-full lg:w-96">
+
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+
+            <Input
+              value={search}
+              onChange={e => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
+              placeholder="Search products..."
+              className="pl-12 h-12 rounded-xl"
+            />
+
+          </div>
+
+
+          <div className="flex items-center gap-3">
+
+
+            {/* FILTER */}
+
+            <Button
+              onClick={() => setShowFilters(!showFilters)}
+              className="rounded-xl"
+              variant={showFilters ? 'default' : 'outline'}
+            >
+              <SlidersHorizontal size={16} />
+              Filters
+            </Button>
 
 
             {/* VIEW */}
 
-            <div className="flex gap-2">
+            <div className="flex border rounded-xl overflow-hidden">
 
               <Button
-                variant={viewMode === 'grid'
-                  ? 'default'
-                  : 'ghost'}
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('grid')}
               >
                 <Grid size={16} />
               </Button>
 
-
               <Button
-                variant={viewMode === 'list'
-                  ? 'default'
-                  : 'ghost'}
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('list')}
               >
@@ -401,309 +342,353 @@ if(id){
 
           </div>
 
+        </div>
 
-          {/* FILTERS */}
 
-          <AnimatePresence>
+        {/* ================= FILTERS ================= */}
 
-            {showFilters && (
+        <AnimatePresence>
 
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="bg-white border rounded-xl p-4 mb-8"
-              >
+          {showFilters && (
 
-                <div className="flex flex-wrap gap-2">
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="bg-white rounded-2xl shadow p-6 mb-10"
+            >
+
+              <div className="flex flex-wrap gap-3">
+
+                <Button
+                  size="sm"
+                  variant={category === 'all' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setCategory('all')
+                    setPage(1)
+                  }}
+                >
+                  All
+                </Button>
+
+
+                {categories.map(c => (
 
                   <Button
+                    key={c}
                     size="sm"
-                    variant={
-                      category === 'all'
-                        ? 'default'
-                        : 'outline'
-                    }
+                    variant={category === c ? 'default' : 'outline'}
                     onClick={() => {
-                      setCategory('all')
+                      setCategory(c)
                       setPage(1)
                     }}
                   >
-                    All
+                    {c}
                   </Button>
-
-
-                  {categories.map(c => (
-
-                    <Button
-                      key={c}
-                      size="sm"
-                      variant={
-                        category === c
-                          ? 'default'
-                          : 'outline'
-                      }
-                      onClick={() => {
-                        setCategory(c)
-                        setPage(1)
-                      }}
-                    >
-
-                      {c}
-
-                    </Button>
-
-                  ))}
-
-                </div>
-
-              </motion.div>
-
-            )}
-
-          </AnimatePresence>
-
-
-          {/* PRODUCTS */}
-
-          {loading ? (
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-              {[...Array(6)].map((_, i) => (
-
-                <Card key={i} className="animate-pulse">
-
-                  <div className="h-48 bg-gray-200" />
-
-                </Card>
-
-              ))}
-
-            </div>
-
-          ) : (
-
-            <div
-              className={
-                viewMode === 'grid'
-                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
-                  : 'space-y-4'
-              }
-            >
-
-
-              <AnimatePresence>
-
-                {products.map((product) => (
-
-                  <motion.div
-                    key={product.id}
-                    layout
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                  >
-
-                    <Card className="group hover:shadow-xl transition-all duration-300 rounded-xl overflow-hidden">
-
-                      <CardContent className="p-4 relative flex flex-col h-full">
-
-                        {/* IMAGE */}
-                        <Link href={`/product/${product.id}`}>
-
-                          <div className="h-52 mb-3 overflow-hidden rounded-lg cursor-pointer">
-
-                            <img
-                              src={getImageUrl(product.images)}
-                              alt={product.name}
-                              className="
-            w-full h-full object-cover
-            group-hover:scale-110
-            transition-transform duration-500
-          "
-                            />
-
-                          </div>
-
-                        </Link>
-
-                        {/* INFO */}
-
-                        <Badge className="mb-1 w-fit">
-                          {product.category_name}
-                        </Badge>
-
-                        {/* TITLE */}
-                        <Link href={`/products/${product.id}`}>
-
-                          <h3 className="font-semibold text-lg leading-tight hover:underline cursor-pointer">
-                            {product.name}
-                          </h3>
-
-                        </Link>
-
-                        <p className="text-sm text-gray-600 line-clamp-2 mt-1">
-                          {product.shortdescription}
-                        </p>
-
-                        {/* PRICE */}
-                        <div className="mt-2 flex items-center gap-2">
-
-                          <span className="font-bold text-emerald-600 text-lg">
-                            {formatPrice(product.price)}
-                          </span>
-
-                          {product.compareprice && (
-                            <span className="text-sm text-gray-400 line-through">
-                              {formatPrice(product.compareprice)}
-                            </span>
-                          )}
-
-                        </div>
-
-                        {/* RATING */}
-                        <div className="flex gap-2 mt-1 items-center">
-
-                          <StarRating
-                            productId={product.id}
-                            avgRating={product.averagerating}
-                            refresh={fetchProducts}
-                          />
-
-                          <span className="text-xs text-gray-500">
-                            ({product.reviewcount})
-                          </span>
-
-                        </div>
-
-                        {/* ACTIONS */}
-                        <div className="flex justify-between items-center mt-auto pt-4">
-
-                          {/* LIKE */}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => toggleLike(product.id)}
-                          >
-                            <Heart size={16} />
-                          </Button>
-
-
-                          <div className="flex gap-2">
-
-                            {/* VIEW DETAILS */}
-                            <Link href={`/products/${product.id}`}>
-
-                              <Button size="sm" variant="outline">
-                                View
-                              </Button>
-
-                            </Link>
-
-
-                            {/* ADD TO CART */}
-                           {cartdata?.filter((item2:any)=>item2?.product_id==product?.id)?.length>=1?
-                           <Button
-                              size="sm"
-                              className="bg-emerald-600 hover:bg-emerald-700"
-                              disabled={product.inventory === 0}
-                              onClick={() =>handleCart(true)}
-                            >
-
-                              <ShoppingCart size={16} className="mr-1" />
-                              View Cart
-
-                            </Button>:<Button
-                              size="sm"
-                              className="bg-emerald-600 hover:bg-emerald-700"
-                              disabled={product.inventory === 0}
-                              onClick={() => addToCart(product.id)}
-                            >
-
-                              <ShoppingCart size={16} className="mr-1" />
-                              Add
-
-                            </Button>
-                          
-                          } 
-
-                          </div>
-
-                        </div>
-
-                      </CardContent>
-
-                    </Card>
-
-                  </motion.div>
 
                 ))}
 
-              </AnimatePresence>
+              </div>
 
-            </div>
+            </motion.div>
 
           )}
 
-
-          {/* PAGINATION */}
-
-          {totalPages > 1 && (
-
-            <div className="flex justify-center items-center gap-2 mt-12">
+        </AnimatePresence>
 
 
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page === 1}
-                onClick={() => setPage(p => p - 1)}
-              >
-                <ChevronLeft size={16} />
-              </Button>
+
+        {/* ================= PRODUCTS ================= */}
+
+        {loading ? (
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+            {[...Array(6)].map((_, i) => (
+
+              <div
+                key={i}
+                className="h-80 bg-gray-200 rounded-2xl animate-pulse"
+              />
+
+            ))}
+
+          </div>
+
+        ) : (
+
+          <div
+            className={`grid ${viewMode === 'grid'
+                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                : 'grid-cols-1'
+              } gap-8`}
+          >
 
 
-              {Array.from({ length: totalPages }).map((_, i) => (
+            {products.map((product, i) => {
+              console.log(cartdata, "card data cmon")
 
-                <Button
-                  key={i}
-                  size="sm"
-                  variant={
-                    page === i + 1
-                      ? 'default'
-                      : 'outline'
-                  }
-                  onClick={() => setPage(i + 1)}
+              const inCart =
+                cartdata?.items?.filter(
+                  c => c.product_id == product.id
+                ).length >= 1
+
+
+              return (
+
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="bg-white rounded-2xl shadow-lg overflow-hidden hover:-translate-y-2 transition-all"
                 >
 
-                  {i + 1}
 
-                </Button>
+                  {/* IMAGE */}
 
-              ))}
+                  <div className="relative h-72 overflow-hidden bg-gray-100">
 
+                    <img
+                      src={getImageUrl(product.images)}
+                      className="w-full h-full object-cover hover:scale-110 transition-all duration-500"
+                    />
+
+
+                    {/* OUT STOCK */}
+
+                    {product.inventory === 0 && (
+
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white">
+                        <Package size={36} />
+                        <span className="ml-2">Unavailable</span>
+                      </div>
+
+                    )}
+
+
+                    {/* LIKE */}
+
+                    <button
+                      onClick={() => toggleLike(product.id)}
+                      disabled={product.inventory === 0}
+                      className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full shadow flex items-center justify-center"
+                    >
+
+                      <Heart size={18} />
+
+                    </button>
+
+                  </div>
+
+
+                  {/* INFO */}
+
+                  <div className="p-6">
+
+                    <div className='flex justify-between'>
+                      <div>
+                        <div className="text-xs text-amber-600 font-bold mb-1 uppercase">
+                          {product.category_name}
+                        </div>
+
+
+                        <h3 className="text-xl font-bold mb-2">
+                          {product.name}
+                        </h3>
+
+
+                        <p className="text-sm text-gray-600 line-clamp-2 mb-4">
+                          {product.shortdescription}
+                        </p>
+                      </div>
+
+                      {/* RATING */}
+
+                      <div className="mb-4 mt-2">
+
+                        <StarRating
+                          productId={product.id}
+                          avgRating={product.averagerating}
+                          refresh={fetchProducts}
+                        />
+
+                        <span className="text-xs text-gray-500 ml-1">
+                          ({product.reviewcount})
+                        </span>
+
+                      </div>
+                    </div>
+
+                    {/* PRICE */}
+                    <div className='flex justify-between'>
+
+                      <div className="flex items-center gap-2 mb-3">
+
+                        <span className="text-2xl font-bold">
+                          {formatPrice(product.price)}
+                        </span>
+
+                        {product.compareprice && (
+                          <span className="line-through text-gray-400">
+                            {formatPrice(product.compareprice)}
+                          </span>
+                        )}
+
+                      </div>
+
+
+                      {/* STOCK */}
+
+                      <div className="mb-4 text-sm">
+
+                        {product.inventory === 0 ? (
+
+                          <div className="text-red-600 flex gap-1">
+                            <AlertCircle size={14} />
+                            Out of Stock
+                          </div>
+
+                        ) : product.inventory <= 5 ? (
+
+                          <div className="text-orange-600 flex gap-1">
+                            <AlertCircle size={14} />
+                            Only {product.inventory} left
+                          </div>
+
+                        ) : (
+
+                          <div className="text-green-600 flex gap-1">
+                            <Check size={14} />
+                            In Stock: {product.inventory}
+                          </div>
+
+                        )}
+
+                      </div>
+                    </div>
+
+
+
+
+                    {/* ACTIONS */}
+
+                    <div className="flex gap-3">
+
+
+                      <Link
+                        href={`/product/${product.id}`}
+                        className="flex-1"
+                      >
+
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                        >
+                          <Eye size={16} />
+                          View
+                        </Button>
+
+                      </Link>
+
+
+                      {product.inventory === 0 ? (
+
+                        <Button
+                          disabled
+                          className="flex-1 bg-gray-300"
+                        >
+                          Out
+                        </Button>
+
+                      ) : inCart ? (
+
+                        <Button
+                          onClick={() => handleCart(true)}
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                        >
+                          <ShoppingCart size={16} />
+                          Cart
+                        </Button>
+
+                      ) : (
+
+                        <Button
+                          onClick={() => addToCart(product.id)}
+                          className="flex-1 bg-amber-600 hover:bg-amber-700"
+                        >
+                          <ShoppingCart size={16} />
+                          Add
+                        </Button>
+
+                      )}
+
+                    </div>
+
+                  </div>
+
+                </motion.div>
+
+              )
+
+            })}
+
+          </div>
+
+        )}
+
+
+
+        {/* ================= PAGINATION ================= */}
+
+        {totalPages > 1 && (
+
+          <div className="flex justify-center gap-2 mt-12">
+
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === 1}
+              onClick={() => setPage(p => p - 1)}
+            >
+              <ChevronLeft size={16} />
+            </Button>
+
+
+            {Array.from({ length: totalPages }).map((_, i) => (
 
               <Button
+                key={i}
                 size="sm"
-                variant="outline"
-                disabled={page === totalPages}
-                onClick={() => setPage(p => p + 1)}
+                variant={page === i + 1 ? 'default' : 'outline'}
+                onClick={() => setPage(i + 1)}
               >
-                <ChevronRight size={16} />
+                {i + 1}
               </Button>
 
-            </div>
+            ))}
 
-          )}
 
-        </div>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === totalPages}
+              onClick={() => setPage(p => p + 1)}
+            >
+              <ChevronRight size={16} />
+            </Button>
 
-      </main>
+          </div>
+
+        )}
+
+      </div>
 
 
       <Footer />
 
     </div>
+
   )
 }

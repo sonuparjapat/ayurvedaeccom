@@ -2,7 +2,9 @@ require("dotenv").config();
 
 const app = require("./app");
 const initDB = require("./database/init");
-
+const startJobs = require("./jobs");
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>crons>>>>>>>>>>>>>>>
+startJobs();
 const PORT = process.env.PORT || 5000;
 
 (async () => {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Head from 'next/head'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -20,11 +20,16 @@ import {
   Plus,
   CheckCircle,
   Truck,
-  Shield
+  Shield,
+  ChevronRight,
+  AlertCircle,
+  Package
 } from 'lucide-react'
 
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import { notify } from '@/app/utils/notify'
+import { useAuth } from '@/context/auth-context'
 
 
 /* ================= TYPES ================= */
@@ -53,6 +58,7 @@ interface Product {
 export default function ProductDetailPage() {
 
   const { id } = useParams()
+  const router = useRouter()
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
@@ -60,9 +66,9 @@ export default function ProductDetailPage() {
   const [qty, setQty] = useState(1)
   const [activeImg, setActiveImg] = useState(0)
 
-  // Button loading
   const [cartLoading, setCartLoading] = useState(false)
-
+  const [liked, setLiked] = useState(false)
+ const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata } = useAuth()
 
 
   /* ================= FETCH ================= */
@@ -73,17 +79,21 @@ export default function ProductDetailPage() {
 
 
   const fetchProduct = async () => {
+
     try {
 
       const res = await axios.get(`/shop/public/${id}`)
-      const product = res.data?.data || []
 
-      setProduct(product)
+      setProduct(res.data?.data || null)
 
-    } catch (err) {
-      console.error('Fetch product error:', err)
+    } catch {
+
+      toast.error('Product not found')
+
     } finally {
+
       setLoading(false)
+
     }
   }
 
@@ -92,33 +102,43 @@ export default function ProductDetailPage() {
   /* ================= HELPERS ================= */
 
   const formatPrice = (price: string) => {
+
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR'
     }).format(Number(price))
+
   }
 
 
   const renderStars = (rating: number) => {
+
     return [...Array(5)].map((_, i) => (
+
       <Star
         key={i}
-        className={`w-4 h-4 ${
+        className={`w-5 h-5 ${
           i < rating
-            ? 'fill-yellow-400 text-yellow-400'
+            ? 'fill-amber-400 text-amber-400'
             : 'text-gray-300'
         }`}
       />
+
     ))
   }
 
 
 
-  /* ================= ADD TO CART ================= */
+  /* ================= CART ================= */
 
   const addToCart = async () => {
 
     if (!product) return
+
+    if (product.inventory === 0) {
+      notify.error('Out of stock')
+      return
+    }
 
     try {
 
@@ -126,38 +146,38 @@ export default function ProductDetailPage() {
 
       setCartLoading(true)
 
-
-      // Limit by stock (extra safety)
       const finalQty = Math.min(qty, product.inventory)
 
 
-      await axios.post('/cart', {
+      await axios.put('/cart', {
         productId: product.id,
         quantity: finalQty
       })
 
 
-      toast.success('Added to cart ✅')
-
-
+      toast.success('Added to cart')
+fetchCart(loginuserdata?.id)
     } catch (err: any) {
 
-      console.error('Add to cart error:', err)
-
       if (err?.response?.status === 401) {
-        alert('Please login first')
-      }
 
-      else if (err?.response?.data?.message) {
-        alert(err.response.data.message)
-      }
+        toast.error('Please login first')
+        router.push('/login')
 
-      else {
+      } else if (err?.response?.data?.message) {
+
+        toast.error(err.response.data.message)
+
+      } else {
+
         toast.error('Something went wrong')
+
       }
 
     } finally {
+
       setCartLoading(false)
+
     }
   }
 
@@ -166,12 +186,15 @@ export default function ProductDetailPage() {
   /* ================= LOADING ================= */
 
   if (loading) {
+
     return (
+
       <div className="h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-white">
 
         <div className="animate-spin h-14 w-14 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
 
       </div>
+
     )
   }
 
@@ -180,7 +203,9 @@ export default function ProductDetailPage() {
   /* ================= NOT FOUND ================= */
 
   if (!product) {
+
     return (
+
       <div className="h-screen flex flex-col items-center justify-center">
 
         <h2 className="text-3xl font-bold mb-4">
@@ -192,6 +217,7 @@ export default function ProductDetailPage() {
         </Link>
 
       </div>
+
     )
   }
 
@@ -203,6 +229,7 @@ export default function ProductDetailPage() {
   /* ================= UI ================= */
 
   return (
+
     <>
 
       <Header />
@@ -228,248 +255,306 @@ export default function ProductDetailPage() {
 
 
 
-      {/* ================= PAGE ================= */}
-
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="min-h-screen bg-gradient-to-br from-stone-50 via-amber-50/20 to-emerald-50/30">
 
 
-        {/* BREADCRUMB */}
-
-        <div className="text-sm mb-8 text-gray-500">
-
-          <Link href="/" className="hover:text-emerald-600">
-            Home
-          </Link> /{' '}
-
-          <Link href="/products" className="hover:text-emerald-600">
-            Products
-          </Link> /{' '}
-
-          <span className="text-black font-medium">
-            {product.name}
-          </span>
-
-        </div>
+        <div className="max-w-7xl mx-auto px-4 py-10 lg:py-16">
 
 
+          {/* ================= BREADCRUMB ================= */}
 
-        {/* MAIN GRID */}
+          <nav className="mb-10 text-sm text-stone-500 flex items-center gap-2">
 
-        <div className="grid lg:grid-cols-2 gap-14 items-start">
+            <Link href="/" className="hover:text-emerald-600">
+              Home
+            </Link>
+
+            <ChevronRight size={14} />
+
+            <Link href="/products" className="hover:text-emerald-600">
+              Products
+            </Link>
+
+            <ChevronRight size={14} />
+
+            <span className="text-stone-900 font-medium">
+              {product.name}
+            </span>
+
+          </nav>
 
 
-          {/* ================= IMAGES ================= */}
 
-          <div className="space-y-5">
+          {/* ================= MAIN ================= */}
 
-            <div className="relative group aspect-square bg-white rounded-2xl overflow-hidden shadow-xl">
-
-              <img
-                src={product.images[activeImg]}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                alt={product.name}
-              />
-
-            </div>
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16">
 
 
-            <div className="flex gap-3 flex-wrap justify-center lg:justify-start">
+            {/* ================= IMAGES ================= */}
 
-              {product.images.map((img, i) => (
+            <div className="space-y-6">
+
+              <div className="relative aspect-square bg-white rounded-3xl overflow-hidden shadow-2xl group">
+
+                <img
+                  src={product.images[activeImg]}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
+                />
+
+
+                {product.inventory === 0 && (
+
+                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
+
+                    <Package size={40} />
+                    <span>Unavailable</span>
+
+                  </div>
+
+                )}
+
 
                 <button
-                  key={i}
-                  onClick={() => setActiveImg(i)}
-                  className={`w-20 h-20 rounded-xl overflow-hidden border-2
-                  ${activeImg === i
-                      ? 'border-emerald-600'
-                      : 'border-gray-200'}
-                `}
+                  onClick={() => setLiked(!liked)}
+                  className="absolute top-5 right-5 w-12 h-12 bg-white rounded-full shadow flex items-center justify-center"
                 >
 
-                  <img
-                    src={img}
-                    className="w-full h-full object-cover"
+                  <Heart
+                    className={`${
+                      liked
+                        ? 'fill-red-500 text-red-500'
+                        : 'text-gray-600'
+                    }`}
                   />
 
                 </button>
 
-              ))}
-
-            </div>
-
-          </div>
+              </div>
 
 
 
-          {/* ================= INFO ================= */}
+              <div className="flex gap-4 flex-wrap justify-center lg:justify-start">
 
-          <div className="space-y-6">
+                {product.images.map((img, i) => (
 
+                  <button
+                    key={i}
+                    onClick={() => setActiveImg(i)}
+                    className={`w-20 h-20 rounded-xl overflow-hidden border-2 ${
+                      activeImg === i
+                        ? 'border-emerald-600'
+                        : 'border-gray-200'
+                    }`}
+                  >
 
-            <Badge className="bg-emerald-100 text-emerald-700">
-              {product.brand || product.category_name || 'Ayurveda'}
-            </Badge>
+                    <img
+                      src={img}
+                      className="w-full h-full object-cover"
+                    />
 
+                  </button>
 
-            <h1 className="text-3xl lg:text-4xl font-bold">
+                ))}
 
-              {product.name}
-
-            </h1>
-
-
-            <p className="text-gray-600">
-
-              {product.shortdescription}
-
-            </p>
-
-
-            {/* RATING */}
-
-            <div className="flex items-center gap-2">
-
-              {renderStars(rating)}
-
-              <span className="text-sm text-gray-500">
-                ({product.reviewcount} Reviews)
-              </span>
+              </div>
 
             </div>
 
 
 
-            {/* PRICE */}
+            {/* ================= INFO ================= */}
 
-            <div className="flex items-end gap-4">
+            <div className="space-y-7">
 
-              <span className="text-3xl font-bold text-emerald-600">
 
-                {formatPrice(product.price)}
+              <Badge className="bg-emerald-100 text-emerald-700 px-4 py-1">
 
-              </span>
+                {product.brand || product.category_name || 'Ayurveda'}
 
-              {product.compareprice && (
+              </Badge>
 
-                <span className="text-lg text-gray-400 line-through">
 
-                  {formatPrice(product.compareprice)}
+              <h1 className="text-4xl lg:text-5xl font-bold">
+
+                {product.name}
+
+              </h1>
+
+
+              <p className="text-lg text-gray-600">
+
+                {product.shortdescription}
+
+              </p>
+
+
+
+              {/* RATING */}
+
+              <div className="flex items-center gap-3">
+
+                {renderStars(rating)}
+
+                <span className="text-gray-500">
+                  ({product.reviewcount})
+                </span>
+
+              </div>
+
+
+
+              {/* PRICE */}
+
+              <div className="flex items-end gap-4">
+
+                <span className="text-4xl font-bold text-emerald-600">
+
+                  {formatPrice(product.price)}
 
                 </span>
 
-              )}
+                {product.compareprice && (
 
-            </div>
+                  <span className="text-lg text-gray-400 line-through">
 
+                    {formatPrice(product.compareprice)}
 
+                  </span>
 
-            {/* STOCK */}
-
-            <div className="flex items-center gap-2">
-
-              <CheckCircle className="text-green-600 w-5 h-5" />
-
-              <span className="text-green-600 font-medium">
-
-                {product.inventory > 0
-                  ? `In Stock (${product.inventory})`
-                  : 'Out of Stock'}
-
-              </span>
-
-            </div>
-
-
-
-            {/* QUANTITY */}
-
-            <div className="flex flex-wrap items-center gap-4">
-
-
-              <div className="flex border rounded-xl overflow-hidden">
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setQty(q => Math.max(1, q - 1))}
-                >
-                  <Minus size={16} />
-                </Button>
-
-                <Input
-                  value={qty}
-                  readOnly
-                  className="w-14 text-center border-0"
-                />
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    setQty(q => Math.min(product.inventory, q + 1))
-                  }
-                >
-                  <Plus size={16} />
-                </Button>
-
-              </div>
-
-
-
-              <Button
-                size="lg"
-                className="bg-gradient-to-r from-emerald-600 to-green-600 flex-1"
-                disabled={
-                  product.inventory === 0 ||
-                  cartLoading
-                }
-                onClick={addToCart}
-              >
-
-                {cartLoading ? 'Adding...' : (
-                  <>
-                    <ShoppingCart className="mr-2" />
-                    Add To Cart
-                  </>
                 )}
 
-              </Button>
-
-
-              <Button variant="outline">
-                <Heart />
-              </Button>
-
-            </div>
+              </div>
 
 
 
-            {/* TRUST */}
+              {/* STOCK */}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 text-sm">
+              <div className="flex items-center gap-3">
 
+                {product.inventory === 0 ? (
 
-              <div className="flex gap-2 items-center bg-gray-50 p-3 rounded-xl">
+                  <div className="flex gap-2 text-red-600">
 
-                <Truck size={18} />
-                Fast Delivery
+                    <AlertCircle />
+                    Out of Stock
+
+                  </div>
+
+                ) : (
+
+                  <div className="flex gap-2 text-green-600">
+
+                    <CheckCircle />
+                    {product.inventory} in stock
+
+                  </div>
+
+                )}
 
               </div>
 
 
-              <div className="flex gap-2 items-center bg-gray-50 p-3 rounded-xl">
 
-                <Shield size={18} />
-                Secure Pay
+              {/* QUANTITY + CART */}
+
+              <div className="space-y-4">
+
+
+                <label className="text-sm font-semibold uppercase text-gray-700">
+                  Quantity
+                </label>
+
+
+                <div className="flex flex-wrap gap-4">
+
+
+                  <div className="flex border rounded-xl overflow-hidden">
+
+                    <Button
+                      variant="ghost"
+                      onClick={() => setQty(q => Math.max(1, q - 1))}
+                    >
+                      <Minus size={18} />
+                    </Button>
+
+                    <Input
+                      readOnly
+                      value={qty}
+                      className="w-16 text-center border-0"
+                    />
+
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        setQty(q =>
+                          Math.min(product.inventory, q + 1)
+                        )
+                      }
+                    >
+                      <Plus size={18} />
+                    </Button>
+
+                  </div>
+
+
+                  <Button
+                    disabled={
+                      product.inventory === 0 ||
+                      cartLoading
+                    }
+                    onClick={addToCart}
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-lg py-6"
+                  >
+
+                    {cartLoading ? (
+                      <span className="flex gap-2">
+                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Adding...
+                      </span>
+                    ) : (
+                      <>
+                        <ShoppingCart className="mr-2" />
+                          {product.inventory ==0?"Out Of Stock":"Add To Cart"}
+                      </>
+                    )}
+
+                    
+
+                  </Button>
+
+                </div>
 
               </div>
 
 
-              <div className="flex gap-2 items-center bg-gray-50 p-3 rounded-xl">
 
-                <CheckCircle size={18} />
-                Genuine
+              {/* TRUST */}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
+
+
+                <div className="bg-white p-4 rounded-xl shadow flex items-center gap-3">
+
+                  <Truck className="text-emerald-600" />
+                  Fast Delivery
+
+                </div>
+
+
+                <div className="bg-white p-4 rounded-xl shadow flex items-center gap-3">
+
+                  <Shield className="text-blue-600" />
+                  Secure Payment
+
+                </div>
+
+
+                <div className="bg-white p-4 rounded-xl shadow flex items-center gap-3">
+
+                  <CheckCircle className="text-amber-600" />
+                  Genuine
+
+                </div>
 
               </div>
 
@@ -477,38 +562,40 @@ export default function ProductDetailPage() {
 
           </div>
 
+
+
+          {/* ================= DESCRIPTION ================= */}
+
+          <Card className="mt-20 shadow-xl rounded-3xl border-0 overflow-hidden">
+
+
+            <CardContent className="p-10">
+
+              <h2 className="text-3xl font-bold mb-6">
+
+                Product Description
+
+              </h2>
+
+              <p className="text-lg text-gray-700 leading-relaxed">
+
+                {product.longdescription}
+
+              </p>
+
+            </CardContent>
+
+          </Card>
+
+
         </div>
 
-
-
-        {/* ================= DESCRIPTION ================= */}
-
-        <Card className="mt-14 shadow-xl rounded-2xl border-0">
-
-          <CardContent className="p-8">
-
-            <h2 className="text-2xl font-bold mb-4">
-
-              Product Description
-
-            </h2>
-
-            <p className="text-gray-700 text-lg leading-relaxed">
-
-              {product.longdescription}
-
-            </p>
-
-          </CardContent>
-
-        </Card>
-
       </div>
-
 
 
       <Footer />
 
     </>
+
   )
 }

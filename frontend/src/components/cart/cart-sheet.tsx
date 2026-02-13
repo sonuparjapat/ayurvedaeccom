@@ -434,6 +434,7 @@ console.log(finalQty,"finalquantity")
               <Link href="/checkout">
 
                 <Button
+                onClick={()=>setOpencart(false)}
                   className="w-full bg-emerald-600 hover:bg-emerald-700"
                 >
                   Proceed to Checkout
@@ -447,7 +448,7 @@ console.log(finalQty,"finalquantity")
                 variant="outline"
                 className="w-full"
 
-                onClick={() => setIsOpen(false)}
+                onClick={()=>setOpencart(false)}
               >
                 Continue Shopping
               </Button>

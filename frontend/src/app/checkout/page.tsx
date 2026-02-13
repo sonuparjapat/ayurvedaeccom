@@ -183,7 +183,7 @@ export default function CheckoutPage() {
 
         currency: 'INR',
 
-        name: 'Your Store',
+        name: 'Ayureveda',
 
         description: 'Secure Checkout',
 

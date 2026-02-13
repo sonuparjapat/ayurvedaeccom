@@ -8,7 +8,7 @@ exports.addToCart = async (req, res) => {
 
     const userId = req.user.id; // from auth middleware
     const { productId, quantity } = req.body;
-console.log(userId,"userid")
+console.log(req.body,"body coming")
     if (!productId) {
       return res.status(400).json({ message: "Product ID required" });
     }
@@ -95,7 +95,7 @@ exports.updateCartQty = async (req, res) => {
 
     const userId = req.user.id;
     const { productId, quantity } = req.body;
-
+console.log(req.body,"body coming")
     if (!productId || quantity < 1) {
       return res.status(400).json({ message: "Invalid data" });
     }

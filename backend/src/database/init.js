@@ -176,7 +176,8 @@ const initDB = async () => {
 
         shipping_address JSONB,
 
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP
       )
     `);
 

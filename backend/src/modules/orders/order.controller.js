@@ -12,57 +12,65 @@ const razorpay = new Razorpay({
 /* ================= CREATE ORDER ================= */
 
 exports.createOrder = async (req, res) => {
+
   const client = await pool.connect();
 
   try {
+
     const userId = req.user.id;
     const { shipping, paymentMethod } = req.body;
 
     await client.query("BEGIN");
 
-    /* Fetch Cart */
+    /* Lock Cart + Products */
+
     const cart = await client.query(`
       SELECT c.*, p.price, p.inventory
       FROM cart c
       JOIN products p ON p.id = c.product_id
       WHERE c.user_id=$1
+      FOR UPDATE
     `, [userId]);
 
     if (!cart.rows.length) {
       throw new Error("Cart empty");
     }
 
-    let total = 0;
 
-    for (let i of cart.rows) {
+    let subtotal = 0;
 
-      if (i.inventory < i.quantity) {
-        throw new Error("Out of stock");
+    for (let item of cart.rows) {
+
+      if (item.inventory < item.quantity) {
+        throw new Error("Product out of stock");
       }
 
-      total += i.price * i.quantity;
+      subtotal += item.price * item.quantity;
     }
 
-    total += total * 0.05; // tax
+    const tax = subtotal * 0.05;
+    const total = subtotal + tax;
 
-    /* Create Order */
+
+    /* Create Order (Pending) */
+
     const order = await client.query(`
       INSERT INTO orders
-      (user_id,total_amount,payment_method,shipping_address)
-      VALUES($1,$2,$3,$4)
-      RETURNING *
-    `,
-      [
-        userId,
-        total,
-        paymentMethod,
-        shipping
-      ]
-    );
+      (user_id,total_amount,payment_method,shipping_address,status,expires_at)
+      VALUES($1,$2,$3,$4,'pending',NOW() + INTERVAL '15 minutes')
+      RETURNING id
+    `, [
+      userId,
+      total,
+      paymentMethod,
+      shipping
+    ]);
 
     const orderId = order.rows[0].id;
 
-    /* Order Items + Reduce Stock */
+
+    /* Create Items (NO STOCK REDUCE YET) */
+
     for (let i of cart.rows) {
 
       await client.query(`
@@ -71,22 +79,20 @@ exports.createOrder = async (req, res) => {
         VALUES($1,$2,$3,$4)
       `, [orderId, i.product_id, i.quantity, i.price]);
 
-      await client.query(`
-        UPDATE products
-        SET inventory = inventory - $1
-        WHERE id=$2
-      `, [i.quantity, i.product_id]);
     }
 
+
     /* Razorpay */
+
     let razorpayOrder = null;
 
     if (paymentMethod === "online") {
 
       razorpayOrder = await razorpay.orders.create({
-        amount: total * 100,
+        amount: Math.round(total * 100),
         currency: "INR",
-        receipt: `ORD_${orderId}`
+        receipt: `ORD_${orderId}`,
+        payment_capture: 1
       });
 
       await client.query(`
@@ -96,7 +102,9 @@ exports.createOrder = async (req, res) => {
       `, [razorpayOrder.id, orderId]);
     }
 
+
     await client.query("COMMIT");
+
 
     res.json({
       success: true,
@@ -104,11 +112,12 @@ exports.createOrder = async (req, res) => {
       razorpay: razorpayOrder
     });
 
+
   } catch (err) {
 
     await client.query("ROLLBACK");
 
-    console.error(err);
+    console.error("[CREATE ORDER]", err);
 
     res.status(400).json({
       success: false,
@@ -116,13 +125,17 @@ exports.createOrder = async (req, res) => {
     });
 
   } finally {
+
     client.release();
+
   }
 };
 
 /* ================= VERIFY PAYMENT ================= */
 
 exports.verifyPayment = async (req, res) => {
+
+  const client = await pool.connect();
 
   try {
 
@@ -132,6 +145,9 @@ exports.verifyPayment = async (req, res) => {
       razorpay_signature,
       orderId
     } = req.body;
+
+
+    /* Verify Signature */
 
     const body =
       razorpay_order_id + "|" + razorpay_payment_id;
@@ -148,7 +164,53 @@ exports.verifyPayment = async (req, res) => {
       });
     }
 
-    await pool.query(`
+
+    await client.query("BEGIN");
+
+
+    /* Lock Order */
+
+    const order = await client.query(`
+      SELECT * FROM orders
+      WHERE id=$1
+      FOR UPDATE
+    `, [orderId]);
+
+    if (!order.rows.length) {
+      throw new Error("Order not found");
+    }
+
+    if (order.rows[0].payment_status === 'paid') {
+      return res.json({ success: true });
+    }
+
+
+    /* Reduce Stock NOW */
+
+    const items = await client.query(`
+      SELECT * FROM order_items
+      WHERE order_id=$1
+    `, [orderId]);
+
+
+    for (let i of items.rows) {
+
+      const r = await client.query(`
+        UPDATE products
+        SET inventory = inventory - $1
+        WHERE id=$2 AND inventory >= $1
+        RETURNING id
+      `, [i.quantity, i.product_id]);
+
+      if (!r.rows.length) {
+        throw new Error("Stock mismatch");
+      }
+    }
+
+
+    /* Update Order */
+
+    await client.query(`
       UPDATE orders
       SET
         payment_status='paid',
@@ -162,20 +224,35 @@ exports.verifyPayment = async (req, res) => {
       orderId
     ]);
 
+
     /* Clear Cart */
-    await pool.query(
+
+    await client.query(
       "DELETE FROM cart WHERE user_id=$1",
       [req.user.id]
     );
 
+
+    await client.query("COMMIT");
+
+
     res.json({ success: true });
+
 
   } catch (err) {
 
-    console.error(err);
+    await client.query("ROLLBACK");
+
+    console.error("[VERIFY PAYMENT]", err);
 
     res.status(500).json({
-      success: false
+      success: false,
+      message: err.message
     });
+
+  } finally {
+
+    client.release();
+
   }
 };
