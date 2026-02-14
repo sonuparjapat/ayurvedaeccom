@@ -61,6 +61,9 @@ router.get(
   admin,
  invoicecontroller.downloadInvoice
 )
+
+// get status code 
+router.get('/status_codes',auth,controller.getstauscodes)
 router.get('/:id', controller.getOrderById)
 
 router.put('/orders/:id/status', controller.updateOrderStatus)

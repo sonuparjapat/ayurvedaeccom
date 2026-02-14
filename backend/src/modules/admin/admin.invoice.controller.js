@@ -1,6 +1,9 @@
 const pool = require("../../config/db")
 const PDFDocument = require('pdfkit')
-
+const fs = require("fs")
+const path = require("path")
+const puppeteer = require("puppeteer")
+const { uploadInvoiceToCloud } = require("../../utils/uploadInvoicetoCloud");
 /* =====================================
    GET INVOICES (LIST)
 ===================================== */
@@ -144,140 +147,151 @@ exports.getInvoices = async (req, res) => {
 
 exports.generateInvoice = async (req, res) => {
 
-  const client = await pool.connect()
+  const client = await pool.connect();
 
   try {
 
-    const { orderId } = req.params
+    const { orderId } = req.params;
 
-    await client.query('BEGIN')
+    await client.query('BEGIN');
 
-
-    /* CHECK ORDER */
+    /* ================= CHECK ORDER ================= */
 
     const orderRes = await client.query(
       `SELECT * FROM orders WHERE id=$1`,
       [orderId]
-    )
+    );
 
     if (!orderRes.rowCount) {
 
-      await client.query('ROLLBACK')
+      await client.query('ROLLBACK');
 
       return res.status(404).json({
         success: false,
         message: 'Order not found'
-      })
+      });
     }
 
+    const order = orderRes.rows[0];
 
-    const order = orderRes.rows[0]
+    /* ================= VALIDATE ================= */
 
+    const canGenerateInvoice =
+      (
+        [1,2,3,4].includes(Number(order.status)) &&
+        order.payment_method === "online"
+      ) ||
+      (
+        order.status == 4 &&
+        order.payment_method === "cod"
+      );
 
-    if (order.status !== 'processing') {
+    if (!canGenerateInvoice) {
 
-      await client.query('ROLLBACK')
+      await client.query('ROLLBACK');
 
       return res.status(400).json({
         success: false,
-        message: 'Only processing orders can be invoiced'
-      })
+        message: 'Invoice not allowed'
+      });
     }
 
+    /* ================= CHECK EXIST ================= */
 
-    /* CHECK EXISTS */
+    let invoiceId;
+    let invoiceNo;
+    let isRegenerate = false;
 
     const exists = await client.query(
-      `SELECT id FROM invoices WHERE order_id=$1`,
+      `SELECT * FROM invoices WHERE order_id=$1`,
       [orderId]
-    )
+    );
 
     if (exists.rowCount) {
 
-      await client.query('ROLLBACK')
+      isRegenerate = true;
+      invoiceId = exists.rows[0].id;
+      invoiceNo = exists.rows[0].invoice_no;
 
-      return res.status(400).json({
-        success: false,
-        message: 'Invoice already exists'
-      })
+    } else {
+
+      const year = new Date().getFullYear();
+
+      const countRes = await client.query(
+        `SELECT COUNT(*) FROM invoices`
+      );
+
+      const next = Number(countRes.rows[0].count) + 1;
+
+      invoiceNo =
+        `INV-${year}-${String(next).padStart(6,'0')}`;
+
+      const invRes = await client.query(
+        `
+        INSERT INTO invoices
+        (order_id, invoice_no, subtotal, tax, total)
+        VALUES ($1,$2,0,0,0)
+        RETURNING id
+        `,
+        [orderId, invoiceNo]
+      );
+
+      invoiceId = invRes.rows[0].id;
     }
 
-
-    /* GENERATE NUMBER */
-
-    const year = new Date().getFullYear()
-
-    const countRes = await client.query(
-      `SELECT COUNT(*) FROM invoices`
-    )
-
-    const next =
-      Number(countRes.rows[0].count) + 1
-
-
-    const invoiceNo =
-      `INV-${year}-${String(next).padStart(6, '0')}`
-
-
-    /* GET ITEMS */
+    /* ================= GET ITEMS ================= */
 
     const itemsRes = await client.query(
       `
-      SELECT
-        oi.*,
-        p.name
+      SELECT oi.*, p.name
       FROM order_items oi
       JOIN products p ON p.id=oi.product_id
       WHERE oi.order_id=$1
       `,
       [orderId]
-    )
+    );
 
-
-    const items = itemsRes.rows
-
+    const items = itemsRes.rows;
 
     if (!items.length) {
 
-      await client.query('ROLLBACK')
+      await client.query('ROLLBACK');
 
       return res.status(400).json({
         success: false,
         message: 'No items found'
-      })
+      });
     }
 
+    /* ================= TOTAL ================= */
 
-    /* TOTAL */
-
-    let subtotal = 0
+    let subtotal = 0;
 
     items.forEach(i => {
-      subtotal += Number(i.price) * i.quantity
-    })
+      subtotal += Number(i.price) * i.quantity;
+    });
 
+    const tax = 0;
+    const total = subtotal + tax;
 
-    const tax = 0
-    const total = subtotal + tax
-
-
-    /* INSERT INVOICE */
-
-    const invRes = await client.query(
+    await client.query(
       `
-      INSERT INTO invoices
-      (order_id, invoice_no, subtotal, tax, total)
-      VALUES ($1,$2,$3,$4,$5)
-      RETURNING id
+      UPDATE invoices
+      SET subtotal=$1, tax=$2, total=$3
+      WHERE id=$4
       `,
-      [orderId, invoiceNo, subtotal, tax, total]
-    )
+      [subtotal, tax, total, invoiceId]
+    );
 
+    /* ================= RESET ITEMS ================= */
 
-    const invoiceId = invRes.rows[0].id
+    if (isRegenerate) {
 
-
-    /* SNAPSHOT ITEMS */
+      await client.query(
+        `DELETE FROM invoice_items WHERE invoice_id=$1`,
+        [invoiceId]
+      );
+    }
 
     for (const i of items) {
 
@@ -296,38 +310,81 @@ exports.generateInvoice = async (req, res) => {
           i.price,
           i.price * i.quantity
         ]
-      )
-
+      );
     }
 
+    /* ================= BUILD PDF ================= */
 
-    await client.query('COMMIT')
+    const html = fs.readFileSync(
+      path.join(__dirname,"../../template/invoice.html"),
+      "utf8"
+    );
 
+    let finalHtml = html
+      .replace("{{invoice_no}}", invoiceNo)
+      .replace("{{order_id}}", orderId)
+      .replace("{{date}}",
+        new Date().toLocaleDateString("en-IN")
+      );
+
+    const browser = await puppeteer.launch({
+      headless: "new"
+    });
+
+    const page = await browser.newPage();
+
+    await page.setContent(finalHtml,{
+      waitUntil:"networkidle0"
+    });
+
+    const pdfBuffer = await page.pdf({
+      format:"A4",
+      printBackground:true
+    });
+fs.writeFileSync(
+  `./test-${invoiceNo}.pdf`,
+  pdfBuffer
+);
+
+console.log("PDF saved locally:", invoiceNo);
+    await browser.close();
+
+    /* ================= UPLOAD ================= */
+
+    const pdfUrl =
+      await uploadInvoiceToCloud(pdfBuffer, invoiceNo);
+
+    await client.query(
+      `UPDATE invoices SET pdf_url=$1 WHERE id=$2`,
+      [pdfUrl, invoiceId]
+    );
+
+    await client.query('COMMIT');
 
     res.json({
       success: true,
-      invoice_no: invoiceNo
-    })
-
+      invoice_no: invoiceNo,
+      pdf_url: pdfUrl,
+      regenerated: isRegenerate
+    });
 
   } catch (err) {
 
-    await client.query('ROLLBACK')
+    await client.query('ROLLBACK');
 
-    console.error(err)
+    // console.error(err,"erro message");
 
     res.status(500).json({
       success: false,
       message: 'Invoice failed'
-    })
+    });
 
   } finally {
 
-    client.release()
+    client.release();
 
   }
-
-}
+};
 
 
 
@@ -335,326 +392,118 @@ exports.generateInvoice = async (req, res) => {
    DOWNLOAD PDF
 ===================================== */
 
-exports.downloadInvoice = async (req, res) => {
-  console.log("Generating Premium Invoice PDF")
-  try {
+exports.downloadInvoice = async (req,res)=>{
+
+  try{
 
     const { id } = req.params
 
-    const invoiceRes = await pool.query(
-      `
-      SELECT
-        i.*,
-        o.id AS order_id,
-        u.name,
-        u.email,
-        u.phone,
-        u.address1,
-        u.state,
-        u.pincode
-      FROM invoices i
-      JOIN orders o ON o.id=i.order_id
-      JOIN users u ON u.id=o.user_id
-      WHERE i.id=$1
-      `,
-      [id]
+    // 1️⃣ Get data
+    const inv = await getInvoice(id)
+    const items = await getItems(id)
+
+
+    // 2️⃣ Build HTML
+    let html = fs.readFileSync(
+      path.join(__dirname,"../../template/invoice.html"),
+      "utf8"
     )
 
-    if (!invoiceRes.rowCount) {
-      return res.status(404).send('Not found')
-    }
 
-    const inv = invoiceRes.rows[0]
+    html = html
+      .replace("{{invoice_no}}",inv.invoice_no)
+      .replace("{{order_id}}",inv.order_id)
+      .replace("{{date}}",
+        new Date(inv.invoice_date).toLocaleDateString("en-IN"))
+      .replace("{{name}}",inv.name)
+      .replace("{{email}}",inv.email)
+      .replace("{{phone}}",inv.phone || "")
 
-    const itemsRes = await pool.query(
+
+    // Items loop
+    let rows = ""
+
+    items.forEach(i=>{
+      rows += `
+        <tr>
+          <td>${i.product_name}</td>
+          <td>${i.quantity}</td>
+          <td>₹${i.price}</td>
+          <td>₹${i.line_total}</td>
+        </tr>
       `
-      SELECT *
-      FROM invoice_items
-      WHERE invoice_id=$1
-      `,
-      [id]
-    )
+    })
 
-    const items = itemsRes.rows
 
-    const doc = new PDFDocument({ margin: 50 })
+    html = html
+      .replace("{{items}}",rows)
+      .replace("{{subtotal}}",inv.subtotal)
+      .replace("{{tax}}",inv.tax)
+      .replace("{{total}}",inv.total)
 
-    res.setHeader('Content-Type', 'application/pdf')
+
+    // 3️⃣ Convert to PDF
+    const browser = await puppeteer.launch({
+      headless:"new"
+    })
+
+    const page = await browser.newPage()
+
+    await page.setContent(html,{
+      waitUntil:"networkidle0"
+    })
+
+    const pdf = await page.pdf({
+      format:"A4",
+      printBackground:true
+    })
+
+
+    await browser.close()
+
+
+    // 4️⃣ Send PDF
+    res.setHeader("Content-Type","application/pdf")
     res.setHeader(
-      'Content-Disposition',
+      "Content-Disposition",
       `attachment; filename=${inv.invoice_no}.pdf`
     )
 
-    doc.pipe(res)
+    res.send(pdf)
 
-    // ============================================
-    // PREMIUM HEADER WITH GRADIENT EFFECT
-    // ============================================
-    
-    // Company Header Background (Simulated Gradient)
-    doc.rect(0, 0, doc.page.width, 150)
-       .fillAndStroke('#4F46E5', '#4F46E5')
-    
-    doc.rect(0, 0, doc.page.width, 150)
-       .fillOpacity(0.9)
-       .fill('#6366F1')
-    
-    // Company Name
-    doc.fillColor('#FFFFFF')
-       .fontSize(32)
-       .font('Helvetica-Bold')
-       .text('Ayurveda', 50, 40)
-    
-    // Company Tagline
-    doc.fontSize(12)
-       .font('Helvetica')
-       .fillColor('#E0E7FF')
-       .text('Premium Products & Services', 50, 80)
-    
-    // Company Contact Info
-    doc.fontSize(9)
-       .fillColor('#C7D2FE')
-       .text('123 Business Street, City, State 12345', 50, 100)
-       .text('Phone: +91 1234567890 | Email: info@company.com', 50, 115)
-    
-    // INVOICE Label (Right Side)
-    doc.fontSize(36)
-       .font('Helvetica-Bold')
-       .fillColor('#FFFFFF')
-       .text('INVOICE', 400, 50, { align: 'right', width: 150 })
 
-    doc.fillColor('#000000').fillOpacity(1)
+  }catch(err){
 
-    // ============================================
-    // INVOICE INFO SECTION
-    // ============================================
-    
-    let yPos = 180
-
-    // Invoice Details Box
-    doc.roundedRect(50, yPos, 250, 100, 5)
-       .fillAndStroke('#F3F4F6', '#E5E7EB')
-    
-    doc.fillColor('#1F2937')
-       .fontSize(10)
-       .font('Helvetica-Bold')
-       .text('INVOICE DETAILS', 60, yPos + 15)
-    
-    doc.fontSize(9)
-       .font('Helvetica')
-       .fillColor('#6B7280')
-       .text('Invoice Number:', 60, yPos + 35)
-       .fillColor('#1F2937')
-       .font('Helvetica-Bold')
-       .text(inv.invoice_no, 160, yPos + 35)
-    
-    doc.fillColor('#6B7280')
-       .font('Helvetica')
-       .text('Order Number:', 60, yPos + 50)
-       .fillColor('#1F2937')
-       .font('Helvetica-Bold')
-       .text(`#${inv.order_id}`, 160, yPos + 50)
-    
-    doc.fillColor('#6B7280')
-       .font('Helvetica')
-       .text('Invoice Date:', 60, yPos + 65)
-       .fillColor('#1F2937')
-       .font('Helvetica-Bold')
-       .text(new Date(inv.invoice_date).toLocaleDateString('en-IN'), 160, yPos + 65)
-
-    // Bill To Box
-    doc.roundedRect(320, yPos, 245, 100, 5)
-       .fillAndStroke('#EEF2FF', '#C7D2FE')
-    
-    doc.fillColor('#4F46E5')
-       .fontSize(10)
-       .font('Helvetica-Bold')
-       .text('BILL TO', 330, yPos + 15)
-    
-    doc.fontSize(11)
-       .fillColor('#1F2937')
-       .font('Helvetica-Bold')
-       .text(inv.name, 330, yPos + 35, { width: 225 })
-    
-    doc.fontSize(9)
-       .fillColor('#6B7280')
-       .font('Helvetica')
-       .text(inv.email, 330, yPos + 50, { width: 225 })
-    
-    if (inv.phone) {
-      doc.text(`Phone: ${inv.phone}`, 330, yPos + 65)
-    }
-    
-    if (inv.address) {
-      doc.text(inv.address, 330, yPos + 80, { width: 225 })
-    }
-
-    yPos += 130
-
-    // ============================================
-    // ITEMS TABLE
-    // ============================================
-    
-    // Table Header Background
-    doc.rect(50, yPos, 515, 30)
-       .fillAndStroke('#4F46E5', '#4F46E5')
-    
-    // Table Headers
-    doc.fillColor('#FFFFFF')
-       .fontSize(10)
-       .font('Helvetica-Bold')
-       .text('ITEM', 60, yPos + 10, { width: 200 })
-       .text('QTY', 270, yPos + 10, { width: 60, align: 'center' })
-       .text('PRICE', 340, yPos + 10, { width: 80, align: 'right' })
-       .text('AMOUNT', 430, yPos + 10, { width: 125, align: 'right' })
-
-    yPos += 35
-
-    // Table Rows
-    items.forEach((item, index) => {
-      
-      // Alternating row colors
-      if (index % 2 === 0) {
-        doc.rect(50, yPos - 5, 515, 25)
-           .fillAndStroke('#F9FAFB', '#F9FAFB')
-      }
-      
-      doc.fillColor('#1F2937')
-         .fontSize(9)
-         .font('Helvetica')
-         .text(item.product_name, 60, yPos, { width: 200 })
-         .text(item.quantity.toString(), 270, yPos, { width: 60, align: 'center' })
-         .text(`₹${Number(item.price).toLocaleString('en-IN')}`, 340, yPos, { width: 80, align: 'right' })
-      
-      doc.font('Helvetica-Bold')
-         .text(`₹${Number(item.line_total).toLocaleString('en-IN')}`, 430, yPos, { width: 125, align: 'right' })
-      
-      yPos += 25
-    })
-
-    // Bottom border for table
-    doc.moveTo(50, yPos)
-       .lineTo(565, yPos)
-       .strokeColor('#E5E7EB')
-       .stroke()
-
-    yPos += 20
-
-    // ============================================
-    // TOTALS SECTION
-    // ============================================
-    
-    const totalsX = 380
-
-    // Subtotal
-    doc.fillColor('#6B7280')
-       .fontSize(10)
-       .font('Helvetica')
-       .text('Subtotal:', totalsX, yPos)
-       .fillColor('#1F2937')
-       .font('Helvetica-Bold')
-       .text(`₹${Number(inv.subtotal).toLocaleString('en-IN')}`, totalsX + 100, yPos, { align: 'right', width: 85 })
-
-    yPos += 20
-
-    // Tax
-    doc.fillColor('#6B7280')
-       .font('Helvetica')
-       .text('Tax:', totalsX, yPos)
-       .fillColor('#1F2937')
-       .font('Helvetica-Bold')
-       .text(`₹${Number(inv.tax).toLocaleString('en-IN')}`, totalsX + 100, yPos, { align: 'right', width: 85 })
-
-    yPos += 5
-
-    // Separator line
-    doc.moveTo(totalsX, yPos)
-       .lineTo(565, yPos)
-       .strokeColor('#E5E7EB')
-       .stroke()
-
-    yPos += 10
-
-    // Total Box with Background
-    doc.roundedRect(totalsX - 10, yPos - 5, 195, 35, 5)
-       .fillAndStroke('#4F46E5', '#4F46E5')
-
-    doc.fillColor('#FFFFFF')
-       .fontSize(14)
-       .font('Helvetica-Bold')
-       .text('TOTAL', totalsX, yPos + 5)
-       .fontSize(16)
-       .text(`₹${Number(inv.total).toLocaleString('en-IN')}`, totalsX + 100, yPos + 5, { align: 'right', width: 85 })
-
-    yPos += 50
-
-    // ============================================
-    // PAYMENT INFO & NOTES
-    // ============================================
-    
-    if (yPos < 650) {
-      
-      // Payment Info Box
-      doc.roundedRect(50, yPos, 250, 80, 5)
-         .fillAndStroke('#F0FDF4', '#BBF7D0')
-      
-      doc.fillColor('#166534')
-         .fontSize(10)
-         .font('Helvetica-Bold')
-         .text('PAYMENT INFORMATION', 60, yPos + 12)
-      
-      doc.fontSize(8)
-         .fillColor('#15803D')
-         .font('Helvetica')
-         .text('Bank: XYZ Bank', 60, yPos + 30)
-         .text('Account: 1234567890', 60, yPos + 42)
-         .text('IFSC: XYZB0001234', 60, yPos + 54)
-      
-      // Terms & Conditions
-      doc.roundedRect(320, yPos, 245, 80, 5)
-         .fillAndStroke('#FEF3C7', '#FDE68A')
-      
-      doc.fillColor('#92400E')
-         .fontSize(10)
-         .font('Helvetica-Bold')
-         .text('TERMS & CONDITIONS', 330, yPos + 12)
-      
-      doc.fontSize(7)
-         .fillColor('#B45309')
-         .font('Helvetica')
-         .text('• Payment due within 30 days', 330, yPos + 30)
-         .text('• Please include invoice number with payment', 330, yPos + 42)
-         .text('• Contact us for any billing questions', 330, yPos + 54)
-    }
-
-    // ============================================
-    // FOOTER
-    // ============================================
-    
-    const footerY = doc.page.height - 80
-
-    // Footer background
-    doc.rect(0, footerY, doc.page.width, 80)
-       .fillAndStroke('#F3F4F6', '#F3F4F6')
-
-    doc.fillColor('#6B7280')
-       .fontSize(9)
-       .font('Helvetica-Bold')
-       .text('Thank you for your business!', 50, footerY + 20, { align: 'center', width: doc.page.width - 100 })
-    
-    doc.fontSize(7)
-       .font('Helvetica')
-       .fillColor('#9CA3AF')
-       .text('This is a computer-generated invoice and does not require a signature.', 50, footerY + 35, { align: 'center', width: doc.page.width - 100 })
-       .text('For questions, contact us at support@company.com or call +91 1234567890', 50, footerY + 48, { align: 'center', width: doc.page.width - 100 })
-
-    doc.end()
-
-  } catch (err) {
-
-    console.error(err)
-    res.status(500).send('PDF generation failed')
+    console.log(err)
+    res.status(500).send("PDF Error")
 
   }
 
+}
+
+
+
+// DB FUNCTIONS
+async function getInvoice(id){
+
+  const res = await pool.query(`
+    SELECT i.*,o.id order_id,u.*
+    FROM invoices i
+    JOIN orders o ON o.id=i.order_id
+    JOIN users u ON u.id=o.user_id
+    WHERE i.id=$1
+  `,[id])
+
+  return res.rows[0]
+}
+
+
+async function getItems(id){
+
+  const res = await pool.query(`
+    SELECT * FROM invoice_items
+    WHERE invoice_id=$1
+  `,[id])
+
+  return res.rows
 }

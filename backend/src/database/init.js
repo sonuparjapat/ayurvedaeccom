@@ -160,7 +160,7 @@ const initDB = async () => {
 
         user_id INTEGER REFERENCES users(id),
 
-        status VARCHAR(30) DEFAULT 'pending',
+        status INTEGER DEFAULT 0,
 
         total_amount NUMERIC(10,2) NOT NULL,
 
@@ -190,8 +190,8 @@ courier_name VARCHAR(50)
     await pool.query(` CREATE TABLE IF NOT EXISTS order_status_logs (
   id SERIAL PRIMARY KEY,
   order_id INTEGER REFERENCES orders(id),
-  old_status VARCHAR(30),
-  new_status VARCHAR(30),
+  old_status INTEGER DEFAULT 0,
+  new_status INTEGER DEFAULT 0,
   changed_by INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`)
@@ -217,7 +217,24 @@ courier_name VARCHAR(50)
       )
     `);
 
+// orders stautus master 
 
+await pool.query(`CREATE TABLE IF NOT EXISTS order_status_master (
+
+  id SERIAL PRIMARY KEY,
+
+  code INT UNIQUE NOT NULL,     -- 1,2,3...
+
+  key VARCHAR(30) UNIQUE NOT NULL,  -- confirmed, shipped...
+
+  label VARCHAR(50) NOT NULL,   -- User friendly
+
+  description TEXT,
+
+  is_active BOOLEAN DEFAULT TRUE,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`)
     /* ================= PAYMENTS ================= */
 
     await pool.query(`
@@ -278,7 +295,7 @@ await pool.query(`CREATE TABLE IF NOT EXISTS app_settings (
   subtotal NUMERIC(10,2) NOT NULL,
   tax NUMERIC(10,2) DEFAULT 0,
   total NUMERIC(10,2) NOT NULL,
-
+pdf_url TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`)
 

@@ -57,7 +57,7 @@ exports.createOrder = async (req, res) => {
     const order = await client.query(`
       INSERT INTO orders
       (user_id,total_amount,payment_method,shipping_address,status,expires_at)
-      VALUES($1,$2,$3,$4,'pending',NOW() + INTERVAL '15 minutes')
+      VALUES($1,$2,$3,$4,'0',NOW() + INTERVAL '15 minutes')
       RETURNING id
     `, [
       userId,
@@ -214,7 +214,7 @@ exports.verifyPayment = async (req, res) => {
       UPDATE orders
       SET
         payment_status='paid',
-        status='confirmed',
+        status='1',
         razorpay_payment_id=$1,
         razorpay_signature=$2
       WHERE id=$3

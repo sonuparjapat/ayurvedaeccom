@@ -62,6 +62,7 @@ export const AuthProvider = ({
   const [totalCartProducts, setTotalCartProducts] = useState(0)
   const [cartdata, setCartData] = useState<any>({})
 const [cartloading,setCartLoading]=useState<boolean>(false)
+const [statusList,setStatusList]=useState<any>([])
   const router = useRouter()
 
   /* ======================
@@ -104,7 +105,18 @@ const [cartloading,setCartLoading]=useState<boolean>(false)
   /* ======================
      Load User
   ====================== */
-
+const getintdata=async()=>{
+  try{
+const res=await axios.get('/admin/status_codes')
+if(res?.status==200){
+  setStatusList(res?.data?.data)
+}else{
+  setStatusList([])
+}
+  }catch(err:any){
+    console.log("something went wrong please try after some time")
+  }
+}
   useEffect(() => {
 
     const fetchUser = async () => {
@@ -116,6 +128,7 @@ const [cartloading,setCartLoading]=useState<boolean>(false)
         if (res.data?.user) {
           setLoginUserdata(res.data.user)
           fetchCart(res.data.user.id)
+              getintdata(res?.data?.user)
         }
 
       } catch (err) {
@@ -126,6 +139,7 @@ const [cartloading,setCartLoading]=useState<boolean>(false)
     }
 
     fetchUser()
+
 
   }, [])
 
@@ -187,7 +201,9 @@ const [cartloading,setCartLoading]=useState<boolean>(false)
         fetchCart,
         handleCart,
         cartdata,
-        cartloading,setCartLoading
+        cartloading,setCartLoading,
+        statusList,
+        setStatusList
       }}
     >
       {children}

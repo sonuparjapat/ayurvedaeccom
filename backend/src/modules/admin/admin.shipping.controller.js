@@ -30,7 +30,7 @@ console.log(req.body,"req body")
     }
 
 
-    if (orderRes.rows[0].status !== 'shipped') {
+    if (orderRes.rows[0].status != '3') {
       return res.status(400).json({
         success: false,
         message: 'Tracking allowed only after shipped'

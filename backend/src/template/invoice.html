@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Invoice - {{invoice_no}}</title>
+
+<style>
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 40px 20px;
+  min-height: 100vh;
+}
+
+.invoice {
+  max-width: 900px;
+  margin: auto;
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+
+/* HEADER */
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 50px 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.header-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.company-info h1 {
+  font-size: 42px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -1px;
+}
+
+.company-info p {
+  font-size: 16px;
+  opacity: 0.95;
+  font-weight: 300;
+}
+
+.invoice-label {
+  text-align: right;
+}
+
+.invoice-label h2 {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin-bottom: 5px;
+}
+
+.invoice-label .invoice-number {
+  font-size: 14px;
+  opacity: 0.9;
+  font-weight: 300;
+}
+
+
+/* INFO SECTION */
+
+.info {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  padding: 40px;
+  background: #f8f9fa;
+}
+
+.box {
+  flex: 1;
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #667eea;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.box:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.box h3 {
+  margin-bottom: 15px;
+  color: #667eea;
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.box h3::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #667eea;
+  border-radius: 50%;
+}
+
+.box-content {
+  color: #4b5563;
+  line-height: 1.8;
+  font-size: 15px;
+}
+
+.box-content strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+
+/* TABLE */
+
+.table-container {
+  padding: 40px;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+th {
+  color: white;
+  padding: 18px 15px;
+  font-weight: 600;
+  text-align: left;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+th:last-child,
+td:last-child {
+  text-align: right;
+}
+
+td {
+  padding: 18px 15px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #4b5563;
+  font-size: 15px;
+}
+
+tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+tbody tr:hover {
+  background-color: #f3f4f6;
+}
+
+tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+tbody tr:nth-child(even):hover {
+  background-color: #f3f4f6;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+td:first-child {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+td:last-child {
+  font-weight: 700;
+  color: #667eea;
+}
+
+
+/* SUMMARY */
+
+.summary {
+  padding: 40px;
+  background: #f8f9fa;
+}
+
+.summary-content {
+  max-width: 400px;
+  margin-left: auto;
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.summary-row span:last-child {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.summary-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #e5e7eb, transparent);
+  margin: 15px 0;
+}
+
+.total-row {
+  margin-top: 20px;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.total-row .label {
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.total-row .amount {
+  color: white;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+
+/* ADDITIONAL INFO */
+
+.additional-info {
+  display: flex;
+  gap: 30px;
+  padding: 40px;
+  background: white;
+}
+
+.info-card {
+  flex: 1;
+  padding: 25px;
+  border-radius: 15px;
+  border: 2px solid #e5e7eb;
+}
+
+.info-card.payment {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border-color: #6ee7b7;
+}
+
+.info-card.terms {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #fbbf24;
+}
+
+.info-card h4 {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 15px;
+}
+
+.info-card.payment h4 {
+  color: #065f46;
+}
+
+.info-card.terms h4 {
+  color: #92400e;
+}
+
+.info-card p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 5px 0;
+}
+
+.info-card.payment p {
+  color: #047857;
+}
+
+.info-card.terms p {
+  color: #b45309;
+}
+
+
+/* FOOTER */
+
+.footer {
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  text-align: center;
+  padding: 40px;
+  color: white;
+}
+
+.footer-content {
+  max-width: 600px;
+  margin: auto;
+}
+
+.footer h3 {
+  font-size: 24px;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.footer p {
+  font-size: 14px;
+  opacity: 0.8;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+
+.footer .contact {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+}
+
+.footer .heart {
+  color: #ef4444;
+  font-size: 18px;
+  display: inline-block;
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+
+/* PRINT STYLES */
+
+@media print {
+  body {
+    background: white;
+    padding: 0;
+  }
+  
+  .invoice {
+    box-shadow: none;
+    border-radius: 0;
+  }
+  
+  .box:hover {
+    transform: none;
+  }
+}
+
+</style>
+</head>
+
+
+<body>
+
+<div class="invoice">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-content">
+      <div class="company-info">
+        <h1>Ayurveda</h1>
+        <p>Premium Products & Services</p>
+      </div>
+      <div class="invoice-label">
+        <h2>INVOICE</h2>
+        <div class="invoice-number">#{{invoice_no}}</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- INFO -->
+  <div class="info">
+
+    <div class="box">
+      <h3>Invoice Details</h3>
+      <div class="box-content">
+        <strong>Invoice:</strong> {{invoice_no}} <br>
+        <strong>Order:</strong> #{{order_id}} <br>
+        <strong>Date:</strong> {{date}}
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>Bill To</h3>
+      <div class="box-content">
+        <strong>{{name}}</strong> <br>
+        {{email}} <br>
+        {{phone}}
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ITEMS TABLE -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Qty</th>
+          <th>Price</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{items}}
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- SUMMARY -->
+  <div class="summary">
+    <div class="summary-content">
+      <div class="summary-row">
+        <span>Subtotal</span>
+        <span>₹{{subtotal}}</span>
+      </div>
+      <div class="summary-row">
+        <span>Tax</span>
+        <span>₹{{tax}}</span>
+      </div>
+      <div class="summary-divider"></div>
+      <div class="total-row">
+        <span class="label">Total</span>
+        <span class="amount">₹{{total}}</span>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ADDITIONAL INFO -->
+  <div class="additional-info">
+    
+    <div class="info-card payment">
+      <h4>💳 Payment Information</h4>
+      <p><strong>Bank:</strong> XYZ Bank</p>
+      <p><strong>Account:</strong> 1234567890</p>
+      <p><strong>IFSC:</strong> XYZB0001234</p>
+    </div>
+
+    <div class="info-card terms">
+      <h4>📋 Terms & Conditions</h4>
+      <p>• Payment due within 30 days</p>
+      <p>• Include invoice number with payment</p>
+      <p>• Contact us for billing questions</p>
+    </div>
+
+  </div>
+
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-content">
+      <h3>Thank you for your business <span class="heart">❤️</span></h3>
+      <p>This is a computer-generated invoice and does not require a signature.</p>
+      <div class="contact">
+        <p>For questions or concerns, please contact us:</p>
+        <p><strong>support@ayurveda.com</strong> | +91 1234567890</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

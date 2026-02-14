@@ -2,8 +2,7 @@ const pool = require('../../config/db')
 
 const { v4: uuid } = require('uuid')
 const { deleteFromCloud } = require('../../config/cloudinary')
-
-
+const orderstatus=require("../../utils/orderstatusmap")
 
 
 
@@ -199,7 +198,7 @@ exports.stats = async (req, res) => {
   const products = await pool.query(`SELECT COUNT(*) FROM products`)
 
   const pending = await pool.query(`
-    SELECT COUNT(*) FROM orders WHERE status='pending'
+    SELECT COUNT(*) FROM orders WHERE status='0'
   `)
 
   const lowStock = await pool.query(`
@@ -745,9 +744,9 @@ exports.getOrders = async (req, res) => {
 
         COALESCE(SUM(total_amount),0) AS revenue,
 
-        COUNT(*) FILTER (WHERE status='pending') AS pending,
+        COUNT(*) FILTER (WHERE status='0') AS pending,
 
-        COUNT(*) FILTER (WHERE status='completed') AS completed
+        COUNT(*) FILTER (WHERE status='4') AS completed
 
       FROM orders
 
@@ -865,12 +864,13 @@ exports.updateOrderStatus = async (req, res) => {
   try {
 
     const { id } = req.params
-    const { status } = req.body
+let { status } = req.body;
+status = Number(status);
 
 
     /* ================= VALIDATION ================= */
 
-    if (!status) {
+    if (!status&&status!=0) {
       return res.status(400).json({
         success: false,
         message: 'Status is required'
@@ -914,8 +914,8 @@ exports.updateOrderStatus = async (req, res) => {
 
     // ❗ If trying: confirmed → pending
     if (
-      currentStatus === 'confirmed' &&
-      status === 'pending'
+      currentStatus == 1 &&
+      status == 0
     ) {
 
       // Check shipment created or not
@@ -950,21 +950,14 @@ exports.updateOrderStatus = async (req, res) => {
 
     /* ================= TRANSITION RULES ================= */
 
-    const allowedTransitions = {
-
-      pending: ['confirmed', 'cancelled'],
-
-      confirmed: ['processing', 'cancelled', 'pending'], // pending allowed (with check)
-
-      processing: ['shipped', 'cancelled'],
-
-      shipped: ['delivered'],
-
-      delivered: [],
-
-      cancelled: []
-
-    }
+   allowedTransitions = {
+  0: [1,5],       // pending → confirmed/cancelled
+  1: [2,5,0],     // confirmed → processing/cancelled/pending
+  2: [3,5],
+  3: [4],
+  4: [],
+  5: []
+}
 
 
     const allowed = allowedTransitions[currentStatus] || []
@@ -974,11 +967,11 @@ exports.updateOrderStatus = async (req, res) => {
 
       return res.status(400).json({
         success: false,
-        message: `Invalid transition: ${currentStatus} → ${status}`
+        message: `Invalid transition: ${orderstatus[currentStatus]} → ${orderstatus[status]}`
       })
 
     }
-if (currentStatus === 'shipped'&&(!order.courier_name || !order.tracking_number)) {
+if (currentStatus == 3&&(!order.courier_name || !order.tracking_number)) {
 
     return res.status(400).json({
       success: false,
@@ -1072,4 +1065,15 @@ exports.getCarts = async (req, res) => {
     })
 
   }
+}
+
+// get all status codes *****************
+exports.getstauscodes=async(req,res)=>{
+try{
+const resdata=await pool.query(`select code ,label from order_status_master where is_active=$1`,[true])
+
+res?.status(200)?.json({data:resdata?.rows||[],status:true})
+}catch{
+res?.status(500).json({message:"Something went wrong",status:false})
+}
 }

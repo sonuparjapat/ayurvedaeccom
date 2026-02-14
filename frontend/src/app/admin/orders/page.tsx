@@ -22,6 +22,8 @@ import { notify } from '@/app/utils/notify'
 
 import DynamicTable from '@/components/table/table'
 import AppModal from '@/components/modal/AppModal'
+import { Button } from '@/components/ui/button'
+import { useAuth } from '@/context/auth-context'
 
 
 export default function AdminOrdersPage() {
@@ -47,6 +49,7 @@ export default function AdminOrdersPage() {
   const [editStatus, setEditStatus] = useState('')
 const [mode, setMode] = useState<any>('view')
 
+const {statusList}=useAuth()
   /* ================= LOAD ================= */
 
   const load = async () => {
@@ -97,6 +100,7 @@ const [mode, setMode] = useState<any>('view')
     }
 
   }, [current])
+ 
 
 const closeModal = () => {
 
@@ -150,19 +154,19 @@ const closeModal = () => {
 
   /* ================= BADGES ================= */
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (item2: any) => {
 
     const styles: any = {
 
-      pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      0: 'bg-yellow-100 text-yellow-800 border-yellow-200',
 
-      processing: 'bg-blue-100 text-blue-800 border-blue-200',
+      1: 'bg-blue-100 text-blue-800 border-blue-200',
 
-      completed: 'bg-green-100 text-green-800 border-green-200',
+      4: 'bg-green-100 text-green-800 border-green-200',
 
-      cancelled: 'bg-red-100 text-red-800 border-red-200',
+      5: 'bg-red-100 text-red-800 border-red-200',
 
-      shipped: 'bg-purple-100 text-purple-800 border-purple-200'
+      3: 'bg-purple-100 text-purple-800 border-purple-200'
 
     }
 
@@ -172,11 +176,11 @@ const closeModal = () => {
         className={`
           px-3 py-1 rounded-full
           text-xs font-semibold border
-          ${styles[status] || styles.pending}
+          ${styles[item2?.status]}
         `}
       >
 
-        {status?.toUpperCase()}
+        {statusList?.find((item:any)=>item?.code==item2?.status)?.label}
 
       </span>
 
@@ -256,6 +260,34 @@ const openModal = (m: Mode, order: any) => {
 
     )
   }
+   const getPaymentmethod = (status: string) => {
+
+    const styles: any = {
+
+      online: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+
+      cod: 'bg-amber-100 text-amber-800 border-amber-200',
+
+  
+
+    }
+
+    return (
+
+      <span
+        className={`
+          px-3 py-1 rounded-full
+          text-xs font-semibold border
+          ${styles[status] || styles.pending}
+        `}
+      >
+
+        {status?.toUpperCase()}
+
+      </span>
+
+    )
+  }
 const generateInvoice = async () => {
 
   if (!current) return
@@ -301,6 +333,7 @@ const generateInvoice = async () => {
     { key: 'status', label: 'Status', align: 'center' },
 
     { key: 'payment_status', label: 'Payment', align: 'center' },
+    { key: 'payment_method', label: 'Payment Method', align: 'center' },
 
     { key: 'created_at', label: 'Date', align: 'center' },
 
@@ -368,10 +401,11 @@ const generateInvoice = async () => {
     ),
 
 
-    status: getStatusBadge(o.status),
+    status: getStatusBadge(o),
 
 
     payment_status: getPaymentBadge(o.payment_status),
+    payment_method:getPaymentmethod(o?.payment_method),
 
 
     created_at: (
@@ -411,7 +445,7 @@ const generateInvoice = async () => {
 
 
     {/* TRACKING (ONLY IF SHIPPED) */}
-    {o.status === 'shipped' && (
+    {o.status ==3 && (
 
       <button
         onClick={() => openModal('tracking', o)}
@@ -421,7 +455,20 @@ const generateInvoice = async () => {
       </button>
 
     )}
+  {(
+      ([1,2,3,4].includes(Number(o.status))&& o.payment_method == "online") ||
+      (o.status == 4 && o.payment_method == "cod")
+    )  && (
 
+      <button
+        onClick={() => openModal('invoice', o)}
+        className="text-green-600"
+        title="Generate Invoice"
+      >
+        <Download size={18} />
+      </button>
+
+    )}
   </div>
 )
 
@@ -593,20 +640,9 @@ const generateInvoice = async () => {
               >
 
                 <option value="all">All Status</option>
-         
+         {statusList?.map((item:any)=><option value={item?.code}>{item?.label}</option>)}
 
-  <option value="pending">Pending</option>
-
-  <option value="confirmed">Confirmed</option>
-
-  <option value="processing">Processing</option>
-
-  <option value="shipped">Shipped</option>
-
-  <option value="delivered">Delivered</option>
-
-  <option value="cancelled">Cancelled</option>
-
+ 
 
               </select>
 
@@ -746,7 +782,9 @@ const generateInvoice = async () => {
         <div className="flex gap-3">
 
           <span className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg text-sm font-semibold">
-            {current.status?.toUpperCase()}
+            {statusList?.find((item:any)=>item?.code==current?.status)?.label?.toUpperCase()}
+            
+         
           </span>
 
           <span className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg text-sm font-semibold">
@@ -887,21 +925,16 @@ const generateInvoice = async () => {
             focus:ring-2 focus:ring-blue-500
           "
         >
+          {statusList?.map((item:any)=><option value={item?.code}>{item?.label}</option>)}
 
-          <option value="pending">Pending</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="processing">Processing</option>
-          <option value="shipped">Shipped</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
-
+       
         </select>
 
 
         <button
           disabled={
             statusUpdating ||
-            editStatus === current.status
+            editStatus == current.status
           }
           onClick={updateStatus}
           className="
@@ -924,9 +957,8 @@ const generateInvoice = async () => {
 
       {/* ================= INVOICE ================= */}
 
-{mode === 'edit' &&
- current.status === 'processing' &&
- !current.invoice_no && (
+{mode === 'invoice' &&
+ (([1,2,3,4]?.includes(Number(current.status))&&current?.payment_method=="online")||(current.status ==4&&current?.payment_method=="offline"))  && (
 
   <button
     onClick={generateInvoice}
