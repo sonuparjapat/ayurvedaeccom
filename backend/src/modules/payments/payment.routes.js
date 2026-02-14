@@ -4,8 +4,10 @@ const router = express.Router();
 const controller = require("./payment.controller");
 
 const auth = require("../../middlewares/auth");
+const { admin } = require("../../middlewares/admin");
 
-// router.post("/create", auth, controller.createPayment);
-// router.post("/verify", auth, controller.verifyPayment);
+router.use(admin)
+
+router.get('/', controller.getPayments)
 
 module.exports = router;

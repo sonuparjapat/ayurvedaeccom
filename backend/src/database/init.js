@@ -175,11 +175,26 @@ const initDB = async () => {
         razorpay_signature TEXT,
 
         shipping_address JSONB,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        expires_at TIMESTAMP
+        expires_at TIMESTAMP,
+        tracking_number VARCHAR(100),
+        shipped_at TIMESTAMP,
+ invoice_no VARCHAR(50),
+ invoice_date TIMESTAMP,
+is_invoiced BOOLEAN DEFAULT FALSE,
+courier_name VARCHAR(50) 
       )
     `);
+    await pool.query(` CREATE TABLE IF NOT EXISTS order_status_logs (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER REFERENCES orders(id),
+  old_status VARCHAR(30),
+  new_status VARCHAR(30),
+  changed_by INTEGER,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`)
 
 
     /* ================= ORDER ITEMS ================= */
@@ -229,6 +244,64 @@ const initDB = async () => {
     `);
 
 
+    // ****************appsettings table**********************
+await pool.query(`CREATE TABLE IF NOT EXISTS app_settings (
+
+  id SERIAL PRIMARY KEY,
+
+  key VARCHAR(100) UNIQUE NOT NULL,
+
+  value TEXT NOT NULL,
+
+  type VARCHAR(20) DEFAULT 'string',
+  -- string | number | boolean | json
+
+  description TEXT,
+
+  is_active BOOLEAN DEFAULT TRUE,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`)
+  // *****************invoice table************************
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS invoices (
+
+  id SERIAL PRIMARY KEY,
+
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+
+  invoice_no VARCHAR(50) UNIQUE NOT NULL,
+
+  invoice_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  subtotal NUMERIC(10,2) NOT NULL,
+  tax NUMERIC(10,2) DEFAULT 0,
+  total NUMERIC(10,2) NOT NULL,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`)
+
+
+// invoice items table*********
+await pool.query(`CREATE TABLE IF NOT EXISTS invoice_items (
+
+  id SERIAL PRIMARY KEY,
+
+  invoice_id INTEGER
+    REFERENCES invoices(id)
+    ON DELETE CASCADE,
+
+  product_id INTEGER,
+
+  product_name VARCHAR(255),
+
+  quantity INT NOT NULL,
+
+  price NUMERIC(10,2) NOT NULL,
+
+  line_total NUMERIC(10,2) NOT NULL
+)`)
     console.log("✅ All Tables Created Successfully");
 
   } catch (err) {

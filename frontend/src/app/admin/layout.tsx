@@ -10,6 +10,8 @@ import {
   Users,
   BarChart3,
   LogOut,
+  Settings,
+  List,
 } from 'lucide-react'
 
 
@@ -29,7 +31,7 @@ export default function AdminLayout({
 
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
+    <div className="min-h-screen w-full border border-red-400 flex bg-gray-100">
 <Toaster position="top-right" />
 
       {/* ========== SIDEBAR ========== */}
@@ -62,9 +64,14 @@ export default function AdminLayout({
           <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />}>
             Orders
           </MenuItem>
-
+     <MenuItem href="/admin/invoices" icon={<List size={18} />}>
+            Invoices
+          </MenuItem>
           <MenuItem href="/admin/users" icon={<Users size={18} />}>
             Users
+          </MenuItem>
+             <MenuItem href="/admin/settings" icon={<Settings size={18} />}>
+            Settings
           </MenuItem>
 
           <MenuItem href="/admin/analytics" icon={<BarChart3 size={18} />}>
@@ -92,13 +99,13 @@ export default function AdminLayout({
 
 
       {/* ========== MAIN ========== */}
-
-      <div className="flex-1 flex flex-col">
+<div className='w-full'>
+      <div className="flex justify-between w-full border border-green-400">
 
 
         {/* TOP BAR */}
 
-        <header className="h-16 bg-white border-b flex items-center justify-between px-6">
+        <header className="h-16 bg-white border-b flex items-center justify-between px-6  w-full">
 
           <h2 className="font-semibold text-lg">
             Admin Panel
@@ -110,16 +117,18 @@ export default function AdminLayout({
 
         </header>
 
-
-        {/* PAGE CONTENT */}
-
-        <main className="flex-1 p-6 overflow-y-auto">
+  </div>
+  
+        <main className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
 
           {children}
 
         </main>
+  </div>
+        {/* PAGE CONTENT */}
 
-      </div>
+
+    
 
     </div>
   )

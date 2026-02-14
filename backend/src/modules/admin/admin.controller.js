@@ -603,3 +603,473 @@ exports.remove = async (req,res)=>{
   res.json({ success:true })
 }
 
+
+/* ================= GET ALL ORDERS ================= */
+
+exports.getOrders = async (req, res) => {
+
+  try {
+
+    /* ================= QUERY PARAMS ================= */
+
+    const {
+      page = 1,
+      limit = 10,
+      search = '',
+      status = 'all'
+    } = req.query
+
+
+    const offset = (page - 1) * limit
+
+
+    /* ================= FILTER ================= */
+
+    let where = ` WHERE 1=1 `
+    let values = []
+    let idx = 1
+
+
+    /* ================= SEARCH ================= */
+
+    if (search) {
+
+      where += `
+        AND (
+          u.name ILIKE $${idx}
+          OR u.email ILIKE $${idx}
+          OR o.id::TEXT ILIKE $${idx}
+        )
+      `
+
+      values.push(`%${search}%`)
+      idx++
+
+    }
+
+
+    /* ================= STATUS ================= */
+
+    if (status !== 'all') {
+
+      where += ` AND o.status = $${idx} `
+
+      values.push(status)
+
+      idx++
+
+    }
+
+
+    /* ================= DATA ================= */
+
+    const dataQuery = `
+
+      SELECT
+
+        o.*,
+
+        u.name AS user_name,
+        u.email AS user_email,
+
+        COUNT(oi.id) AS items_count,
+
+        i.invoice_no,
+        i.invoice_date
+
+
+      FROM orders o
+
+
+      JOIN users u ON u.id = o.user_id
+
+
+      LEFT JOIN order_items oi ON oi.order_id = o.id
+
+
+      LEFT JOIN invoices i ON i.order_id = o.id
+
+
+      ${where}
+
+
+      GROUP BY o.id, u.id, i.id
+
+
+      ORDER BY o.created_at DESC
+
+
+      LIMIT $${idx}
+      OFFSET $${idx + 1}
+
+    `
+
+
+    values.push(limit, offset)
+
+
+    const data = await pool.query(
+      dataQuery,
+      values
+    )
+
+
+    /* ================= COUNT ================= */
+
+    const countQuery = `
+
+      SELECT COUNT(*)
+
+      FROM orders o
+
+      JOIN users u ON u.id = o.user_id
+
+      ${where}
+
+    `
+
+
+    const count = await pool.query(
+      countQuery,
+      values.slice(0, values.length - 2)
+    )
+
+
+    /* ================= STATS ================= */
+
+    const stats = await pool.query(`
+
+      SELECT
+
+        COUNT(*) AS total,
+
+        COALESCE(SUM(total_amount),0) AS revenue,
+
+        COUNT(*) FILTER (WHERE status='pending') AS pending,
+
+        COUNT(*) FILTER (WHERE status='completed') AS completed
+
+      FROM orders
+
+    `)
+
+
+    /* ================= RESPONSE ================= */
+
+    res.status(200).json({
+
+      success: true,
+
+      data: data.rows,
+
+      meta: {
+
+        total: Number(count.rows[0].count),
+
+        revenue: stats.rows[0].revenue,
+
+        pending: stats.rows[0].pending,
+
+        completed: stats.rows[0].completed,
+
+        page: Number(page),
+
+        pages: Math.ceil(
+          count.rows[0].count / limit
+        )
+
+      }
+
+    })
+
+
+  } catch (err) {
+
+    console.error(err)
+
+    res.status(500).json({
+
+      success: false,
+
+      message: 'Load failed'
+
+    })
+
+  }
+
+}
+
+
+
+/* ================= GET ORDER DETAILS ================= */
+
+exports.getOrderById = async (req, res) => {
+
+  try {
+
+    const { id } = req.params
+
+
+    const order = await pool.query(`
+      SELECT
+        o.*,
+        u.name,
+        u.email,
+        u.phone
+      FROM orders o
+      JOIN users u ON u.id=o.user_id
+      WHERE o.id=$1
+    `, [id])
+
+
+    const items = await pool.query(`
+      SELECT
+        oi.*,
+        p.name,
+        p.images
+      FROM order_items oi
+      JOIN products p ON p.id=oi.product_id
+      WHERE oi.order_id=$1
+    `, [id])
+
+
+    if (!order.rowCount) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      })
+    }
+
+
+    res.status(200).json({
+      success: true,
+      order: order.rows[0],
+      items: items.rows
+    })
+
+
+  } catch {
+
+    res.status(500).json({
+      success: false,
+      message: 'Load failed'
+    })
+
+  }
+}
+
+
+
+exports.updateOrderStatus = async (req, res) => {
+
+  try {
+
+    const { id } = req.params
+    const { status } = req.body
+
+
+    /* ================= VALIDATION ================= */
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status is required'
+      })
+    }
+
+
+    /* ================= GET ORDER ================= */
+
+    const orderRes = await pool.query(
+      `
+      SELECT
+        status,
+        shipped_at,
+        courier_name,
+        tracking_number
+      FROM orders
+      WHERE id = $1
+      `,
+      [id]
+    )
+
+
+    if (!orderRes.rowCount) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      })
+    }
+
+
+    const order = orderRes.rows[0]
+    const currentStatus = order.status
+
+/* ================= SHIPMENT VALIDATION ================= */
+
+
+
+
+    /* ================= ROLLBACK RULE ================= */
+
+    // ❗ If trying: confirmed → pending
+    if (
+      currentStatus === 'confirmed' &&
+      status === 'pending'
+    ) {
+
+      // Check shipment created or not
+      if (order.tracking_number || order.shipped_at) {
+
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot rollback. Shipment already created.'
+        })
+
+      }
+
+      // Optional: time limit (5 min)
+      const timeCheck = await pool.query(`
+        SELECT
+          EXTRACT(EPOCH FROM (NOW() - updated_at)) AS seconds
+        FROM orders
+        WHERE id=$1
+      `,[id])
+
+
+      if (timeCheck.rows[0].seconds > 300) {
+
+        return res.status(400).json({
+          success: false,
+          message: 'Rollback time expired'
+        })
+
+      }
+    }
+
+
+    /* ================= TRANSITION RULES ================= */
+
+    const allowedTransitions = {
+
+      pending: ['confirmed', 'cancelled'],
+
+      confirmed: ['processing', 'cancelled', 'pending'], // pending allowed (with check)
+
+      processing: ['shipped', 'cancelled'],
+
+      shipped: ['delivered'],
+
+      delivered: [],
+
+      cancelled: []
+
+    }
+
+
+    const allowed = allowedTransitions[currentStatus] || []
+
+
+    if (!allowed.includes(status)) {
+
+      return res.status(400).json({
+        success: false,
+        message: `Invalid transition: ${currentStatus} → ${status}`
+      })
+
+    }
+if (currentStatus === 'shipped'&&(!order.courier_name || !order.tracking_number)) {
+
+    return res.status(400).json({
+      success: false,
+      message: 'Add courier & tracking before shipping'
+    })
+
+  }
+
+    /* ================= UPDATE ================= */
+
+    await pool.query(
+      `
+      UPDATE orders
+      SET
+        status = $1,
+        updated_at = NOW()
+      WHERE id = $2
+      `,
+      [status, id]
+    )
+
+
+    /* ================= LOG  ================= */
+
+    await pool.query(`
+      INSERT INTO order_status_logs
+      (order_id, old_status, new_status)
+      VALUES ($1,$2,$3)
+    `,[id,currentStatus,status])
+
+
+    /* ================= RESPONSE ================= */
+
+    res.status(200).json({
+      success: true,
+      message: 'Status updated successfully'
+    })
+
+
+  } catch (err) {
+
+    console.error(err)
+
+    res.status(500).json({
+      success: false,
+      message: 'Update failed'
+    })
+
+  }
+}
+
+
+// get carts >>>>>>>>>>>>>>>>>>>>
+exports.getCarts = async (req, res) => {
+
+  try {
+
+    const result = await pool.query(`
+      SELECT
+        c.id,
+        c.quantity,
+        c.created_at,
+
+        u.name,
+        u.email,
+
+        p.name AS product,
+        p.price
+
+      FROM cart c
+
+      JOIN users u ON u.id=c.user_id
+
+      JOIN products p ON p.id=c.product_id
+
+      ORDER BY c.created_at DESC
+    `)
+
+
+    res.status(200).json({
+      success: true,
+      data: result.rows
+    })
+
+
+  } catch {
+
+    res.status(500).json({
+      success: false,
+      message: 'Load failed'
+    })
+
+  }
+}
