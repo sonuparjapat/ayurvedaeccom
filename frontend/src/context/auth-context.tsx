@@ -123,12 +123,14 @@ if(res?.status==200){
 
       try {
 
-        const res = await axios.get("/users/me")
+        const res:any = await axios.get("/users/me")
 
-        if (res.data?.user) {
+        if (res.status==200) {
           setLoginUserdata(res.data.user)
           fetchCart(res.data.user.id)
               getintdata(res?.data?.user)
+        }else if(res?.response?.status==401){
+          router.push("/")
         }
 
       } catch (err) {
@@ -160,6 +162,7 @@ if(res?.status==200){
   const login = (data: User) => {
     setLoginUserdata(data)
     fetchCart(data.id)
+    getintdata()
   }
 
   /* ======================
