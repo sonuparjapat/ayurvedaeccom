@@ -290,7 +290,7 @@ exports.create = async (req, res) => {
       inventory,
       sku,
 
-      category,
+      category_name,
       brand,
       status,
 
@@ -368,7 +368,7 @@ if (req.files?.length) {
       Number(inventory),
       sku || '',
 
-      category || '',
+      category_name || '',
       brand || '',
       status || 'draft',
 
@@ -413,7 +413,7 @@ exports.getAll = async (req, res) => {
 
 
     /* ================= DATA ================= */
-
+// console.log("test")
     const data = await pool.query(`
 
       SELECT *
@@ -603,7 +603,7 @@ const finalImages = [
       Number(body.inventory),
       body.sku,
 
-      body.category,
+      body.category_name,
       body.brand,
       body.status,
 
