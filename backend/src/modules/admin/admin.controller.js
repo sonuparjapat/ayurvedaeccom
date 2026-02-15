@@ -3,7 +3,10 @@ const pool = require('../../config/db')
 const { v4: uuid } = require('uuid')
 const { deleteFromCloud } = require('../../config/cloudinary')
 const orderstatus=require("../../utils/orderstatusmap")
-
+const {
+  uploadImageToAWS,
+  deleteFromAWS
+} = require("../../utils/awsImageUpload");
 
 
 // update user
@@ -303,9 +306,18 @@ exports.create = async (req, res) => {
       })
     }
 
-    const images = req.files
-      ? req.files.map(f => f.path)
-      : []
+   let images = [];
+  let uploadedImages = []; 
+if (req.files?.length) {
+
+  for (const file of req.files) {
+
+    const url = await uploadImageToAWS(file);
+
+    images.push(url);
+      uploadedImages.push(url);
+  }
+}
 
     await pool.query(`
       INSERT INTO products (
@@ -376,7 +388,10 @@ exports.create = async (req, res) => {
   } catch (err) {
 
     console.error(err)
-
+   // 🔥 ROLLBACK AWS FILES
+    for (const url of uploadedImages) {
+      await deleteFromAWS(url);
+    }
     res.status(500).json({
       message: 'Create failed'
     })
@@ -494,23 +509,56 @@ exports.update = async (req, res) => {
   try {
 
     const id = req.params.id
-
+let uploadedImages = []
     const body = req.body
 console.log(body.oldImages,"old images","deleted image",body.deletedImages)
-  const oldImages = normalizeArray(body.oldImages)
+ // Images user kept
+const oldImages = normalizeArray(body.oldImages);
 
-const deletedImages = normalizeArray(body.deletedImages)
+// 1️⃣ Get current images from DB
+const existing = await pool.query(
+  "SELECT images FROM products WHERE id=$1",
+  [id]
+);
 
-    for (const img of deletedImages) {
-      await deleteFromCloud(img)
-    }
+if (!existing.rowCount) {
+  return res.status(404).json({ message: "Not found" });
+}
 
-    const newImages = req.files?.map(f => f.path) || []
+const dbImages = existing.rows[0].images || [];
 
-    const finalImages = [
-      ...oldImages.filter(i => !deletedImages.includes(i)),
-      ...newImages,
-    ]
+
+// 2️⃣ Find removed images
+const imagesToDelete = dbImages.filter(
+  img => !oldImages.includes(img)
+);
+
+
+// 3️⃣ Delete removed images from AWS
+for (const img of imagesToDelete) {
+  await deleteFromAWS(img);
+}
+
+
+// 4️⃣ Upload new images
+let newImages = [];
+
+if (req.files?.length) {
+
+  for (const file of req.files) {
+
+    const url = await uploadImageToAWS(file);
+  uploadedImages.push(url);
+    newImages.push(url);
+  }
+}
+
+
+// 5️⃣ Merge final images
+const finalImages = [
+  ...oldImages,
+  ...newImages
+];
 
     const result = await pool.query(`
 
@@ -581,7 +629,9 @@ const deletedImages = normalizeArray(body.deletedImages)
   } catch (err) {
 
     console.error(err)
-
+ for (const url of uploadedImages) {
+      await deleteFromAWS(url);
+    }
     res.status(500).json({
       message:'Update failed'
     })

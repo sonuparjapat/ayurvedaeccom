@@ -4,6 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const puppeteer = require("puppeteer")
 const { uploadInvoiceToCloud } = require("../../utils/uploadInvoicetoCloud");
+const { uploadInvoiceToAWS } = require("../../utils/awsUpload");
 /* =====================================
    GET INVOICES (LIST)
 ===================================== */
@@ -351,9 +352,12 @@ console.log("PDF saved locally:", invoiceNo);
 
     /* ================= UPLOAD ================= */
 
-    const pdfUrl =
-      await uploadInvoiceToCloud(pdfBuffer, invoiceNo);
-
+   
+const pdfUrl = await uploadInvoiceToAWS(
+      pdfBuffer,
+      invoiceNo
+    );
+    console.log(pdfUrl,"comingfine")
     await client.query(
       `UPDATE invoices SET pdf_url=$1 WHERE id=$2`,
       [pdfUrl, invoiceId]
@@ -372,7 +376,7 @@ console.log("PDF saved locally:", invoiceNo);
 
     await client.query('ROLLBACK');
 
-    // console.error(err,"erro message");
+    console.error(err,"erro message");
 
     res.status(500).json({
       success: false,

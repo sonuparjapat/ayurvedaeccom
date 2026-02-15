@@ -1,13 +1,30 @@
-const multer = require('multer')
-const { CloudinaryStorage } = require('multer-storage-cloudinary')
-const {cloudinary} = require('./cloudinary')
+const multer = require("multer");
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: 'ayurveda-products',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+// Store files in memory (RAM) for AWS upload
+const storage = multer.memoryStorage();
+
+const upload = multer({
+
+  storage,
+
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10 MB
   },
-})
 
-module.exports = multer({ storage })
+  fileFilter: (req, file, cb) => {
+
+    // Allow only images
+    if (
+      file.mimetype === "image/jpeg" ||
+      file.mimetype === "image/png" ||
+      file.mimetype === "image/webp"
+    ) {
+      cb(null, true);
+
+    } else {
+      cb(new Error("Only JPG, PNG, WEBP allowed"), false);
+    }
+  },
+});
+
+module.exports = upload;
