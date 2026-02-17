@@ -1,25 +1,25 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Loader2 } from 'lucide-react'
 
-
 export default function AdminProductForm({
   onSuccess,
   initialData,
-  mode = 'create', // create | edit | view
+  mode = 'create',
 }: any) {
 
   const isView = mode === 'view'
   const isEdit = mode === 'edit'
 
-
   const [loading, setLoading] = useState(false)
+  const [categories, setCategories] = useState<any[]>([])
+
+  const previewUrls = useRef<string[]>([])
 
   const [form, setForm] = useState<any>({
-
     name: '',
     slug: '',
 
@@ -33,6 +33,7 @@ export default function AdminProductForm({
     sku: '',
 
     category_name: '',
+    category_id:"",
     brand: '',
 
     status: 'draft',
@@ -40,8 +41,35 @@ export default function AdminProductForm({
     meta_title: '',
     meta_description: '',
 
-    images: [] as any[],
+    images: [],
   })
+
+
+  /* ================= LOAD CATEGORIES ================= */
+
+  useEffect(() => {
+
+    const loadCategories = async () => {
+
+      try {
+
+        const res = await axios.get('/categories')
+
+        setCategories(res?.data?.data?.rows || [])
+
+      } catch (err) {
+
+        console.error('Category Load Error:', err)
+
+        toast.error('Failed to load categories')
+
+      }
+
+    }
+
+    loadCategories()
+
+  }, [])
 
 
   /* ================= PREFILL ================= */
@@ -58,6 +86,21 @@ export default function AdminProductForm({
     }
 
   }, [initialData])
+
+
+  /* ================= CLEANUP ================= */
+
+  useEffect(() => {
+
+    return () => {
+
+      previewUrls.current.forEach(url =>
+        URL.revokeObjectURL(url)
+      )
+
+    }
+
+  }, [])
 
 
   /* ================= HELPERS ================= */
@@ -77,11 +120,28 @@ export default function AdminProductForm({
 
   const validate = () => {
 
-    if (!form.name) return 'Name required'
-    if (!form.price) return 'Price required'
-    if (!form.inventory) return 'Stock required'
-    if (!form.category_name) return 'Category required'
-    if (!form.images.length) return 'Image required'
+    if (!form.name?.trim())
+      return 'Name required'
+
+    if (!form.price || Number(form.price) <= 0)
+      return 'Valid price required'
+
+    if (form.compareprice &&
+      Number(form.compareprice) < Number(form.price)
+    )
+      return 'Compare price must be higher than price'
+
+    if (
+      form.inventory === '' ||
+      Number(form.inventory) < 0
+    )
+      return 'Valid stock required'
+
+    if (!form.category_id)
+      return 'Category required'
+
+    if (!form.images.length)
+      return 'Image required'
 
     return null
   }
@@ -90,6 +150,8 @@ export default function AdminProductForm({
   /* ================= SUBMIT ================= */
 
   const submit = async () => {
+
+    if (loading) return
 
     const err = validate()
 
@@ -102,46 +164,51 @@ export default function AdminProductForm({
 
       const data = new FormData()
 
-      Object.keys(form).forEach(k => {
+
+      Object.entries(form).forEach(([k, v]) => {
+
+        if (v === null || v === undefined) return
+
 
         if (k === 'images') {
 
-          form.images.forEach((f: any) => {
+          v.forEach((f: any) => {
 
             if (typeof f === 'string') {
+
               data.append('oldImages', f)
+
             } else {
+
               data.append('images', f)
+
             }
 
           })
 
         } else {
 
-          data.append(k, form[k])
+          data.append(k, String(v))
 
         }
 
       })
 
 
-      if (isEdit) {
+      const url = isEdit
+        ? `/admin/products/${form.id}`
+        : '/admin/products'
 
-        await axios.put(
-          `/admin/products/${form.id}`,
-          data,
-          { withCredentials: true }
-        )
 
-      } else {
+      const method = isEdit ? 'put' : 'post'
 
-        await axios.post(
-          '/admin/products',
-          data,
-          { withCredentials: true }
-        )
 
-      }
+      await axios({
+        method,
+        url,
+        data,
+        withCredentials: true,
+      })
 
 
       toast.success(
@@ -150,9 +217,18 @@ export default function AdminProductForm({
 
       onSuccess?.()
 
-    } catch {
 
-      toast.error('Save failed')
+    } catch (err: any) {
+
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        'Save failed'
+
+      toast.error(msg)
+
+      console.error('Save Error:', err)
+
 
     } finally {
 
@@ -162,7 +238,7 @@ export default function AdminProductForm({
 
   }
 
-console.log(isView,"isview")
+
   /* ================= UI ================= */
 
   return (
@@ -212,14 +288,49 @@ console.log(isView,"isview")
           />
 
 
-          <Input
-            label="Category"
-            value={form.category_name}
-            readOnly={isView}
-            onChange={(v: string) =>
-              setForm({ ...form, category_name: v })
-            }
-          />
+          {/* CATEGORY DROPDOWN */}
+
+          <div className="space-y-1">
+
+            <label className="text-sm font-medium">
+              Category
+            </label>
+
+            <select
+              value={form.category_id || ''}
+              disabled={isView}
+              onChange={e =>
+                setForm({
+                  ...form,
+                  category_id: e.target.value,
+                  category_name:categories?.find((item:any)=>item?.id==e.target.value)?.name
+                })
+              }
+              className="
+                w-full border rounded px-3 py-2
+                focus:ring-2 focus:ring-emerald-500
+                bg-white
+              "
+            >
+
+              <option value="">
+                Select Category
+              </option>
+
+              {categories?.map(cat => (
+
+                <option
+                  key={cat.id}
+                  value={cat.id}
+                >
+                  {cat.name}
+                </option>
+
+              ))}
+
+            </select>
+
+          </div>
 
 
           <Input
@@ -343,6 +454,14 @@ console.log(isView,"isview")
                 e.target.files || []
               )
 
+
+              const urls = files.map(f =>
+                URL.createObjectURL(f)
+              )
+
+              previewUrls.current.push(...urls)
+
+
               setForm({
                 ...form,
                 images: [...form.images, ...files],
@@ -404,6 +523,7 @@ console.log(isView,"isview")
                       "
                     >
                       ✕
+
                     </button>
 
                   )}
@@ -417,65 +537,6 @@ console.log(isView,"isview")
           </div>
 
         )}
-
-      </Section>
-
-
-      {/* STATUS */}
-
-      <Section title="Status">
-
-        <select
-          value={form.status}
-          disabled={isView}
-          onChange={e =>
-            setForm({
-              ...form,
-              status: e.target.value,
-            })
-          }
-          className="border rounded px-3 py-2"
-        >
-
-          <option value="draft">
-            Draft
-          </option>
-
-          <option value="published">
-            Published
-          </option>
-
-        </select>
-
-      </Section>
-
-
-      {/* SEO */}
-
-      <Section title="SEO">
-
-        <Grid>
-
-          <Input
-            label="Meta Title"
-            value={form.meta_title}
-            readOnly={isView}
-            onChange={(v: string) =>
-              setForm({ ...form, meta_title: v })
-            }
-          />
-
-
-          <Input
-            label="Meta Description"
-            value={form.meta_description}
-            readOnly={isView}
-            onChange={(v: string) =>
-              setForm({ ...form, meta_description: v })
-            }
-          />
-
-        </Grid>
 
       </Section>
 

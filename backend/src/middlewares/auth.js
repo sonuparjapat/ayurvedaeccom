@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken")
 
 exports.auth = (req, res, next) => {
-
+console.log(req.cookies.userToken,"request coming")
   const token =
     req.cookies.adminToken ||
     req.cookies.userToken

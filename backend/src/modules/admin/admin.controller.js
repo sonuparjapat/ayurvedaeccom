@@ -1,5 +1,6 @@
 const pool = require('../../config/db')
-
+const bcrypt = require("bcryptjs")
+const validator = require("validator")
 const { v4: uuid } = require('uuid')
 const { deleteFromCloud } = require('../../config/cloudinary')
 const orderstatus=require("../../utils/orderstatusmap")
@@ -8,6 +9,137 @@ const {
   deleteFromAWS
 } = require("../../utils/awsImageUpload");
 
+// create user 
+exports.createUser = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      password,
+      role,
+      is_verified
+    } = req.body
+
+    /* =========================
+       1. Basic Validation
+    ========================= */
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email and password are required"
+      })
+    }
+
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format"
+      })
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters"
+      })
+    }
+
+    if (phone && phone.length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid phone number"
+      })
+    }
+
+    /* =========================
+       2. Check Duplicate Email
+    ========================= */
+
+    const userExists = await pool.query(
+      "SELECT id FROM users WHERE email = $1",
+      [email]
+    )
+
+    if (userExists.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already exists"
+      })
+    }
+
+    /* =========================
+       3. Hash Password
+    ========================= */
+
+    const salt = await bcrypt.genSalt(10)
+    const hashedPassword = await bcrypt.hash(password, salt)
+
+    /* =========================
+       4. Role Protection
+       (prevent invalid roles)
+    ========================= */
+
+    const allowedRoles = [0, 1, 2] 
+    // 0 = user, 1 = admin, 2 = staff
+
+    const finalRole = allowedRoles.includes(role)
+      ? role
+      : 0
+
+    /* =========================
+       5. Insert User
+    ========================= */
+
+    const query = `
+      INSERT INTO users
+      (
+        name,
+        email,
+        phone,
+        password,
+        role,
+        is_verified,
+        created_at,
+        updated_at
+      )
+      VALUES
+      ($1,$2,$3,$4,$5,$6,NOW(),NOW())
+      RETURNING id, name, email, role
+    `
+
+    const values = [
+      name.trim(),
+      email.toLowerCase(),
+      phone || null,
+      hashedPassword,
+      finalRole,
+      is_verified ?? false
+    ]
+
+    const result = await pool.query(query, values)
+
+    /* =========================
+       6. Success Response
+    ========================= */
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      user: result.rows[0]
+    })
+
+  } catch (err) {
+
+    console.error("Create User Error:", err)
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    })
+  }
+}
 
 // update user
 exports.updateUser = async (req, res) => {
@@ -276,6 +408,7 @@ exports.topProducts = async (req, res) => {
 
 /* CREATE */
 exports.create = async (req, res) => {
+    let uploadedImages = []; 
   try {
 
     const {
@@ -289,6 +422,7 @@ exports.create = async (req, res) => {
 
       inventory,
       sku,
+      category_id,
 
       category_name,
       brand,
@@ -307,7 +441,7 @@ exports.create = async (req, res) => {
     }
 
    let images = [];
-  let uploadedImages = []; 
+
 if (req.files?.length) {
 
   for (const file of req.files) {
@@ -335,6 +469,7 @@ if (req.files?.length) {
         sku,
 
         category_name,
+        category_id,
         brand,
         status,
 
@@ -353,7 +488,7 @@ if (req.files?.length) {
         $8,$9,
         $10,$11,$12,
         $13,
-        $14,$15
+        $14,$15,$16
       )
     `, [
       name,
@@ -369,6 +504,7 @@ if (req.files?.length) {
       sku || '',
 
       category_name || '',
+      category_id||"",
       brand || '',
       status || 'draft',
 
@@ -392,8 +528,9 @@ if (req.files?.length) {
     for (const url of uploadedImages) {
       await deleteFromAWS(url);
     }
+    console.log(err,"error coming")
     res.status(500).json({
-      message: 'Create failed'
+      message:err?.detail|| 'Create failed'
     })
   }
 }
@@ -505,13 +642,13 @@ const normalizeArray = (data) => {
 }
 
 exports.update = async (req, res) => {
-
+let uploadedImages=[]
   try {
 
     const id = req.params.id
-let uploadedImages = []
+
     const body = req.body
-console.log(body.oldImages,"old images","deleted image",body.deletedImages)
+
  // Images user kept
 const oldImages = normalizeArray(body.oldImages);
 
@@ -577,6 +714,7 @@ const finalImages = [
         sku=$8,
 
         category_name=$9,
+        
         brand=$10,
         status=$11,
 
@@ -584,9 +722,10 @@ const finalImages = [
 
         meta_title=$13,
         meta_description=$14,
-        meta_keywords=$15
+        meta_keywords=$15,
+        category_id=$16
 
-      WHERE id=$16
+      WHERE id=$17
       RETURNING *
 
     `, [
@@ -611,8 +750,7 @@ const finalImages = [
 
       body.meta_title,
       body.meta_description,
-      body.meta_keywords,
-
+      body.meta_keywords,body.category_id,
       id
 
     ])

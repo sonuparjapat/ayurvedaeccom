@@ -11,6 +11,7 @@ const adminRoutes = require("./modules/admin/admin.routes");
 const userAuthRoutes = require("./modules/users/userAuthRoutes")
 const cartRoutes = require("./modules/cart/cart.routes");
 const settingRoutes=require("./modules/settings/settings.routes")
+const routedapis=require("./modules/openRoutedapis/routesapi.route")
 const app = express();
 
 
@@ -48,6 +49,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/tracking", trackingRoutes);
 app.use("/api/users", userAuthRoutes)
 app.use("/api/cart", cartRoutes);
+app.use('/api',routedapis)
 
 
 /* ================= EXPORT ================= */

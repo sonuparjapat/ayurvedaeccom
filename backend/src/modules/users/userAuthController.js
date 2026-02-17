@@ -179,7 +179,8 @@ exports.userLogin = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        cart:user?.quantity||0
+        cart:user?.quantity||0,
+        role:user?.role||1
       },
     })
 

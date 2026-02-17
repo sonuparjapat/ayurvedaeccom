@@ -64,6 +64,9 @@ export default function AdminLayout({
           <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />}>
             Orders
           </MenuItem>
+             <MenuItem href="/admin/categories" icon={<ShoppingCart size={18} />}>
+            Categories
+          </MenuItem>
      <MenuItem href="/admin/invoices" icon={<List size={18} />}>
             Invoices
           </MenuItem>

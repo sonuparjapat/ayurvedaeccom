@@ -68,7 +68,8 @@ const initDB = async () => {
 
         sku VARCHAR(100),
 
-        category_name VARCHAR(100),
+        category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+        category_name varchar(150) default null,
 
         brand VARCHAR(100),
 
@@ -194,8 +195,24 @@ courier_name VARCHAR(50)
   new_status INTEGER DEFAULT 0,
   changed_by INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)`)
+)`);
+/* ================= CATEGORIES ================= */
 
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS categories (
+
+    id SERIAL PRIMARY KEY,
+
+    name VARCHAR(100) NOT NULL,
+
+   
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+  )
+`);
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
     /* ================= ORDER ITEMS ================= */
 

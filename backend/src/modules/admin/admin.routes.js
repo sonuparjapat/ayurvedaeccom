@@ -17,6 +17,12 @@ router.put(
   allowRoles(1, 2),
   controller.updateUser
 )
+router.post(
+  "/create",
+  auth,
+  allowRoles(1, 2),
+  controller.createUser
+)
 
 router.get('/users',auth,
   allowRoles(1, 2),

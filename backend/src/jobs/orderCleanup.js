@@ -11,7 +11,7 @@ const startOrderCleanup = () => {
       const result = await pool.query(`
         UPDATE orders
         SET status='cancelled'
-        WHERE status='pending'
+        WHERE status='0'
         AND expires_at < NOW()
       `);
 

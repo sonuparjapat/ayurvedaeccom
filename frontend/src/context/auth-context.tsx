@@ -92,7 +92,7 @@ const [statusList,setStatusList]=useState<any>([])
       console.log(err)
         if (err?.response?.status === 401) {
       notify.error('Please login first')
-      window.location.href = '/login'
+      // window.location.href = '/auth'
     } 
     else {
       notify.error('Failed to load cart')
@@ -127,8 +127,13 @@ if(res?.status==200){
 
         if (res.status==200) {
           setLoginUserdata(res.data.user)
-          fetchCart(res.data.user.id)
-              getintdata(res?.data?.user)
+          if(res?.data?.user?.role==3){
+fetchCart(res.data.user.id)
+          }
+          if([1,2]?.includes(Number(res?.data?.user?.role))){
+getintdata(res?.data?.user)
+          }
+              
         }else if(res?.response?.status==401){
           router.push("/")
         }
@@ -161,7 +166,10 @@ if(res?.status==200){
 
   const login = (data: User) => {
     setLoginUserdata(data)
-    fetchCart(data.id)
+    if(data?.role==3){
+  fetchCart(data.id)
+    }
+  
     getintdata()
   }
 
