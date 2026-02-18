@@ -8,7 +8,7 @@ const startJobs = () => {
 
 };
 cleanOrders = async () => {
-
+console.log("cleaning...")
   try {
 
     await pool.query(`
