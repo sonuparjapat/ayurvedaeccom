@@ -162,7 +162,7 @@ fetchCart(loginuserdata?.id)
       if (err?.response?.status === 401) {
 
         toast.error('Please login first')
-        router.push('/login')
+        router.push('/auth')
 
       } else if (err?.response?.data?.message) {
 

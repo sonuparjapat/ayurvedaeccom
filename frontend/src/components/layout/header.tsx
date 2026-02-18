@@ -31,7 +31,7 @@ console.log(loginuserdata,"loginuserdata")
 
 
   const handleLogout = () => {
-   logout()
+   logout("users")
   }
 
   const categories = [

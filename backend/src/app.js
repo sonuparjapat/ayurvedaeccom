@@ -40,8 +40,9 @@ app.use(express.urlencoded({ extended: true }));
 /* ================= ROUTES ================= */
 
 app.use("/api/auth", authRoutes);
-app.use("/api/admin", adminRoutes);
 app.use("/api/admin/settings", settingRoutes);
+app.use("/api/admin", adminRoutes);
+
 app.use("/api/shop", productRoutes);
 
 app.use("/api/payments", paymentRoutes);

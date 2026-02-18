@@ -7,5 +7,22 @@ const startJobs = () => {
   startOrderCleanup();
 
 };
+cleanOrders = async () => {
+
+  try {
+
+    await pool.query(`
+      DELETE FROM orders
+      WHERE
+        payment_status='unpaid'
+        AND expires_at < NOW()
+    `);
+
+    console.log("Expired orders cleaned");
+
+  } catch (err) {
+    console.error("Cleanup error:", err);
+  }
+}
 
 module.exports = startJobs;

@@ -66,7 +66,10 @@ exports.getCart = async (req,res)=>{
       p.name,
       p.price,
       p.images,
-      p.inventory
+      p.inventory,
+      p.gst_percent,
+      p.category_name,
+      p.category_id
 
     FROM cart c
     JOIN products p

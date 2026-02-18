@@ -146,12 +146,7 @@ const {login,loginuserdata,logout}=useAuth()
     setTimeout(() => setLoading(false), 0)
   }, [router])
 
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn')
-    localStorage.removeItem('user')
-    router.push('/')
-  }
-  console.log(loginuserdata)
+
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -232,7 +227,7 @@ const {login,loginuserdata,logout}=useAuth()
                 </div>
               </div>
               
-              <Button variant="outline" onClick={logout}>
+              <Button variant="outline" onClick={()=>logout("users")}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>

@@ -1,4 +1,6 @@
 'use client'
+
+import { useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -12,7 +14,10 @@ import {
   LogOut,
   Settings,
   List,
+  Menu,
+  X,
 } from 'lucide-react'
+import { useAuth } from '@/context/auth-context'
 
 
 export default function AdminLayout({
@@ -22,29 +27,68 @@ export default function AdminLayout({
 }) {
 
   const router = useRouter()
+    const {logout } = useAuth()
+
+  /* Mobile Menu State */
+  const [mobileOpen, setMobileOpen] = useState(false)
 
 
-  const logout = () => {
-    localStorage.clear()
-    router.push('/admin/auth')
+  const logoutfun = () => {
+   logout("auth")
   }
 
 
   return (
+
     <div className="min-h-screen w-full border border-red-400 flex bg-gray-100">
-<Toaster position="top-right" />
 
-      {/* ========== SIDEBAR ========== */}
+      <Toaster position="top-right" />
 
-      <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col">
+
+      {/* ================= MOBILE OVERLAY ================= */}
+
+      {mobileOpen && (
+
+        <div
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+        />
+
+      )}
+
+
+      {/* ================= SIDEBAR ================= */}
+
+      <aside
+
+        className={`
+
+          w-64 bg-slate-900 text-white flex flex-col
+          fixed md:static inset-y-0 left-0 z-50
+
+          transform transition-transform duration-300
+
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:translate-x-0
+
+        `}
+      >
 
         {/* Logo */}
 
-        <div className="h-16 flex items-center justify-center border-b border-slate-700">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
 
           <h1 className="text-xl font-bold tracking-wide">
             AyurVeda Admin
           </h1>
+
+          {/* Close (Mobile) */}
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="md:hidden"
+          >
+            <X size={22} />
+          </button>
 
         </div>
 
@@ -64,16 +108,20 @@ export default function AdminLayout({
           <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />}>
             Orders
           </MenuItem>
-             <MenuItem href="/admin/categories" icon={<ShoppingCart size={18} />}>
+
+          <MenuItem href="/admin/categories" icon={<ShoppingCart size={18} />}>
             Categories
           </MenuItem>
-     <MenuItem href="/admin/invoices" icon={<List size={18} />}>
+
+          <MenuItem href="/admin/invoices" icon={<List size={18} />}>
             Invoices
           </MenuItem>
+
           <MenuItem href="/admin/users" icon={<Users size={18} />}>
             Users
           </MenuItem>
-             <MenuItem href="/admin/settings" icon={<Settings size={18} />}>
+
+          <MenuItem href="/admin/settings" icon={<Settings size={18} />}>
             Settings
           </MenuItem>
 
@@ -89,7 +137,7 @@ export default function AdminLayout({
         <div className="p-4 border-t border-slate-700">
 
           <button
-            onClick={logout}
+            onClick={logoutfun}
             className="flex items-center gap-2 text-red-400 hover:text-red-300"
           >
             <LogOut size={18} />
@@ -101,18 +149,32 @@ export default function AdminLayout({
       </aside>
 
 
-      {/* ========== MAIN ========== */}
-<div className='w-full'>
-      <div className="flex justify-between w-full border border-green-400">
+
+      {/* ================= MAIN ================= */}
+
+      <div className="w-full flex flex-col md:ml-0">
 
 
-        {/* TOP BAR */}
+        {/* ================= TOP BAR ================= */}
 
-        <header className="h-16 bg-white border-b flex items-center justify-between px-6  w-full">
+        <header className="h-16 bg-white border-b flex items-center justify-between px-6 w-full">
 
-          <h2 className="font-semibold text-lg">
-            Admin Panel
-          </h2>
+          <div className="flex items-center gap-3">
+
+            {/* Hamburger (Mobile) */}
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="md:hidden"
+            >
+              <Menu size={24} />
+            </button>
+
+            <h2 className="font-semibold text-lg">
+              Admin Panel
+            </h2>
+
+          </div>
+
 
           <p className="text-sm text-gray-500">
             Welcome, Admin
@@ -120,22 +182,25 @@ export default function AdminLayout({
 
         </header>
 
-  </div>
-  
+
+
+        {/* ================= CONTENT ================= */}
+
         <main className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
 
           {children}
 
         </main>
-  </div>
-        {/* PAGE CONTENT */}
 
 
-    
+      </div>
+
 
     </div>
+
   )
 }
+
 
 
 /* ---------- MENU ITEM ---------- */
@@ -145,7 +210,9 @@ function MenuItem({
   icon,
   children,
 }: any) {
+
   return (
+
     <Link
       href={href}
       className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-800 transition"
@@ -153,5 +220,6 @@ function MenuItem({
       {icon}
       <span>{children}</span>
     </Link>
+
   )
 }

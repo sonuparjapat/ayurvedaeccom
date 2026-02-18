@@ -3,6 +3,7 @@ const pool = require('../../config/db')
 /* ================= GET ALL ================= */
 
 exports.getAllSettings = async (req, res) => {
+  console.log("HIIIIIIIIIIIIIIIIIIIIIIIIII")
   try {
 
     const { rows } = await pool.query(

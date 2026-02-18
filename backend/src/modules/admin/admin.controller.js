@@ -313,8 +313,8 @@ exports.users = async (req, res) => {
 
 exports.logout = (req, res) => {
 
-  res.clearCookie("adminToken")
-  res.clearCookie("userToken")
+  res.clearCookie("token")
+
 
   res.json({ success: true })
 }

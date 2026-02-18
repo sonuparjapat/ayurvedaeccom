@@ -1,10 +1,9 @@
 const jwt = require("jsonwebtoken")
 
 exports.auth = (req, res, next) => {
-console.log(req.cookies.userToken,"request coming")
+
   const token =
-    req.cookies.adminToken ||
-    req.cookies.userToken
+    req.cookies.token
 
   if (!token)
     return res.status(401).json({ message: "Unauthorized" })

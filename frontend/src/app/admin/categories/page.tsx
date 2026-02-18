@@ -33,6 +33,7 @@ export default function AdminCategories() {
   const [openModal, setOpenModal] = useState(false)
   const [editData, setEditData] = useState<Category | null>(null)
   const [name, setName] = useState('')
+  const [gstpercent,setGstPercent]=useState<any>(0)
   const [saving, setSaving] = useState(false)
 
   const loadCategories = async () => {
@@ -92,10 +93,10 @@ export default function AdminCategories() {
       setSaving(true)
 
       if (editData) {
-        await axios.put(`/categories/${editData.id}`, { name: name.trim() })
+        await axios.put(`/categories/${editData.id}`, { name: name.trim(),gst_percent:gstpercent })
         toast.success('Category updated')
       } else {
-        await axios.post('/categories', { name: name.trim() })
+        await axios.post('/categories', { name: name.trim(),gst_percent:gstpercent  })
         toast.success('Category created')
       }
 
@@ -296,7 +297,27 @@ export default function AdminCategories() {
               </p>
 
             </div>
+   <div>
+              <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+               Gst Percent
+              </label>
 
+              <input
+                value={gstpercent}
+                onChange={e => setGstPercent(e.target.value)}
+                placeholder="18"
+                min={0}
+                type="number"
+               
+                className="w-full mt-2 rounded-lg px-4 py-3 text-sm
+                bg-[#141821] border border-slate-700
+                text-slate-200 placeholder:text-slate-500
+                focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+
+             
+
+            </div>
           </div>
         </AppModal>
 

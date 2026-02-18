@@ -34,6 +34,7 @@ export default function AdminProductForm({
 
     category_name: '',
     category_id:"",
+    gst_percent:0,
     brand: '',
 
     status: 'draft',
@@ -303,7 +304,8 @@ export default function AdminProductForm({
                 setForm({
                   ...form,
                   category_id: e.target.value,
-                  category_name:categories?.find((item:any)=>item?.id==e.target.value)?.name
+                  category_name:categories?.find((item:any)=>item?.id==e.target.value)?.name,
+                  gst_percent:categories?.find((item:any)=>item?.id==e.target.value)?.gst_percent,
                 })
               }
               className="
@@ -329,6 +331,21 @@ export default function AdminProductForm({
               ))}
 
             </select>
+
+          </div>
+            <div className="space-y-1">
+
+            <label className="text-sm font-medium">
+              GST Percent (%)
+            </label>
+ <Input
+            // label="Brand"
+            value={form.gst_percent}
+            readOnly={true}
+          
+          />
+            
+
 
           </div>
 

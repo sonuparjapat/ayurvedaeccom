@@ -165,7 +165,7 @@ exports.userLogin = async (req, res) => {
     { expiresIn: "1h" }
     )
 
-    res.cookie("userToken", token, {
+    res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
@@ -250,7 +250,7 @@ exports.verifyEmail = async (req, res) => {
 
 exports.logout = async (req, res) => {
 
-  res.clearCookie("userToken")
+  res.clearCookie("token")
 
   res.json({ message: "Logged out" })
 }

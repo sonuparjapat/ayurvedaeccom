@@ -8,7 +8,7 @@ import {
   useState,
   ReactNode,
 } from "react"
-
+import { usePathname } from 'next/navigation'
 import axios from "@/lib/axios"
 import { notify } from "@/app/utils/notify"
 
@@ -63,7 +63,9 @@ export const AuthProvider = ({
   const [cartdata, setCartData] = useState<any>({})
 const [cartloading,setCartLoading]=useState<boolean>(false)
 const [statusList,setStatusList]=useState<any>([])
+const [settings,setSettings]=useState<any>([])
   const router = useRouter()
+  const pathname=usePathname()
 
   /* ======================
      Fetch Cart
@@ -92,7 +94,7 @@ const [statusList,setStatusList]=useState<any>([])
       console.log(err)
         if (err?.response?.status === 401) {
       notify.error('Please login first')
-      // window.location.href = '/auth'
+      window.location.href = '/'
     } 
     else {
       notify.error('Failed to load cart')
@@ -101,12 +103,30 @@ const [statusList,setStatusList]=useState<any>([])
       setCartLoading(false)
     }
   }
+  const getsettings = async () => {
 
+
+    try {
+  
+      const res = await axios.get("/admin/settings")
+
+      setSettings(res?.data?.data||[])
+     
+
+   
+
+    } catch (err:any) {
+      console.log(err)
+      
+   
+    }
+  }
   /* ======================
      Load User
   ====================== */
 const getintdata=async()=>{
   try{
+    await getsettings()
 const res=await axios.get('/admin/status_codes')
 if(res?.status==200){
   setStatusList(res?.data?.data)
@@ -118,13 +138,13 @@ if(res?.status==200){
   }
 }
   useEffect(() => {
-
+console.log(pathname,"pathname")
     const fetchUser = async () => {
-
+if(pathname!="/adminauth"&&pathname!="/auth")
       try {
-
+await getsettings()
         const res:any = await axios.get("/users/me")
-
+console.log(res,"response")
         if (res.status==200) {
           setLoginUserdata(res.data.user)
           if(res?.data?.user?.role==3){
@@ -132,15 +152,19 @@ fetchCart(res.data.user.id)
           }
           if([1,2]?.includes(Number(res?.data?.user?.role))){
 getintdata(res?.data?.user)
+
           }
               
-        }else if(res?.response?.status==401){
-          router.push("/")
         }
 
       } catch (err) {
         setLoginUserdata(null)
-      } finally {
+      if(err?.response?.status==401){
+    notify.error('Please login first')
+     
+          router.push("/")}}
+        
+       finally {
         setLoading(false)
       }
     }
@@ -164,32 +188,36 @@ getintdata(res?.data?.user)
      Login
   ====================== */
 
-  const login = (data: User) => {
+  const login = async(data: User) => {
+    await getintdata()
     setLoginUserdata(data)
     if(data?.role==3){
   fetchCart(data.id)
     }
   
-    getintdata()
+   
   }
 
   /* ======================
      Logout
   ====================== */
 
-  const logout = async () => {
+  const logout = async (type:any) => {
 
     try {
 
-      const res = await axios.post("/users/logout")
+      const res = await axios.post(`/${type}/logout`)
 
       if (res.status === 200) {
-
-        setLoginUserdata(null)
-        setCartData([])
+if(type=="users"){
+  setCartData([])
         setTotalCartProducts(0)
 
         router.push("/auth")
+}else{
+  router.push("/adminauth")}
+        setLoginUserdata(null)
+      
       }
 
     } catch (err) {
@@ -214,7 +242,8 @@ getintdata(res?.data?.user)
         cartdata,
         cartloading,setCartLoading,
         statusList,
-        setStatusList
+        setStatusList,
+    settings
       }}
     >
       {children}

@@ -4,27 +4,49 @@ const { v4: uuid } = require('uuid')
 
 
 
-/* GET ALL */
+/* GET ALL PUBLIC PRODUCTS - ADVANCED FILTER VERSION */
 
 exports.getAllPublic = async (req, res) => {
-
   try {
+    /* ================= VALIDATION ================= */
 
-    const page = Number(req.query.page) || 1
-    const limit = Number(req.query.limit) || 9
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 9))
 
-    const search = req.query.search || ''
+    const search = req.query.search?.trim() || ''
     const category = req.query.category || 'all'
+    const brand = req.query.brand || null
+
+    const minPrice = parseFloat(req.query.minPrice) || 0
+    const maxPrice = parseFloat(req.query.maxPrice) || null
+
+    const rating = parseFloat(req.query.rating) || 0
+    const inStock = req.query.inStock === 'true'
+    const discountOnly = req.query.discount === 'true'
+
+    const sortBy = req.query.sortBy || 'created_at'
+    const sortOrder = req.query.sortOrder === 'asc' ? 'ASC' : 'DESC'
 
     const offset = (page - 1) * limit
 
+    /* ================= SAFE SORT WHITELIST ================= */
 
-    /* ================= FILTER ================= */
+    const allowedSortFields = [
+      'created_at',
+      'price',
+      'averagerating',
+      'name',
+    ]
 
-    let where = `WHERE 1=1`
+    const orderField = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : 'created_at'
+
+    /* ================= QUERY BUILD ================= */
+
+    let where = `WHERE status = 'active'`
     let values = []
     let i = 1
-
 
     if (search) {
       where += ` AND name ILIKE $${i}`
@@ -32,68 +54,86 @@ exports.getAllPublic = async (req, res) => {
       i++
     }
 
-
     if (category !== 'all') {
       where += ` AND category_name = $${i}`
       values.push(category)
       i++
     }
 
+    if (brand) {
+      where += ` AND brand = $${i}`
+      values.push(brand)
+      i++
+    }
 
-    /* ================= DATA ================= */
+    if (minPrice) {
+      where += ` AND price >= $${i}`
+      values.push(minPrice)
+      i++
+    }
 
-    const data = await pool.query(`
+    if (maxPrice) {
+      where += ` AND price <= $${i}`
+      values.push(maxPrice)
+      i++
+    }
 
+    if (rating) {
+      where += ` AND averagerating >= $${i}`
+      values.push(rating)
+      i++
+    }
+
+    if (inStock) {
+      where += ` AND inventory > 0`
+    }
+
+    if (discountOnly) {
+      where += ` AND compareprice IS NOT NULL AND compareprice > price`
+    }
+
+    /* ================= DATA QUERY ================= */
+
+    const dataQuery = `
       SELECT *
       FROM products
-
       ${where}
-
-      ORDER BY created_at DESC
-
+      ORDER BY ${orderField} ${sortOrder}
       LIMIT $${i} OFFSET $${i + 1}
+    `
 
-    `, [
+    const data = await pool.query(dataQuery, [
       ...values,
       limit,
       offset,
     ])
 
+    /* ================= COUNT QUERY ================= */
 
-    /* ================= COUNT ================= */
-
-    const count = await pool.query(`
-
+    const countQuery = `
       SELECT COUNT(*)
       FROM products
-
       ${where}
+    `
 
-    `, values)
-
+    const count = await pool.query(countQuery, values)
 
     res.json({
-
+      success: true,
       products: data.rows,
-
       total: Number(count.rows[0].count),
-
       page,
-
       limit,
-
+      totalPages: Math.ceil(Number(count.rows[0].count) / limit),
     })
 
   } catch (err) {
-
-    console.error(err)
-
+    console.error('Product Fetch Error:', err)
     res.status(500).json({
-      message: 'Fetch failed'
+      success: false,
+      message: 'Failed to fetch products',
     })
-
   }
-
 }
 
 exports.getsingleproduct=async(req,res)=>{

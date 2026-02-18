@@ -28,11 +28,13 @@ import {
   Users,
   Package,
   ShoppingCart,
+  BarChart3,
 } from 'lucide-react'
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/context/auth-context'
 
 
 /* ---------------- TYPES ---------------- */
@@ -80,7 +82,7 @@ export default function AdminDashboard() {
 
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
-
+const {statusList,logout}=useAuth()
 
   /* ---------------- LOAD ---------------- */
 
@@ -102,12 +104,8 @@ export default function AdminDashboard() {
       setRecentOrders(ordersRes.data)
       setTopProducts(productsRes.data)
 
-    } catch (err: any) {
-
-      // if (err?.response?.status === 401) {
-      //   router.push('/admin/auth')
-      // }
-
+    } catch (err) {
+      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -116,13 +114,6 @@ export default function AdminDashboard() {
 
   /* ---------------- LOGOUT ---------------- */
 
-  const handleLogout = async () => {
-    try {
-      await axios.post('/admin/logout')
-    } finally {
-      router.push('/admin/auth')
-    }
-  }
 
 
   /* ---------------- HELPERS ---------------- */
@@ -135,12 +126,17 @@ export default function AdminDashboard() {
   }
 
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status:number) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800'
-      case 'confirmed': return 'bg-blue-100 text-blue-800'
-      case 'shipped': return 'bg-purple-100 text-purple-800'
-      case 'delivered': return 'bg-green-100 text-green-800'
+      case 0: return 'bg-yellow-100 text-yellow-800'
+      case 1: return 'bg-blue-100 text-blue-800'
+      case 2: return 'bg-purple-100 text-purple-800'
+           case 3: return 'bg-yellow-100 text-yellow-800'
+      case 4: return 'bg-green-100 text-green-800'
+           case 5: return 'bg-red-100 text-red-800'
+             case 6: return 'bg-red-100 text-red-800'
+               case 7: return 'bg-red-100 text-red-800'
+                 case 8: return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -163,6 +159,7 @@ if (loading) {
 /* ---------------- UI ---------------- */
 
 return (
+
 <div className="min-h-screen flex flex-col bg-gray-50">
 
 
@@ -205,7 +202,7 @@ return (
           </Link>
         </Button>
 
-        <Button size="sm" variant="outline" onClick={handleLogout}>
+        <Button size="sm" variant="outline" onClick={()=>(logout('auth'))}>
           <LogOut size={15} />
         </Button>
 
@@ -309,8 +306,8 @@ bg="bg-orange-100"
 {o.order_number}
 </p>
 
-<Badge className={getStatusColor(o.status)}>
-{o.status}
+<Badge className={getStatusColor(o?.status)}>
+{statusList?.find((item:any)=>item.code==o.status)?.label}
 </Badge>
 
 <p className="text-xs text-gray-500">
@@ -381,45 +378,57 @@ Stock: {p.stock}
 </TabsContent>
 
 
-{/* OTHER TABS */}
+{/* ORDERS TAB */}
 
 <TabsContent value="orders">
-<AdminPlaceholder title="Order Management" />
+<AdminLinkCard
+title="Order Management"
+desc="Manage orders, shipping and status."
+href="/admin/orders"
+icon={<ShoppingCart />}
+/>
 </TabsContent>
+
+
+{/* PRODUCTS TAB */}
 
 <TabsContent value="products">
 
-<Card>
-
-<CardHeader>
-<CardTitle>Product Management</CardTitle>
-</CardHeader>
-
-<CardContent>
-
-<p className="text-gray-600 mb-3 text-sm">
-Manage all products and stock.
-</p>
-
-<Button asChild size="sm">
-<Link href="/admin/products">
-Open Manager
-</Link>
-</Button>
-
-</CardContent>
-
-</Card>
+<AdminLinkCard
+title="Product Management"
+desc="Manage all products and stock."
+href="/admin/products"
+icon={<Package />}
+/>
 
 </TabsContent>
 
+
+{/* USERS TAB */}
 
 <TabsContent value="users">
-<AdminPlaceholder title="User Management" />
+
+<AdminLinkCard
+title="User Management"
+desc="Manage registered customers."
+href="/admin/users"
+icon={<Users />}
+/>
+
 </TabsContent>
 
+
+{/* ANALYTICS TAB */}
+
 <TabsContent value="analytics">
-<AdminPlaceholder title="Analytics" />
+
+<AdminLinkCard
+title="Analytics"
+desc="View reports and performance."
+href="/admin/analytics"
+icon={<BarChart3 />}
+/>
+
 </TabsContent>
 
 
@@ -430,7 +439,9 @@ Open Manager
 </main>
 
 </div>
+
 )
+
 }
 
 
@@ -481,24 +492,38 @@ function StatCard({ title, value, icon, bg }: any) {
 }
 
 
-function AdminPlaceholder({ title }: any) {
+/* LINK CARD */
+
+function AdminLinkCard({
+  title,
+  desc,
+  href,
+  icon,
+}: any) {
 
   return (
 
     <Card>
 
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          {icon}
+          {title}
+        </CardTitle>
       </CardHeader>
 
       <CardContent>
 
         <p className="text-gray-600 mb-3 text-sm">
-          Module coming soon.
+          {desc}
         </p>
 
-        <Button size="sm">
-          Open {title}
+        <Button asChild size="sm">
+
+          <Link href={href}>
+            Open {title}
+          </Link>
+
         </Button>
 
       </CardContent>

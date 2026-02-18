@@ -59,7 +59,7 @@ exports.getCategories = async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT id, name
+      SELECT id, name,gst_percent
       FROM categories
       WHERE LOWER(name) LIKE LOWER($1)
       ORDER BY id DESC
@@ -114,7 +114,7 @@ exports.getCategoryById = async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT id, name
+      SELECT id, name,gst_percent
       FROM categories
       WHERE id = $1
     `,
@@ -157,7 +157,7 @@ exports.createCategory = async (req, res) => {
 
   try {
 
-    const { name } = req.body
+    const { name,gst_percent } = req.body
 
 
     if (!name || !name.trim()) {
@@ -165,7 +165,7 @@ exports.createCategory = async (req, res) => {
       return sendError(
         res,
         400,
-        'Category name is required'
+        'Please provide Required Details'
       )
 
     }
@@ -208,11 +208,11 @@ exports.createCategory = async (req, res) => {
 
     const result = await pool.query(
       `
-      INSERT INTO categories (name)
-      VALUES ($1)
+      INSERT INTO categories (name,gst_percent)
+      VALUES ($1,$2)
       RETURNING id, name
     `,
-      [name.trim()]
+      [name.trim(),gst_percent||0]
     )
 
 
@@ -245,7 +245,7 @@ exports.updateCategory = async (req, res) => {
   try {
 
     const { id } = req.params
-    const { name } = req.body
+    const { name,gst_percent } = req.body
 
 
     if (!id || isNaN(id)) {
@@ -317,11 +317,11 @@ exports.updateCategory = async (req, res) => {
     const result = await pool.query(
       `
       UPDATE categories
-      SET name=$1
-      WHERE id=$2
+      SET name=$1, gst_percent=$2
+      WHERE id=$3
       RETURNING id, name
     `,
-      [name.trim(), id]
+      [name.trim(),gst_percent||0, id]
     )
 
 
