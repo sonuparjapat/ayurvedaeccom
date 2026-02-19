@@ -472,6 +472,7 @@ export default function CheckoutPage() {
   const [shipping, setShipping] = useState({ name: '', phone: '', address: '' })
        
   const {fetchCart, loginuserdata, cartdata,cartloading,settings}=useAuth()
+  const [paidAmount, setPaidAmount] = useState<number>(0)
 console.log(loginuserdata,"loginuserdata")
   useEffect(() => { fetchCart( loginuserdata?.id) }, [])
 console.log(cartdata,"cartdata",settings,"settings")
@@ -589,7 +590,7 @@ const placeOrder = async () => {
     if (paymentMethod === "cod") {
 
       toast.success("Order placed successfully");
-
+setPaidAmount(total);
       setOrderNo("ORD" + orderId);
 
       setOrderPlaced(true);
@@ -649,7 +650,7 @@ const placeOrder = async () => {
             toast.success("Payment successful");
 
             setOrderNo("ORD" + orderId);
-
+setPaidAmount(total);
             setOrderPlaced(true);
             fetchCart(loginuserdata?.id)
 
@@ -774,7 +775,7 @@ const placeOrder = async () => {
                 Total Paid
               </p>
               <p className="display-font" style={{ fontSize: 44, fontWeight: 300, color: 'var(--gold-light)' }}>
-                ₹{total}
+                ₹{paidAmount}
               </p>
             </motion.div>
 
