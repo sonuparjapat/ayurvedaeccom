@@ -3,6 +3,7 @@ const router = express.Router();
 
 const controller = require("./product.controller");
 const {auth} = require("../../middlewares/auth");
+const upload = require("../../config/multer");
 
 
 
@@ -17,7 +18,7 @@ router.post("/wishlist", auth, controller.toggleWishlist);
 
 router.get("/", auth, controller.getWishlist);
 
-router.delete("/:productId", auth, controller.removeWishlist);
+
 
 router.post('/review',auth,controller.addReview)
 
@@ -25,4 +26,24 @@ router.post('/cart',auth,controller.addToCart)
 
 router.get('/cart',auth,controller.getCart)
 
+
+// Review routes
+router.post(
+  "/addreview",
+  auth,
+  upload.array("images", 5),
+  controller.addOrUpdateReview
+);
+
+router.get(
+  "/getreview/:id",
+  controller.getProductReviews
+);
+
+router.delete(
+  "/review/:id",
+  auth,
+  controller.deleteReview
+);
+router.delete("/:productId", auth, controller.removeWishlist);
 module.exports = router;

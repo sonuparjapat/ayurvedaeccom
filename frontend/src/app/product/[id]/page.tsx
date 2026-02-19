@@ -30,6 +30,8 @@ import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { notify } from '@/app/utils/notify'
 import { useAuth } from '@/context/auth-context'
+import ReviewSection from '@/components/ReviewSection'
+import StarRating from '@/components/StartRatings'
 
 
 /* ================= TYPES ================= */
@@ -68,7 +70,7 @@ export default function ProductDetailPage() {
 
   const [cartLoading, setCartLoading] = useState(false)
   const [liked, setLiked] = useState(false)
- const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata } = useAuth()
+ const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata } = useAuth()
 
 
   /* ================= FETCH ================= */
@@ -97,7 +99,7 @@ export default function ProductDetailPage() {
     }
   }
 
-
+console.log(product, "cccccccccccccccccccccccccccccccccc")
 
   /* ================= HELPERS ================= */
 
@@ -109,23 +111,17 @@ export default function ProductDetailPage() {
     }).format(Number(price))
 
   }
-
-
-  const renderStars = (rating: number) => {
-
-    return [...Array(5)].map((_, i) => (
-
-      <Star
-        key={i}
-        className={`w-5 h-5 ${
-          i < rating
-            ? 'fill-amber-400 text-amber-400'
-            : 'text-gray-300'
-        }`}
-      />
-
-    ))
+ const toggleLike = async (id: string) => {
+    try {
+      await axios.post('/shop/wishlist', { productId: id })
+      notify.success('Wishlist updated')
+      getwishlist()
+    } catch {
+      notify.error('Login required')
+    }
   }
+
+ 
 
 
 
@@ -314,20 +310,25 @@ fetchCart(loginuserdata?.id)
                 )}
 
 
-                <button
-                  onClick={() => setLiked(!liked)}
-                  className="absolute top-5 right-5 w-12 h-12 bg-white rounded-full shadow flex items-center justify-center"
-                >
-
-                  <Heart
-                    className={`${
-                      liked
-                        ? 'fill-red-500 text-red-500'
-                        : 'text-gray-600'
-                    }`}
-                  />
-
-                </button>
+               <button
+                        onClick={() => toggleLike(product.id)}
+                        className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                        style={{
+                          background: 'rgba(255,255,255,0.92)',
+                          backdropFilter: 'blur(4px)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                        }}
+                      >
+  <Heart
+        size={18}
+        strokeWidth={2}
+        className="transition-all duration-200"
+        fill={wishlistdata?.items?.find((item:any)=>item?.id==product?.id)?.id ? "red" : "transparent"}
+        color={wishlistdata?.items?.find((item:any)=>item?.id==product?.id)?.id  ? "red" : "var(--terracotta)"}
+      />
+                      </button>
 
               </div>
 
@@ -390,16 +391,18 @@ fetchCart(loginuserdata?.id)
 
 
               {/* RATING */}
+  <div className="flex items-center gap-2 mb-4">
+                        <StarRating
+                          productId={product.id}
+                          avgRating={product.averagerating}
+                          refresh={fetchProduct}
+                        />
+                        <span className="text-xs font-body" style={{ color: 'var(--light-brown)' }}>
+                          ({product.reviewcount})
+                        </span>
+                      </div>
 
-              <div className="flex items-center gap-3">
-
-                {renderStars(rating)}
-
-                <span className="text-gray-500">
-                  ({product.reviewcount})
-                </span>
-
-              </div>
+            
 
 
 
@@ -591,7 +594,7 @@ fetchCart(loginuserdata?.id)
         </div>
 
       </div>
-
+<ReviewSection productId={product.id} fetchProduct={fetchProduct} product={product} loginuserdata={loginuserdata}/>
 
       <Footer />
 

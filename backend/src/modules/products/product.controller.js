@@ -1,5 +1,6 @@
 const pool = require('../../config/db')
 const { v4: uuid } = require('uuid')
+const { deleteFromAWS, uploadImageToAWS } = require('../../utils/awsImageUpload')
 
 
 
@@ -559,7 +560,220 @@ console.log(req.body, "chec")
   res.json({ success: true })
 
 }
+exports.addOrUpdateReview = async (req, res) => {
+  const userId = req.user.id;
 
+  const {
+    productId,
+    rating,
+    comment,
+    oldImages = "[]",
+  } = req.body;
+
+  let uploaded = [];
+
+  try {
+    if (!productId || !rating) {
+      return res.status(400).json({
+        message: "Product & rating required",
+      });
+    }
+
+    const oldImgs = JSON.parse(oldImages || "[]");
+
+    /* ============ GET OLD REVIEW ============ */
+
+    const exist = await pool.query(
+      `SELECT images FROM reviews
+       WHERE user_id=$1 AND product_id=$2`,
+      [userId, productId]
+    );
+
+    const dbImages = exist.rowCount
+      ? exist.rows[0].images || []
+      : [];
+
+    /* ============ DELETE REMOVED ============ */
+
+    const toDelete = dbImages.filter(
+      img => !oldImgs.includes(img)
+    );
+
+    for (const img of toDelete) {
+      await deleteFromAWS(img);
+    }
+
+    /* ============ UPLOAD NEW ============ */
+
+    let newImages = [];
+
+    if (req.files?.length) {
+      for (const file of req.files) {
+        const url = await uploadImageToAWS(file);
+
+        uploaded.push(url);
+        newImages.push(url);
+      }
+    }
+
+    const finalImages = [
+      ...oldImgs,
+      ...newImages,
+    ];
+
+    /* ============ UPSERT ============ */
+
+    await pool.query(
+      `
+      INSERT INTO reviews
+      (user_id,product_id,rating,comment,images)
+
+      VALUES($1,$2,$3,$4,$5)
+
+      ON CONFLICT(user_id,product_id)
+
+      DO UPDATE SET
+        rating=$3,
+        comment=$4,
+        images=$5
+    `,
+      [
+        userId,
+        productId,
+        Number(rating),
+        comment || "",
+        JSON.stringify(finalImages),
+      ]
+    );
+
+    /* ============ UPDATE PRODUCT ============ */
+
+    await pool.query(
+      `
+      UPDATE products SET
+
+        averagerating = (
+          SELECT AVG(rating)
+          FROM reviews
+          WHERE product_id=$1
+        ),
+
+        reviewcount = (
+          SELECT COUNT(*)
+          FROM reviews
+          WHERE product_id=$1
+        )
+
+      WHERE id=$1
+    `,
+      [productId]
+    );
+
+    res.json({
+      success: true,
+      message: "Review saved",
+    });
+
+  } catch (err) {
+    console.error(err);
+
+    // rollback uploads
+    for (const url of uploaded) {
+      await deleteFromAWS(url);
+    }
+
+    res.status(500).json({
+      message: "Review failed",
+    });
+  }
+};
+
+/* ================= GET PRODUCT REVIEWS ================= */
+
+exports.getProductReviews = async (req, res) => {
+  const productId = req.params.id;
+
+  const result = await pool.query(
+    `
+    SELECT
+      r.*,
+      u.name
+
+    FROM reviews r
+    JOIN users u ON r.user_id=u.id
+
+    WHERE r.product_id=$1
+
+    ORDER BY r.created_at DESC
+  `,
+    [productId]
+  );
+
+  res.json({
+    success: true,
+    data: result.rows,
+  });
+};
+
+/* ================= DELETE ================= */
+
+exports.deleteReview = async (req, res) => {
+  const userId = req.user.id;
+  const id = req.params.id;
+
+  try {
+    const review = await pool.query(
+      `
+      DELETE FROM reviews
+      WHERE id=$1 AND user_id=$2
+      RETURNING images, product_id
+    `,
+      [id, userId]
+    );
+
+    if (!review.rowCount) {
+      return res.status(404).json({
+        message: "Not found",
+      });
+    }
+
+    /* delete aws images */
+    for (const img of review.rows[0].images || []) {
+      await deleteFromAWS(img);
+    }
+
+    /* update rating */
+    await pool.query(
+      `
+      UPDATE products SET
+
+        averagerating = (
+          SELECT COALESCE(AVG(rating),0)
+          FROM reviews
+          WHERE product_id=$1
+        ),
+
+        reviewcount = (
+          SELECT COUNT(*)
+          FROM reviews
+          WHERE product_id=$1
+        )
+
+      WHERE id=$1
+    `,
+      [review.rows[0].product_id]
+    );
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: "Delete failed",
+    });
+  }
+};
 
 /* ================== CART ================== */
 

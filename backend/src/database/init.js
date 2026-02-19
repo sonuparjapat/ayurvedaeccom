@@ -99,7 +99,7 @@ const initDB = async () => {
         rating INT CHECK (rating BETWEEN 1 AND 5),
         comment TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, product_id)
+        UNIQUE(user_id, product_id),images JSONB DEFAULT '[]'
       )
     `);
 
