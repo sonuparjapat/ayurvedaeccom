@@ -43,7 +43,7 @@ interface AuthContextType {
    Context
 ====================== */
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<any | undefined>(undefined)
 
 /* ======================
    Provider
@@ -64,6 +64,8 @@ export const AuthProvider = ({
 const [cartloading,setCartLoading]=useState<boolean>(false)
 const [statusList,setStatusList]=useState<any>([])
 const [settings,setSettings]=useState<any>([])
+const [wishlistdata,setWishlistdata]=useState<any>({loading:false})
+
   const router = useRouter()
   const pathname=usePathname()
 
@@ -74,7 +76,7 @@ const [settings,setSettings]=useState<any>([])
   const fetchCart = async (id: number, value?: boolean) => {
 
     if (!id) return
-
+await getwishlist()
     try {
       setCartLoading(true)
       const res = await axios.get("/cart")
@@ -135,6 +137,24 @@ if(res?.status==200){
 }
   }catch(err:any){
     console.log("something went wrong please try after some time")
+  }
+}
+const getwishlist=async(params?:any)=>{
+  setWishlistdata((pre:any)=>({...pre,loading:true}))
+  try{
+const wishlistres=await axios.get('/shop',params&&params)
+
+setWishlistdata({
+      items: wishlistres.data.data||[],
+ loading:false,
+      totalItems:wishlistres?.data?.pagination?.totalPages
+    })
+  }catch(err){
+    if(err?.response?.status==401){
+      router.push('/')
+    }
+  }finally{
+      setWishlistdata((pre:any)=>({...pre,loading:false}))
   }
 }
   useEffect(() => {
@@ -245,7 +265,10 @@ if(type=="users"){
         cartloading,setCartLoading,
         statusList,
         setStatusList,
-    settings
+    settings,
+wishlistdata,
+    setWishlistdata,
+    getwishlist,
       }}
     >
       {children}

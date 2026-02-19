@@ -35,8 +35,8 @@ export default function StarRating({
       refresh()
       toast.success('Thanks for rating ⭐')
 
-    } catch {
-
+    } catch(err) {
+console.log(err,"eror")
       toast.error('Please login first')
 
     }

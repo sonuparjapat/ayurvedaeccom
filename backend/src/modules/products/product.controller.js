@@ -277,41 +277,232 @@ exports.getAllPublic = async (req, res) => {
 
 
 
-/* ================== WISHLIST ================== */
+/* ===============================
+   TOGGLE WISHLIST (ADD / REMOVE)
+================================= */
 
-// Toggle Like
 exports.toggleWishlist = async (req, res) => {
+  const client = await pool.connect();
 
-  const userId = req.user.id
-  const { productId } = req.body
+  try {
+    const userId = req.user?.id;
+    const { productId } = req.body;
 
+    /* ================= VALIDATION ================= */
 
-  const exist = await pool.query(
-    `SELECT * FROM wishlist WHERE user_id=$1 AND product_id=$2`,
-    [userId, productId]
-  )
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
 
+    if (!productId || isNaN(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product id",
+      });
+    }
 
-  if (exist.rowCount) {
+    await client.query("BEGIN");
 
-    await pool.query(
-      `DELETE FROM wishlist WHERE user_id=$1 AND product_id=$2`,
+    /* ================= CHECK PRODUCT ================= */
+
+    const productCheck = await client.query(
+      `SELECT id FROM products WHERE id=$1 AND status='active'`,
+      [productId]
+    );
+
+    if (!productCheck.rowCount) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    /* ================= CHECK EXIST ================= */
+
+    const exist = await client.query(
+      `SELECT id FROM wishlist WHERE user_id=$1 AND product_id=$2`,
       [userId, productId]
-    )
+    );
 
-    return res.json({ liked: false })
+    /* ================= REMOVE ================= */
 
+    if (exist.rowCount > 0) {
+      await client.query(
+        `DELETE FROM wishlist WHERE user_id=$1 AND product_id=$2`,
+        [userId, productId]
+      );
+
+      await client.query("COMMIT");
+
+      return res.status(200).json({
+        success: true,
+        liked: false,
+        message: "Removed from wishlist",
+      });
+    }
+
+    /* ================= INSERT ================= */
+
+    await client.query(
+      `INSERT INTO wishlist (user_id, product_id) VALUES ($1,$2)`,
+      [userId, productId]
+    );
+
+    await client.query("COMMIT");
+
+    res.status(201).json({
+      success: true,
+      liked: true,
+      message: "Added to wishlist",
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+
+    console.error("Wishlist Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+
+  } finally {
+    client.release();
   }
+};
 
+/* ===============================
+   GET USER WISHLIST
+================================= */
 
-  await pool.query(
-    `INSERT INTO wishlist VALUES($1,$2,$3)`,
-    [uuid(), userId, productId]
-  )
+exports.getWishlist = async (req, res) => {
+  try {
+    const userId = req.user?.id;
 
-  res.json({ liked: true })
+    let { page = 1, limit = 10, search = "" } = req.query;
 
-}
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    const offset = (page - 1) * limit;
+
+    /* ================= QUERY ================= */
+
+    const query = `
+      SELECT
+        w.id AS wishlist_id,
+
+        p.id,
+        p.name,
+        p.slug,
+        p.price,
+        p.compareprice,
+        p.images,
+        p.inventory,
+        p.status,
+        p.averagerating,
+        p.category_name,
+        p.reviewcount
+
+      FROM wishlist w
+
+      JOIN products p
+        ON w.product_id = p.id
+
+      WHERE
+        w.user_id = $1
+        AND p.status='active'
+        AND p.name ILIKE $2
+
+      ORDER BY w.created_at DESC
+
+      LIMIT $3 OFFSET $4
+    `;
+
+    const result = await pool.query(query, [
+      userId,
+      `%${search}%`,
+      limit,
+      offset,
+    ]);
+
+    /* ================= COUNT ================= */
+
+    const countQuery = `
+      SELECT COUNT(*)
+      FROM wishlist w
+      JOIN products p ON w.product_id=p.id
+      WHERE w.user_id=$1
+      AND p.status='active'
+      AND p.name ILIKE $2
+    `;
+
+    const countResult = await pool.query(countQuery, [
+      userId,
+      `%${search}%`,
+    ]);
+
+    const total = parseInt(countResult.rows[0].count);
+
+    res.status(200).json({
+      success: true,
+      data: result.rows,
+
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+
+  } catch (error) {
+    console.error("Get Wishlist Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+exports.removeWishlist = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { productId } = req.params;
+
+    const result = await pool.query(
+      `DELETE FROM wishlist
+       WHERE user_id=$1 AND product_id=$2
+       RETURNING id`,
+      [userId, productId]
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({
+        success: false,
+        message: "Item not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Removed",
+    });
+
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
 
 
 /* ================== RATINGS ================== */
@@ -321,26 +512,25 @@ exports.addReview = async (req, res) => {
   const userId = req.user.id
   const { productId, rating, comment } = req.body
 
-
+console.log(req.body, "chec")
   await pool.query(`
 
     INSERT INTO reviews
-    (id,user_id,product_id,rating,comment)
+    (user_id,product_id,rating,comment)
 
-    VALUES($1,$2,$3,$4,$5)
+    VALUES($1,$2,$3,$4)
 
     ON CONFLICT(user_id,product_id)
 
     DO UPDATE SET
-      rating=$4,
-      comment=$5
+      rating=$3,
+      comment=$4
 
   `, [
-    uuid(),
     userId,
     productId,
-    rating,
-    comment,
+    Number(rating),
+    comment||"",
   ])
 
 

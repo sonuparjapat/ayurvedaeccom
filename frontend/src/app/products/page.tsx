@@ -79,9 +79,9 @@ export default function ProductsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
 
-  const { handleCart, fetchCart, cartdata, loginuserdata } = useAuth()
+  const { handleCart, fetchCart, cartdata, loginuserdata,getwishlist } = useAuth()
   const router = useRouter()
-
+const {wishlistdata}=useAuth()
   /* ---------- FETCH ---------- */
   useEffect(() => {
     fetchCategories()
@@ -144,6 +144,7 @@ export default function ProductsPage() {
     try {
       await axios.post('/shop/wishlist', { productId: id })
       notify.success('Wishlist updated')
+      getwishlist()
     } catch {
       notify.error('Login required')
     }
@@ -176,7 +177,7 @@ export default function ProductsPage() {
     setSortOrder('desc')
     setPage(1)
   }
-
+console.log(wishlistdata,"wishlistdata")
   const hasActiveFilters = minPrice || maxPrice || rating !== '0' || inStock || discount || sortBy !== 'created_at'
 
   /* ================= UI ================= */
@@ -735,7 +736,13 @@ export default function ProductsPage() {
                           boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
                         }}
                       >
-                        <Heart size={15} style={{ color: 'var(--terracotta)' }} />
+  <Heart
+        size={18}
+        strokeWidth={2}
+        className="transition-all duration-200"
+        fill={wishlistdata?.items?.find((item:any)=>item?.id==product?.id)?.id ? "red" : "transparent"}
+        color={wishlistdata?.items?.find((item:any)=>item?.id==product?.id)?.id  ? "red" : "var(--terracotta)"}
+      />
                       </button>
                     </div>
 

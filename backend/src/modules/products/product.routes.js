@@ -10,7 +10,14 @@ const {auth} = require("../../middlewares/auth");
 router.get("/public", controller.getAllPublic)
 router.get("/public/:id",controller.getsingleproduct)
 router.get("/categories", controller.getCategories)
-router.post('/wishlist',auth, controller.toggleWishlist)
+
+/* =================wishlist ROUTES ================= */
+
+router.post("/wishlist", auth, controller.toggleWishlist);
+
+router.get("/", auth, controller.getWishlist);
+
+router.delete("/:productId", auth, controller.removeWishlist);
 
 router.post('/review',auth,controller.addReview)
 
