@@ -28,6 +28,7 @@ import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 
 import axios from '@/lib/axios'
+import { useAuth } from '@/context/auth-context'
 
 
 export default function AdminAuthPage() {
@@ -44,6 +45,7 @@ export default function AdminAuthPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [successMessage, setSuccessMessage] = useState('')
+  const {login}=useAuth()
 
 
   /* ---------------- VALIDATION ---------------- */
@@ -91,19 +93,16 @@ export default function AdminAuthPage() {
       })
 
 
-      /* Save Token */
+ 
 
-      localStorage.setItem('adminToken', res.data.token)
-      localStorage.setItem('isAdminLoggedIn', 'true')
-      localStorage.setItem('adminUser', JSON.stringify(res.data.admin))
+if(res?.status==200){
+setSuccessMessage('Login successful! Redirecting...')
+login(res?.data?.data)
 
-
-      setSuccessMessage('Login successful! Redirecting...')
-
-
-      setTimeout(() => {
         router.push('/admin/dashboard')
-      }, 1200)
+}
+      
+
 
 
     } catch (err: any) {

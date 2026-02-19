@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken")
 
 exports.admin  = (req, res, next) => {
 
-  const token = req.cookies.adminToken
+  const token = req.cookies.token
 
   if (!token) {
     return res.status(401).json({ message: "Not authenticated" })

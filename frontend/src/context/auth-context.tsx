@@ -140,7 +140,9 @@ if(res?.status==200){
   useEffect(() => {
 console.log(pathname,"pathname")
     const fetchUser = async () => {
-if(pathname!="/adminauth"&&pathname!="/auth")
+if(pathname!="/adminauth"&&pathname!="/auth"&&pathname!="/"){
+
+
       try {
 await getsettings()
         const res:any = await axios.get("/users/me")
@@ -166,7 +168,7 @@ getintdata(res?.data?.user)
         
        finally {
         setLoading(false)
-      }
+      }}
     }
 
     fetchUser()
