@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const controller = require("./product.controller");
-const {auth} = require("../../middlewares/auth");
+const {auth, optionalAuth} = require("../../middlewares/auth");
 const upload = require("../../config/multer");
 
 
@@ -29,14 +29,19 @@ router.get('/cart',auth,controller.getCart)
 
 // Review routes
 router.post(
-  "/addreview",
+  "/reviews/order/:orderId/product/:productId",
   auth,
   upload.array("images", 5),
   controller.addOrUpdateReview
 );
-
 router.get(
-  "/getreview/:id",
+  "/reviews/product/:productId",
+  optionalAuth,
+  controller.getProductReviews
+);
+router.post(
+  "/reviews/product",
+  optionalAuth,
   controller.getProductReviews
 );
 

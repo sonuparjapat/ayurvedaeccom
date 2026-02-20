@@ -32,6 +32,7 @@ import { notify } from '@/app/utils/notify'
 import { useAuth } from '@/context/auth-context'
 import ReviewSection from '@/components/ReviewSection'
 import StarRating from '@/components/StartRatings'
+import Pagination from '@/components/Paginationcom'
 
 
 /* ================= TYPES ================= */
@@ -70,14 +71,25 @@ export default function ProductDetailPage() {
 
   const [cartLoading, setCartLoading] = useState(false)
   const [liked, setLiked] = useState(false)
- const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata } = useAuth()
+  const [page,setPage]=useState<any>(1)
+ const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
+  } = useAuth()
 
-
+const handlepagechage=(page:number)=>{
+  setPage(page)
+}
   /* ================= FETCH ================= */
 
   useEffect(() => {
-    if (id) fetchProduct()
+    if (id) {fetchProduct()
+
+  
+    }
   }, [id])
+  useEffect(()=>{
+    loadReviews(id,page)
+  },[page])
+  console.log(reviewsData,"reviewdata")
 
 
   const fetchProduct = async () => {
@@ -594,8 +606,68 @@ fetchCart(loginuserdata?.id)
         </div>
 
       </div>
-<ReviewSection productId={product.id} fetchProduct={fetchProduct} product={product} loginuserdata={loginuserdata}/>
+{/* <ReviewSection productId={product.id} fetchProduct={fetchProduct} product={product} loginuserdata={loginuserdata}/> */}
+     <div className="space-y-6 overflow-auto">
 
+        {reviewsData?.data?.map(r=>(
+          <div
+            key={r.id}
+            className="bg-white p-5 rounded-xl shadow"
+          >
+
+            <div className="flex justify-between mb-2">
+
+              <p className="font-semibold">
+                {r.name}
+              </p>
+
+              <div className="flex gap-1">
+                {[...Array(r.rating)].map((_,i)=>(
+                  <Star
+                    key={i}
+                    className="w-4 h-4 fill-amber-400 text-amber-400"
+                  />
+                ))}
+              </div>
+
+            </div>
+
+            <p className="text-gray-700 mb-3">
+              {r.comment}
+            </p>
+
+            {r.images?.length > 0 && (
+              <div className="flex gap-3 flex-wrap">
+                {r.images.map((img:any)=>(
+                  <a href={img} target='_blank'>
+                  <img
+                    key={img}
+                    src={img}
+                    alt={img}
+                    className="w-24 h-24 rounded"
+                  /></a>
+                ))}
+              </div>
+            )}
+
+          </div>
+        ))}
+        {reviewsData?.data?.length == 0 && (
+          <div className="bg-white p-5 rounded-xl shadow">
+            <p className="text-gray-700">
+              No reviews yet
+            </p>
+          </div>
+        )}
+        {reviewsData?.pagination?.totalPages>0&& (
+          <div className='mb-2'>
+         <Pagination currentPage={page}
+  totalPages={reviewsData?.pagination?.totalPages}
+  onPageChange={handlepagechage}/>  </div>
+        )}
+      
+
+      </div>
       <Footer />
 
     </>

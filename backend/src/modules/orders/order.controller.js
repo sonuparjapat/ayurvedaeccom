@@ -44,11 +44,17 @@ const getAppSettings = async (client) => {
 
 /* ================= CREATE ORDER ================= */
 
+const STATUS_PENDING = 0;
+
+/* ================= CREATE ORDER ================= */
+
 exports.createOrder = async (req, res) => {
 
   const client = await pool.connect();
 
   try {
+
+    /* ================= AUTH ================= */
 
     const userId = req.user?.id;
 
@@ -59,9 +65,9 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    const { shipping, paymentMethod } = req.body;
+    /* ================= INPUT ================= */
 
-    /* ================= VALIDATION ================= */
+    const { shipping, paymentMethod } = req.body;
 
     if (!shipping?.name || !shipping?.phone || !shipping?.address) {
       return res.status(400).json({
@@ -79,15 +85,18 @@ exports.createOrder = async (req, res) => {
 
     await client.query("BEGIN");
 
-    /* ================= LOAD SETTINGS ================= */
+    /* ================= SETTINGS ================= */
 
     const settings = await getAppSettings(client);
 
+    const DELIVERY = Number(settings.delivery_charge || 0);
+    const PLATFORM = Number(settings.platform_fee || 0);
+    const FREE_LIMIT = Number(settings.free_delivery_limit || 0);
+
     /* ================= LOCK CART ================= */
 
-    const cart = await client.query(`
+    const cartRes = await client.query(`
       SELECT
-        c.id,
         c.product_id,
         c.quantity,
 
@@ -97,26 +106,26 @@ exports.createOrder = async (req, res) => {
         p.status
 
       FROM cart c
-
       JOIN products p ON p.id = c.product_id
 
       WHERE c.user_id = $1
-
       FOR UPDATE
     `, [userId]);
 
-    if (!cart.rows.length) {
+    const cart = cartRes.rows;
+
+    if (!cart.length) {
       throw new Error("Cart is empty");
     }
 
-    /* ================= CALCULATE TOTAL ================= */
+    /* ================= CALCULATION ================= */
 
     let subtotal = 0;
     let totalTax = 0;
 
-    for (const item of cart.rows) {
+    for (const item of cart) {
 
-      if (item.status !='active') {
+      if (item.status !== "active") {
         throw new Error("Some products are unavailable");
       }
 
@@ -124,10 +133,12 @@ exports.createOrder = async (req, res) => {
         throw new Error("Some items are out of stock");
       }
 
-      const itemSubtotal = item.price * item.quantity;
+      const price = Number(item.price);
+      const qty = Number(item.quantity);
+      const gst = Number(item.gst_percent || 0);
 
-      const itemTax =
-        (itemSubtotal * Number(item.gst_percent || 0)) / 100;
+      const itemSubtotal = price * qty;
+      const itemTax = (itemSubtotal * gst) / 100;
 
       subtotal += itemSubtotal;
       totalTax += itemTax;
@@ -136,17 +147,21 @@ exports.createOrder = async (req, res) => {
     /* ================= DELIVERY ================= */
 
     const delivery =
-      subtotal >= settings.free_delivery_limit
-        ? 0
-        : settings.delivery_charge;
+      subtotal >= FREE_LIMIT ? 0 : DELIVERY;
 
-    /* ================= FINAL TOTAL ================= */
+    /* ================= TOTAL ================= */
 
-    const total =
+    let total =
       subtotal +
       totalTax +
       delivery +
-      settings.platform_fee;
+      PLATFORM;
+
+    /* ================= ROUNDING ================= */
+
+    subtotal = Number(subtotal.toFixed(2));
+    totalTax = Number(totalTax.toFixed(2));
+    total = Number(total.toFixed(2));
 
     if (total <= 0) {
       throw new Error("Invalid order amount");
@@ -165,14 +180,28 @@ exports.createOrder = async (req, res) => {
         payment_status,
         expires_at
       )
-      VALUES ($1,$2,$3,$4,$5,$6,NOW() + INTERVAL '15 minutes')
+      VALUES
+      ($1,$2,$3,$4,$5,$6,NOW() + INTERVAL '15 minutes')
       RETURNING id
     `, [
       userId,
       total,
       paymentMethod,
-      shipping,
-      0,
+
+      /* Save breakup inside shipping JSON (safe way) */
+      JSON.stringify({
+        ...shipping,
+        price_breakup: {
+          subtotal,
+          gst: totalTax,
+          delivery,
+          platform_fee: PLATFORM,
+          grand_total: total
+        }
+      }),
+
+      STATUS_PENDING,
+
       paymentMethod === "cod" ? "paid" : "unpaid"
     ]);
 
@@ -180,7 +209,10 @@ exports.createOrder = async (req, res) => {
 
     /* ================= CREATE ITEMS ================= */
 
-    for (const item of cart.rows) {
+    for (const item of cart) {
+
+      const price = Number(item.price);
+      const qty = Number(item.quantity);
 
       await client.query(`
         INSERT INTO order_items
@@ -189,16 +221,16 @@ exports.createOrder = async (req, res) => {
       `, [
         orderId,
         item.product_id,
-        item.quantity,
-        item.price
+        qty,
+        price
       ]);
     }
 
-    /* ================= COD → REDUCE STOCK ================= */
+    /* ================= COD STOCK ================= */
 
     if (paymentMethod === "cod") {
 
-      for (const item of cart.rows) {
+      for (const item of cart) {
 
         const r = await client.query(`
           UPDATE products
@@ -206,7 +238,10 @@ exports.createOrder = async (req, res) => {
           WHERE id = $2
             AND inventory >= $1
           RETURNING id
-        `, [item.quantity, item.product_id]);
+        `, [
+          item.quantity,
+          item.product_id
+        ]);
 
         if (!r.rows.length) {
           throw new Error("Stock update failed");
@@ -219,16 +254,20 @@ exports.createOrder = async (req, res) => {
       );
     }
 
-    /* ================= RAZORPAY ================= */
+    /* ================= ONLINE ================= */
 
     let razorpayOrder = null;
 
     if (paymentMethod === "online") {
 
       razorpayOrder = await razorpay.orders.create({
+
         amount: Math.round(total * 100),
+
         currency: "INR",
+
         receipt: `ORD_${orderId}`,
+
         payment_capture: 1
       });
 
@@ -236,15 +275,31 @@ exports.createOrder = async (req, res) => {
         UPDATE orders
         SET razorpay_order_id=$1
         WHERE id=$2
-      `, [razorpayOrder.id, orderId]);
+      `, [
+        razorpayOrder.id,
+        orderId
+      ]);
     }
 
     await client.query("COMMIT");
 
+    /* ================= RESPONSE ================= */
+
     res.json({
       success: true,
+
       orderId,
+
       amount: total,
+
+      breakup: {
+        subtotal,
+        gst: totalTax,
+        delivery,
+        platformFee: PLATFORM,
+        grandTotal: total
+      },
+
       razorpay: razorpayOrder
     });
 
@@ -262,9 +317,9 @@ exports.createOrder = async (req, res) => {
   } finally {
 
     client.release();
-  }
-};
 
+  }
+}
 
 /* ================= VERIFY PAYMENT ================= */
 
@@ -413,5 +468,80 @@ exports.verifyPayment = async (req, res) => {
   } finally {
 
     client.release();
+  }
+};
+
+exports.getMyOrders = async (req, res) => {
+  try {
+    const userId = req.user.id; // from auth middleware
+
+    const result = await pool.query(
+  `
+  SELECT
+    o.id,
+    o.invoice_no,
+    o.status,
+    o.total_amount,
+    o.created_at,
+    o.tracking_number,
+    o.shipped_at,
+    o.shipping_address,
+    
+
+    /* Invoice Details */
+    i.id           AS invoice_id,
+    i.invoice_no   AS invoice_number,
+    i.invoice_date,
+    i.subtotal     AS invoice_subtotal,
+    i.tax          AS invoice_tax,
+    i.total        AS invoice_total,
+    i.pdf_url,
+
+    /* Order Items */
+    json_agg(
+      json_build_object(
+      'product_id', p.id,
+        'name', p.name,
+        'quantity', oi.quantity,
+        'price', oi.price,
+        'image', p.images->>0
+      )
+    ) AS items
+
+  FROM orders o
+
+  JOIN order_items oi 
+    ON oi.order_id = o.id
+
+  JOIN products p 
+    ON p.id = oi.product_id
+
+  /* Invoice Join */
+  LEFT JOIN invoices i 
+    ON i.order_id = o.id
+
+  WHERE o.user_id = $1
+
+  GROUP BY 
+    o.id,
+    i.id
+
+  ORDER BY o.created_at DESC
+  `,
+  [userId]
+);
+
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+
+  } catch (err) {
+    console.error("Get Orders Error:", err);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch orders",
+    });
   }
 };

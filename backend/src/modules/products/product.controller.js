@@ -298,7 +298,7 @@ exports.toggleWishlist = async (req, res) => {
       });
     }
 
-    if (!productId || isNaN(productId)) {
+    if ((!productId || isNaN(productId))&&!req.query.me) {
       return res.status(400).json({
         success: false,
         message: "Invalid product id",
@@ -561,39 +561,102 @@ console.log(req.body, "chec")
 
 }
 exports.addOrUpdateReview = async (req, res) => {
-  const userId = req.user.id;
 
-  const {
-    productId,
-    rating,
-    comment,
-    oldImages = "[]",
-  } = req.body;
-
+  const client = await pool.connect();
   let uploaded = [];
 
   try {
-    if (!productId || !rating) {
-      return res.status(400).json({
-        message: "Product & rating required",
+
+    /* ================= AUTH ================= */
+
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "Unauthorized"
       });
     }
 
-    const oldImgs = JSON.parse(oldImages || "[]");
+    /* ================= INPUT ================= */
 
-    /* ============ GET OLD REVIEW ============ */
+    const { orderId, productId } = req.params;
 
-    const exist = await pool.query(
-      `SELECT images FROM reviews
-       WHERE user_id=$1 AND product_id=$2`,
-      [userId, productId]
-    );
+    let {
+      rating,
+      comment,
+      oldImages = "[]"
+    } = req.body;
+
+    if (!orderId || !productId || !rating) {
+      return res.status(400).json({
+        message: "Order, product & rating required"
+      });
+    }
+
+    rating = Number(rating);
+
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({
+        message: "Invalid rating"
+      });
+    }
+
+    /* ================= SAFE PARSE ================= */
+
+    let oldImgs = [];
+
+    try {
+      oldImgs = JSON.parse(oldImages || "[]");
+    } catch {
+      oldImgs = [];
+    }
+
+    if (!Array.isArray(oldImgs)) {
+      oldImgs = [];
+    }
+
+    const newCount = req.files?.length || 0;
+
+    if (oldImgs.length + newCount > 5) {
+      return res.status(400).json({
+        message: "Max 5 images allowed"
+      });
+    }
+
+    await client.query("BEGIN");
+
+    /* ================= VERIFY ORDER ================= */
+
+    const purchase = await client.query(`
+      SELECT 1
+      FROM orders o
+      JOIN order_items oi ON oi.order_id=o.id
+      WHERE
+        o.id=$1
+        AND o.user_id=$2
+        AND oi.product_id=$3
+        AND o.status=4
+      LIMIT 1
+    `, [orderId, userId, productId]);
+
+    if (!purchase.rowCount) {
+      throw new Error("Invalid order or product");
+    }
+
+    /* ================= GET OLD REVIEW ================= */
+
+    const exist = await client.query(`
+      SELECT images
+      FROM reviews
+      WHERE order_id=$1 AND product_id=$2
+      FOR UPDATE
+    `, [orderId, productId]);
 
     const dbImages = exist.rowCount
       ? exist.rows[0].images || []
       : [];
 
-    /* ============ DELETE REMOVED ============ */
+    /* ================= DELETE REMOVED ================= */
 
     const toDelete = dbImages.filter(
       img => !oldImgs.includes(img)
@@ -603,12 +666,14 @@ exports.addOrUpdateReview = async (req, res) => {
       await deleteFromAWS(img);
     }
 
-    /* ============ UPLOAD NEW ============ */
+    /* ================= UPLOAD ================= */
 
     let newImages = [];
 
     if (req.files?.length) {
+
       for (const file of req.files) {
+
         const url = await uploadImageToAWS(file);
 
         uploaded.push(url);
@@ -618,45 +683,43 @@ exports.addOrUpdateReview = async (req, res) => {
 
     const finalImages = [
       ...oldImgs,
-      ...newImages,
+      ...newImages
     ];
 
-    /* ============ UPSERT ============ */
+    /* ================= UPSERT ================= */
 
-    await pool.query(
-      `
+    await client.query(`
       INSERT INTO reviews
-      (user_id,product_id,rating,comment,images)
+      (user_id, order_id, product_id, rating, comment, images)
 
-      VALUES($1,$2,$3,$4,$5)
+      VALUES($1,$2,$3,$4,$5,$6)
 
-      ON CONFLICT(user_id,product_id)
+      ON CONFLICT(order_id, product_id)
 
       DO UPDATE SET
-        rating=$3,
-        comment=$4,
-        images=$5
-    `,
-      [
-        userId,
-        productId,
-        Number(rating),
-        comment || "",
-        JSON.stringify(finalImages),
-      ]
-    );
+        rating=$4,
+        comment=$5,
+        images=$6,
+        created_at=NOW()
+    `, [
+      userId,
+      orderId,
+      productId,
+      rating,
+      comment?.trim() || "",
+      JSON.stringify(finalImages)
+    ]);
 
-    /* ============ UPDATE PRODUCT ============ */
+    /* ================= UPDATE PRODUCT ================= */
 
-    await pool.query(
-      `
+    await client.query(`
       UPDATE products SET
 
-        averagerating = (
+        averagerating = ROUND((
           SELECT AVG(rating)
           FROM reviews
           WHERE product_id=$1
-        ),
+        ),1),
 
         reviewcount = (
           SELECT COUNT(*)
@@ -665,54 +728,157 @@ exports.addOrUpdateReview = async (req, res) => {
         )
 
       WHERE id=$1
-    `,
-      [productId]
-    );
+    `, [productId]);
+
+    await client.query("COMMIT");
 
     res.json({
       success: true,
-      message: "Review saved",
+      message: "Review saved successfully"
     });
 
   } catch (err) {
-    console.error(err);
 
-    // rollback uploads
+    await client.query("ROLLBACK");
+
+    console.error("REVIEW ERROR:", err);
+
     for (const url of uploaded) {
       await deleteFromAWS(url);
     }
 
     res.status(500).json({
-      message: "Review failed",
+      message: err.message || "Review failed"
     });
+
+  } finally {
+
+    client.release();
   }
 };
 
 /* ================= GET PRODUCT REVIEWS ================= */
 
 exports.getProductReviews = async (req, res) => {
-  const productId = req.params.id;
 
-  const result = await pool.query(
-    `
-    SELECT
-      r.*,
-      u.name
+  try {
+    console.log(req.query)
 
-    FROM reviews r
-    JOIN users u ON r.user_id=u.id
+    const productId = parseInt(req?.query?.productId, 10);
+    const userId = req.user?.id || null; // optional
+    const onlyMe = req.query.me === "1";
 
-    WHERE r.product_id=$1
+    let page = parseInt(req.query.page, 10) || 1;
+    let limit = parseInt(req.query.limit, 10) || 10;
 
-    ORDER BY r.created_at DESC
-  `,
-    [productId]
-  );
+    if (limit > 50) limit = 50;
+    if (page < 1) page = 1;
 
-  res.json({
-    success: true,
-    data: result.rows,
-  });
+    if ((!productId || productId <= 0)&&!req.query.me) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product id",
+      });
+    }
+
+    if (onlyMe && !userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Login required",
+      });
+    }
+
+    const offset = (page - 1) * limit;
+
+    /* ================= WHERE ================= */
+
+    let whereClause =req.query.me? "r.product_id= ANY($1) ": " r.product_id = $1 ";
+    let params = [req.query.me?req?.body?.productId:productId];
+
+    if (onlyMe) {
+      whereClause += " AND r.user_id = $2";
+      params.push(userId);
+    }
+
+    /* ================= COUNT ================= */
+
+    const countQuery = `
+      SELECT COUNT(*)
+      FROM reviews r
+      WHERE ${whereClause}
+    `;
+
+    const countResult = await pool.query(countQuery, params);
+
+    const totalReviews = Number(countResult.rows[0].count);
+    const totalPages = Math.ceil(totalReviews / limit);
+
+    /* ================= DATA ================= */
+
+    let reviewQueryParams = [...params];
+
+    reviewQueryParams.push(limit);
+    reviewQueryParams.push(offset);
+
+    // Add userId for is_mine detection (even if null)
+    reviewQueryParams.push(userId || 0);
+
+    const reviewsQuery = `
+      SELECT
+        r.id,
+        r.rating,
+        r.comment,
+        r.images,
+        r.created_at,
+        r.product_id,
+r.order_id,
+        u.name AS user_name,
+
+        (r.user_id = $${reviewQueryParams.length}) AS is_mine
+
+      FROM reviews r
+
+      JOIN users u
+        ON r.user_id = u.id
+
+      WHERE ${whereClause}
+
+      ORDER BY r.created_at DESC
+
+      LIMIT $${reviewQueryParams.length - 2}
+      OFFSET $${reviewQueryParams.length - 1}
+    `;
+
+    const reviewsResult = await pool.query(
+      reviewsQuery,
+      reviewQueryParams
+    );
+
+    return res.status(200).json({
+
+      success: true,
+
+      pagination: {
+        totalReviews,
+        totalPages,
+        currentPage: page,
+        limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+
+      data: reviewsResult.rows,
+    });
+
+  } catch (error) {
+
+    console.error("❌ Get Reviews Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching reviews",
+    });
+  }
 };
 
 /* ================= DELETE ================= */

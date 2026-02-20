@@ -92,16 +92,41 @@ const initDB = async () => {
 
     /* ================= REVIEWS ================= */
     await client.query(`
-      CREATE TABLE IF NOT EXISTS reviews (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-        rating INT CHECK (rating BETWEEN 1 AND 5),
-        comment TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, product_id),images JSONB DEFAULT '[]'
-      )
+   CREATE TABLE IF NOT EXISTS reviews  (
+
+  id SERIAL PRIMARY KEY,
+
+  user_id INTEGER NOT NULL
+    REFERENCES users(id)
+    ON DELETE CASCADE,
+
+  order_id INTEGER NOT NULL
+    REFERENCES orders(id)
+    ON DELETE CASCADE,
+
+  product_id INTEGER NOT NULL
+    REFERENCES products(id)
+    ON DELETE CASCADE,
+
+  rating INT NOT NULL
+    CHECK (rating BETWEEN 1 AND 5),
+
+  comment TEXT,
+
+  images JSONB DEFAULT '[]',
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
     `);
+
+//     await client.query(`CREATE UNIQUE INDEX unique_review_per_order_product
+// ON reviews(order_id, product_id)`)
+//   await client.query(`CREATE INDEX idx_reviews_product
+// ON reviews(product_id)`);
+//   await client.query(`CREATE INDEX idx_reviews_user
+// ON reviews(user_id)`);
+//   await client.query(`CREATE INDEX idx_reviews_order
+// ON reviews(order_id)`);
 
     /* ================= CART ================= */
     await client.query(`
@@ -149,7 +174,12 @@ const initDB = async () => {
         invoice_no VARCHAR(50),
         invoice_date TIMESTAMP,
         is_invoiced BOOLEAN DEFAULT FALSE,
-        courier_name VARCHAR(50)
+        courier_name VARCHAR(50),subtotal NUMERIC(10,2),
+ tax NUMERIC(10,2),
+ delivery_charge NUMERIC(10,2),
+ platform_fee NUMERIC(10,2),
+ discount NUMERIC(10,2) DEFAULT 0,
+ grand_total NUMERIC(10,2)
       )
     `);
 
@@ -164,7 +194,10 @@ const initDB = async () => {
         order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
         product_id INTEGER REFERENCES products(id),
         quantity INT NOT NULL CHECK (quantity > 0),
-        price NUMERIC(10,2) NOT NULL CHECK (price >= 0)
+        price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
+        gst_percent NUMERIC(5,2),
+ tax_amount NUMERIC(10,2),
+ line_total NUMERIC(10,2)
       )
     `);
 

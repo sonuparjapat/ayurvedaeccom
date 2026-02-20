@@ -9,11 +9,9 @@ import toast from 'react-hot-toast'
 export default function StarRating({
   productId,
   avgRating,
-  refresh
-}: {
-  productId: string
-  avgRating: number
-}) {
+  refresh,
+  isRun
+}: any) {
 
   const [rating, setRating] =
     useState(Math.round(avgRating))
@@ -53,6 +51,7 @@ console.log(err,"eror")
         <button
           key={i}
           type="button"
+          disabled={!isRun}
           onClick={() => submitRating(i)}
           onMouseEnter={() => setHover(i)}
           onMouseLeave={() => setHover(0)}

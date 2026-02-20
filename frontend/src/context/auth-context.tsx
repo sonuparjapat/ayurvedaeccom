@@ -7,6 +7,7 @@ import {
   useEffect,
   useState,
   ReactNode,
+  useCallback,
 } from "react"
 import { usePathname } from 'next/navigation'
 import axios from "@/lib/axios"
@@ -65,6 +66,75 @@ const [cartloading,setCartLoading]=useState<boolean>(false)
 const [statusList,setStatusList]=useState<any>([])
 const [settings,setSettings]=useState<any>([])
 const [wishlistdata,setWishlistdata]=useState<any>({loading:false})
+const [reviewsData, setReviewsData] = useState({
+  loading: false,
+  data: [],
+  pagination: {
+    totalReviews: 0,
+    totalPages: 0,
+    currentPage: 1,
+    limit: 10,
+    hasNextPage: false,
+    hasPrevPage: false,
+  },
+  error: null,
+});
+const [orders,setOrders]=useState<any>([])
+
+/* ================= LOAD REVIEWS ================= */
+
+const loadReviews = useCallback(
+  async (productId: number, page: number = 1, limit: number = 10,me?:any) => {
+    try {
+      if (!productId) return;
+
+      setReviewsData((prev) => ({
+        ...prev,
+        loading: true,
+        error: null,
+      }));
+console.log(productId,page,limit)
+      const res =Array.isArray(productId)?await axios.post(`/shop/reviews/product?me=1&page=${page}&limit=${100}`,
+         {
+          productId
+          
+        }): await axios.get(
+        `/shop/reviews/product`,
+        {
+          params: {
+            page,
+            limit,
+            me,productId
+          },
+        }
+      );
+
+      if (res?.status!=200) {
+        throw new Error("Failed to load reviews");
+      }
+console.log(res?.data,"coming")
+      setReviewsData({
+        loading: false,
+        data: res?.data.data || [],
+        pagination:res?.data.pagination,
+        error: null,
+      });
+
+    } catch (error: any) {
+      console.error("Review Load Error:", error);
+
+      setReviewsData((prev) => ({
+        ...prev,
+        loading: false,
+        error:
+          error?.response?.data?.message ||
+          "Unable to load reviews. Try again.",
+      }));
+    }
+  },
+  []
+);
+
 
   const router = useRouter()
   const pathname=usePathname()
@@ -105,6 +175,60 @@ await getwishlist()
       setCartLoading(false)
     }
   }
+  const mapOrderStatus = (status: number) => {
+  switch (status) {
+    case 1: return "confirmed";
+    case 2: return "processing";
+    case 3: return "shipped";
+    case 4: return "delivered";
+    case 5: return "cancelled";
+    case 6: return "Returned";
+    case 7: return "Failed";
+    case 8: return "Expired";
+    default: return "pending";
+  }
+};
+  const loadOrders =useCallback(
+    async (id:any) => {
+  try {
+    setLoading(true);
+console.log("HIFDHDFDF")
+    const res = await axios.get("/orders/my-orders");
+
+    if (res.status != 200) {
+      throw new Error("Failed");
+    }
+    console.log(res?.data?.data,"coming")
+
+    const formatted = res?.data?.data.map((order: any) => ({
+      ...order,
+      id: order.id,
+      orderNumber: order.invoice_no || `ORD-${order.id}`,
+   
+      status: mapOrderStatus(order.status),
+      totalAmount: Number(order.total_amount),
+      createdAt: order.created_at,
+shipping_address:order.shipping_address,
+      items: order.items.map((item: any) => ({
+        ...item,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        image: item.image || "📦",
+      })),
+    }));
+
+    setOrders(formatted);
+
+  } catch (err) {
+    console.error("Order Load Error:", err);
+    setOrders([]);
+  } finally {
+    setLoading(false);
+  }
+},[]);
+
+
   const getsettings = async () => {
 
 
@@ -269,6 +393,8 @@ if(type=="users"){
 wishlistdata,
     setWishlistdata,
     getwishlist,
+    reviewsData,loadReviews,
+    orders,loadOrders
       }}
     >
       {children}

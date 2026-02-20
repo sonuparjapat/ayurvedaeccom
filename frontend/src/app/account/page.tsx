@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { Button } from '@/components/ui/button'
@@ -8,42 +10,58 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  User, 
-  Package, 
-  Heart, 
-  MapPin, 
+
+import {
+  User,
+  Package,
+  Heart,
+  MapPin,
   CreditCard,
   Settings,
   LogOut,
   Eye,
   Truck,
-  Calendar,
-  Phone,
-  Mail,
   Edit,
   CheckCircle,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Star,
+  Upload,
+  Download,
 } from 'lucide-react'
-import { motion } from 'framer-motion'
+
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import axios from '@/lib/axios'
+
 import { useAuth } from '@/context/auth-context'
+import AppModal from '@/components/modal/AppModal'
+import { notify } from '../utils/notify'
+
+
+/* ================= TYPES ================= */
+
+interface OrderItem {
+  product_id: number
+  name: string
+  quantity: number
+  price: number
+  image?: string
+}
 
 interface Order {
-  id: string
+  id: number
   orderNumber: string
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'processing'
+    | 'shipped'
+    | 'delivered'
+    | 'cancelled'
   totalAmount: number
   createdAt: string
   estimatedDelivery?: string
-  items: {
-    name: string
-    quantity: number
-    price: number
-    image: string
-  }[]
+  items: OrderItem[]
 }
 
 interface Address {
@@ -56,510 +74,992 @@ interface Address {
   isDefault: boolean
 }
 
+const intarrdata={
+                    "product_id":"",
+                    "name":"",
+                    "quantity":0,
+                    "price": 0,
+                    "image": "",
+                    rating:0,
+                    comment:"",
+                    images:[],
+                    oldimages:[]
+}
+/* ================= COMPONENT ================= */
+
 export default function AccountPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [orders, setOrders] = useState<Order[]>([])
+
+  const params = useSearchParams()
+  const activeTab = params.get('tab') || 'profile'
+
+  const {
+    loginuserdata,
+    logout,
+    orders,
+    loadOrders,
+  } = useAuth()
+
+
+  /* ================= STATES ================= */
+
   const [addresses, setAddresses] = useState<Address[]>([])
   const [loading, setLoading] = useState(true)
+
   const [isEditing, setIsEditing] = useState(false)
+
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
-    phone: ''
+    phone: '',
   })
-const {login,loginuserdata,logout}=useAuth()
+
+
+  /* ===== MODAL ===== */
+
+  const [openModal, setOpenModal] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+const [realreviewdata,setRealReviewData]=useState<any>([])
+
+  /* ===== REVIEW ===== */
+
+const [rating, setRating] = useState(0);
+const [comment, setComment] = useState("");
+const [images, setImages] = useState([]);
+
+  const [reviewLoading, setReviewLoading] = useState(false)
+const [oldImages, setOldImages] = useState([]);
+const {loadReviews,reviewsData} = useAuth()
+
+  /* ================= LOAD ================= */
+
   useEffect(() => {
-    // Check if user is logged in
-  
 
-    // Load user data
-  
+    if (!loginuserdata?.id) return
 
-    // Load sample data
-    const loadSampleData = () => {
-      // Sample orders
-      const sampleOrders: Order[] = [
-        {
-          id: '1',
-          orderNumber: 'AVDF2024001',
-          status: 'delivered',
-          totalAmount: 899,
-          createdAt: '2024-01-10',
-          items: [
-            { name: 'Premium Almonds', quantity: 2, price: 299, image: '🥜' },
-            { name: 'Ashwagandha Powder', quantity: 1, price: 199, image: '🌿' }
-          ]
-        },
-        {
-          id: '2',
-          orderNumber: 'AVDF2024002',
-          status: 'shipped',
-          totalAmount: 549,
-          createdAt: '2024-01-15',
-          estimatedDelivery: '2024-01-18',
-          items: [
-            { name: 'Organic Tofu', quantity: 3, price: 89, image: '🧈' },
-            { name: 'Turmeric Powder', quantity: 1, price: 149, image: '🟡' }
-          ]
-        },
-        {
-          id: '3',
-          orderNumber: 'AVDF2024003',
-          status: 'processing',
-          totalAmount: 399,
-          createdAt: '2024-01-18',
-          items: [
-            { name: 'Cashew Nuts', quantity: 1, price: 249, image: '🥜' },
-            { name: 'Dehydrated Amla', quantity: 2, price: 129, image: '🍅' }
-          ]
-        }
-      ]
+    const init = async () => {
 
-      // Sample addresses
-      const sampleAddresses: Address[] = [
-        {
-          id: '1',
-          type: 'home',
-          street: '123 Wellness Street',
-          city: 'Mumbai',
-          state: 'Maharashtra',
-          postalCode: '400001',
-          isDefault: true
-        },
-        {
-          id: '2',
-          type: 'work',
-          street: '456 Health Avenue',
-          city: 'Mumbai',
-          state: 'Maharashtra',
-          postalCode: '400002',
-          isDefault: false
-        }
-      ]
+      try {
 
-      setOrders(sampleOrders)
-      setAddresses(sampleAddresses)
+        setLoading(true)
+
+        await loadOrders(loginuserdata.id)
+
+      } finally {
+        setLoading(false)
+      }
     }
 
-    loadSampleData()
-    setTimeout(() => setLoading(false), 0)
-  }, [router])
+    init()
+
+  }, [loginuserdata, loadOrders])
 
 
+  /* ================= PROFILE ================= */
 
-  const handleProfileUpdate = async (e: React.FormEvent) => {
+  const handleProfileUpdate = async (e: any) => {
+
     e.preventDefault()
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Update local storage
-      const updatedUser = { ...user, ...editForm }
-      localStorage.setItem('user', JSON.stringify(updatedUser))
-      setUser(updatedUser)
-      setIsEditing(false)
-    } catch (error) {
-      console.error('Error updating profile:', error)
-    }
+
+    await new Promise((r) => setTimeout(r, 1000))
+
+    setIsEditing(false)
   }
 
+
+  /* ================= HELPERS ================= */
+
   const getStatusColor = (status: string) => {
+
     switch (status) {
       case 'delivered': return 'bg-green-100 text-green-800'
       case 'shipped': return 'bg-blue-100 text-blue-800'
       case 'processing': return 'bg-yellow-100 text-yellow-800'
-      case 'pending': return 'bg-gray-100 text-gray-800'
       case 'cancelled': return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
+
   const getStatusIcon = (status: string) => {
+
     switch (status) {
-      case 'delivered': return <CheckCircle className="w-4 h-4" />
-      case 'shipped': return <Truck className="w-4 h-4" />
-      case 'processing': return <Clock className="w-4 h-4" />
-      default: return <Package className="w-4 h-4" />
+      case 'delivered': return <CheckCircle size={16} />
+      case 'shipped': return <Truck size={16} />
+      case 'processing': return <Clock size={16} />
+      default: return <Package size={16} />
     }
   }
 
+
   const formatPrice = (price: number) => {
+
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'INR'
-    }).format(price)
+      currency: 'INR',
+    }).format(Number(price))
+  }
+console.log(selectedOrder,"selected order")
+
+  /* ================= MODAL ================= */
+
+  const openOrderModal = (order: Order) => {
+
+    setSelectedOrder(order)
+
+    setRating(0)
+    setComment('')
+    setImages([])
+
+    setOpenModal(true)
   }
 
+const handleImageChange = (e: any) => {
+
+  const files = Array.from(e.target.files || []);
+
+  if (!files.length) return;
+
+  const valid = files.filter((f: any) =>
+    f.type.startsWith("image/")
+  );
+
+  const totalCount = oldImages.length + images.length + valid.length;
+
+  if (totalCount > 5) {
+    alert("Maximum 5 images allowed");
+    return;
+  }
+
+  const previewImages = valid.map((file: any) => ({
+    file,
+    preview: URL.createObjectURL(file),
+  }));
+
+  setImages((prev) => [...prev, ...previewImages]);
+
+  e.target.value = null;
+};
+ 
+const removeNewImage = (index: number) => {
+  setImages((prev) => {
+    URL.revokeObjectURL(prev[index].preview);
+    return prev.filter((_, i) => i !== index);
+  });
+};
+const removeOldImage = (index: number) => {
+  setOldImages((prev) =>
+    prev.filter((_, i) => i !== index)
+  );
+};
+  /* ================= REVIEW ================= */
+
+const submitReview = async (order?:any,productId: any) => {
+
+  if (!rating) return alert("Select rating");
+
+  try {
+
+    setReviewLoading(true);
+
+    const form = new FormData();
+
+    form.append("rating", String(rating));
+    form.append("comment", comment);
+
+    // VERY IMPORTANT
+    form.append("oldImages", JSON.stringify(oldImages));
+
+    images.forEach((img) =>
+      form.append("images", img.file)
+    );
+
+    await axios.post(`/shop/reviews/order/${order.id}/product/${productId}`, form);
+
+    notify.success("Review submitted");
+loadReviews(productId,1,20,1)  
+  setRating(0);
+    setComment("");
+    setImages([]);
+    setOldImages([]);
+
+  } catch (err) {
+
+    alert("Review failed");
+
+  } finally {
+
+    setReviewLoading(false);
+  }
+};
+console.log(realreview)
+  /* ================= LOADER ================= */
+
   if (loading) {
+
     return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your account...</p>
-          </div>
-        </main>
-        <Footer />
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
       </div>
     )
   }
 
+
+  /* ================= UI ================= */
+
   return (
+
     <div className="min-h-screen flex flex-col">
+
       <Header />
-      
+
+
       <main className="flex-1 bg-gray-50">
+
         <div className="container mx-auto px-4 py-8">
-          {/* Page Header */}
+
+
+          {/* HEADER */}
+
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+            <div className="flex flex-col md:flex-row justify-between gap-4">
+
               <div className="flex items-center gap-4">
+
                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
+
                   <User className="w-8 h-8 text-emerald-600" />
+
                 </div>
+
+
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    Welcome, {loginuserdata?.name || 'User'}!
+
+                  <h1 className="text-2xl font-bold">
+
+                    Welcome, {loginuserdata?.name}!
+
                   </h1>
-                  <p className="text-gray-600">Manage your account and orders</p>
+
+                  <p className="text-gray-600">
+
+                    Manage your account and orders
+
+                  </p>
+
                 </div>
+
               </div>
-              
-              <Button variant="outline" onClick={()=>logout("users")}>
-                <LogOut className="w-4 h-4 mr-2" />
+
+
+              <Button
+                variant="outline"
+                onClick={() => logout('users')}
+              >
+
+                <LogOut size={16} className="mr-2" />
                 Logout
+
               </Button>
+
             </div>
+
           </div>
 
+
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
+
+
+            {/* SIDEBAR */}
+
+            <div>
+
               <Card>
+
                 <CardContent className="p-0">
+
                   <nav className="space-y-1">
-                    <Link
-                      href="/account"
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-emerald-600 bg-emerald-50 border-r-2 border-emerald-600"
+
+
+                    <Link href="/account"
+                      className="flex gap-3 px-4 py-3 font-medium text-emerald-600 bg-emerald-50"
                     >
-                      <User className="w-4 h-4" />
-                      Profile
+                      <User size={16} /> Profile
                     </Link>
-                    <Link
-                      href="/account?tab=orders"
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:text-emerald-600 hover:bg-gray-50"
+
+
+                    <Link href="/account?tab=orders"
+                      className="flex gap-3 px-4 py-3 hover:bg-gray-50"
                     >
-                      <Package className="w-4 h-4" />
-                      Orders
+                      <Package size={16} /> Orders
                     </Link>
-                    <Link
-                      href="/account?tab=addresses"
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:text-emerald-600 hover:bg-gray-50"
+
+
+                    <Link href="/account?tab=addresses"
+                      className="flex gap-3 px-4 py-3 hover:bg-gray-50"
                     >
-                      <MapPin className="w-4 h-4" />
-                      Addresses
+                      <MapPin size={16} /> Addresses
                     </Link>
-                    <Link
-                      href="/wishlist"
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:text-emerald-600 hover:bg-gray-50"
+
+
+                    <Link href="/wishlist"
+                      className="flex gap-3 px-4 py-3 hover:bg-gray-50"
                     >
-                      <Heart className="w-4 h-4" />
-                      Wishlist
+                      <Heart size={16} /> Wishlist
                     </Link>
-                    <Link
-                      href="/account?tab=payment"
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:text-emerald-600 hover:bg-gray-50"
+
+
+                    <Link href="/account?tab=payment"
+                      className="flex gap-3 px-4 py-3 hover:bg-gray-50"
                     >
-                      <CreditCard className="w-4 h-4" />
-                      Payment Methods
+                      <CreditCard size={16} /> Payment
                     </Link>
-                    <Link
-                      href="/account?tab=settings"
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:text-emerald-600 hover:bg-gray-50"
+
+
+                    <Link href="/account?tab=settings"
+                      className="flex gap-3 px-4 py-3 hover:bg-gray-50"
                     >
-                      <Settings className="w-4 h-4" />
-                      Settings
+                      <Settings size={16} /> Settings
                     </Link>
+
                   </nav>
+
                 </CardContent>
+
               </Card>
+
             </div>
 
-            {/* Main Content */}
+
+            {/* MAIN */}
+
             <div className="lg:col-span-3">
-              <Tabs defaultValue="profile" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-5">
+
+
+              <Tabs value={activeTab} className="space-y-6">
+
+
+                <TabsList className="grid grid-cols-2 md:grid-cols-5">
+
                   <TabsTrigger value="profile">Profile</TabsTrigger>
                   <TabsTrigger value="orders">Orders</TabsTrigger>
                   <TabsTrigger value="addresses">Addresses</TabsTrigger>
                   <TabsTrigger value="payment">Payment</TabsTrigger>
                   <TabsTrigger value="settings">Settings</TabsTrigger>
+
                 </TabsList>
 
-                {/* Profile Tab */}
+
+                {/* ================= PROFILE ================= */}
+
                 <TabsContent value="profile">
+
                   <Card>
+
                     <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle>Profile Information</CardTitle>
+
+                      <div className="flex justify-between">
+
+                        <CardTitle>Profile</CardTitle>
+
+
                         <Button
-                          variant="outline"
                           size="sm"
+                          variant="outline"
                           onClick={() => setIsEditing(!isEditing)}
                         >
-                          <Edit className="w-4 h-4 mr-2" />
+
+                          <Edit size={14} className="mr-2" />
                           {isEditing ? 'Cancel' : 'Edit'}
+
                         </Button>
+
                       </div>
+
                     </CardHeader>
+
+
                     <CardContent>
+
                       {isEditing ? (
-                        <form onSubmit={handleProfileUpdate} className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Full Name
-                            </label>
-                            <Input
-                              value={editForm.name}
-                              onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Email Address
-                            </label>
-                            <Input
-                              type="email"
-                              value={editForm.email}
-                              onChange={(e) => setEditForm({...editForm, email: e.target.value})}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Phone Number
-                            </label>
-                            <Input
-                              type="tel"
-                              value={editForm.phone}
-                              onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
-                            />
-                          </div>
+
+                        <form
+                          onSubmit={handleProfileUpdate}
+                          className="space-y-4"
+                        >
+
+                          <Input
+                            placeholder="Name"
+                            value={editForm.name}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                name: e.target.value,
+                              })
+                            }
+                          />
+
+                          <Input
+                            placeholder="Email"
+                            value={editForm.email}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                email: e.target.value,
+                              })
+                            }
+                          />
+
+                          <Input
+                            placeholder="Phone"
+                            value={editForm.phone}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                phone: e.target.value,
+                              })
+                            }
+                          />
+
+
                           <div className="flex gap-3">
-                            <Button type="submit">Save Changes</Button>
-                            <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+
+                            <Button type="submit">
+                              Save
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              onClick={() => setIsEditing(false)}
+                            >
                               Cancel
                             </Button>
+
                           </div>
+
                         </form>
+
                       ) : (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Full Name
-                              </label>
-                              <p className="text-gray-900">{loginuserdata?.name || 'Not provided'}</p>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email Address
-                              </label>
-                              <p className="text-gray-900">{loginuserdata?.email || 'Not provided'}</p>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Phone Number
-                              </label>
-                              <p className="text-gray-900">{loginuserdata?.phone || 'Not provided'}</p>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Member Since
-                              </label>
-                              <p className="text-gray-900">January 2024</p>
-                            </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+
+                          <div>
+                            <p className="text-sm">Name</p>
+                            <p>{loginuserdata?.name}</p>
                           </div>
+
+                          <div>
+                            <p className="text-sm">Email</p>
+                            <p>{loginuserdata?.email}</p>
+                          </div>
+
+                          <div>
+                            <p className="text-sm">Phone</p>
+                            <p>{loginuserdata?.phone}</p>
+                          </div>
+
+                          <div>
+                            <p className="text-sm">Member Since</p>
+                            <p>2024</p>
+                          </div>
+
                         </div>
+
                       )}
+
                     </CardContent>
+
                   </Card>
+
                 </TabsContent>
 
-                {/* Orders Tab */}
+
+                {/* ================= ORDERS ================= */}
+
                 <TabsContent value="orders">
+
                   <div className="space-y-4">
-                    {orders.length === 0 ? (
+
+
+                    {!orders?.length ? (
+
                       <Card>
+
                         <CardContent className="text-center py-12">
-                          <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+
+                          <Package size={64} className="mx-auto text-gray-300 mb-4" />
+
+                          <h3 className="font-semibold mb-2">
+
                             No orders yet
+
                           </h3>
-                          <p className="text-gray-600 mb-6">
-                            Start shopping to see your orders here
-                          </p>
+
+
                           <Button asChild>
+
                             <Link href="/products">
+
                               Start Shopping
-                              <ArrowRight className="w-4 h-4 ml-2" />
+                              <ArrowRight size={14} className="ml-2" />
+
                             </Link>
+
                           </Button>
+
                         </CardContent>
+
                       </Card>
+
                     ) : (
-                      orders.map((order) => (
+
+
+                      orders.map((order: Order) => (
+
                         <Card key={order.id}>
+
                           <CardContent className="p-6">
-                            <div className="flex items-center justify-between mb-4">
+
+
+                            {/* HEADER */}
+
+                            <div className="flex justify-between mb-4">
+
                               <div>
-                                <h3 className="font-semibold text-gray-900">
+
+                                <h3 className="font-semibold">
+
                                   Order #{order.orderNumber}
+
                                 </h3>
+
                                 <p className="text-sm text-gray-500">
-                                  Placed on {new Date(order.createdAt).toLocaleDateString()}
+
+                                  {new Date(order.createdAt).toDateString()}
+
                                 </p>
+
                               </div>
+
+
                               <Badge className={getStatusColor(order.status)}>
-                                <span className="flex items-center gap-1">
+
+                                <span className="flex gap-1 items-center">
+
                                   {getStatusIcon(order.status)}
-                                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                                  {order.status}
+
                                 </span>
+
                               </Badge>
+
                             </div>
-                            
+
+
+                            {/* ITEMS */}
+
                             <div className="space-y-3 mb-4">
-                              {order.items.map((item, index) => (
-                                <div key={index} className="flex items-center gap-4">
-                                  <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-xl">
-                                    {item.image}
-                                  </div>
+
+                              {order.items.map((item, i) => (
+
+                                <div key={i} className="flex gap-4 items-center">
+
+                                  <img
+                                    src={item.image || '/placeholder.png'}
+                                    className="w-12 h-12 rounded object-cover"
+                                  />
+
+
                                   <div className="flex-1">
-                                    <p className="font-medium text-gray-900">{item.name}</p>
-                                    <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+
+                                    <p className="font-medium">{item.name}</p>
+
+                                    <p className="text-sm text-gray-500">
+
+                                      Qty: {item.quantity}
+
+                                    </p>
+
                                   </div>
-                                  <p className="font-medium text-gray-900">
+
+
+                                  <p className="font-medium">
+
                                     {formatPrice(item.price * item.quantity)}
+
                                   </p>
+
                                 </div>
+
                               ))}
+
                             </div>
-                            
-                            <div className="flex items-center justify-between pt-4 border-t">
+
+
+                            {/* FOOTER */}
+
+                            <div className="flex justify-between border-t pt-4">
+
                               <div>
-                                <p className="text-sm text-gray-500">Total Amount</p>
-                                <p className="text-lg font-bold text-gray-900">
+
+                                <p className="text-sm text-gray-500">Total</p>
+
+                                <p className="text-lg font-bold">
+
                                   {formatPrice(order.totalAmount)}
+
                                 </p>
+
                               </div>
-                              <Button variant="outline" size="sm">
-                                <Eye className="w-4 h-4 mr-2" />
+
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async() =>{ 
+                                 await loadReviews(order?.items?.map((item:any)=>item?.product_id),1,10,1)
+                            const data=reviewsData?.data?.filter((item:any)=>item?.order_id==selectedOrder?.id)
+                      const data2 = orders?.flatMap((el: any) =>
+  el.items.map((item: any) => ({
+    ...item,
+
+    // always present
+    rating:reviewsData?.data?.find((item2:any)=>item2?.order_id==selectedOrder?.id&&item2?.product_id==item?.product_id)?.rating ?? null,
+    comment: reviewsData?.data?.find((item2:any)=>item2?.order_id==selectedOrder?.id&&item2?.product_id==item?.product_id)?.comment ?? "",
+    images:[],
+    oldImages:reviewsData?.data?.find((item2:any)=>item2?.order_id==selectedOrder?.id&&item2?.product_id==item?.product_id)?.images ?? [],
+  }))
+);
+                     setRealReviewData(data2)
+                                  openOrderModal(order)}}
+                              >
+
+                                <Eye size={14} className="mr-2" />
                                 View Details
+
                               </Button>
+
                             </div>
+
                           </CardContent>
+
                         </Card>
+
                       ))
+
                     )}
+
                   </div>
+
                 </TabsContent>
 
-                {/* Addresses Tab */}
-                <TabsContent value="addresses">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900">Shipping Addresses</h3>
-                      <Button>Add New Address</Button>
-                    </div>
-                    
-                    {addresses.map((address) => (
-                      <Card key={address.id}>
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h4 className="font-semibold text-gray-900 capitalize">
-                                  {address.type} Address
-                                </h4>
-                                {address.isDefault && (
-                                  <Badge className="bg-emerald-100 text-emerald-800">
-                                    Default
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-gray-600">
-                                {address.street}<br />
-                                {address.city}, {address.state} {address.postalCode}
-                              </p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm">Edit</Button>
-                              <Button variant="outline" size="sm">Remove</Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </TabsContent>
 
-                {/* Payment Tab */}
-                <TabsContent value="payment">
-                  <Card>
-                    <CardContent className="text-center py-12">
-                      <CreditCard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        No payment methods yet
-                      </h3>
-                      <p className="text-gray-600 mb-6">
-                        Add a payment method to make checkout faster
-                      </p>
-                      <Button>Add Payment Method</Button>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                {/* OTHER TABS */}
 
-                {/* Settings Tab */}
-                <TabsContent value="settings">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Account Settings</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-gray-900">Email Notifications</h4>
-                          <p className="text-sm text-gray-500">Receive order updates and offers</p>
-                        </div>
-                        <Button variant="outline" size="sm">Configure</Button>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-gray-900">Privacy Settings</h4>
-                          <p className="text-sm text-gray-500">Control your data and privacy</p>
-                        </div>
-                        <Button variant="outline" size="sm">Manage</Button>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-gray-900">Delete Account</h4>
-                          <p className="text-sm text-gray-500">Permanently delete your account</p>
-                        </div>
-                        <Button variant="destructive" size="sm">Delete</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                <TabsContent value="addresses" />
+                <TabsContent value="payment" />
+                <TabsContent value="settings" />
+
+
               </Tabs>
+
             </div>
+
           </div>
+
         </div>
+
       </main>
-      
+
+
       <Footer />
+
+
+      {/* ================= MODAL ================= */}
+
+      <AppModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        title="Order Details"
+        width="max-w-4xl"
+      >
+
+        {selectedOrder && (
+
+          <div className="space-y-6">
+
+
+            {/* SUMMARY */}
+
+           <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+
+  {/* Order Basic Info */}
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+    <div>
+      <p className="text-xs text-gray-500">Order</p>
+      <p className="font-medium">{selectedOrder.orderNumber}</p>
+    </div>
+
+    <div>
+      <p className="text-xs text-gray-500">Order Date</p>
+      <p className="font-medium">
+        {new Date(selectedOrder?.createdAt).toDateString()}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-xs text-gray-500">Status</p>
+      <Badge className={getStatusColor(selectedOrder.status)}>
+        {selectedOrder.status}
+      </Badge>
+    </div>
+
+    {selectedOrder?.invoice_date && 
+    <div>
+    <div className="flex flex-row">
+      <div>
+      <p className="text-xs text-gray-500">Invoice Date</p>
+      <p className="font-medium">
+        {new Date(selectedOrder?.invoice_date).toDateString()}
+      </p></div>
+      <a  href={selectedOrder?.pdf_url} target="_blank">
+      <Download className="ml-2 mt-4 text-green-400" /></a>
+    </div>
+    
+   </div>}
+
+  </div>
+
+  {/* Price Breakup */}
+  <div className="border-t pt-3 space-y-2 text-sm">
+
+    <div className="flex justify-between">
+      <span className="text-gray-600">Subtotal</span>
+      <span>{formatPrice(selectedOrder?.shipping_address?.price_breakup?.subtotal || 0)}</span>
+    </div>
+
+    <div className="flex justify-between">
+      <span className="text-gray-600">GST</span>
+      <span>{formatPrice(selectedOrder?.shipping_address?.price_breakup?.gst || 0)}</span>
+    </div>
+
+    <div className="flex justify-between">
+      <span className="text-gray-600">Delivery</span>
+      <span>{formatPrice(selectedOrder?.shipping_address?.price_breakup?.delivery || 0)}</span>
+    </div>
+
+    <div className="flex justify-between">
+      <span className="text-gray-600">Platform Fee</span>
+      <span>{formatPrice(selectedOrder?.shipping_address?.price_breakup?.platform_fee || 0)}</span>
+    </div>
+
+    <div className="border-t pt-2 flex justify-between font-semibold text-base">
+      <span>Grand Total</span>
+      <span>{formatPrice(selectedOrder?.shipping_address?.price_breakup?.grand_total || selectedOrder?.total_amount)}</span>
+    </div>
+
+  </div>
+
+</div>
+
+
+            {/* PRODUCTS */}
+
+          <div className="space-y-4">
+
+  {realreviewdata?.map((item: any, i: number) => (
+
+    <div
+      key={i}
+      className="border rounded-xl p-4 bg-white shadow-sm space-y-4"
+    >
+
+      {/* ================= PRODUCT ROW ================= */}
+      <div className="flex gap-4 items-center">
+
+        <img
+          src={item.image || "/placeholder.png"}
+          className="w-14 h-14 rounded-lg object-cover border"
+          alt={item.name}
+        />
+
+        <div className="flex-1">
+
+          <p className="font-medium text-sm">
+            {item.name}
+          </p>
+
+          <p className="text-xs text-gray-500">
+            Qty: {item.quantity}
+          </p>
+
+        </div>
+
+        <p className="font-semibold text-sm">
+          {formatPrice(item.price * item.quantity)}
+        </p>
+
+      </div>
+
+      {/* ================= REVIEW SECTION ================= */}
+      {selectedOrder?.status === "delivered" && (
+
+        <div className="border-t pt-4 space-y-4">
+
+          <h4 className="font-semibold text-sm">
+            Rate this Product
+          </h4>
+
+          {/* ⭐ Rating */}
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Star
+                key={n}
+                size={24}
+                onClick={() => setRating(n)}
+                className={`cursor-pointer transition ${
+                  n <= item?.rating
+                    ? "text-yellow-400 fill-yellow-400 scale-110"
+                    : "text-gray-300 hover:text-yellow-300"
+                }`}
+              />
+            ))}
+          </div>
+
+          {item?.rating === 0 && (
+            <p className="text-xs text-red-500">
+              Please select rating
+            </p>
+          )}
+
+          {/* 📝 Comment */}
+          <textarea
+            className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary/30 outline-none resize-none"
+            rows={3}
+            placeholder="Share your experience..."
+            value={item?.comment}
+            onChange={(e) => setComment(e.target.value)}
+            maxLength={300}
+          />
+
+          <p className="text-xs text-gray-400 text-right">
+            {comment.length}/300
+          </p>
+
+          {/* 📤 Upload */}
+          <label className="flex items-center gap-2 text-xs cursor-pointer text-primary hover:underline">
+
+            <Upload size={16} />
+
+            Add Photos (Max 5)
+
+            <input
+              type="file"
+              hidden
+              multiple
+              accept="image/*"
+              onChange={handleImageChange}
+            />
+
+          </label>
+
+          {/* 🖼️ OLD IMAGES */}
+          {item?.oldImages?.length > 0 && (
+
+            <div className="flex gap-3 flex-wrap">
+
+              {item?.oldImages?.map((url: string, i: number) => (
+
+                <div
+                  key={i}
+                  className="relative w-20 h-20 rounded-lg overflow-hidden border group"
+                >
+
+                  <img
+                    src={url}
+                    className="w-full h-full object-cover"
+                    alt="old"
+                  />
+
+                  <button
+                    onClick={() => removeOldImage(i)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                  >
+                    ✕
+                  </button>
+
+                </div>
+              ))}
+
+            </div>
+          )}
+
+          {/* 🖼️ NEW IMAGES */}
+          {item?.images?.length > 0 && (
+
+            <div className="flex gap-3 flex-wrap">
+
+              {item?.images.map((img: any, i: number) => (
+
+                <div
+                  key={i}
+                  className="relative w-20 h-20 rounded-lg overflow-hidden border group"
+                >
+
+                  <img
+                    src={img.preview}
+                    className="w-full h-full object-cover"
+                    alt="preview"
+                  />
+
+                  <button
+                    onClick={() => removeNewImage(i)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                  >
+                    ✕
+                  </button>
+
+                </div>
+              ))}
+
+            </div>
+          )}
+
+          {/* 🚀 Submit */}
+          <Button
+            disabled={
+              reviewLoading ||
+              rating === 0 ||
+              comment.trim().length < 5
+            }
+            onClick={() =>
+              submitReview(selectedOrder, item.product_id)
+            }
+            className="w-full text-sm"
+          >
+            {reviewLoading ? "Submitting..." : "Submit Review"}
+          </Button>
+
+        </div>
+      )}
+
+    </div>
+  ))}
+
+</div>
+
+
+            {/* REVIEW */}
+
+          
+
+          </div>
+
+        )}
+
+      </AppModal>
+
     </div>
   )
 }
