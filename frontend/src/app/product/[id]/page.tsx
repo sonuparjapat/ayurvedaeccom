@@ -74,7 +74,7 @@ export default function ProductDetailPage() {
   const [page,setPage]=useState<any>(1)
  const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
   } = useAuth()
-
+console.log(cartdata,"carrrrrrrrrrtdata")
 const handlepagechage=(page:number)=>{
   setPage(page)
 }
@@ -157,7 +157,10 @@ console.log(product, "cccccccccccccccccccccccccccccccccc")
       const finalQty = Math.min(qty, product.inventory)
 
 
-      await axios.put('/cart', {
+    cartdata?.items?.filter((item:any)=>item?.product_id==product?.id)?.length>=1? await axios.put('/cart', {
+        productId: product.id,
+        quantity: finalQty
+      }):await axios.post('/cart', {
         productId: product.id,
         quantity: finalQty
       })

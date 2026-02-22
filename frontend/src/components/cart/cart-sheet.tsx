@@ -29,6 +29,7 @@ import Link from 'next/link'
 
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/auth-context'
+import { useRouter } from 'next/navigation'
 
 /* ================= TYPES ================= */
 
@@ -54,7 +55,7 @@ interface Cart {
 
 export function CartSheet(){
   const [cart, setCart] = useState<Cart | null>(null)
-
+const router=useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -379,7 +380,9 @@ console.log(finalQty,"finalquantity")
               </p>
 
 
-              <Button onClick={() => setIsOpen(false)}>
+              <Button onClick={() =>{ handleCart(false)
+                router.push("/products")
+              }}>
 
                 Continue Shopping
 

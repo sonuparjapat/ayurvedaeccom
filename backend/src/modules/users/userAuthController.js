@@ -44,7 +44,7 @@ exports.userRegister = async (req, res) => {
       `
       INSERT INTO users
       (name,email,phone,password,role,verification_token,is_verified)
-      VALUES($1,$2,$3,$4,3,$5,false)
+      VALUES($1,$2,$3,$4,3,$5,true)
       `,
       [name, email, phone, hash, token]
     );
@@ -52,21 +52,21 @@ exports.userRegister = async (req, res) => {
     const link = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
     /* Send mail */
-    await sgMail.send({
-      to: email,
-      from: process.env.MAIL_FROM,
-      subject: "Verify Your Account",
-      html: `
-        <p>Click to verify:</p>
-        <a href="${link}">${link}</a>
-      `,
-    });
+    // await sgMail.send({
+    //   to: email,
+    //   from: process.env.MAIL_FROM,
+    //   subject: "Verify Your Account",
+    //   html: `
+    //     <p>Click to verify:</p>
+    //     <a href="${link}">${link}</a>
+    //   `,
+    // });
 
     await client.query("COMMIT");
 
     res.json({
       success: true,
-      message: "Registered. Verify email.",
+      message: "Registered.Successfully.",
     });
 
   } catch (err) {

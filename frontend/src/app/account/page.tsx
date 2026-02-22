@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import { Header } from '@/components/layout/header'
@@ -493,6 +493,7 @@ const handleSaveAddress = async (data: any) => {
   /* ================= UI ================= */
 
   return (
+      <Suspense fallback={null}>
     <div className="min-h-screen flex flex-col bg-[#f5f6fb]">
       <Header />
 
@@ -1246,6 +1247,6 @@ const handleSaveAddress = async (data: any) => {
           </div>
         )}
       </AppModal>
-    </div>
+    </div></Suspense>
   )
 }

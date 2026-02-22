@@ -17,7 +17,7 @@ router.get("/categories", controller.getCategories)
 router.post("/wishlist", auth, controller.toggleWishlist);
 
 router.get("/", auth, controller.getWishlist);
-
+// ''''''''''''''''''''''''=====review routes=======================
 
 
 router.post('/review',auth,controller.addReview)

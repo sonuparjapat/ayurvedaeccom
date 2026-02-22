@@ -55,14 +55,15 @@ interface Product {
 }
 
 /* ================= COMPONENT ================= */
-
+import { useSearchParams } from 'next/navigation'
 export default function ProductsPage() {
   /* ---------- STATE ---------- */
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-
-  const [search, setSearch] = useState('')
+const params = useSearchParams()
+  const q = params.get('q') || ''
+  const [search, setSearch] = useState(q||'')
   const [category, setCategory] = useState('all')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')

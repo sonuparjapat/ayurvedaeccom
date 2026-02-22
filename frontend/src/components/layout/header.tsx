@@ -19,7 +19,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/auth-context'
-
+import { useRef } from 'react'
+import axios from '@/lib/axios'
+import useDebounce from '../debounce'
 export function Header() {
   const router = useRouter()
 const {loginuserdata,logout}=useAuth()
@@ -27,20 +29,43 @@ const {loginuserdata,logout}=useAuth()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 const {categoriesdata} = useAuth()
-console.log(categoriesdata,"comingcat")
-console.log(loginuserdata,"loginuserdata")
+const [searchQuery, setSearchQuery] = useState('')
+const debouncedSearch =useDebounce(searchQuery, 2000)
 
+const [searchResults, setSearchResults] = useState([])
+const [searchLoading, setSearchLoading] = useState(false)
+const [showResults, setShowResults] = useState(false)
+const searchProducts = async (query) => {
+  if (!query.trim()) {
+    setSearchResults([])
+    setShowResults(false)
+    return
+  }
 
+  try {
+    setSearchLoading(true)
+
+    const res = await axios.get(`/shop/public?search=${query}`)
+
+   
+
+    setSearchResults(res?.data?.products || [])
+    setShowResults(true)
+
+  } catch (err) {
+    console.error('Search Error:', err)
+  } finally {
+    setSearchLoading(false)
+  }
+}
+useEffect(()=>{
+searchProducts(debouncedSearch)
+},[debouncedSearch])
   const handleLogout = () => {
    logout("users")
   }
 
-  const categories = [
-    { name: 'Dry Fruits', href: '/category/dry-fruits' },
-    { name: 'Ayurvedic Herbs', href: '/category/herbs' },
-    { name: 'Dehydrated Foods', href: '/category/dehydrated' },
-    { name: 'Tofu Products', href: '/category/tofu' },
-  ]
+
 
 
   return (
@@ -112,9 +137,17 @@ console.log(loginuserdata,"loginuserdata")
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
 
                 <Input
-                  placeholder="Search products..."
-                  className="pl-9 text-sm"
-                />
+  placeholder="Search products..."
+  className="pl-9 text-sm"
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchQuery('')
+    }
+  }}
+/>
               </div>
 
             </div>
@@ -215,17 +248,27 @@ console.log(loginuserdata,"loginuserdata")
               <div className="px-4 py-4 space-y-4">
 
                 {/* Search */}
-                <div className="relative">
+                {/* <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
 
-                  <Input
-                    placeholder="Search..."
-                    className="pl-9"
-                  />
-                </div>
+                 <Input
+  autoFocus
+  placeholder="Search..."
+  className="flex-1"
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`)
+      setIsSearchOpen(false)
+      setSearchQuery('')
+    }
+  }}
+/>
+                </div> */}
 
                 {/* Links */}
-                {categories.map((cat) => (
+                {categoriesdata?.rows.map((cat) => (
                   <Link
                     key={cat?.name}
                   href={`/category/${cat?.id}`} 
@@ -266,11 +309,20 @@ console.log(loginuserdata,"loginuserdata")
 
                 <Search size={22} />
 
-                <Input
-                  autoFocus
-                  placeholder="Search..."
-                  className="flex-1"
-                />
+            <Input
+  autoFocus
+  placeholder="Search..."
+  className="flex-1"
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  // onKeyDown={(e) => {
+  //   if (e.key === 'Enter' && searchQuery.trim()) {
+  //     router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`)
+  //     setIsSearchOpen(false)
+  //     setSearchQuery('')
+  //   }
+  // }}
+/>
 
                 <Button
                   variant="ghost"
@@ -281,7 +333,74 @@ console.log(loginuserdata,"loginuserdata")
                 </Button>
 
               </div>
+{searchLoading && (
+  <div className="py-4 text-center text-sm text-gray-500">
+    Searching...
+  </div>
+)}
 
+{/* Results */}
+{showResults && !searchLoading && (
+
+  <div className="mt-3 max-h-[60vh] overflow-y-auto space-y-2">
+
+    {searchResults.length == 0 && (
+      <div className="py-4 text-center text-sm text-gray-500">
+        No products found
+      </div>
+    )}
+
+    {searchResults.map((item:any) => (
+
+      <div
+        key={item.id}
+        onClick={() => {
+          router.push(`/product/${item.id}`)
+
+          setIsSearchOpen(false)
+          setSearchQuery('')
+          setSearchResults([])
+          setShowResults(false)
+        }}
+        className="flex gap-3 p-2 border rounded-lg hover:bg-emerald-50 cursor-pointer transition"
+      >
+
+        <img
+          src={item?.images?.[0] || '/placeholder.png'}
+          className="w-14 h-14 rounded object-cover"
+        />
+
+        <div className="flex-1">
+
+          <h4 className="text-sm font-medium line-clamp-1">
+            {item.name}
+          </h4>
+
+          <p className="text-xs text-gray-500">
+            {item.category_name}
+          </p>
+
+          <div className="flex gap-2 mt-1">
+
+            <span className="text-emerald-600 font-semibold text-sm">
+              ₹{item.price}
+            </span>
+
+            {item.compareprice && (
+              <span className="text-xs line-through text-gray-400">
+                ₹{item.compareprice}
+              </span>
+            )}
+
+          </div>
+
+        </div>
+
+      </div>
+    ))}
+
+  </div>
+)}
             </motion.div>
 
           </motion.div>

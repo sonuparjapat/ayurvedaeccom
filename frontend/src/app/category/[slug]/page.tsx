@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Head from 'next/head'
 import axios from '@/lib/axios'
@@ -143,177 +143,25 @@ function ProductSkeleton({ viewMode }: { viewMode: 'grid' | 'list' }) {
 }
 
 /* ================= PAGE ================= */
-
-export default function CategoryPage() {
-  const { slug } = useParams()
-  const router = useRouter()
-
-  const {
-    loginuserdata,
-    wishlistdata,
-    getwishlist,
-    fetchCart,
-    cartdata,
-    handleCart
-  } = useAuth()
-
-  /* ---------- STATE ---------- */
-
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [cartLoading, setCartLoading] = useState<Record<number, boolean>>({})
-  const [wishLoading, setWishLoading] = useState<Record<number, boolean>>({})
-  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null)
-
-  const [searchTerm, setSearchTerm] = useState('')
-  const [searchInput, setSearchInput] = useState('')
-  const [sortBy, setSortBy] = useState('created_at')
-
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [showFilters, setShowFilters] = useState(false)
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-
-  const [priceRange, setPriceRange] = useState({ min: '', max: '' })
-  const [priceError, setPriceError] = useState('')
-
-  const [inStockOnly, setInStockOnly] = useState(false)
-  const [minRating, setMinRating] = useState(0)
-
-  const [page, setPage] = useState(1)
-  const limit = 9
-  const [total, setTotal] = useState(0)
-
-  const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  /* ================= SEARCH DEBOUNCE ================= */
-
-  useEffect(() => {
-    if (searchRef.current) clearTimeout(searchRef.current)
-    searchRef.current = setTimeout(() => {
-      setSearchTerm(searchInput)
-      setPage(1)
-    }, 400)
-    return () => { if (searchRef.current) clearTimeout(searchRef.current) }
-  }, [searchInput])
-
-  /* ================= FETCH ================= */
-
-  useEffect(() => {
-    fetchProducts()
-  }, [slug, searchTerm, sortBy, priceRange, page, inStockOnly, minRating])
-console.log(slug,'idfsdfsdf')
-  const fetchProducts = async () => {
-    console.log(slug,"id cominggggggggggg")
-    try {
-      setLoading(true)
-      const res = await axios.get('/shop/public', {
-        params: {
-          category_id: slug,
-          search: searchTerm,
-          minPrice: priceRange.min,
-          maxPrice: priceRange.max,
-          sortBy,
-          sortOrder: 'desc',
-          page,
-          limit,
-          inStock: inStockOnly || undefined,
-          minRating: minRating || undefined,
-        }
-      })
-      setProducts(res.data.products || [])
-      setTotal(res.data.total || 0)
-    } catch {
-      notify.error('Failed to load products')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  /* ================= PRICE VALIDATION ================= */
-
-  const handlePriceChange = (field: 'min' | 'max', val: string) => {
-    const num = Number(val)
-    setPriceError('')
-    if (val && isNaN(num)) { setPriceError('Enter a valid number'); return }
-    const newRange = { ...priceRange, [field]: val }
-    if (newRange.min && newRange.max && Number(newRange.min) > Number(newRange.max)) {
-      setPriceError('Min price cannot exceed max price')
-      return
-    }
-    setPriceRange(newRange)
-    setPage(1)
-  }
-
-  /* ================= HELPERS ================= */
-
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(price)
-
-  const getImageUrl = (arr: string[]) => arr?.[0] || '/placeholder-product.jpg'
-
-  const isWishlisted = (id: number) => wishlistdata?.items?.some((w: any) => w.id == id)
-  const isInCart = (id: number) => cartdata?.items?.some((c: any) => c.product_id == id)
-
-  const activeFiltersCount = [
-    priceRange.min, priceRange.max, inStockOnly, minRating > 0
-  ].filter(Boolean).length
-
-  /* ================= ACTIONS ================= */
-
-  const toggleWishlist = async (pid: number) => {
-    if (!loginuserdata?.id) { notify.error('Please login to save items'); router.push('/auth'); return }
-    try {
-      setWishLoading(p => ({ ...p, [pid]: true }))
-      await axios.post('/shop/wishlist', { productId: pid })
-      getwishlist()
-      notify.success(isWishlisted(pid) ? 'Removed from wishlist' : 'Added to wishlist')
-    } catch {
-      notify.error('Something went wrong')
-    } finally {
-      setWishLoading(p => ({ ...p, [pid]: false }))
-    }
-  }
-
-  const addToCart = async (pid: number) => {
-    if (!loginuserdata?.id) { notify.error('Please login to add items'); router.push('/auth'); return }
-    if (isInCart(pid)) {handleCart(true); return }
-    try {
-      setCartLoading(p => ({ ...p, [pid]: true }))
-      await axios.post('/cart', { productId: pid, quantity: 1 })
-      fetchCart(loginuserdata.id)
-      notify.success('Added to cart!')
-    } catch {
-      notify.error('Add to cart failed')
-    } finally {
-      setCartLoading(p => ({ ...p, [pid]: false }))
-    }
-  }
-
-  const clearAllFilters = () => {
-    setSearchInput('')
-    setSearchTerm('')
-    setSortBy('created_at')
-    setPriceRange({ min: '', max: '' })
-    setPriceError('')
-    setInStockOnly(false)
-    setMinRating(0)
-    setPage(1)
-  }
-
-  const totalPages = Math.ceil(total / limit)
-  const categoryName = products?.[0]?.category_name || 'Products'
-
-  const bannerSlides = [
-    { bg: 'from-emerald-600 to-teal-500', text: 'Premium Quality', sub: 'Handpicked for you', icon: Sparkles },
-    { bg: 'from-violet-600 to-purple-500', text: 'Best Prices', sub: 'Guaranteed savings', icon: TrendingUp },
-    { bg: 'from-orange-500 to-amber-500', text: 'Fast Delivery', sub: 'Ships within 24 hours', icon: Truck },
-  ]
-
-  /* ================= FILTER PANEL ================= */
-
-  const FilterPanel = () => (
-    <div className="space-y-6">
-      {/* Search */}
+const FilterPanel = memo(function FilterPanel({
+  searchInput,
+  setSearchInput,
+  sortBy,
+  setSortBy,
+  priceRange,
+  handlePriceChange,
+  priceError,
+  minRating,
+  setMinRating,
+  inStockOnly,
+  setInStockOnly,
+  clearAllFilters,
+  activeFiltersCount,
+  setPage
+}: any) {
+  return (
+     <div className="space-y-6">
+          {/* Search */}
       <div>
         <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Search</label>
         <div className="relative">
@@ -422,8 +270,287 @@ console.log(slug,'idfsdfsdf')
           <X size={14} /> Clear All Filters
         </button>
       )}
-    </div>
-  )
+    </div>)})
+export default function CategoryPage() {
+  const { slug } = useParams()
+  const router = useRouter()
+
+  const {
+    loginuserdata,
+    wishlistdata,
+    getwishlist,
+    fetchCart,
+    cartdata,
+    handleCart
+  } = useAuth()
+
+  /* ---------- STATE ---------- */
+
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [cartLoading, setCartLoading] = useState<Record<number, boolean>>({})
+  const [wishLoading, setWishLoading] = useState<Record<number, boolean>>({})
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null)
+
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [sortBy, setSortBy] = useState('created_at')
+
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [showFilters, setShowFilters] = useState(false)
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' })
+  const [priceError, setPriceError] = useState('')
+
+  const [inStockOnly, setInStockOnly] = useState(false)
+  const [minRating, setMinRating] = useState(0)
+
+  const [page, setPage] = useState(1)
+  const limit = 9
+  const [total, setTotal] = useState(0)
+
+  const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /* ================= SEARCH DEBOUNCE ================= */
+
+  useEffect(() => {
+    if (searchRef.current) clearTimeout(searchRef.current)
+    searchRef.current = setTimeout(() => {
+      setSearchTerm(searchInput)
+      setPage(1)
+    }, 400)
+    return () => { if (searchRef.current) clearTimeout(searchRef.current) }
+  }, [searchInput])
+
+  /* ================= FETCH ================= */
+
+  useEffect(() => {
+    fetchProducts()
+  }, [slug, searchTerm, sortBy, priceRange, page, inStockOnly, minRating])
+console.log(slug,'idfsdfsdf')
+  const fetchProducts = async () => {
+    console.log(slug,"id cominggggggggggg")
+    try {
+      setLoading(true)
+      const res = await axios.get('/shop/public', {
+        params: {
+          category_id: slug,
+          search: searchTerm,
+          minPrice: priceRange.min,
+          maxPrice: priceRange.max,
+          sortBy,
+          sortOrder: 'desc',
+          page,
+          limit,
+          inStock: inStockOnly || undefined,
+          rating: minRating || undefined,
+        }
+      })
+      setProducts(res.data.products || [])
+      setTotal(res.data.total || 0)
+    } catch {
+      notify.error('Failed to load products')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /* ================= PRICE VALIDATION ================= */
+
+  const handlePriceChange = (field: 'min' | 'max', val: string) => {
+    const num = Number(val)
+    setPriceError('')
+    if (val && isNaN(num)) { setPriceError('Enter a valid number'); return }
+    const newRange = { ...priceRange, [field]: val }
+    if (newRange.min && newRange.max && Number(newRange.min) > Number(newRange.max)) {
+      setPriceError('Min price cannot exceed max price')
+      return
+    }
+    setPriceRange(newRange)
+    setPage(1)
+  }
+
+  /* ================= HELPERS ================= */
+
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(price)
+
+  const getImageUrl = (arr: string[]) => arr?.[0] || '/placeholder-product.jpg'
+
+  const isWishlisted = (id: number) => wishlistdata?.items?.some((w: any) => w.id == id)
+  const isInCart = (id: number) => cartdata?.items?.some((c: any) => c.product_id == id)
+
+  const activeFiltersCount = [
+    priceRange.min, priceRange.max, inStockOnly, minRating > 0
+  ].filter(Boolean).length
+
+  /* ================= ACTIONS ================= */
+
+  const toggleWishlist = async (pid: number) => {
+    if (!loginuserdata?.id) { notify.error('Please login to save items'); router.push('/auth'); return }
+    try {
+      setWishLoading(p => ({ ...p, [pid]: true }))
+      await axios.post('/shop/wishlist', { productId: pid })
+      getwishlist()
+      notify.success(isWishlisted(pid) ? 'Removed from wishlist' : 'Added to wishlist')
+    } catch {
+      notify.error('Something went wrong')
+    } finally {
+      setWishLoading(p => ({ ...p, [pid]: false }))
+    }
+  }
+
+  const addToCart = async (pid: number) => {
+    if (!loginuserdata?.id) { notify.error('Please login to add items'); router.push('/auth'); return }
+    if (isInCart(pid)) {handleCart(true); return }
+    try {
+      setCartLoading(p => ({ ...p, [pid]: true }))
+      await axios.post('/cart', { productId: pid, quantity: 1 })
+      fetchCart(loginuserdata.id)
+      notify.success('Added to cart!')
+    } catch {
+      notify.error('Add to cart failed')
+    } finally {
+      setCartLoading(p => ({ ...p, [pid]: false }))
+    }
+  }
+
+  const clearAllFilters = () => {
+    setSearchInput('')
+    setSearchTerm('')
+    setSortBy('created_at')
+    setPriceRange({ min: '', max: '' })
+    setPriceError('')
+    setInStockOnly(false)
+    setMinRating(0)
+    setPage(1)
+  }
+
+  const totalPages = Math.ceil(total / limit)
+  const categoryName = products?.[0]?.category_name || 'Products'
+
+  const bannerSlides = [
+    { bg: 'from-emerald-600 to-teal-500', text: 'Premium Quality', sub: 'Handpicked for you', icon: Sparkles },
+    { bg: 'from-violet-600 to-purple-500', text: 'Best Prices', sub: 'Guaranteed savings', icon: TrendingUp },
+    { bg: 'from-orange-500 to-amber-500', text: 'Fast Delivery', sub: 'Ships within 24 hours', icon: Truck },
+  ]
+
+  /* ================= FILTER PANEL ================= */
+
+  // const FilterPanel = () => (
+  //   <div className="space-y-6">
+  //     {/* Search */}
+  //     <div>
+  //       <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Search</label>
+  //       <div className="relative">
+  //         <Search className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
+  //         <input
+  //           value={searchInput}
+  //           onChange={(e) => setSearchInput(e.target.value)}
+  //           className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all bg-white"
+  //           placeholder="Search products..."
+  //         />
+  //         {searchInput && (
+  //           <button onClick={() => setSearchInput('')} className="absolute right-3 top-3">
+  //             <X size={14} className="text-gray-400 hover:text-gray-600" />
+  //           </button>
+  //         )}
+  //       </div>
+  //     </div>
+
+  //     {/* Sort */}
+  //     <div>
+  //       <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Sort By</label>
+  //       <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1) }}>
+  //         <SelectTrigger className="rounded-xl border-gray-200 text-sm">
+  //           <SelectValue />
+  //         </SelectTrigger>
+  //         <SelectContent>
+  //           <SelectItem value="created_at">Newest First</SelectItem>
+  //           <SelectItem value="price">Price: Low to High</SelectItem>
+  //           <SelectItem value="name">Name A–Z</SelectItem>
+  //           <SelectItem value="averagerating">Top Rated</SelectItem>
+  //         </SelectContent>
+  //       </Select>
+  //     </div>
+
+  //     {/* Price Range */}
+  //     <div>
+  //       <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Price Range (₹)</label>
+  //       <div className="flex gap-2 items-center">
+  //         <input
+  //           type="number"
+  //           placeholder="Min"
+  //           value={priceRange.min}
+  //           onChange={(e) => handlePriceChange('min', e.target.value)}
+  //           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+  //         />
+  //         <span className="text-gray-400 text-xs font-bold">–</span>
+  //         <input
+  //           type="number"
+  //           placeholder="Max"
+  //           value={priceRange.max}
+  //           onChange={(e) => handlePriceChange('max', e.target.value)}
+  //           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+  //         />
+  //       </div>
+  //       {priceError && (
+  //         <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5 font-medium">
+  //           <AlertCircle size={12} /> {priceError}
+  //         </p>
+  //       )}
+  //     </div>
+
+  //     {/* Min Rating */}
+  //     <div>
+  //       <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Minimum Rating</label>
+  //       <div className="space-y-1.5">
+  //         {[4, 3, 2, 0].map((r) => (
+  //           <button
+  //             key={r}
+  //             onClick={() => { setMinRating(r); setPage(1) }}
+  //             className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${minRating === r ? 'bg-emerald-50 border border-emerald-300 text-emerald-700' : 'border border-transparent hover:bg-gray-50'}`}
+  //           >
+  //             {r > 0 ? (
+  //               <>
+  //                 <StarRating rating={r} size={13} />
+  //                 <span className="font-medium">& above</span>
+  //               </>
+  //             ) : (
+  //               <span className="font-medium text-gray-500">All Ratings</span>
+  //             )}
+  //             {minRating === r && <Check size={13} className="ml-auto text-emerald-600" />}
+  //           </button>
+  //         ))}
+  //       </div>
+  //     </div>
+
+  //     {/* In Stock */}
+  //     <div>
+  //       <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Availability</label>
+  //       <button
+  //         onClick={() => { setInStockOnly(!inStockOnly); setPage(1) }}
+  //         className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all ${inStockOnly ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+  //       >
+  //         In Stock Only
+  //         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${inStockOnly ? 'bg-emerald-600 border-emerald-600' : 'border-gray-300'}`}>
+  //           {inStockOnly && <Check size={12} className="text-white" />}
+  //         </div>
+  //       </button>
+  //     </div>
+
+  //     {/* Clear */}
+  //     {activeFiltersCount > 0 && (
+  //       <button
+  //         onClick={clearAllFilters}
+  //         className="w-full flex items-center justify-center gap-2 text-sm font-bold text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-4 py-2.5 rounded-xl transition-all"
+  //       >
+  //         <X size={14} /> Clear All Filters
+  //       </button>
+  //     )}
+  //   </div>
+  // )
 
   /* ================= PRODUCT GRID CARD ================= */
 
@@ -882,7 +1009,22 @@ console.log(slug,'idfsdfsdf')
                       <span className="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">{activeFiltersCount}</span>
                     )}
                   </div>
-                  <FilterPanel />
+                <FilterPanel
+  searchInput={searchInput}
+  setSearchInput={setSearchInput}
+  sortBy={sortBy}
+  setSortBy={setSortBy}
+  priceRange={priceRange}
+  handlePriceChange={handlePriceChange}
+  priceError={priceError}
+  minRating={minRating}
+  setMinRating={setMinRating}
+  inStockOnly={inStockOnly}
+  setInStockOnly={setInStockOnly}
+  clearAllFilters={clearAllFilters}
+  activeFiltersCount={activeFiltersCount}
+  setPage={setPage}
+/>
                 </div>
               </aside>
 
@@ -1090,7 +1232,22 @@ console.log(slug,'idfsdfsdf')
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-5">
-                <FilterPanel />
+    <FilterPanel
+  searchInput={searchInput}
+  setSearchInput={setSearchInput}
+  sortBy={sortBy}
+  setSortBy={setSortBy}
+  priceRange={priceRange}
+  handlePriceChange={handlePriceChange}
+  priceError={priceError}
+  minRating={minRating}
+  setMinRating={setMinRating}
+  inStockOnly={inStockOnly}
+  setInStockOnly={setInStockOnly}
+  clearAllFilters={clearAllFilters}
+  activeFiltersCount={activeFiltersCount}
+  setPage={setPage}
+/>
               </div>
               <div className="p-5 border-t border-gray-100">
                 <button
