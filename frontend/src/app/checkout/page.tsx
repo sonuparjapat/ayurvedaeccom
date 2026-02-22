@@ -470,11 +470,73 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false)
   const [orderNo, setOrderNo] = useState('')
   const [shipping, setShipping] = useState({ name: '', phone: '', address: '' })
-       
+    const [addresses, setAddresses] = useState<any[]>([]);
+const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);   
   const {fetchCart, loginuserdata, cartdata,cartloading,settings}=useAuth()
   const [paidAmount, setPaidAmount] = useState<number>(0)
-console.log(loginuserdata,"loginuserdata")
-  useEffect(() => { fetchCart( loginuserdata?.id) }, [])
+const [checkingAddress, setCheckingAddress] = useState(true);
+useEffect(() => {
+
+  if (!loginuserdata?.id) return;
+
+  const init = async () => {
+
+    try {
+
+      setCheckingAddress(true);
+
+      // Load cart
+      await fetchCart(loginuserdata.id);
+
+      // Load addresses
+      const res = await axios.get("/users/address");
+
+      const list = res.data?.data || [];
+
+      // ❌ NO ADDRESS → REDIRECT
+      if (!list.length) {
+
+        toast.error("Please add address before checkout");
+
+        window.location.href = "/account?tab=addresses";
+
+        return;
+      }
+
+      setAddresses(list);
+
+      // Auto select default
+      const def = list.find((a: any) => a.isDefault) || list[0];
+
+      if (def) {
+
+        setSelectedAddressId(def.id);
+
+        setShipping({
+          name: loginuserdata?.name || "",
+          phone: loginuserdata?.phone || "",
+          address: `${def.street}, ${def.city}, ${def.state} - ${def.pincode}`,
+        });
+
+      }
+
+    } catch (err) {
+
+      console.error("Checkout init error:", err);
+
+      toast.error("Something went wrong");
+
+    } finally {
+
+      setCheckingAddress(false);
+
+    }
+
+  };
+
+  init();
+
+}, [loginuserdata]);
 console.log(cartdata,"cartdata",settings,"settings")
 
 /* ================= SETTINGS → MAP ================= */
@@ -555,7 +617,13 @@ const {
   }
 
 const placeOrder = async () => {
+if (!addresses.length) {
+  toast.error("Please add an address in your profile first");
+  window.location.href = "/account?tab=addresses";
+  return;
+}
 
+if (!validateShipping()) return;
   if (!validateShipping()) return;
 
   if (processing) return;
@@ -566,7 +634,9 @@ const placeOrder = async () => {
     /* ================= CREATE ORDER ================= */
 
     const res = await axios.post("/orders/create", {
-      shipping,
+     shipping,
+addressId: selectedAddressId,
+
       paymentMethod,
 
       // Optional: frontend snapshot (for debugging only)
@@ -719,7 +789,13 @@ setPaidAmount(total);
 
   /* ─── LOADING ─── */
 
-
+if (checkingAddress) {
+  return (
+    <div className="loading-scene">
+      <div className="loader-ring" />
+    </div>
+  );
+}
   /* ─── SUCCESS ─── */
   if (orderPlaced) return (
     <div className="checkout-root">
@@ -887,6 +963,56 @@ setPaidAmount(total);
                     </div>
 
                     <div style={{ padding: '32px' }}>
+                      {addresses.length > 0 && (
+  <div style={{ marginBottom: 24 }}>
+
+    <label className="input-label">Saved Addresses</label>
+
+    <div style={{ display: "grid", gap: 10 }}>
+
+      {addresses.map((addr: any) => {
+
+        const full = `${addr.street}, ${addr.city}, ${addr.state} - ${addr.pincode}`;
+
+        return (
+          <button
+            key={addr.id}
+            type="button"
+            onClick={() => {
+
+              setSelectedAddressId(addr.id);
+
+              setShipping({
+                name: loginuserdata?.name || "",
+                phone: loginuserdata?.phone || "",
+                address: full,
+              });
+
+            }}
+            className={`gold-input`}
+            style={{
+              textAlign: "left",
+              borderColor:
+                selectedAddressId === addr.id
+                  ? "var(--gold)"
+                  : "var(--border)",
+              background:
+                selectedAddressId === addr.id
+                  ? "white"
+                  : "var(--parchment)",
+              cursor: "pointer",
+            }}
+          >
+            {addr.isDefault && "⭐ "}
+            {full}
+          </button>
+        );
+      })}
+
+    </div>
+
+  </div>
+)}
                       <div style={{ display: 'grid', gap: 20 }}>
 
                         <div>
@@ -896,6 +1022,7 @@ setPaidAmount(total);
                             <input
                               className="gold-input"
                               placeholder="Your full name"
+                              disabled
                               value={shipping.name}
                               onChange={e => setShipping({ ...shipping, name: e.target.value })}
                               style={{ paddingLeft: 44 }}
@@ -911,6 +1038,7 @@ setPaidAmount(total);
                               className="gold-input"
                               placeholder="10-digit mobile number"
                               value={shipping.phone}
+                              disabled
                               onChange={e => setShipping({ ...shipping, phone: e.target.value })}
                               style={{ paddingLeft: 44 }}
                             />
@@ -927,6 +1055,7 @@ setPaidAmount(total);
                               value={shipping.address}
                               onChange={e => setShipping({ ...shipping, address: e.target.value })}
                               rows={3}
+                              disabled
                               style={{ paddingLeft: 44, resize: 'none', lineHeight: 1.6 }}
                             />
                           </div>

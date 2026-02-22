@@ -67,14 +67,48 @@ exports.createOrder = async (req, res) => {
 
     /* ================= INPUT ================= */
 
-    const { shipping, paymentMethod } = req.body;
+    const { shipping, paymentMethod,addressId  } = req.body;
+if (!addressId) {
+  return res.status(400).json({
+    success: false,
+    message: "Address is required"
+  });
+}
+/* ================= USER ADDRESS EXIST ================= */
 
-    if (!shipping?.name || !shipping?.phone || !shipping?.address) {
-      return res.status(400).json({
-        success: false,
-        message: "Incomplete shipping details"
-      });
-    }
+const chk = await client.query(
+  "SELECT id FROM user_addresses WHERE user_id=$1",
+  [userId]
+);
+
+if (!chk.rows.length) {
+  return res.status(400).json({
+    success: false,
+    message: "Please add address before ordering"
+  });
+}
+ const addrRes = await client.query(
+  `
+  SELECT
+    id,
+    type,
+    street,
+    city,
+    state,
+    pincode
+  FROM user_addresses
+  WHERE id=$1 AND user_id=$2
+  `,
+  [addressId, userId]
+);
+
+if (!addrRes.rows.length) {
+  throw new Error("Invalid address selected");
+}
+
+const addr = addrRes.rows[0];
+/* ================= ADDRESS SNAPSHOT ================= */
+
 
     if (!["cod", "online"].includes(paymentMethod)) {
       return res.status(400).json({
@@ -169,41 +203,51 @@ exports.createOrder = async (req, res) => {
 
     /* ================= CREATE ORDER ================= */
 
-    const orderRes = await client.query(`
-      INSERT INTO orders
-      (
-        user_id,
-        total_amount,
-        payment_method,
-        shipping_address,
-        status,
-        payment_status,
-        expires_at
-      )
-      VALUES
-      ($1,$2,$3,$4,$5,$6,NOW() + INTERVAL '15 minutes')
-      RETURNING id
-    `, [
-      userId,
-      total,
-      paymentMethod,
+   const orderRes = await client.query(`
+  INSERT INTO orders
+  (
+    user_id,
+    total_amount,
+    payment_method,
+    shipping_address,
+    address_id,
+    status,
+    payment_status,
+    expires_at
+  )
+  VALUES
+  ($1,$2,$3,$4,$5,$6,$7,NOW() + INTERVAL '15 minutes')
+  RETURNING id
+`, [
+  userId,
+  total,
+  paymentMethod,
 
-      /* Save breakup inside shipping JSON (safe way) */
-      JSON.stringify({
-        ...shipping,
-        price_breakup: {
-          subtotal,
-          gst: totalTax,
-          delivery,
-          platform_fee: PLATFORM,
-          grand_total: total
-        }
-      }),
+  /* Address snapshot (safe copy) */
+  JSON.stringify({
+    name: shipping?.name || "",
+    phone: shipping?.phone || "",
+    address: `${addr.street}, ${addr.city}, ${addr.state} - ${addr.pincode}`,
+    address_id: addr.id,
+    type: addr.type,
 
-      STATUS_PENDING,
+    /* Price breakup */
+    price_breakup: {
+      subtotal,
+      gst: totalTax,
+      delivery,
+      platform_fee: PLATFORM,
+      grand_total: total
+    }
+  }),
 
-      paymentMethod === "cod" ? "paid" : "unpaid"
-    ]);
+  /* FK reference */
+  addr.id,
+
+  STATUS_PENDING,
+
+  paymentMethod === "cod" ? "paid" : "unpaid"
+]);
 
     const orderId = orderRes.rows[0].id;
 

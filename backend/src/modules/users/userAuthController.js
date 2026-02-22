@@ -10,107 +10,79 @@ const sgMail = require('@sendgrid/mail')
 
 sgMail.setApiKey(process.env.SENDGRID_KEY)
 exports.userRegister = async (req, res) => {
+  const client = await pool.connect();
 
   try {
 
-    const {
-      name,
-      email,
-      phone,
-      password,
-    } = req.body
+    const { name, email, phone, password } = req.body;
 
-    /* Check existing */
-
-    const exists = await pool.query(
-      "SELECT id FROM users WHERE email=$1",
-      [email]
-    )
-
-    if (exists.rows.length) {
+    if (!name || !email || !password) {
       return res.status(400).json({
-        message: "Email already registered"
-      })
+        message: "All fields required",
+      });
     }
 
-    const hash = await bcrypt.hash(password, 10)
+    await client.query("BEGIN");
 
-    const token = crypto.randomBytes(32).toString("hex")
+    /* Check existing */
+    const exists = await client.query(
+      "SELECT id FROM users WHERE email=$1",
+      [email]
+    );
 
-    await pool.query(
+    if (exists.rowCount) {
+      return res.status(400).json({
+        message: "Email already registered",
+      });
+    }
+
+    const hash = await bcrypt.hash(password, 12);
+
+    const token = crypto.randomBytes(32).toString("hex");
+
+    await client.query(
       `
       INSERT INTO users
       (name,email,phone,password,role,verification_token,is_verified)
-      VALUES($1,$2,$3,$4,3,$5,$6)
+      VALUES($1,$2,$3,$4,3,$5,false)
       `,
-      [name, email, phone, hash, token,true]
-    )
+      [name, email, phone, hash, token]
+    );
 
-    /* Send Email */
+    const link = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
-    const link = `${process.env.FRONTEND_URL}/verify-email?token=${token}`
+    /* Send mail */
+    await sgMail.send({
+      to: email,
+      from: process.env.MAIL_FROM,
+      subject: "Verify Your Account",
+      html: `
+        <p>Click to verify:</p>
+        <a href="${link}">${link}</a>
+      `,
+    });
 
-// await mailer.send({
-//   to: email, // ONLY ONCE
+    await client.query("COMMIT");
 
-//   from: {
-//     email: process.env.MAIL_FROM,   // must be VERIFIED in SendGrid
-//     name: process.env.APP_NAME,
-//   },
+    res.json({
+      success: true,
+      message: "Registered. Verify email.",
+    });
 
-//   subject: "Verify Your Account",
+  } catch (err) {
 
-//   html: `
-//     <div style="font-family: Arial, sans-serif; background:#f4f6fb; padding:30px">
-//       <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:10px;overflow:hidden">
-        
-//         <div style="background:#4f46e5;color:white;padding:20px;text-align:center">
-//           <h2>Welcome to ${process.env.APP_NAME}</h2>
-//         </div>
+    await client.query("ROLLBACK");
 
-//         <div style="padding:30px;color:#333">
-//           <p>Hi 👋,</p>
-//           <p>Thank you for registering. Please verify your email to activate your account.</p>
+    console.error(err);
 
-//           <div style="text-align:center;margin:30px 0">
-//             <a href="${link}" 
-//               style="background:#4f46e5;color:#fff;padding:12px 24px;
-//                      border-radius:8px;text-decoration:none;font-weight:bold">
-//               Verify Email
-//             </a>
-//           </div>
+    res.status(500).json({
+      message: "Register failed",
+    });
 
-//           <p style="font-size:14px;color:#666">
-//             This link will expire in 15 minutes.<br/>
-//             If you didn’t create an account, you can safely ignore this email.
-//           </p>
-//         </div>
-
-//         <div style="background:#f1f1f1;padding:15px;text-align:center;font-size:12px;color:#777">
-//           © ${new Date().getFullYear()} ${process.env.APP_NAME}. All rights reserved.
-//         </div>
-
-//       </div>
-//     </div>
-//   `,
-// })
-
-   res.json({
-    success: true,
-    message: "Registered Successfully."
-  })
-
-} catch (err) {
-  console.error(
-    'SENDGRID ERROR:',
-    err.response?.body?.errors || err.message
-  )
-
-  res.status(500).json({
-    success: false,
-    message: "Email not sent"
-  })}
-}
+  } finally {
+    client.release();
+  }
+};
 
 
 exports.userLogin = async (req, res) => {
@@ -121,7 +93,7 @@ exports.userLogin = async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT u.id,u.role,u.name,u.email,password,is_verified,c.quantity
+      SELECT u.id,u.role,u.name,u.email,password,is_verified,c.quantity,u.phone
       FROM users u left join   cart c on u.id=c.user_id
       WHERE u.email=$1
       `,
@@ -162,7 +134,7 @@ exports.userLogin = async (req, res) => {
         role: user.role,
       },
       process.env.JWT_SECRET,
-    { expiresIn: "1h" }
+    { expiresIn: "2h" }
     )
 
     res.cookie("token", token, {
@@ -180,7 +152,8 @@ exports.userLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         cart:user?.quantity||0,
-        role:user?.role||1
+        role:user?.role||1,
+        phone:user?.phone||"",
       },
     })
 
@@ -267,7 +240,9 @@ exports.getMe = async (req, res) => {
         name,
         email,
         role,
-        is_verified
+        phone,
+        is_verified,
+        created_at
 
       FROM users
       WHERE id=$1

@@ -31,11 +31,49 @@ const initDB = async () => {
         is_verified BOOLEAN DEFAULT FALSE,
         verification_token TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,is_active BOOLEAN DEFAULT TRUE
       )
     `);
 
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
+
+    // user address
+    await client.query(`CREATE TABLE IF NOT EXISTS user_addresses (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+
+  type VARCHAR(20) CHECK (type IN ('home','work','other')),
+
+  street TEXT NOT NULL,
+  city VARCHAR(100) NOT NULL,
+  state VARCHAR(100) NOT NULL,
+  pincode VARCHAR(10) NOT NULL,
+
+  is_default BOOLEAN DEFAULT FALSE,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`)
+ await client.query(`CREATE INDEX IF NOT EXISTS idx_user_addresses_user
+ON user_addresses(user_id)`)
+
+// Users settings
+await pool.query(
+  `CREATE TABLE IF NOT EXISTS user_settings (
+  id SERIAL PRIMARY KEY,
+
+  user_id INTEGER UNIQUE
+    REFERENCES users(id)
+    ON DELETE CASCADE,
+
+  order_updates BOOLEAN DEFAULT TRUE,
+  promotions BOOLEAN DEFAULT FALSE,
+  price_drops BOOLEAN DEFAULT TRUE,
+  new_arrivals BOOLEAN DEFAULT FALSE,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`)
 
     /* ================= CATEGORIES ================= */
     await client.query(`
@@ -179,8 +217,10 @@ const initDB = async () => {
  delivery_charge NUMERIC(10,2),
  platform_fee NUMERIC(10,2),
  discount NUMERIC(10,2) DEFAULT 0,
- grand_total NUMERIC(10,2)
+ grand_total NUMERIC(10,2),
+       address_id INTEGER REFERENCES addresses(id)  
       )
+
     `);
 
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);`);

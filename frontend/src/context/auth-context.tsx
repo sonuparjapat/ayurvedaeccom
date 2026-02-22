@@ -93,7 +93,7 @@ const loadReviews = useCallback(
         loading: true,
         error: null,
       }));
-console.log(productId,page,limit)
+
       const res =Array.isArray(productId)?await axios.post(`/shop/reviews/product?me=1&page=${page}&limit=${100}`,
          {
           productId
@@ -112,13 +112,14 @@ console.log(productId,page,limit)
       if (res?.status!=200) {
         throw new Error("Failed to load reviews");
       }
-console.log(res?.data,"coming")
+
       setReviewsData({
         loading: false,
         data: res?.data.data || [],
         pagination:res?.data.pagination,
         error: null,
       });
+      return res?.data?.data
 
     } catch (error: any) {
       console.error("Review Load Error:", error);
@@ -281,9 +282,7 @@ setWishlistdata({
       setWishlistdata((pre:any)=>({...pre,loading:false}))
   }
 }
-  useEffect(() => {
-console.log(pathname,"pathname")
-    const fetchUser = async () => {
+ const fetchUser = async () => {
 if(pathname!="/adminauth"&&pathname!="/auth"&&pathname!="/"){
 
 
@@ -314,6 +313,9 @@ getintdata(res?.data?.user)
         setLoading(false)
       }}
     }
+  useEffect(() => {
+console.log(pathname,"pathname")
+   
 
     fetchUser()
 
@@ -394,7 +396,8 @@ wishlistdata,
     setWishlistdata,
     getwishlist,
     reviewsData,loadReviews,
-    orders,loadOrders
+    orders,loadOrders,
+    fetchUser
       }}
     >
       {children}
