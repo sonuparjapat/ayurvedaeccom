@@ -26,7 +26,8 @@ const {loginuserdata,logout}=useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-
+const {categoriesdata} = useAuth()
+console.log(categoriesdata,"comingcat")
 console.log(loginuserdata,"loginuserdata")
 
 
@@ -40,6 +41,7 @@ console.log(loginuserdata,"loginuserdata")
     { name: 'Dehydrated Foods', href: '/category/dehydrated' },
     { name: 'Tofu Products', href: '/category/tofu' },
   ]
+
 
   return (
     <>
@@ -178,26 +180,24 @@ console.log(loginuserdata,"loginuserdata")
           </div>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex border-t">
+       <nav className="hidden md:flex border-t">
+  <div className="flex gap-6 py-3 text-sm">
 
-            <div className="flex gap-6 py-3 text-sm">
+    {categoriesdata?.rows?.map((cat:any) => (
+      <Link
+        key={cat?.id}
+        href={`/category/${cat?.id}`} // ✅ FIX
+        className="hover:text-emerald-600 font-medium"
+      >
+        {cat?.name}
+      </Link>
+    ))}
 
-              {categories.map((cat) => (
-                <Link
-                  key={cat.name}
-                  href={cat.href}
-                  className="hover:text-emerald-600 font-medium"
-                >
-                  {cat.name}
-                </Link>
-              ))}
+    <Link href="/blog">Blog</Link>
+    <Link href="/about">About Us</Link>
 
-              <Link href="/blog">Blog</Link>
-              <Link href="/about">About Us</Link>
-
-            </div>
-
-          </nav>
+  </div>
+</nav>
 
         </div>
 
@@ -227,12 +227,12 @@ console.log(loginuserdata,"loginuserdata")
                 {/* Links */}
                 {categories.map((cat) => (
                   <Link
-                    key={cat.name}
-                    href={cat.href}
+                    key={cat?.name}
+                  href={`/category/${cat?.id}`} 
                     onClick={() => setIsMenuOpen(false)}
                     className="block py-2 font-medium"
                   >
-                    {cat.name}
+                    {cat?.name}
                   </Link>
                 ))}
 

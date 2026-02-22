@@ -8,6 +8,7 @@ const { deleteFromAWS, uploadImageToAWS } = require('../../utils/awsImageUpload'
 /* GET ALL PUBLIC PRODUCTS - ADVANCED FILTER VERSION */
 
 exports.getAllPublic = async (req, res) => {
+  console.log("HIIIIIIIIIIIIIIIIIIIIIIII",req.query)
   try {
     /* ================= VALIDATION ================= */
 
@@ -16,6 +17,7 @@ exports.getAllPublic = async (req, res) => {
 
     const search = req.query.search?.trim() || ''
     const category = req.query.category || 'all'
+    const category_id=req.query.category_id||null
     const brand = req.query.brand || null
 
     const minPrice = parseFloat(req.query.minPrice) || 0
@@ -58,6 +60,13 @@ exports.getAllPublic = async (req, res) => {
     if (category !== 'all') {
       where += ` AND category_name = $${i}`
       values.push(category)
+      i++
+    }
+    console.log(req.query,"cominggggggggg")
+     if (category_id) {
+      console.log(category_id,"id commmmmmmmmmmmm")
+      where += ` AND category_id = $${i}`
+      values.push(category_id)
       i++
     }
 
@@ -186,95 +195,95 @@ exports.getCategories = async (req, res) => {
 
 /* GET PRODUCTS (FILTER + SEARCH + PAGINATION) */
 
-exports.getAllPublic = async (req, res) => {
+// exports.getAllPublic = async (req, res) => {
 
-  try {
+//   try {
 
-    const page = Number(req.query.page) || 1
-    const limit = Number(req.query.limit) || 9
+//     const page = Number(req.query.page) || 1
+//     const limit = Number(req.query.limit) || 9
 
-    const search = req.query.search || ''
-    const category = req.query.category || 'all'
+//     const search = req.query.search || ''
+//     const category = req.query.category || 'all'
 
-    const offset = (page - 1) * limit
-
-
-    /* ================= FILTER ================= */
-
-    let where = `WHERE 1=1`
-    let values = []
-    let i = 1
+//     const offset = (page - 1) * limit
 
 
-    if (search) {
-      where += ` AND name ILIKE $${i}`
-      values.push(`%${search}%`)
-      i++
-    }
+//     /* ================= FILTER ================= */
+
+//     let where = `WHERE 1=1`
+//     let values = []
+//     let i = 1
 
 
-    if (category !== 'all') {
-      where += ` AND category_name = $${i}`
-      values.push(category)
-      i++
-    }
+//     if (search) {
+//       where += ` AND name ILIKE $${i}`
+//       values.push(`%${search}%`)
+//       i++
+//     }
 
 
-    /* ================= DATA ================= */
-
-    const data = await pool.query(`
-
-      SELECT *
-      FROM products
-
-      ${where}
-
-      ORDER BY created_at DESC
-
-      LIMIT $${i} OFFSET $${i + 1}
-
-    `, [
-      ...values,
-      limit,
-      offset,
-    ])
+//     if (category !== 'all') {
+//       where += ` AND category_name = $${i}`
+//       values.push(category)
+//       i++
+//     }
 
 
-    /* ================= COUNT ================= */
+//     /* ================= DATA ================= */
 
-    const count = await pool.query(`
+//     const data = await pool.query(`
 
-      SELECT COUNT(*)
-      FROM products
+//       SELECT *
+//       FROM products
 
-      ${where}
+//       ${where}
 
-    `, values)
+//       ORDER BY created_at DESC
+
+//       LIMIT $${i} OFFSET $${i + 1}
+
+//     `, [
+//       ...values,
+//       limit,
+//       offset,
+//     ])
 
 
-    res.json({
+//     /* ================= COUNT ================= */
 
-      products: data.rows,
+//     const count = await pool.query(`
 
-      total: Number(count.rows[0].count),
+//       SELECT COUNT(*)
+//       FROM products
 
-      page,
+//       ${where}
 
-      limit,
+//     `, values)
 
-    })
 
-  } catch (err) {
+//     res.json({
 
-    console.error(err)
+//       products: data.rows,
 
-    res.status(500).json({
-      message: 'Fetch failed'
-    })
+//       total: Number(count.rows[0].count),
 
-  }
+//       page,
 
-}
+//       limit,
+
+//     })
+
+//   } catch (err) {
+
+//     console.error(err)
+
+//     res.status(500).json({
+//       message: 'Fetch failed'
+//     })
+
+//   }
+
+// }
 
 
 

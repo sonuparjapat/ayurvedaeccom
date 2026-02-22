@@ -12,6 +12,7 @@ import {
 import { usePathname } from 'next/navigation'
 import axios from "@/lib/axios"
 import { notify } from "@/app/utils/notify"
+import { getCategories } from "@/lib/service"
 
 /* ======================
    Types
@@ -79,6 +80,7 @@ const [reviewsData, setReviewsData] = useState({
   },
   error: null,
 });
+const [categoriesdata,setCategoriesdata]=useState<any>([])
 const [orders,setOrders]=useState<any>([])
 
 /* ================= LOAD REVIEWS ================= */
@@ -176,6 +178,14 @@ await getwishlist()
       setCartLoading(false)
     }
   }
+  // ======================fetch categores=================
+  const fetchcat=useCallback(async()=>{
+try{const res=await getCategories()
+  setCategoriesdata(res?.data?.data||[])
+}catch(err:any){
+  console.log(err)
+}
+  },[])
   const mapOrderStatus = (status: number) => {
   switch (status) {
     case 1: return "confirmed";
@@ -299,6 +309,7 @@ fetchCart(res.data.user.id)
 getintdata(res?.data?.user)
 
           }
+          await fetchcat()
               
         }
 
@@ -314,10 +325,10 @@ getintdata(res?.data?.user)
       }}
     }
   useEffect(() => {
-console.log(pathname,"pathname")
-   
 
+   
     fetchUser()
+fetchcat()
 
 
   }, [])
@@ -342,7 +353,7 @@ console.log(pathname,"pathname")
     if(data?.role==3){
   fetchCart(data.id)
     }
-  
+     await fetchcat()
    
   }
 
@@ -397,7 +408,8 @@ wishlistdata,
     getwishlist,
     reviewsData,loadReviews,
     orders,loadOrders,
-    fetchUser
+    fetchUser,
+    categoriesdata,
       }}
     >
       {children}

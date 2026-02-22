@@ -49,7 +49,6 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/tracking", trackingRoutes);
 app.use("/api/users", userAuthRoutes)
-
 app.use("/api/cart", cartRoutes);
 app.use('/api',routedapis)
 
