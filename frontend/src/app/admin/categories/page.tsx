@@ -9,9 +9,16 @@ import DynamicTable from '@/components/table/table'
 
 import { Loader2, Plus, Search } from 'lucide-react'
 
+
+/* ================= TYPES ================= */
+
 interface Category {
   id: number
   name: string
+  gst_percent: number
+  color_class?: string
+  image_url?: string
+  description?: string
 }
 
 interface ApiResponse {
@@ -21,23 +28,44 @@ interface ApiResponse {
   limit: number
 }
 
+
+/* ================= COMPONENT ================= */
+
 export default function AdminCategories() {
+
+  /* ================= STATES ================= */
 
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
+
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+
   const limit = 10
   const [total, setTotal] = useState(0)
 
   const [openModal, setOpenModal] = useState(false)
   const [editData, setEditData] = useState<Category | null>(null)
+
   const [name, setName] = useState('')
-  const [gstpercent,setGstPercent]=useState<any>(0)
+  const [gstpercent, setGstPercent] = useState<any>(0)
+
+  const [color, setColor] = useState('')
+  const [desc, setDesc] = useState('')
+
+  const [image, setImage] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [removeImage, setRemoveImage] = useState(false)
+
   const [saving, setSaving] = useState(false)
 
+
+  /* ================= LOAD ================= */
+
   const loadCategories = async () => {
+
     try {
+
       setLoading(true)
 
       const res = await axios.get('/categories', {
@@ -45,183 +73,379 @@ export default function AdminCategories() {
       })
 
       const data: ApiResponse = res.data.data
+
       setCategories(data.rows)
       setTotal(data.total)
 
     } catch (err) {
+
       toast.error('Failed to load categories')
+
     } finally {
+
       setLoading(false)
+
     }
+
   }
+
 
   useEffect(() => {
     loadCategories()
   }, [page, search])
 
+
+  /* ================= MODAL ================= */
+
   const openCreate = () => {
+
     setEditData(null)
+
     setName('')
+    setGstPercent(0)
+
+    setColor('')
+    setDesc('')
+
+    setImage(null)
+    setPreview(null)
+    setRemoveImage(false)
+
     setOpenModal(true)
+
   }
+
 
   const openEdit = (row: Category) => {
+
     setEditData(row)
+
     setName(row.name)
+    setGstPercent(row.gst_percent || 0)
+
+    setColor(row.color_class || '')
+    setDesc(row.description || '')
+
+    setPreview(row.image_url || null)
+
+    setImage(null)
+    setRemoveImage(false)
+
     setOpenModal(true)
+
   }
+
 
   const closeModal = () => {
+
     if (saving) return
+
     setOpenModal(false)
     setEditData(null)
+
     setName('')
+    setGstPercent(0)
+
+    setColor('')
+    setDesc('')
+
+    setImage(null)
+    setPreview(null)
+    setRemoveImage(false)
+
   }
+
+
+  /* ================= VALIDATION ================= */
 
   const validate = () => {
+
     if (!name.trim()) return 'Category name required'
+
     if (name.trim().length < 2) return 'Minimum 2 characters'
+
     if (name.trim().length > 50) return 'Maximum 50 characters'
+
+    if (Number(gstpercent) < 0 || Number(gstpercent) > 100) {
+      return 'GST must be between 0–100'
+    }
+
     return null
+
   }
 
+
+  /* ================= IMAGE ================= */
+
+  const handleImage = (e: any) => {
+
+    const file = e.target.files[0]
+
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only images allowed')
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Max 10MB allowed')
+      return
+    }
+
+    setImage(file)
+    setPreview(URL.createObjectURL(file))
+    setRemoveImage(false)
+
+  }
+
+
+  /* ================= SAVE ================= */
+
   const saveCategory = async () => {
+
     const err = validate()
     if (err) return toast.error(err)
 
     try {
+
       setSaving(true)
 
+      const form = new FormData()
+
+      form.append('name', name.trim())
+      form.append('gst_percent', String(gstpercent))
+      form.append('color_class', color)
+      form.append('description', desc)
+
+      if (image) {
+        form.append('image', image)
+      }
+
+      if (removeImage) {
+        form.append('remove_image', 'true')
+      }
+
       if (editData) {
-        await axios.put(`/categories/${editData.id}`, { name: name.trim(),gst_percent:gstpercent })
+
+        await axios.put(
+          `/categories/${editData.id}`,
+          form,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        )
+
         toast.success('Category updated')
+
       } else {
-        await axios.post('/categories', { name: name.trim(),gst_percent:gstpercent  })
+
+        await axios.post(
+          '/categories',
+          form,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        )
+
         toast.success('Category created')
+
       }
 
       closeModal()
       loadCategories()
 
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Save failed')
+
+      toast.error(
+        err?.response?.data?.message || 'Save failed'
+      )
+
     } finally {
+
       setSaving(false)
+
     }
+
   }
 
+
+  /* ================= DELETE ================= */
+
   const deleteCategory = async (id: number) => {
+
     if (!confirm('Delete this category?')) return
+
     try {
+
       await axios.delete(`/categories/${id}`)
+
       toast.success('Category deleted')
+
       loadCategories()
+
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Delete failed')
+
+      toast.error(
+        err?.response?.data?.message || 'Delete failed'
+      )
+
     }
+
   }
+
+
+  /* ================= TABLE ================= */
 
   const totalPages = Math.ceil(total / limit)
 
   const columns = [
     { key: 'id', label: 'ID', align: 'center' },
     { key: 'name', label: 'Category Name' },
+    { key: 'gst_percent', label: 'GST %', align: 'center' },
     { key: 'actions', label: 'Actions', align: 'center' },
   ]
 
+
   const rows = categories.map(cat => ({
+
     ...cat,
+
     actions: (
-      <div className="flex justify-center gap-3">
+      <div className="flex justify-center gap-3 flex-wrap">
+
         <button
           onClick={() => openEdit(cat)}
-          className="px-3 py-1 text-xs font-semibold uppercase tracking-wide
+          className="px-3 py-1 text-xs font-semibold uppercase
           text-amber-400 border border-amber-400/40 rounded-md
-          hover:bg-amber-400/10 transition-colors duration-150"
+          hover:bg-amber-400/10 transition"
         >
           Edit
         </button>
 
         <button
           onClick={() => deleteCategory(cat.id)}
-          className="px-3 py-1 text-xs font-semibold uppercase tracking-wide
+          className="px-3 py-1 text-xs font-semibold uppercase
           text-rose-400 border border-rose-400/40 rounded-md
-          hover:bg-rose-400/10 transition-colors duration-150"
+          hover:bg-rose-400/10 transition"
         >
           Delete
         </button>
+
       </div>
     )
+
   }))
 
-  return (
-    <div className="min-h-screen ">
 
-      <div className="max-w-6xl mx-auto px-6 py-10 space-y-10">
+  /* ================= RENDER ================= */
+
+  return (
+
+    <div className="min-h-screen">
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
 
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div className="flex flex-col md:flex-row
+        md:items-center md:justify-between gap-4">
 
-          <div>
-           
-            <h1 className="text-3xl font-bold mt-1">
-              Category Management
-            </h1>
-          </div>
+          <h1 className="text-3xl font-bold">
+            Category Management
+          </h1>
 
-          <div className="flex items-center gap-3">
 
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="flex flex-wrap items-center gap-3">
+
+
+            {/* SEARCH */}
+            <div className="relative w-full sm:w-auto">
+
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2
+                -translate-y-1/2"
+              />
+
               <input
                 value={search}
-                onChange={e => { setPage(1); setSearch(e.target.value) }}
+                onChange={e => {
+                  setPage(1)
+                  setSearch(e.target.value)
+                }}
                 placeholder="Search category..."
-                className="pl-8 pr-4 py-2.5  border border-slate-700
-                rounded-lg text-sm placeholder:text-slate-500
-                focus:outline-none focus:border-emerald-500 transition-colors"
+                className="pl-8 pr-4 py-2.5 w-full sm:w-56
+                border border-slate-700 rounded-lg text-sm
+                focus:outline-none focus:border-emerald-500"
               />
+
             </div>
 
+
+            {/* ADD */}
             <button
               onClick={openCreate}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg
-              bg-emerald-500 text-black font-semibold text-sm
-              hover:bg-emerald-400 transition-colors"
+              className="flex items-center gap-2
+              px-5 py-2.5 rounded-lg
+              bg-emerald-500 text-black
+              font-semibold text-sm
+              hover:bg-emerald-400 transition"
             >
               <Plus size={14} />
               Add Category
             </button>
 
           </div>
+
         </div>
 
+
         {/* TABLE */}
-        <div className="bg-[#141821] border border-slate-700 rounded-xl overflow-hidden">
+        <div className="bg-[#141821] border
+        border-slate-700 rounded-xl overflow-x-auto">
 
           {loading ? (
+
             <div className="flex justify-center items-center h-40">
-              <Loader2 size={28} className="animate-spin text-emerald-400" />
+
+              <Loader2
+                size={28}
+                className="animate-spin text-emerald-400"
+              />
+
             </div>
+
           ) : (
+
             <DynamicTable
               columns={columns}
               rows={rows}
               emptyMessage="No categories found"
             />
+
           )}
+
         </div>
+
 
         {/* PAGINATION */}
         {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-4">
+
+          <div className="flex flex-wrap justify-center
+          items-center gap-4">
 
             <button
               disabled={page === 1}
               onClick={() => setPage(p => p - 1)}
-              className="px-4 py-2 rounded-lg border border-slate-700 text-slate-400
-              hover:border-emerald-500 hover:text-emerald-400 transition-colors
-              disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg border
+              border-slate-700 text-slate-400
+              hover:border-emerald-500 hover:text-emerald-400
+              disabled:opacity-30"
             >
               ← Prev
             </button>
@@ -233,15 +457,18 @@ export default function AdminCategories() {
             <button
               disabled={page === totalPages}
               onClick={() => setPage(p => p + 1)}
-              className="px-4 py-2 rounded-lg border border-slate-700 text-slate-400
-              hover:border-emerald-500 hover:text-emerald-400 transition-colors
-              disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg border
+              border-slate-700 text-slate-400
+              hover:border-emerald-500 hover:text-emerald-400
+              disabled:opacity-30"
             >
               Next →
             </button>
 
           </div>
+
         )}
+
 
         {/* MODAL */}
         <AppModal
@@ -251,12 +478,14 @@ export default function AdminCategories() {
           description="Create and manage categories"
           width="max-w-md"
           footer={
+
             <div className="flex justify-end gap-3">
+
               <button
                 onClick={closeModal}
                 disabled={saving}
-                className="px-4 py-2 rounded-lg border border-slate-600 text-slate-400
-                hover:border-slate-500 hover:text-slate-200 transition-colors"
+                className="px-4 py-2 rounded-lg border
+                border-slate-600 text-slate-400"
               >
                 Cancel
               </button>
@@ -264,65 +493,152 @@ export default function AdminCategories() {
               <button
                 onClick={saveCategory}
                 disabled={saving}
-                className="px-5 py-2 rounded-lg bg-emerald-500 text-black
-                font-semibold hover:bg-emerald-400 transition-colors
-                flex items-center gap-2 disabled:opacity-60"
+                className="px-5 py-2 rounded-lg
+                bg-emerald-500 text-black
+                font-semibold flex items-center gap-2
+                disabled:opacity-60"
               >
-                {saving && <Loader2 size={14} className="animate-spin" />}
+                {saving && (
+                  <Loader2
+                    size={14}
+                    className="animate-spin"
+                  />
+                )}
+
                 {editData ? 'Update' : 'Create'}
+
               </button>
+
             </div>
+
           }
         >
+
+
+          {/* MODAL BODY */}
           <div className="space-y-4">
 
+
+            {/* NAME */}
             <div>
-              <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+              <label className="text-xs uppercase
+              text-slate-400 font-semibold">
                 Category Name
               </label>
 
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Eg: Electronics"
                 maxLength={50}
-                className="w-full mt-2 rounded-lg px-4 py-3 text-sm
-                bg-[#141821] border border-slate-700
-                text-slate-200 placeholder:text-slate-500
-                focus:outline-none focus:border-emerald-500 transition-colors"
+                className="input"
               />
-
-              <p className="text-xs text-slate-500 mt-2">
-                2–50 characters
-              </p>
-
             </div>
-   <div>
-              <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
-               Gst Percent
+
+
+            {/* GST */}
+            <div>
+              <label className="text-xs uppercase
+              text-slate-400 font-semibold">
+                GST %
               </label>
 
               <input
+                type="number"
+                min={0}
+                max={100}
                 value={gstpercent}
                 onChange={e => setGstPercent(e.target.value)}
-                placeholder="18"
-                min={0}
-                type="number"
-               
-                className="w-full mt-2 rounded-lg px-4 py-3 text-sm
-                bg-[#141821] border border-slate-700
-                text-slate-200 placeholder:text-slate-500
-                focus:outline-none focus:border-emerald-500 transition-colors"
+                className="input"
               />
-
-             
-
             </div>
+
+
+            {/* COLOR */}
+            <div>
+              <label className="text-xs uppercase
+              text-slate-400 font-semibold">
+                Color Class
+              </label>
+
+              <input
+                value={color}
+                onChange={e => setColor(e.target.value)}
+                placeholder="bg-red-500 text-white"
+                className="input"
+              />
+            </div>
+
+
+            {/* DESC */}
+            <div>
+              <label className="text-xs uppercase
+              text-slate-400 font-semibold">
+                Description
+              </label>
+
+              <textarea
+                rows={3}
+                value={desc}
+                onChange={e => setDesc(e.target.value)}
+                className="input resize-none"
+              />
+            </div>
+
+
+            {/* IMAGE */}
+            <div>
+              <label className="text-xs uppercase
+              text-slate-400 font-semibold">
+                Image
+              </label>
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImage}
+                className="input file:bg-emerald-500
+                file:text-black"
+              />
+            </div>
+
+
+            {/* PREVIEW */}
+            {preview && (
+
+              <div className="relative w-28">
+
+                <img
+                  src={preview}
+                  className="w-28 h-28 object-cover
+                  rounded-lg border"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreview(null)
+                    setImage(null)
+                    setRemoveImage(true)
+                  }}
+                  className="absolute -top-2 -right-2
+                  bg-rose-500 text-white
+                  rounded-full w-6 h-6"
+                >
+                  ×
+                </button>
+
+              </div>
+
+            )}
+
           </div>
+
         </AppModal>
 
       </div>
 
     </div>
+
   )
+
 }

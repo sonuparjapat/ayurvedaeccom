@@ -33,8 +33,8 @@ export default function AdminProductForm({
     sku: '',
 
     category_name: '',
-    category_id:"",
-    gst_percent:0,
+    category_id: "",
+    gst_percent: 0,
     brand: '',
 
     status: 'draft',
@@ -304,8 +304,8 @@ export default function AdminProductForm({
                 setForm({
                   ...form,
                   category_id: e.target.value,
-                  category_name:categories?.find((item:any)=>item?.id==e.target.value)?.name,
-                  gst_percent:categories?.find((item:any)=>item?.id==e.target.value)?.gst_percent,
+                  category_name: categories?.find((item: any) => item?.id == e.target.value)?.name,
+                  gst_percent: categories?.find((item: any) => item?.id == e.target.value)?.gst_percent,
                 })
               }
               className="
@@ -333,18 +333,18 @@ export default function AdminProductForm({
             </select>
 
           </div>
-            <div className="space-y-1">
+          <div className="space-y-1">
 
             <label className="text-sm font-medium">
               GST Percent (%)
             </label>
- <Input
-            // label="Brand"
-            value={form.gst_percent}
-            readOnly={true}
-          
-          />
-            
+            <Input
+              // label="Brand"
+              value={form.gst_percent}
+              readOnly={true}
+
+            />
+
 
 
           </div>
@@ -358,7 +358,11 @@ export default function AdminProductForm({
               setForm({ ...form, brand: v })
             }
           />
-
+          <Select label="Status" value={form.status}  readOnly={isView}
+            onChange={(v: string) =>
+              setForm({ ...form, status: v })
+            } />
+        
         </Grid>
 
       </Section>
@@ -653,10 +657,9 @@ function Input({
         className={`
           w-full border rounded px-3 py-2
           focus:ring-2 focus:ring-emerald-500
-          ${
-            readOnly
-              ? 'bg-gray-100 cursor-not-allowed'
-              : 'bg-white'
+          ${readOnly
+            ? 'bg-gray-100 cursor-not-allowed'
+            : 'bg-white'
           }
         `}
       />
@@ -664,7 +667,40 @@ function Input({
     </div>
   )
 }
+function Select({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  readOnly = false,
+}: any) {
 
+  return (
+
+    <div className="space-y-1">
+
+      <label className="text-sm font-medium">
+
+        {label}
+
+      </label>
+      <select value={value} disabled={readOnly} onChange={e => onChange?.(e.target.value)} className={`
+          w-full border rounded px-3 py-2
+          focus:ring-2 focus:ring-emerald-500
+          ${readOnly
+          ? 'bg-gray-100 cursor-not-allowed'
+          : 'bg-white'
+        }
+        `}>
+            <option value="">Select</option>
+        <option value="draft">Draft</option>
+        <option value="active">Active</option>
+      </select>
+      
+
+    </div>
+  )
+}
 
 function TextArea({
   label,
@@ -691,10 +727,9 @@ function TextArea({
         className={`
           w-full border rounded px-3 py-2
           focus:ring-2 focus:ring-emerald-500
-          ${
-            readOnly
-              ? 'bg-gray-100 cursor-not-allowed'
-              : 'bg-white'
+          ${readOnly
+            ? 'bg-gray-100 cursor-not-allowed'
+            : 'bg-white'
           }
         `}
       />
