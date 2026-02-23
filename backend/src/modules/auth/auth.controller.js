@@ -6,7 +6,7 @@ const crypto = require("crypto")          // ✅ For temp password
 
 const mailer = require("../../config/mail")  // ✅ For mail
 
-
+// ======================== Admin/user creation=================================
 exports.createAdmin = async (req, res) => {
 
   try {
