@@ -11,7 +11,7 @@ exports.admin  = (req, res, next) => {
   try {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-console.log(decoded,"decoded")
+
     if (![1,2].includes(Number(decoded.role))) {
       return res.status(403).json({ message: "Access denied" })
     }
