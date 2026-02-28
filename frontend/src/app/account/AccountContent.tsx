@@ -123,13 +123,18 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any, label: strin
 /* ================= ADDRESS FORM ================= */
 
 function AddressForm({ onSave, onCancel, initial }: { onSave: (a: any) => void, onCancel: () => void, initial?: any }) {
-const [form, setForm] = useState({
+const {loginuserdata}=useAuth()
+  const [form, setForm] = useState<any>({
   type: 'home',
   street: '',
   city: '',
   state: '',
   pincode: '',
+  email:loginuserdata?.email||"",
   is_default: false,
+  phone:loginuserdata?.phone||"",
+  name:loginuserdata?.name||''
+
 });
 useEffect(() => {
   if (initial) {
@@ -140,10 +145,11 @@ useEffect(() => {
       state: initial.state || "",
       pincode: initial.pincode || "",
       is_default: Boolean(initial.is_default),
+      email:initial?.email||""
     });
   }
 }, [initial]);
-console.log(form,"form")
+
   return (
     <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-5 space-y-4">
       <div className="flex gap-3 mb-2">
@@ -159,10 +165,11 @@ console.log(form,"form")
         ))}
       </div>
       <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white" placeholder="Street Address" value={form.street} onChange={e => setForm({ ...form, street: e.target.value })} />
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
         <input className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white" placeholder="City" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} />
         <input className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white" placeholder="State" value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} />
         <input className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white" placeholder="PIN Code" value={form.pincode} onChange={e => setForm({ ...form, pincode: e.target.value })} />
+          <input className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white" placeholder="Enter Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
       </div>
       <label className="flex items-center gap-2 cursor-pointer select-none">
         <div onClick={() =>
@@ -198,7 +205,7 @@ export default function AccountContent() {
     fetchUser
   } = useAuth()
 
-
+console.log(loginuserdata,"loginuserdata")
   /* ================= STATES ================= */
 
   const [addresses, setAddresses] = useState<Address[]>([])
@@ -211,7 +218,7 @@ export default function AccountContent() {
 
   const [editForm, setEditForm] = useState({
     name: '',
-    email: '',
+    email:loginuserdata?.email|| '',
     phone: '',
   })
 
@@ -820,14 +827,14 @@ const handleSaveAddress = async (data: any) => {
                       <Button
                         size="sm"
                         className="bg-emerald-600 hover:bg-emerald-700 rounded-xl gap-1.5 text-xs"
-                        onClick={() => { setShowAddressForm(true); setEditingAddressId(null) }}
+                        onClick={() => { setShowAddressForm(true); setEditingAddressId(null); setEditForm((pre:any)=>({...pre,email:loginuserdata?.email})) }}
                       >
                         <Plus size={13} /> Add New
                       </Button>
                     </div>
 
                     {showAddressForm && !editingAddressId && (
-                      <AddressForm onSave={handleSaveAddress} onCancel={() => setShowAddressForm(false)} />
+                      <AddressForm  onSave={handleSaveAddress} onCancel={() => setShowAddressForm(false)} />
                     )}
 
                     {!addresses.length && !showAddressForm && (
@@ -870,7 +877,8 @@ const handleSaveAddress = async (data: any) => {
                               {!addr.is_default && (
                                 <button onClick={() => handleSetDefault(addr.id)} className="text-xs text-emerald-600 font-semibold hover:underline">Set Default</button>
                               )}
-                              <button onClick={() => { setEditingAddressId(addr.id); setShowAddressForm(false) }} className="text-xs text-gray-500 font-semibold hover:text-gray-700 ml-auto flex items-center gap-1">
+                              <button onClick={() => { setEditingAddressId(addr.id); setShowAddressForm(false)
+                                 setEditForm(addr)}} className="text-xs text-gray-500 font-semibold hover:text-gray-700 ml-auto flex items-center gap-1">
                                 <Edit size={12} /> Edit
                               </button>
                               <button onClick={() => handleDeleteAddress(addr.id)} className="text-xs text-red-400 font-semibold hover:text-red-600 flex items-center gap-1">
