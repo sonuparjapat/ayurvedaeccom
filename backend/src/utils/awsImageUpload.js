@@ -11,31 +11,32 @@ const path = require("path");
 // ==========================
 // Upload Image to S3
 // ==========================
-exports.uploadImageToAWS = async (file) => {
+exports.uploadImageToAWS = async (file, folder = "products") => {
 
   try {
 
     if (!file || !file.buffer) {
-      throw new Error("File buffer missing. Check Multer config.");
+      throw new Error("File buffer missing");
     }
 
     const ext = path.extname(file.originalname);
 
+    const safeFolder = folder || "products";
+
     const fileName =
-      "products/" +
+      `${safeFolder}/` +
       Date.now() +
       "-" +
       Math.round(Math.random() * 1e9) +
       ext;
 
-    // ⭐ THIS IS WHERE YOUR CODE GOES
     const command = new PutObjectCommand({
 
       Bucket: process.env.AWS_BUCKET_NAME,
 
       Key: fileName,
 
-      Body: file.buffer,       // IMPORTANT
+      Body: file.buffer,
 
       ContentType: file.mimetype,
 
@@ -47,9 +48,9 @@ exports.uploadImageToAWS = async (file) => {
 
   } catch (err) {
 
-    console.error("AWS Image Upload Error:", err);
-
+    console.error("AWS Upload Error:", err);
     throw err;
+
   }
 };
 
@@ -60,6 +61,8 @@ exports.uploadImageToAWS = async (file) => {
 exports.deleteFromAWS = async (url) => {
 
   try {
+
+    if (!url) return;
 
     const key = url.split(".com/")[1];
 

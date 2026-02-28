@@ -147,85 +147,86 @@ exports.getInvoices = async (req, res) => {
 ===================================== */
 
 exports.generateInvoice = async (req, res) => {
-
   const client = await pool.connect();
 
   try {
-
     const { orderId } = req.params;
 
-    await client.query('BEGIN');
+    /* ================= BASIC VALIDATION ================= */
 
-    /* ================= CHECK ORDER ================= */
+    if (!orderId || isNaN(Number(orderId))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order id"
+      });
+    }
+
+    await client.query("BEGIN");
+
+    /* ================= LOCK ORDER ================= */
 
     const orderRes = await client.query(
-      `SELECT * FROM orders WHERE id=$1`,
+      `SELECT * FROM orders WHERE id=$1 FOR UPDATE`,
       [orderId]
     );
 
     if (!orderRes.rowCount) {
-
-      await client.query('ROLLBACK');
-
+      await client.query("ROLLBACK");
       return res.status(404).json({
         success: false,
-        message: 'Order not found'
+        message: "Order not found"
       });
     }
 
     const order = orderRes.rows[0];
 
-    /* ================= VALIDATE ================= */
+    /* ================= VALIDATE STATUS ================= */
+
+    const status = Number(order.status);
 
     const canGenerateInvoice =
       (
-        [1,2,3,4].includes(Number(order.status)) &&
-        order.payment_method === "online"
+        [1, 2, 3, 4, 5].includes(status) &&
+        order.payment_method == "online"
       ) ||
       (
-        order.status == 4 &&
-        order.payment_method === "cod"
+        status === 5 &&
+        order.payment_method == "cod"
       );
 
     if (!canGenerateInvoice) {
-
-      await client.query('ROLLBACK');
-
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'Invoice not allowed'
+        message: "Invoice not allowed for this order status"
       });
     }
 
-    /* ================= CHECK EXIST ================= */
+    /* ================= CHECK / CREATE INVOICE ================= */
 
     let invoiceId;
     let invoiceNo;
     let isRegenerate = false;
 
     const exists = await client.query(
-      `SELECT * FROM invoices WHERE order_id=$1`,
+      `SELECT * FROM invoices WHERE order_id=$1 FOR UPDATE`,
       [orderId]
     );
 
     if (exists.rowCount) {
-
       isRegenerate = true;
       invoiceId = exists.rows[0].id;
       invoiceNo = exists.rows[0].invoice_no;
-
     } else {
-
       const year = new Date().getFullYear();
 
-      const countRes = await client.query(
-        `SELECT COUNT(*) FROM invoices`
+      const seqRes = await client.query(
+        `SELECT nextval('invoice_number_seq')`
       );
 
-      const next = Number(countRes.rows[0].count) + 1;
+      const next = seqRes.rows[0].nextval;
 
-      invoiceNo =
-        `INV-${year}-${String(next).padStart(6,'0')}`;
+      invoiceNo = `INV-${year}-${String(next).padStart(6, "0")}`;
 
       const invRes = await client.query(
         `
@@ -240,7 +241,7 @@ exports.generateInvoice = async (req, res) => {
       invoiceId = invRes.rows[0].id;
     }
 
-    /* ================= GET ITEMS ================= */
+    /* ================= FETCH ORDER ITEMS ================= */
 
     const itemsRes = await client.query(
       `
@@ -255,25 +256,38 @@ exports.generateInvoice = async (req, res) => {
     const items = itemsRes.rows;
 
     if (!items.length) {
-
-      await client.query('ROLLBACK');
-
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'No items found'
+        message: "No items found for invoice"
       });
     }
 
-    /* ================= TOTAL ================= */
+    /* ================= PRICE BREAKUP ================= */
 
-    let subtotal = 0;
+    const breakup = order.shipping_address?.price_breakup;
 
-    items.forEach(i => {
-      subtotal += Number(i.price) * i.quantity;
-    });
+    if (!breakup) {
+      throw new Error("Price breakup not found in order snapshot");
+    }
 
-    const tax = 0;
-    const total = subtotal + tax;
+    let subtotal = Number(breakup.subtotal || 0);
+    let tax = Number(breakup.gst || 0);
+    let delivery = Number(breakup.delivery || 0);
+    let platform = Number(breakup.platform_fee || 0);
+    let total = Number(breakup.grand_total || 0);
+
+    subtotal = Number(subtotal.toFixed(2));
+    tax = Number(tax.toFixed(2));
+    delivery = Number(delivery.toFixed(2));
+    platform = Number(platform.toFixed(2));
+    total = Number(total.toFixed(2));
+
+    if (total <= 0) {
+      throw new Error("Invalid invoice total");
+    }
+
+    /* ================= UPDATE INVOICE TOTALS ================= */
 
     await client.query(
       `
@@ -284,17 +298,21 @@ exports.generateInvoice = async (req, res) => {
       [subtotal, tax, total, invoiceId]
     );
 
-    /* ================= RESET ITEMS ================= */
+    /* ================= RESET ITEMS IF REGENERATE ================= */
 
     if (isRegenerate) {
-
       await client.query(
         `DELETE FROM invoice_items WHERE invoice_id=$1`,
         [invoiceId]
       );
     }
 
-    for (const i of items) {
+    /* ================= INSERT INVOICE ITEMS ================= */
+
+    for (const item of items) {
+      const quantity = Number(item.quantity);
+      const price = Number(item.price);
+      const lineTotal = Number((quantity * price).toFixed(2));
 
       await client.query(
         `
@@ -305,65 +323,139 @@ exports.generateInvoice = async (req, res) => {
         `,
         [
           invoiceId,
-          i.product_id,
-          i.name,
-          i.quantity,
-          i.price,
-          i.price * i.quantity
+          item.product_id,
+          item.name,
+          quantity,
+          price,
+          lineTotal
         ]
       );
     }
 
-    /* ================= BUILD PDF ================= */
+    /* ================= LOAD TEMPLATE ================= */
 
     const html = fs.readFileSync(
-      path.join(__dirname,"../../template/invoice.html"),
-      "utf8"
+      path.join(__dirname, "../../template/invoice.html"),
+      { encoding: "utf8" }
     );
 
-    let finalHtml = html
-      .replace("{{invoice_no}}", invoiceNo)
-      .replace("{{order_id}}", orderId)
-      .replace("{{date}}",
-        new Date().toLocaleDateString("en-IN")
-      );
+    /* ================= BUILD ITEMS HTML ================= */
+
+    const itemsHtml = items.map(item => {
+      const quantity = Number(item.quantity);
+      const price = Number(item.price);
+      const lineTotal = (quantity * price).toFixed(2);
+
+      return `
+        <tr>
+          <td>${item.name}</td>
+          <td>${quantity}</td>
+          <td>₹${price.toFixed(2)}</td>
+          <td>₹${lineTotal}</td>
+        </tr>
+      `;
+    }).join("");
+
+    /* ================= CUSTOMER DETAILS ================= */
+
+    const address = order.shipping_address || {};
+
+    const customerName = address.name || "";
+    const customerEmail = address.email || "";
+    const customerPhone = address.phone || "";
+
+    const addressLine1 = address.address_line1 || address.address || "";
+    const addressLine2 = address.address_line2 || "";
+    const city = address.city || "";
+    const state = address.state || "";
+    const pincode = address.pincode || "";
+    const country = address.country || "India";
+    const gstNumber = address.gst_number || "";
+
+    const fullAddress = `
+      ${addressLine1}
+      ${addressLine2 ? ", " + addressLine2 : ""}
+      ${city ? ", " + city : ""}
+      ${state ? ", " + state : ""}
+      ${pincode ? " - " + pincode : ""}
+      ${country ? ", " + country : ""}
+    `.replace(/\s+/g, " ").trim();
+
+    /* ================= TEMPLATE DATA ================= */
+
+    const data = {
+      invoice_no: invoiceNo,
+      order_id: orderId,
+      date: new Date().toLocaleDateString("en-IN"),
+
+      name: customerName,
+      email: customerEmail,
+      phone: customerPhone,
+
+      address: fullAddress,
+      city,
+      state,
+      pincode,
+      country,
+      gst_number: gstNumber,
+
+      subtotal: subtotal.toFixed(2),
+      tax: tax.toFixed(2),
+      delivery: delivery.toFixed(2),
+      platform_fee: platform.toFixed(2),
+      total: total.toFixed(2),
+
+      items: itemsHtml
+    };
+
+    let finalHtml = html.replace(/{{\s*(\w+)\s*}}/g, (match, key) => {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        return data[key];
+      }
+      return "";
+    });
+
+    /* ================= GENERATE PDF ================= */
 
     const browser = await puppeteer.launch({
-      headless: "new"
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu"
+      ]
     });
 
     const page = await browser.newPage();
 
-    await page.setContent(finalHtml,{
-      waitUntil:"networkidle0"
+    await page.setContent(finalHtml, {
+      waitUntil: "domcontentloaded"
     });
+
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     const pdfBuffer = await page.pdf({
-      format:"A4",
-      printBackground:true
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true
     });
-fs.writeFileSync(
-  `./test-${invoiceNo}.pdf`,
-  pdfBuffer
-);
 
-console.log("PDF saved locally:", invoiceNo);
     await browser.close();
 
-    /* ================= UPLOAD ================= */
+    /* ================= UPLOAD TO AWS ================= */
 
-   
-const pdfUrl = await uploadInvoiceToAWS(
+    const pdfUrl = await uploadInvoiceToAWS(
       pdfBuffer,
       invoiceNo
     );
-    console.log(pdfUrl,"comingfine")
+
     await client.query(
       `UPDATE invoices SET pdf_url=$1 WHERE id=$2`,
       [pdfUrl, invoiceId]
     );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     res.json({
       success: true,
@@ -373,20 +465,15 @@ const pdfUrl = await uploadInvoiceToAWS(
     });
 
   } catch (err) {
-
-    await client.query('ROLLBACK');
-
-    console.error(err,"erro message");
+    await client.query("ROLLBACK");
+    console.error("[INVOICE ERROR]", err);
 
     res.status(500).json({
       success: false,
-      message: 'Invoice failed'
+      message: err.message || "Invoice failed"
     });
-
   } finally {
-
     client.release();
-
   }
 };
 

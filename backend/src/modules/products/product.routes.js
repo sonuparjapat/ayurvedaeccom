@@ -44,7 +44,10 @@ router.post(
   optionalAuth,
   controller.getProductReviews
 );
-
+router.get(
+  "/reviews",
+  controller.getAllReviews
+);
 router.delete(
   "/review/:id",
   auth,

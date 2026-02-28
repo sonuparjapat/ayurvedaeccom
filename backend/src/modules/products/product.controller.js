@@ -8,7 +8,7 @@ const { deleteFromAWS, uploadImageToAWS } = require('../../utils/awsImageUpload'
 /* GET ALL PUBLIC PRODUCTS - ADVANCED FILTER VERSION */
 
 exports.getAllPublic = async (req, res) => {
-  console.log("HIIIIIIIIIIIIIIIIIIIIIIII",req.query)
+
   try {
     /* ================= VALIDATION ================= */
 
@@ -193,97 +193,7 @@ exports.getCategories = async (req, res) => {
   }
 }
 
-/* GET PRODUCTS (FILTER + SEARCH + PAGINATION) */
 
-// exports.getAllPublic = async (req, res) => {
-
-//   try {
-
-//     const page = Number(req.query.page) || 1
-//     const limit = Number(req.query.limit) || 9
-
-//     const search = req.query.search || ''
-//     const category = req.query.category || 'all'
-
-//     const offset = (page - 1) * limit
-
-
-//     /* ================= FILTER ================= */
-
-//     let where = `WHERE 1=1`
-//     let values = []
-//     let i = 1
-
-
-//     if (search) {
-//       where += ` AND name ILIKE $${i}`
-//       values.push(`%${search}%`)
-//       i++
-//     }
-
-
-//     if (category !== 'all') {
-//       where += ` AND category_name = $${i}`
-//       values.push(category)
-//       i++
-//     }
-
-
-//     /* ================= DATA ================= */
-
-//     const data = await pool.query(`
-
-//       SELECT *
-//       FROM products
-
-//       ${where}
-
-//       ORDER BY created_at DESC
-
-//       LIMIT $${i} OFFSET $${i + 1}
-
-//     `, [
-//       ...values,
-//       limit,
-//       offset,
-//     ])
-
-
-//     /* ================= COUNT ================= */
-
-//     const count = await pool.query(`
-
-//       SELECT COUNT(*)
-//       FROM products
-
-//       ${where}
-
-//     `, values)
-
-
-//     res.json({
-
-//       products: data.rows,
-
-//       total: Number(count.rows[0].count),
-
-//       page,
-
-//       limit,
-
-//     })
-
-//   } catch (err) {
-
-//     console.error(err)
-
-//     res.status(500).json({
-//       message: 'Fetch failed'
-//     })
-
-//   }
-
-// }
 
 
 
@@ -644,7 +554,7 @@ exports.addOrUpdateReview = async (req, res) => {
         o.id=$1
         AND o.user_id=$2
         AND oi.product_id=$3
-        AND o.status=4
+        AND o.status=5
       LIMIT 1
     `, [orderId, userId, productId]);
 
@@ -768,6 +678,151 @@ exports.addOrUpdateReview = async (req, res) => {
 
 /* ================= GET PRODUCT REVIEWS ================= */
 
+
+exports.getAllReviews = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search = '',
+      rating,
+      productId,
+      userId,
+      from,
+      to,
+      sortBy = 'created_at',
+      sortOrder = 'desc'
+    } = req.query;
+
+    const offset = (Number(page) - 1) * Number(limit);
+
+    /* ================= VALID SORT ================= */
+
+    const allowedSortFields = ['created_at', 'rating'];
+    const allowedOrder = ['asc', 'desc'];
+
+    const finalSortField = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : 'created_at';
+
+    const finalSortOrder = allowedOrder.includes(sortOrder?.toLowerCase())
+      ? sortOrder
+      : 'desc';
+
+    /* ================= DYNAMIC CONDITIONS ================= */
+
+    let conditions = [];
+    let values = [];
+    let index = 1;
+
+    if (search) {
+      conditions.push(`
+        (
+          p.name ILIKE $${index}
+          OR u.name ILIKE $${index}
+          OR r.comment ILIKE $${index}
+        )
+      `);
+      values.push(`%${search}%`);
+      index++;
+    }
+
+    if (rating) {
+      conditions.push(`r.rating = $${index}`);
+      values.push(Number(rating));
+      index++;
+    }
+
+    if (productId) {
+      conditions.push(`r.product_id = $${index}`);
+      values.push(productId);
+      index++;
+    }
+
+    if (userId) {
+      conditions.push(`r.user_id = $${index}`);
+      values.push(userId);
+      index++;
+    }
+
+    if (from && to) {
+      conditions.push(`r.created_at BETWEEN $${index} AND $${index + 1}`);
+      values.push(from, to);
+      index += 2;
+    }
+
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(' AND ')}`
+      : '';
+
+    /* ================= MAIN QUERY ================= */
+
+    const dataQuery = `
+      SELECT 
+        r.id,
+        r.rating,
+        r.comment,
+        r.images,
+        r.created_at,
+
+        u.id AS user_id,
+        u.name AS user_name,
+
+        p.id AS product_id,
+        p.name AS product_name,
+        p.slug AS product_slug
+
+      FROM reviews r
+      JOIN users u ON u.id = r.user_id
+      JOIN products p ON p.id = r.product_id
+
+      ${whereClause}
+
+      ORDER BY r.${finalSortField} ${finalSortOrder}
+      LIMIT $${index}
+      OFFSET $${index + 1}
+    `;
+
+    const countQuery = `
+      SELECT COUNT(*) 
+      FROM reviews r
+      JOIN users u ON u.id = r.user_id
+      JOIN products p ON p.id = r.product_id
+      ${whereClause}
+    `;
+
+    const dataResult = await client.query(
+      dataQuery,
+      [...values, Number(limit), offset]
+    );
+
+    const countResult = await client.query(countQuery, values);
+
+    const total = Number(countResult.rows[0].count);
+
+    res.json({
+      success: true,
+      data: dataResult.rows,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error("GET REVIEWS ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch reviews"
+    });
+  } finally {
+    client.release();
+  }
+};
 exports.getProductReviews = async (req, res) => {
 
   try {

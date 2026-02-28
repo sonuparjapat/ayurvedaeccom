@@ -156,19 +156,39 @@ const closeModal = () => {
 
   const getStatusBadge = (item2: any) => {
 
-    const styles: any = {
+const styles = {
 
-      0: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  // PENDING
+  0: 'bg-yellow-100 text-yellow-800 border-yellow-200',
 
-      1: 'bg-blue-100 text-blue-800 border-blue-200',
+  // CONFIRMED
+  1: 'bg-blue-100 text-blue-800 border-blue-200',
 
-      4: 'bg-green-100 text-green-800 border-green-200',
+  // PROCESSING
+  2: 'bg-indigo-100 text-indigo-800 border-indigo-200',
 
-      5: 'bg-red-100 text-red-800 border-red-200',
+  // SHIPPED
+  3: 'bg-purple-100 text-purple-800 border-purple-200',
 
-      3: 'bg-purple-100 text-purple-800 border-purple-200'
+  // OUT FOR DELIVERY
+  4: 'bg-orange-100 text-orange-800 border-orange-200',
 
-    }
+  // DELIVERED
+  5: 'bg-green-100 text-green-800 border-green-200',
+
+  // CANCELLED
+  6: 'bg-red-100 text-red-800 border-red-200',
+
+  // RETURN REQUESTED
+  7: 'bg-pink-100 text-pink-800 border-pink-200',
+
+  // RETURNED
+  8: 'bg-gray-100 text-gray-800 border-gray-200',
+
+  // REFUNDED
+  9: 'bg-teal-100 text-teal-800 border-teal-200'
+
+};
 
     return (
 
@@ -456,8 +476,8 @@ const generateInvoice = async () => {
 
     )}
   {(
-      ([1,2,3,4].includes(Number(o.status))&& o.payment_method == "online") ||
-      (o.status == 4 && o.payment_method == "cod")
+      ([1,2,3,4,5].includes(Number(o?.status))&& o?.payment_method == "online") ||
+      (o.status == 5 && o.payment_method == "cod")
     )  && (
 
       <button
@@ -958,7 +978,7 @@ const generateInvoice = async () => {
       {/* ================= INVOICE ================= */}
 
 {mode === 'invoice' &&
- (([1,2,3,4]?.includes(Number(current.status))&&current?.payment_method=="online")||(current.status ==4&&current?.payment_method=="offline"))  && (
+ (([1,2,3,4,5]?.includes(Number(current.status))&&current?.payment_method=="online")||(current.status ==5&&current?.payment_method=="cod"))  && (
 
   <button
     onClick={generateInvoice}

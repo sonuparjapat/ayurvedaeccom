@@ -10,6 +10,7 @@ const { auth } = require('../../middlewares/auth')
 const { admin } = require('../../middlewares/admin')
 const invoicecontroller=require("../admin/admin.invoice.controller")
 const shipingcontroller=require('../admin/admin.shipping.controller')
+const analyticscontroller=require('../admin/analystics/analytics.controller')
 router.use(admin)
 router.put(
   "/user/:id",
@@ -67,12 +68,14 @@ router.get(
   admin,
  invoicecontroller.downloadInvoice
 )
-
+// ===================analytics routes =========================
+router.get('/overview',auth,admin, analyticscontroller.getOverviewAnalytics);
 // get status code 
 router.get('/status_codes',auth,controller.getstauscodes)
 router.get('/:id', controller.getOrderById)
 
 router.put('/orders/:id/status', controller.updateOrderStatus)
+
 
 
 

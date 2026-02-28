@@ -1,269 +1,479 @@
-'use client'
+'use client';
 
-import { useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { ArrowRight } from 'lucide-react'
-import Link from 'next/link'
-import { useAuth } from '@/context/auth-context'
+import React, { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
+import { useAuth, type Category } from '@/context/auth-context';
+import { cn } from '@/lib/utils';
 
-// ─── Theme map keyed by index (cycles if more than 4 categories) ──────────────
+// Theme definitions with gradient colors
 const THEMES = [
   {
-    mesh: 'from-amber-900 via-amber-800 to-orange-900',
-    glow: 'bg-amber-400',
-    accent: 'text-amber-600',
-    arrowBg: 'bg-amber-700',
-    dot: '#fbbf24',
+    name: 'amber',
+    gradient: 'from-amber-500 via-orange-400 to-yellow-500',
+    glow: 'rgba(245, 158, 11, 0.4)',
+    border: 'from-amber-400 to-orange-500',
+    text: 'from-amber-600 to-orange-500',
+    bgGradient: 'from-amber-500/20 via-orange-400/10 to-yellow-500/20',
   },
   {
-    mesh: 'from-emerald-900 via-emerald-800 to-green-900',
-    glow: 'bg-emerald-400',
-    accent: 'text-emerald-600',
-    arrowBg: 'bg-emerald-700',
-    dot: '#34d399',
+    name: 'emerald',
+    gradient: 'from-emerald-500 via-green-400 to-teal-500',
+    glow: 'rgba(16, 185, 129, 0.4)',
+    border: 'from-emerald-400 to-teal-500',
+    text: 'from-emerald-600 to-teal-500',
+    bgGradient: 'from-emerald-500/20 via-green-400/10 to-teal-500/20',
   },
   {
-    mesh: 'from-red-900 via-rose-800 to-pink-900',
-    glow: 'bg-rose-400',
-    accent: 'text-rose-600',
-    arrowBg: 'bg-rose-700',
-    dot: '#fb7185',
+    name: 'rose',
+    gradient: 'from-rose-500 via-pink-400 to-red-500',
+    glow: 'rgba(244, 63, 94, 0.4)',
+    border: 'from-rose-400 to-pink-500',
+    text: 'from-rose-600 to-pink-500',
+    bgGradient: 'from-rose-500/20 via-pink-400/10 to-red-500/20',
   },
   {
-    mesh: 'from-blue-900 via-blue-800 to-indigo-900',
-    glow: 'bg-blue-400',
-    accent: 'text-blue-600',
-    arrowBg: 'bg-blue-700',
-    dot: '#60a5fa',
+    name: 'blue',
+    gradient: 'from-blue-500 via-indigo-400 to-violet-500',
+    glow: 'rgba(59, 130, 246, 0.4)',
+    border: 'from-blue-400 to-violet-500',
+    text: 'from-blue-600 to-indigo-500',
+    bgGradient: 'from-blue-500/20 via-indigo-400/10 to-violet-500/20',
   },
-]
+];
 
-// ─── Single Card ──────────────────────────────────────────────────────────────
-function CategoryCard({ category, index }) {
-  const cardRef = useRef(null)
-  const [tilt, setTilt] = useState({ x: 0, y: 0 })
-  const [hovered, setHovered] = useState(false)
-
-  const theme = THEMES[index % THEMES.length]
-
-  const handleMouseMove = (e) => {
-    const rect = cardRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const nx = (e.clientX - rect.left) / rect.width - 0.5
-    const ny = (e.clientY - rect.top) / rect.height - 0.5
-    setTilt({ x: nx, y: ny })
-  }
-
-  const handleMouseLeave = () => {
-    setTilt({ x: 0, y: 0 })
-    setHovered(false)
-  }
-
-  const tiltStyle = {
-    transform: `perspective(900px) rotateY(${tilt.x * 10}deg) rotateX(${-tilt.y * 10}deg) translateZ(${hovered ? 6 : 0}px)`,
-    transition: hovered
-      ? 'transform 0.08s ease'
-      : 'transform 0.55s cubic-bezier(0.22,1,0.36,1)',
-    transformStyle: 'preserve-3d',
-  }
-
-  const wrapStyle = {
-    opacity: 0,
-    animation: `fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) ${index * 0.1}s forwards`,
-    height: '100%',
-  }
-
+// Floating Orb Component - using CSS animation directly
+function FloatingOrb({ theme, delay = 0, top, left }: { 
+  theme: typeof THEMES[0]; 
+  delay?: number;
+  top: number;
+  left: number;
+}) {
   return (
-    <div style={wrapStyle}>
-      <div
-        ref={cardRef}
-        style={tiltStyle}
-        className="h-full"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onMouseEnter={() => setHovered(true)}
-      >
-        <Link href={`/category/${category?.id}`} className="block h-full no-underline">
-          <div
-            className={[
-              'group relative flex flex-col h-full rounded-3xl overflow-hidden bg-white',
-              'border border-black/[0.07] cursor-pointer',
-              'transition-shadow duration-500',
-              hovered
-                ? 'shadow-[0_16px_56px_rgba(0,0,0,0.13),0_4px_16px_rgba(0,0,0,0.07)]'
-                : 'shadow-[0_4px_24px_rgba(0,0,0,0.07),0_1px_4px_rgba(0,0,0,0.04)]',
-            ].join(' ')}
-          >
-            {/* ── Ambient glow ── */}
-            <div
-              className={`absolute -top-14 -left-14 w-52 h-52 rounded-full blur-3xl pointer-events-none ${theme.glow} transition-opacity duration-700`}
-              style={{ opacity: hovered ? 0.25 : 0 }}
-            />
-
-            {/* ── Visual top area ── */}
-            <div
-              className={`relative h-44 flex items-center justify-center overflow-hidden bg-gradient-to-br ${theme.mesh}`}
-            >
-              {/* Noise grain */}
-              <div
-                className="absolute inset-0 opacity-[0.18] mix-blend-overlay pointer-events-none"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-                }}
-              />
-
-              {/* Category image / emoji */}
-              <div
-                className="relative z-10 w-20 h-20 rounded-2xl bg-black/30 backdrop-blur-sm border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex items-center justify-center overflow-hidden transition-transform duration-300"
-                style={{
-                  transform: hovered ? 'scale(1.1) rotate(-4deg)' : 'scale(1) rotate(0deg)',
-                }}
-              >
-                {category?.image_url ? (
-                  <img
-                    src={category.image_url}
-                    alt={category?.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-4xl">{category?.image}</span>
-                )}
-              </div>
-
-              {/* Product count badge */}
-              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-white/80 backdrop-blur-md border border-white/90 rounded-full px-3 py-1 shadow-sm">
-                <span
-                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: theme.dot, animation: 'catPulse 2s infinite' }}
-                />
-                <span className="text-[10px] font-bold tracking-wide text-gray-600 whitespace-nowrap">
-                  {category?.product_count||0}
-                </span>
-              </div>
-            </div>
-
-            {/* ── Card body ── */}
-            <div className="flex flex-col flex-1 p-6 gap-2 bg-white">
-              <h3 className="text-[17px] font-bold text-slate-900 tracking-tight leading-snug">
-                {category?.name}
-              </h3>
-
-              <p className="text-[13px] text-gray-500 leading-relaxed flex-1">
-                {category?.description}
-              </p>
-
-              {/* CTA row */}
-              <div className="flex items-center justify-between mt-3 pt-4 border-t border-black/[0.07]">
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-[0.18em] ${theme.accent}`}
-                >
-                  Shop Now
-                </span>
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${theme.arrowBg} transition-transform duration-300`}
-                  style={{
-                    transform: hovered ? 'scale(1.12) rotate(45deg)' : 'scale(1) rotate(0deg)',
-                  }}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M7 17L17 7M17 7H7M17 7v10" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom shimmer */}
-            <div
-              className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-black/10 to-transparent transition-opacity duration-500"
-              style={{ opacity: hovered ? 1 : 0 }}
-            />
-          </div>
-        </Link>
-      </div>
-    </div>
-  )
+    <div
+      className="absolute rounded-full blur-3xl opacity-30 pointer-events-none"
+      style={{
+        width: '200px',
+        height: '200px',
+        background: `radial-gradient(circle, ${theme.glow} 0%, transparent 70%)`,
+        animation: 'float 8s ease-in-out infinite',
+        animationDelay: `${delay}s`,
+        top: `${top}%`,
+        left: `${left}%`,
+      }}
+    />
+  );
 }
 
-// ─── Main Section ─────────────────────────────────────────────────────────────
-export function CategoriesSection() {
-  const { categoriesdata } = useAuth()
+// Ambient Background Component
+function AmbientBackground() {
+  // Pre-computed positions for consistent SSR
+  const orbPositions = [
+    { top: 10, left: 20 },
+    { top: 30, left: 70 },
+    { top: 60, left: 15 },
+    { top: 80, left: 60 },
+  ];
 
-  console.log(categoriesdata, 'comind cat')
+  const particlePositions = Array.from({ length: 20 }, (_, i) => ({
+    top: (i * 5) % 100,
+    left: (i * 7 + 10) % 100,
+    delay: i * 0.15,
+    duration: 2 + (i % 3),
+  }));
 
   return (
-    <section className="py-2 bg-white">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800&display=swap');
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(40px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes catPulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50%       { opacity: 0.45; transform: scale(0.8); }
-        }
-      `}</style>
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Gradient mesh background */}
+      <div className="absolute inset-0 bg-gradient-mesh opacity-50" />
+      
+      {/* Floating orbs */}
+      {THEMES.map((theme, index) => (
+        <FloatingOrb
+          key={theme.name}
+          theme={theme}
+          delay={index * 0.8}
+          top={orbPositions[index].top}
+          left={orbPositions[index].left}
+        />
+      ))}
+      
+      {/* Particle decorations */}
+      <div className="absolute inset-0">
+        {particlePositions.map((pos, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-white/30"
+            style={{
+              top: `${pos.top}%`,
+              left: `${pos.left}%`,
+              animation: `pulse ${pos.duration}s ease-in-out infinite`,
+              animationDelay: `${pos.delay}s`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
-      <div className="container mx-auto px-4">
-        {/* ── Section header ── */}
-        <div className="text-center mb-14">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <span className="w-7 h-px bg-emerald-500 opacity-40 block" />
-            <span
-              className="text-[11px] font-bold tracking-[0.2em] uppercase text-emerald-600"
-              style={{ fontFamily: 'Sora, sans-serif' }}
-            >
-              What we offer
-            </span>
-            <span className="w-7 h-px bg-emerald-500 opacity-40 block" />
+// Category Card Component with 3D tilt effect
+function CategoryCard({
+  category,
+  theme,
+  index
+}: {
+  category: Category;
+  theme: typeof THEMES[0];
+  index: number;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Mouse move handler for 3D tilt
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    
+    const rect = cardRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    const mouseX = e.clientX - centerX;
+    const mouseY = e.clientY - centerY;
+    
+    const rotateX = (mouseY / (rect.height / 2)) * -10;
+    const rotateY = (mouseX / (rect.width / 2)) * 10;
+    
+    setTilt({ x: rotateX, y: rotateY });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
+    setIsHovered(false);
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+  };
+
+  return (
+    <div
+      className="group relative animate-fadeUp"
+      style={{
+        animationDelay: `${index * 100}ms`,
+        animationFillMode: 'both',
+      }}
+    >
+      {/* Glow effect behind card */}
+      <div
+        className={cn(
+          "absolute -inset-1 rounded-2xl blur-xl transition-opacity duration-500",
+          isHovered ? "opacity-100" : "opacity-0"
+        )}
+        style={{
+          background: `linear-gradient(135deg, ${theme.glow}, transparent)`,
+        }}
+      />
+      
+      {/* Animated border gradient */}
+      <div
+        className={cn(
+          "absolute -inset-[1px] rounded-2xl bg-gradient-to-r opacity-0 transition-opacity duration-300",
+          theme.border,
+          isHovered && "opacity-100 animate-gradient-rotate"
+        )}
+        style={{
+          backgroundSize: '200% 200%',
+        }}
+      />
+      <a href={`/category/${category?.id}`}>
+
+      <div
+        ref={cardRef}
+        className={cn(
+          "relative h-full rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ease-out",
+          "bg-white/80 backdrop-blur-xl",
+          "border border-white/50",
+          "shadow-[0_8px_32px_rgba(0,0,0,0.1)]",
+          "hover:shadow-[0_16px_48px_rgba(0,0,0,0.15)]"
+        )}
+        style={{
+          transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${isHovered ? 1.02 : 1})`,
+          transformStyle: 'preserve-3d',
+        }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onMouseEnter={handleMouseEnter}
+      >
+        {/* Glassmorphism overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-white/20 pointer-events-none" />
+        
+        {/* Shimmer effect on hover */}
+        <div
+          className={cn(
+            "absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none",
+            isHovered && "opacity-100"
+          )}
+        >
+          <div
+            className="absolute inset-0 animate-shimmer"
+            style={{
+              background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.6) 45%, rgba(255,255,255,0.6) 55%, transparent 60%)',
+              backgroundSize: '200% 100%',
+            }}
+          />
+        </div>
+
+        {/* Theme-colored background gradient */}
+        <div
+          className={cn(
+            "absolute inset-0 opacity-0 transition-opacity duration-500",
+            `bg-gradient-to-br ${theme.bgGradient}`,
+            isHovered && "opacity-100"
+          )}
+        />
+
+        {/* Card content */}
+        <div className="relative p-6 h-full flex flex-col">
+          {/* Icon */}
+          <div
+            className={cn(
+              "text-5xl mb-4 transition-transform duration-300",
+              isHovered && "scale-110"
+            )}
+            style={{
+              transform: `translateZ(30px)`,
+            }}
+          >
+            {category.image}
           </div>
 
-          <h2
-            className="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight mb-4"
-            style={{ fontFamily: 'Sora, sans-serif' }}
+          {/* Title */}
+          <h3
+            className={cn(
+              "text-xl font-bold mb-2 bg-gradient-to-r bg-clip-text text-transparent",
+              theme.text
+            )}
+            style={{
+              transform: `translateZ(20px)`,
+            }}
           >
-            Shop by{' '}
-            <span className="bg-gradient-to-r from-emerald-500 to-emerald-400 bg-clip-text text-transparent">
-              Category
+            {category.name}
+          </h3>
+
+          {/* Description */}
+          <p
+            className="text-gray-600 text-sm mb-4 flex-grow leading-relaxed"
+            style={{
+              transform: `translateZ(10px)`,
+            }}
+          >
+            {category.description}
+          </p>
+
+          {/* Product count and button */}
+          <div
+            className="flex items-center justify-between mt-auto"
+            style={{
+              transform: `translateZ(15px)`,
+            }}
+          >
+            <span className={cn(
+              "text-sm font-medium px-3 py-1 rounded-full",
+              `bg-gradient-to-r ${theme.bgGradient} text-gray-700`
+            )}>
+              {category.product_count} Products
+            </span>
+
+            <Link href={`/category/${category.id}`}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "group/btn relative overflow-hidden transition-all duration-300",
+                  "hover:bg-transparent",
+                  isHovered && "translate-x-1"
+                )}
+              >
+                <span className={cn(
+                  "bg-gradient-to-r bg-clip-text text-transparent font-medium",
+                  theme.text
+                )}>
+                  Explore
+                </span>
+                <ArrowRight
+                  className={cn(
+                    "ml-1 h-4 w-4 transition-transform duration-300",
+                    isHovered && "translate-x-1"
+                  )}
+                  style={{
+                    color: theme.glow.replace('0.4', '1'),
+                  }}
+                />
+              </Button>
+            </Link>
+          </div>
+
+          {/* Decorative corner gradient */}
+          <div
+            className={cn(
+              "absolute -bottom-4 -right-4 w-24 h-24 rounded-full blur-2xl opacity-0 transition-opacity duration-500",
+              isHovered && "opacity-60"
+            )}
+            style={{
+              background: `radial-gradient(circle, ${theme.glow} 0%, transparent 70%)`,
+            }}
+          />
+        </div>
+      </div></a>
+    </div>
+  );
+}
+
+// Main CategoriesSection Component
+export function CategoriesSection() {
+  const { categoriesdata } = useAuth();
+
+  if (!categoriesdata?.rows?.length) {
+    return null;
+  }
+
+  return (
+    <section className="relative min-h-screen py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      {/* Animated background */}
+      <AmbientBackground />
+
+      {/* Content container */}
+      <div className="relative max-w-7xl mx-auto">
+        {/* Section header - using CSS animation */}
+        <div className="text-center mb-16 animate-fadeUp" style={{ animationDelay: '0ms' }}>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-blue-500/10 border border-white/50 backdrop-blur-sm mb-6">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span className="text-sm font-medium text-gray-700">Discover Premium Categories</span>
+          </div>
+
+          {/* Title */}
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
+            <span className="bg-gradient-to-r from-amber-500 via-emerald-500 to-blue-500 bg-clip-text text-transparent animate-gradient-x">
+              Shop by Category
             </span>
           </h2>
 
-          <p className="text-base text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            Explore our carefully curated categories of premium Ayurvedic and traditional Indian
-            products.
+          {/* Subtitle */}
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Explore our curated collection of premium wellness products, each category crafted with care for your holistic health journey
           </p>
         </div>
 
-        {/* ── Cards grid ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {categoriesdata?.rows?.map((category: any, index: number) => (
-            <CategoryCard key={category?.id ?? index} category={category} index={index} />
+        {/* Categories grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {categoriesdata?.rows?.map((category, index) => (
+            <CategoryCard
+              key={category.id}
+              category={category}
+              theme={THEMES[index % THEMES.length]}
+              index={index}
+            />
           ))}
         </div>
 
-        {/* ── View All button ── */}
-        <div className="text-center mt-14">
-          <Button
-            size="lg"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 rounded-full shadow-lg hover:shadow-emerald-200 hover:shadow-xl transition-all duration-300"
-            asChild
-          >
-            <Link href="/products">
-              View All Products
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Link>
-          </Button>
-        </div>
+        {/* Bottom CTA - using CSS animation */}
+       
       </div>
+
+      {/* Custom styles */}
+      <style jsx global>{`
+        @keyframes fadeUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes float {
+          0%, 100% {
+            transform: translate(0, 0) scale(1);
+          }
+          25% {
+            transform: translate(10px, -20px) scale(1.1);
+          }
+          50% {
+            transform: translate(-10px, 10px) scale(0.9);
+          }
+          75% {
+            transform: translate(15px, 15px) scale(1.05);
+          }
+        }
+
+        @keyframes shimmer {
+          0% {
+            background-position: 200% 0;
+          }
+          100% {
+            background-position: -200% 0;
+          }
+        }
+
+        @keyframes gradient-x {
+          0%, 100% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+        }
+
+        @keyframes gradient-rotate {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+
+        .animate-fadeUp {
+          animation: fadeUp 0.7s ease-out forwards;
+        }
+
+        .animate-shimmer {
+          animation: shimmer 2s ease-in-out infinite;
+        }
+
+        .animate-gradient-x {
+          animation: gradient-x 3s ease infinite;
+          background-size: 200% 200%;
+        }
+
+        .animate-gradient-rotate {
+          animation: gradient-rotate 3s ease infinite;
+        }
+
+        .bg-gradient-mesh {
+          background-image:
+            radial-gradient(at 40% 20%, rgba(245, 158, 11, 0.15) 0px, transparent 50%),
+            radial-gradient(at 80% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
+            radial-gradient(at 0% 50%, rgba(244, 63, 94, 0.1) 0px, transparent 50%),
+            radial-gradient(at 80% 50%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+            radial-gradient(at 0% 100%, rgba(245, 158, 11, 0.1) 0px, transparent 50%),
+            radial-gradient(at 80% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+        }
+      `}</style>
     </section>
-  )
+  );
 }
+
+export default CategoriesSection;

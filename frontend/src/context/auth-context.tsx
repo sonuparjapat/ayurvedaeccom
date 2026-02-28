@@ -82,7 +82,7 @@ const [reviewsData, setReviewsData] = useState({
 });
 const [categoriesdata,setCategoriesdata]=useState<any>([])
 const [orders,setOrders]=useState<any>([])
-
+const [topratedReviews,setTopRatedReviews]=useState<any>([])
 /* ================= LOAD REVIEWS ================= */
 
 const loadReviews = useCallback(
@@ -101,7 +101,7 @@ const loadReviews = useCallback(
           productId
           
         }): await axios.get(
-        `/shop/reviews/product`,
+        `/shop/reviews/product/${productId}`,
         {
           params: {
             page,
@@ -137,6 +137,7 @@ const loadReviews = useCallback(
   },
   []
 );
+
 
 
   const router = useRouter()
@@ -188,14 +189,16 @@ try{const res=await getCategories()
   },[])
   const mapOrderStatus = (status: number) => {
   switch (status) {
+     case 0: return "pending";
     case 1: return "confirmed";
     case 2: return "processing";
     case 3: return "shipped";
-    case 4: return "delivered";
-    case 5: return "cancelled";
-    case 6: return "Returned";
-    case 7: return "Failed";
-    case 8: return "Expired";
+        case 4: return "out for delivery";
+    case 5: return "delivered";
+    case 6: return "cancelled";
+    case 7: return "Return Requested";
+    case 8: return "Refund";
+    case 9: return "Refunded";
     default: return "pending";
   }
 };
@@ -329,6 +332,7 @@ getintdata(res?.data?.user)
    
     fetchUser()
 fetchcat()
+
 
 
   }, [])

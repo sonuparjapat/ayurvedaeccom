@@ -16,6 +16,7 @@ import {
   List,
   Menu,
   X,
+  Building,
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
@@ -124,7 +125,9 @@ export default function AdminLayout({
           <MenuItem href="/admin/settings" icon={<Settings size={18} />}>
             Settings
           </MenuItem>
-
+<MenuItem href="/admin/company" icon={<Building size={18} />}>
+            Company
+          </MenuItem>
           <MenuItem href="/admin/analytics" icon={<BarChart3 size={18} />}>
             Analytics
           </MenuItem>

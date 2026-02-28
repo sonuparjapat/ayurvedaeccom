@@ -1138,14 +1138,18 @@ status = Number(status);
 
     /* ================= TRANSITION RULES ================= */
 
-   allowedTransitions = {
-  0: [1,5],       // pending → confirmed/cancelled
-  1: [2,5,0],     // confirmed → processing/cancelled/pending
-  2: [3,5],
-  3: [4],
-  4: [],
-  5: []
-}
+   const allowedTransitions = {
+  0: [1, 6],        // PENDING → CONFIRMED / CANCELLED
+  1: [2, 6, 0],     // CONFIRMED → PROCESSING / CANCELLED / PENDING
+  2: [3, 6],        // PROCESSING → SHIPPED / CANCELLED
+  3: [4],           // SHIPPED → OUT_FOR_DELIVERY
+  4: [5],           // OUT_FOR_DELIVERY → DELIVERED
+  5: [7],           // DELIVERED → RETURN_REQUESTED
+  6: [],            // CANCELLED → END
+  7: [8],           // RETURN_REQUESTED → RETURNED
+  8: [9],           // RETURNED → REFUNDED
+  9: []             // REFUNDED → END
+};
 
 
     const allowed = allowedTransitions[currentStatus] || []
@@ -1184,11 +1188,11 @@ if (currentStatus == 3&&(!order.courier_name || !order.tracking_number)) {
 
     /* ================= LOG  ================= */
 
-    await pool.query(`
-      INSERT INTO order_status_logs
-      (order_id, old_status, new_status)
-      VALUES ($1,$2,$3)
-    `,[id,currentStatus,status])
+    // await pool.query(`
+    //   INSERT INTO order_status_logs
+    //   (order_id, old_status, new_status)
+    //   VALUES ($1,$2,$3)
+    // `,[id,currentStatus,status])
 
 
     /* ================= RESPONSE ================= */

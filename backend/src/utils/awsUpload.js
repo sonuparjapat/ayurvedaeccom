@@ -10,22 +10,28 @@ const { s3 } = require("../config/aws");
 // Upload PDF
 // ==========================
 exports.uploadInvoiceToAWS = async (buffer, invoiceNo) => {
-
   try {
 
-    const key = `invoices/${invoiceNo}.pdf`;
+    const key = `${invoiceNo}-${Date.now()}.pdf`; 
+    // OR: `${invoiceNo}-${Date.now()}.pdf` (safer)
 
-   const command = new PutObjectCommand({
+    const command = new PutObjectCommand({
 
-  Bucket: process.env.AWS_BUCKET_NAME,
+      Bucket: process.env.AWS_BUCKET_NAME,
 
-  Key: key,
+      Key: key,
 
-  Body: buffer,
+      Body: buffer,
 
-  ContentType: "application/pdf",
+      ContentType: "application/pdf",
 
-});
+      // 🔥 IMPORTANT: Disable cache
+      CacheControl: "no-store, no-cache, must-revalidate",
+
+      // 🔥 Proper filename
+      ContentDisposition: `inline; filename="${invoiceNo}.pdf"`,
+
+    });
 
     await s3.send(command);
 
@@ -36,8 +42,8 @@ exports.uploadInvoiceToAWS = async (buffer, invoiceNo) => {
   } catch (err) {
 
     console.error("AWS Upload Error:", err);
-
     throw err;
+
   }
 };
 

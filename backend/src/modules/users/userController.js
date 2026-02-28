@@ -162,11 +162,12 @@ exports.addAddress = async (req, res) => {
       state,
       pincode,
       isDefault,
+      email
     } = req.body;
 
 
     /* Validation */
-    if (!street || !city || !state || !pincode) {
+    if (!street || !city || !state || !pincode||!email) {
       return res.status(400).json({
         success: false,
         message: "All fields required",
@@ -192,8 +193,8 @@ exports.addAddress = async (req, res) => {
       const result = await client.query(
         `
         INSERT INTO user_addresses
-        (user_id,type,street,city,state,pincode,is_default)
-        VALUES($1,$2,$3,$4,$5,$6,$7)
+        (user_id,type,street,city,state,pincode,email,is_default)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8)
         RETURNING *
         `,
         [
@@ -203,6 +204,7 @@ exports.addAddress = async (req, res) => {
           city,
           state,
           pincode,
+          email,
           isDefault || false,
         ]
       );
@@ -283,6 +285,7 @@ exports.updateAddress = async (req, res) => {
       state,
       pincode,
       isDefault,
+      email
     } = req.body;
 
 
@@ -312,9 +315,10 @@ exports.updateAddress = async (req, res) => {
           state=$4,
           pincode=$5,
           is_default=$6,
-          updated_at=NOW()
+          updated_at=NOW(),
+          email=$7
 
-        WHERE id=$7 AND user_id=$8
+        WHERE id=$8 AND user_id=$9
         RETURNING *
         `,
         [
@@ -324,6 +328,7 @@ exports.updateAddress = async (req, res) => {
           state,
           pincode,
           isDefault || false,
+          email,
           id,
           userId,
         ]
