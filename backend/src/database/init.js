@@ -31,76 +31,68 @@ const initDB = async () => {
         is_verified BOOLEAN DEFAULT FALSE,
         verification_token TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,is_active BOOLEAN DEFAULT TRUE
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_active BOOLEAN DEFAULT TRUE
       )
     `);
 
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);`);
 
-    // user address
-    await client.query(`CREATE TABLE IF NOT EXISTS user_addresses (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    /* ================= USER ADDRESSES ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_addresses (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(20) CHECK (type IN ('home','work','other')),
+        street TEXT NOT NULL,
+        city VARCHAR(100) NOT NULL,
+        state VARCHAR(100) NOT NULL,
+        pincode VARCHAR(10) NOT NULL,
+        email VARCHAR(100) NOT NULL,
+        is_default BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-  type VARCHAR(20) CHECK (type IN ('home','work','other')),
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_user_addresses_user
+      ON user_addresses(user_id)
+    `);
 
-  street TEXT NOT NULL,
-  city VARCHAR(100) NOT NULL,
-  state VARCHAR(100) NOT NULL,
-  pincode VARCHAR(10) NOT NULL,
-email varchar(100) Not Null,
-  is_default BOOLEAN DEFAULT FALSE,
-
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)`)
- await client.query(`CREATE INDEX IF NOT EXISTS idx_user_addresses_user
-ON user_addresses(user_id)`)
-
-// Users settings
-await pool.query(
-  `CREATE TABLE IF NOT EXISTS user_settings (
-  id SERIAL PRIMARY KEY,
-
-  user_id INTEGER UNIQUE
-    REFERENCES users(id)
-    ON DELETE CASCADE,
-
-  order_updates BOOLEAN DEFAULT TRUE,
-  promotions BOOLEAN DEFAULT FALSE,
-  price_drops BOOLEAN DEFAULT TRUE,
-  new_arrivals BOOLEAN DEFAULT FALSE,
-
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)`)
+    /* ================= USER SETTINGS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE
+          REFERENCES users(id)
+          ON DELETE CASCADE,
+        order_updates BOOLEAN DEFAULT TRUE,
+        promotions BOOLEAN DEFAULT FALSE,
+        price_drops BOOLEAN DEFAULT TRUE,
+        new_arrivals BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
     /* ================= CATEGORIES ================= */
-  await client.query(`
-  CREATE TABLE IF NOT EXISTS categories (
-    id SERIAL PRIMARY KEY,
-
-    name VARCHAR(100) NOT NULL UNIQUE,
-
-    gst_percent NUMERIC(5,2) DEFAULT 18 CHECK (gst_percent >= 0),
-
-    -- UI / Display Fields
-    color_class VARCHAR(100) DEFAULT NULL,   -- Tailwind color class (ex: bg-red-500)
-    image_url TEXT DEFAULT NULL,             -- Category image
-    description TEXT DEFAULT NULL,           -- About category
-
-    -- SEO / Meta (Optional, Future)
-    meta_title VARCHAR(150) DEFAULT NULL,
-    meta_description TEXT DEFAULT NULL,
-
-    -- Status
-    is_active BOOLEAN DEFAULT TRUE,
-
-    -- Audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )
-`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        gst_percent NUMERIC(5,2) DEFAULT 18 CHECK (gst_percent >= 0),
+        color_class VARCHAR(100) DEFAULT NULL,
+        image_url TEXT DEFAULT NULL,
+        description TEXT DEFAULT NULL,
+        meta_title VARCHAR(150) DEFAULT NULL,
+        meta_description TEXT DEFAULT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
     /* ================= PRODUCTS ================= */
     await client.query(`
@@ -143,44 +135,6 @@ await pool.query(
         UNIQUE(user_id, product_id)
       )
     `);
-
-    /* ================= REVIEWS ================= */
-    await client.query(`
-   CREATE TABLE IF NOT EXISTS reviews  (
-
-  id SERIAL PRIMARY KEY,
-
-  user_id INTEGER NOT NULL
-    REFERENCES users(id)
-    ON DELETE CASCADE,
-
-  order_id INTEGER NOT NULL
-    REFERENCES orders(id)
-    ON DELETE CASCADE,
-
-  product_id INTEGER NOT NULL
-    REFERENCES products(id)
-    ON DELETE CASCADE,
-
-  rating INT NOT NULL
-    CHECK (rating BETWEEN 1 AND 5),
-
-  comment TEXT,
-
-  images JSONB DEFAULT '[]',
-
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
-    `);
-
-//     await client.query(`CREATE UNIQUE INDEX unique_review_per_order_product
-// ON reviews(order_id, product_id)`)
-//   await client.query(`CREATE INDEX idx_reviews_product
-// ON reviews(product_id)`);
-//   await client.query(`CREATE INDEX idx_reviews_user
-// ON reviews(user_id)`);
-//   await client.query(`CREATE INDEX idx_reviews_order
-// ON reviews(order_id)`);
 
     /* ================= CART ================= */
     await client.query(`
@@ -228,20 +182,25 @@ await pool.query(
         invoice_no VARCHAR(50),
         invoice_date TIMESTAMP,
         is_invoiced BOOLEAN DEFAULT FALSE,
-        courier_name VARCHAR(50),subtotal NUMERIC(10,2),
- tax NUMERIC(10,2),
- delivery_charge NUMERIC(10,2),
- platform_fee NUMERIC(10,2),
- discount NUMERIC(10,2) DEFAULT 0,
- grand_total NUMERIC(10,2),
-       address_id INTEGER REFERENCES addresses(id)  
+        courier_name VARCHAR(50),
+        subtotal NUMERIC(10,2),
+        tax NUMERIC(10,2),
+        delivery_charge NUMERIC(10,2),
+        platform_fee NUMERIC(10,2),
+        discount NUMERIC(10,2) DEFAULT 0,
+        grand_total NUMERIC(10,2),
+        address_id INTEGER REFERENCES user_addresses(id)
       )
-
     `);
 
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);`);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_orders_payment_created
+      ON orders(payment_status, created_at)
+    `);
 
     /* ================= ORDER ITEMS ================= */
     await client.query(`
@@ -252,8 +211,8 @@ await pool.query(
         quantity INT NOT NULL CHECK (quantity > 0),
         price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
         gst_percent NUMERIC(5,2),
- tax_amount NUMERIC(10,2),
- line_total NUMERIC(10,2)
+        tax_amount NUMERIC(10,2),
+        line_total NUMERIC(10,2)
       )
     `);
 
@@ -269,6 +228,25 @@ await pool.query(
         status VARCHAR(30),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    /* ================= REVIEWS (Moved Here After ORDERS) ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+        comment TEXT,
+        images JSONB DEFAULT '[]',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS unique_review_per_order_product
+      ON reviews(order_id, product_id)
     `);
 
     /* ================= APP SETTINGS ================= */
@@ -299,10 +277,12 @@ await pool.query(
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    await client.query(`CREATE SEQUENCE IF NOT EXISTS invoice_number_seq START 1`)
-await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS unique_invoice_no_idx
-ON invoices (invoice_no)`)
 
+    await client.query(`CREATE SEQUENCE IF NOT EXISTS invoice_number_seq START 1`);
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS unique_invoice_no_idx
+      ON invoices (invoice_no)
+    `);
 
     /* ================= INVOICE ITEMS ================= */
     await client.query(`
@@ -316,73 +296,39 @@ ON invoices (invoice_no)`)
         line_total NUMERIC(10,2) NOT NULL CHECK (line_total >= 0)
       )
     `);
-/* ================= COMPANY SETTINGS ================= */
-await client.query(`
-  CREATE TABLE IF NOT EXISTS company_settings (
-    id SERIAL PRIMARY KEY,
 
-    company_name VARCHAR(150) NOT NULL,
-    email VARCHAR(150),
-    phone VARCHAR(20),
-    alternate_phone VARCHAR(20),
+    /* ================= COMPANY SETTINGS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS company_settings (
+        id SERIAL PRIMARY KEY,
+        company_name VARCHAR(150) NOT NULL,
+        email VARCHAR(150),
+        phone VARCHAR(20),
+        alternate_phone VARCHAR(20),
+        website VARCHAR(150),
+        gst_number VARCHAR(50),
+        pan_number VARCHAR(50),
+        address_line1 TEXT,
+        address_line2 TEXT,
+        city VARCHAR(100),
+        state VARCHAR(100),
+        country VARCHAR(100),
+        pincode VARCHAR(10),
+        logo_url TEXT,
+        support_email VARCHAR(150),
+        social_links JSONB DEFAULT '{}',
+        extra_data JSONB DEFAULT '{}',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-    website VARCHAR(150),
-    gst_number VARCHAR(50),
-    pan_number VARCHAR(50),
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_company_settings_active
+      ON company_settings(is_active)
+    `);
 
-    address_line1 TEXT,
-    address_line2 TEXT,
-    city VARCHAR(100),
-    state VARCHAR(100),
-    country VARCHAR(100),
-    pincode VARCHAR(10),
-
-    logo_url TEXT,
-    support_email VARCHAR(150),
-
-    social_links JSONB DEFAULT '{}',
-
-    extra_data JSONB DEFAULT '{}',
-
-    is_active BOOLEAN DEFAULT TRUE,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )
-`);
-/* ================= ANALYTICS INDEXES ================= */
-
-// Orders - created_at
-await client.query(`
-  CREATE INDEX IF NOT EXISTS idx_orders_created_at
-  ON orders(created_at)
-`);
-
-// Orders - payment_status
-await client.query(`
-  CREATE INDEX IF NOT EXISTS idx_orders_payment_status
-  ON orders(payment_status)
-`);
-
-// Orders - composite index for analytics
-await client.query(`
-  CREATE INDEX IF NOT EXISTS idx_orders_payment_created
-  ON orders(payment_status, created_at)
-`);
-
-// Users - created_at
-await client.query(`
-  CREATE INDEX IF NOT EXISTS idx_users_created_at
-  ON users(created_at)
-`);
-await client.query(`
-  CREATE INDEX IF NOT EXISTS idx_company_settings_active
-  ON company_settings(is_active)
-`);
-await client.query(`
-  CREATE UNIQUE INDEX IF NOT EXISTS unique_review_per_order_product
-  ON reviews(order_id, product_id)
-`);
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 
