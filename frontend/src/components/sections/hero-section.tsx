@@ -540,7 +540,7 @@ export function HeroSection() {
                   animate={{ scale: [1, 1.12, 1] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 />
-                <div className="relative flex items-center gap-2 bg-gradient-to-r from-red-500 to-orange-400 text-white text-xs font-bold px-4 py-2 rounded-full shadow-xl">
+                <div className="relative flex items-center gap-2 bg-gradient-to-r from-red-500 to-orange-400 text-white text-xs font-bold px-4 py-2 mt-8 rounded-full shadow-xl">
                   <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
                     🔥
                   </motion.span>
