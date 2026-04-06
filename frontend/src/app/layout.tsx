@@ -50,7 +50,7 @@ export default function RootLayout({
       <AuthProvider>
         <body
           suppressHydrationWarning   // ✅ THIS FIXES YOUR ERROR
-          className={`${inter.variable} font-sans antialiased bg-background text-foreground`}
+          className={`${inter.variable} font-sans antialiased bg-background text-foreground relative z-0`}
         >
           {children}
 

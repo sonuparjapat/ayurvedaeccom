@@ -1,128 +1,69 @@
 'use client';
-
-import React, { useState, useRef, useEffect } from 'react';
+ 
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { useAuth, type Category } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
-
-// Theme definitions with gradient colors
+ 
+/* ─────────────────────────────────────────────
+   THEME PALETTE  — earthy, premium, on-brand
+───────────────────────────────────────────── */
 const THEMES = [
   {
+    name: 'forest',
+    accent: '#0f3d2e',
+    light: '#e8f5e9',
+    pill: 'bg-emerald-50 text-emerald-800',
+    tag: 'Herbs & Botanicals',
+    tagBg: 'bg-emerald-100',
+    iconRing: 'from-emerald-400 to-[#0f3d2e]',
+    border: '#bbf7d0',
+    shine: 'rgba(16,185,129,0.12)',
+  },
+  {
     name: 'amber',
-    gradient: 'from-amber-500 via-orange-400 to-yellow-500',
-    glow: 'rgba(245, 158, 11, 0.4)',
-    border: 'from-amber-400 to-orange-500',
-    text: 'from-amber-600 to-orange-500',
-    bgGradient: 'from-amber-500/20 via-orange-400/10 to-yellow-500/20',
+    accent: '#92400e',
+    light: '#fffbeb',
+    pill: 'bg-amber-50 text-amber-800',
+    tag: 'Dry Fruits & Nuts',
+    tagBg: 'bg-amber-100',
+    iconRing: 'from-amber-400 to-orange-600',
+    border: '#fde68a',
+    shine: 'rgba(245,158,11,0.12)',
   },
   {
-    name: 'emerald',
-    gradient: 'from-emerald-500 via-green-400 to-teal-500',
-    glow: 'rgba(16, 185, 129, 0.4)',
-    border: 'from-emerald-400 to-teal-500',
-    text: 'from-emerald-600 to-teal-500',
-    bgGradient: 'from-emerald-500/20 via-green-400/10 to-teal-500/20',
+    name: 'teal',
+    accent: '#134e4a',
+    light: '#f0fdfa',
+    pill: 'bg-teal-50 text-teal-800',
+    tag: 'Seeds & Grains',
+    tagBg: 'bg-teal-100',
+    iconRing: 'from-teal-400 to-cyan-600',
+    border: '#99f6e4',
+    shine: 'rgba(20,184,166,0.12)',
   },
   {
-    name: 'rose',
-    gradient: 'from-rose-500 via-pink-400 to-red-500',
-    glow: 'rgba(244, 63, 94, 0.4)',
-    border: 'from-rose-400 to-pink-500',
-    text: 'from-rose-600 to-pink-500',
-    bgGradient: 'from-rose-500/20 via-pink-400/10 to-red-500/20',
-  },
-  {
-    name: 'blue',
-    gradient: 'from-blue-500 via-indigo-400 to-violet-500',
-    glow: 'rgba(59, 130, 246, 0.4)',
-    border: 'from-blue-400 to-violet-500',
-    text: 'from-blue-600 to-indigo-500',
-    bgGradient: 'from-blue-500/20 via-indigo-400/10 to-violet-500/20',
+    name: 'saffron',
+    accent: '#7c2d12',
+    light: '#fff7ed',
+    pill: 'bg-orange-50 text-orange-800',
+    tag: 'Dehydrated & Tofu',
+    tagBg: 'bg-orange-100',
+    iconRing: 'from-orange-400 to-red-500',
+    border: '#fed7aa',
+    shine: 'rgba(249,115,22,0.12)',
   },
 ];
-
-// Floating Orb Component - using CSS animation directly
-function FloatingOrb({ theme, delay = 0, top, left }: { 
-  theme: typeof THEMES[0]; 
-  delay?: number;
-  top: number;
-  left: number;
-}) {
-  return (
-    <div
-      className="absolute rounded-full blur-3xl opacity-30 pointer-events-none"
-      style={{
-        width: '200px',
-        height: '200px',
-        background: `radial-gradient(circle, ${theme.glow} 0%, transparent 70%)`,
-        animation: 'float 8s ease-in-out infinite',
-        animationDelay: `${delay}s`,
-        top: `${top}%`,
-        left: `${left}%`,
-      }}
-    />
-  );
-}
-
-// Ambient Background Component
-function AmbientBackground() {
-  // Pre-computed positions for consistent SSR
-  const orbPositions = [
-    { top: 10, left: 20 },
-    { top: 30, left: 70 },
-    { top: 60, left: 15 },
-    { top: 80, left: 60 },
-  ];
-
-  const particlePositions = Array.from({ length: 20 }, (_, i) => ({
-    top: (i * 5) % 100,
-    left: (i * 7 + 10) % 100,
-    delay: i * 0.15,
-    duration: 2 + (i % 3),
-  }));
-
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Gradient mesh background */}
-      <div className="absolute inset-0 bg-gradient-mesh opacity-50" />
-      
-      {/* Floating orbs */}
-      {THEMES.map((theme, index) => (
-        <FloatingOrb
-          key={theme.name}
-          theme={theme}
-          delay={index * 0.8}
-          top={orbPositions[index].top}
-          left={orbPositions[index].left}
-        />
-      ))}
-      
-      {/* Particle decorations */}
-      <div className="absolute inset-0">
-        {particlePositions.map((pos, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 rounded-full bg-white/30"
-            style={{
-              top: `${pos.top}%`,
-              left: `${pos.left}%`,
-              animation: `pulse ${pos.duration}s ease-in-out infinite`,
-              animationDelay: `${pos.delay}s`,
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Category Card Component with 3D tilt effect
+ 
+/* ─────────────────────────────────────────────
+   CATEGORY CARD
+───────────────────────────────────────────── */
 function CategoryCard({
   category,
   theme,
-  index
+  index,
 }: {
   category: Category;
   theme: typeof THEMES[0];
@@ -130,250 +71,273 @@ function CategoryCard({
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Mouse move handler for 3D tilt
+  const [hovered, setHovered] = useState(false);
+ 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
-    
     const rect = cardRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    const mouseX = e.clientX - centerX;
-    const mouseY = e.clientY - centerY;
-    
-    const rotateX = (mouseY / (rect.height / 2)) * -10;
-    const rotateY = (mouseX / (rect.width / 2)) * 10;
-    
-    setTilt({ x: rotateX, y: rotateY });
+    const rx = ((e.clientY - rect.top) / rect.height - 0.5) * -8;
+    const ry = ((e.clientX - rect.left) / rect.width - 0.5) * 8;
+    setTilt({ x: rx, y: ry });
   };
-
-  const handleMouseLeave = () => {
-    setTilt({ x: 0, y: 0 });
-    setIsHovered(false);
-  };
-
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-  };
-
+ 
+  const reset = () => { setTilt({ x: 0, y: 0 }); setHovered(false); };
+ 
   return (
     <div
-      className="group relative animate-fadeUp"
-      style={{
-        animationDelay: `${index * 100}ms`,
-        animationFillMode: 'both',
-      }}
+      className="animate-fadeUp"
+      style={{ animationDelay: `${index * 110}ms`, animationFillMode: 'both' }}
     >
-      {/* Glow effect behind card */}
-      <div
-        className={cn(
-          "absolute -inset-1 rounded-2xl blur-xl transition-opacity duration-500",
-          isHovered ? "opacity-100" : "opacity-0"
-        )}
-        style={{
-          background: `linear-gradient(135deg, ${theme.glow}, transparent)`,
-        }}
-      />
-      
-      {/* Animated border gradient */}
-      <div
-        className={cn(
-          "absolute -inset-[1px] rounded-2xl bg-gradient-to-r opacity-0 transition-opacity duration-300",
-          theme.border,
-          isHovered && "opacity-100 animate-gradient-rotate"
-        )}
-        style={{
-          backgroundSize: '200% 200%',
-        }}
-      />
-      <a href={`/category/${category?.id}`}>
-
-      <div
-        ref={cardRef}
-        className={cn(
-          "relative h-full rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ease-out",
-          "bg-white/80 backdrop-blur-xl",
-          "border border-white/50",
-          "shadow-[0_8px_32px_rgba(0,0,0,0.1)]",
-          "hover:shadow-[0_16px_48px_rgba(0,0,0,0.15)]"
-        )}
-        style={{
-          transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${isHovered ? 1.02 : 1})`,
-          transformStyle: 'preserve-3d',
-        }}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onMouseEnter={handleMouseEnter}
-      >
-        {/* Glassmorphism overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-white/20 pointer-events-none" />
-        
-        {/* Shimmer effect on hover */}
+      <a href={`/category/${category?.id}`} className="block h-full">
+        {/* outer glow */}
         <div
-          className={cn(
-            "absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none",
-            isHovered && "opacity-100"
-          )}
+          className="relative h-full rounded-2xl transition-all duration-500"
+          style={{
+            boxShadow: hovered
+              ? `0 0 0 1.5px ${theme.border}, 0 20px 60px ${theme.shine}, 0 8px 24px rgba(0,0,0,0.07)`
+              : `0 0 0 1px ${theme.border}60, 0 4px 20px rgba(0,0,0,0.05)`,
+          }}
         >
           <div
-            className="absolute inset-0 animate-shimmer"
+            ref={cardRef}
+            className="relative h-full rounded-2xl overflow-hidden cursor-pointer bg-white"
             style={{
-              background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.6) 45%, rgba(255,255,255,0.6) 55%, transparent 60%)',
-              backgroundSize: '200% 100%',
+              transform: `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${hovered ? 1.025 : 1})`,
+              transformStyle: 'preserve-3d',
+              transition: 'transform 0.35s cubic-bezier(0.22,1,0.36,1)',
             }}
-          />
-        </div>
-
-        {/* Theme-colored background gradient */}
-        <div
-          className={cn(
-            "absolute inset-0 opacity-0 transition-opacity duration-500",
-            `bg-gradient-to-br ${theme.bgGradient}`,
-            isHovered && "opacity-100"
-          )}
-        />
-
-        {/* Card content */}
-        <div className="relative p-6 h-full flex flex-col">
-          {/* Icon */}
-          <div
-            className={cn(
-              "text-5xl mb-4 transition-transform duration-300",
-              isHovered && "scale-110"
-            )}
-            style={{
-              transform: `translateZ(30px)`,
-            }}
+            onMouseMove={handleMouseMove}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={reset}
           >
-            {category.image}
-          </div>
-
-          {/* Title */}
-          <h3
-            className={cn(
-              "text-xl font-bold mb-2 bg-gradient-to-r bg-clip-text text-transparent",
-              theme.text
-            )}
-            style={{
-              transform: `translateZ(20px)`,
-            }}
-          >
-            {category.name}
-          </h3>
-
-          {/* Description */}
-          <p
-            className="text-gray-600 text-sm mb-4 flex-grow leading-relaxed"
-            style={{
-              transform: `translateZ(10px)`,
-            }}
-          >
-            {category.description}
-          </p>
-
-          {/* Product count and button */}
-          <div
-            className="flex items-center justify-between mt-auto"
-            style={{
-              transform: `translateZ(15px)`,
-            }}
-          >
-            <span className={cn(
-              "text-sm font-medium px-3 py-1 rounded-full",
-              `bg-gradient-to-r ${theme.bgGradient} text-gray-700`
-            )}>
-              {category.product_count} Products
-            </span>
-
-            <Link href={`/category/${category.id}`}>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "group/btn relative overflow-hidden transition-all duration-300",
-                  "hover:bg-transparent",
-                  isHovered && "translate-x-1"
-                )}
+            {/* top color strip */}
+            <div
+              className={`h-1.5 w-full bg-gradient-to-r ${theme.iconRing}`}
+            />
+ 
+            {/* tinted bg on hover */}
+            <div
+              className="absolute inset-0 transition-opacity duration-500 pointer-events-none"
+              style={{
+                background: `radial-gradient(ellipse at top left, ${theme.shine} 0%, transparent 65%)`,
+                opacity: hovered ? 1 : 0,
+              }}
+            />
+ 
+            {/* shimmer sweep */}
+            <div
+              className="absolute inset-0 pointer-events-none overflow-hidden"
+              style={{ opacity: hovered ? 1 : 0, transition: 'opacity 0.3s' }}
+            >
+              <div
+                className="absolute inset-0 animate-shimmer"
+                style={{
+                  background: 'linear-gradient(105deg,transparent 35%,rgba(255,255,255,0.55) 50%,transparent 65%)',
+                  backgroundSize: '200% 100%',
+                }}
+              />
+            </div>
+ 
+            {/* ── card body ── */}
+            <div className="relative p-6 flex flex-col h-full" style={{ transformStyle: 'preserve-3d' }}>
+ 
+              {/* tag pill */}
+              <span
+                className={cn('self-start text-[10px] font-bold tracking-widest uppercase px-3 py-1 rounded-full mb-5', theme.tagBg, 'text-gray-600')}
+                style={{ transform: 'translateZ(12px)' }}
               >
-                <span className={cn(
-                  "bg-gradient-to-r bg-clip-text text-transparent font-medium",
-                  theme.text
-                )}>
-                  Explore
+                {theme.tag}
+              </span>
+ 
+              {/* emoji / icon */}
+              <div
+                className={cn(
+                  'w-16 h-16 rounded-2xl flex items-center justify-center mb-5 shadow-md text-4xl',
+                  `bg-gradient-to-br ${theme.iconRing}`,
+                )}
+                style={{
+                  transform: `translateZ(30px) scale(${hovered ? 1.08 : 1})`,
+                  transition: 'transform 0.35s cubic-bezier(0.22,1,0.36,1)',
+                  boxShadow: `0 8px 24px ${theme.shine}`,
+                }}
+              >
+                {category.image}
+              </div>
+ 
+              {/* name */}
+              <h3
+                className="text-xl font-black text-gray-900 mb-2 leading-tight"
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  transform: 'translateZ(20px)',
+                  color: theme.accent,
+                }}
+              >
+                {category.name}
+              </h3>
+ 
+              {/* description */}
+              <p
+                className="text-gray-500 text-sm leading-relaxed flex-grow mb-6"
+                style={{ transform: 'translateZ(10px)' }}
+              >
+                {category.description}
+              </p>
+ 
+              {/* footer row */}
+              <div
+                className="flex items-center justify-between pt-4 border-t border-gray-100"
+                style={{ transform: 'translateZ(16px)' }}
+              >
+                <span
+                  className="text-xs font-bold px-3 py-1.5 rounded-full"
+                  style={{ background: theme.light, color: theme.accent }}
+                >
+                  {category.product_count} Products
                 </span>
-                <ArrowRight
-                  className={cn(
-                    "ml-1 h-4 w-4 transition-transform duration-300",
-                    isHovered && "translate-x-1"
-                  )}
-                  style={{
-                    color: theme.glow.replace('0.4', '1'),
-                  }}
-                />
-              </Button>
-            </Link>
+ 
+                <Link href={`/category/${category.id}`} onClick={e => e.stopPropagation()}>
+                  <button
+                    className="flex items-center gap-1.5 text-xs font-bold rounded-full px-3 py-1.5 transition-all duration-200"
+                    style={{
+                      background: hovered ? theme.accent : 'transparent',
+                      color: hovered ? '#fff' : theme.accent,
+                      border: `1.5px solid ${theme.accent}40`,
+                    }}
+                  >
+                    Explore
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                </Link>
+              </div>
+ 
+              {/* decorative corner dot */}
+              <div
+                className="absolute bottom-4 right-4 w-16 h-16 rounded-full blur-2xl pointer-events-none transition-opacity duration-500"
+                style={{
+                  background: `radial-gradient(circle, ${theme.shine} 0%, transparent 70%)`,
+                  opacity: hovered ? 1 : 0,
+                }}
+              />
+            </div>
           </div>
-
-          {/* Decorative corner gradient */}
-          <div
-            className={cn(
-              "absolute -bottom-4 -right-4 w-24 h-24 rounded-full blur-2xl opacity-0 transition-opacity duration-500",
-              isHovered && "opacity-60"
-            )}
-            style={{
-              background: `radial-gradient(circle, ${theme.glow} 0%, transparent 70%)`,
-            }}
-          />
         </div>
-      </div></a>
+      </a>
     </div>
   );
 }
-
-// Main CategoriesSection Component
+ 
+/* ─────────────────────────────────────────────
+   SECTION HEADER
+───────────────────────────────────────────── */
+function SectionHeader() {
+  return (
+    <div className="relative text-center mb-20 animate-fadeUp" style={{ animationDelay: '0ms' }}>
+      {/* eyebrow */}
+      <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-[#0f3d2e]/6 border border-[#0f3d2e]/12 mb-6">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="text-xs font-bold tracking-[0.18em] uppercase text-[#0f3d2e]">
+          Discover Premium Categories
+        </span>
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+      </div>
+ 
+      {/* headline */}
+      <h2
+        className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#0f3d2e] mb-5 leading-tight"
+        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+      >
+        Shop by{' '}
+        <span className="relative inline-block">
+          <span className="relative z-10">Category</span>
+          <svg
+            className="absolute -bottom-2 left-0 w-full"
+            viewBox="0 0 280 12"
+            preserveAspectRatio="none"
+            height="10"
+          >
+            <path
+              d="M2,8 Q70,2 140,8 Q210,14 278,6"
+              fill="none"
+              stroke="#f59e0b"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              style={{
+                strokeDasharray: 300,
+                strokeDashoffset: 0,
+                animation: 'drawLine 1s ease-out 0.6s both',
+              }}
+            />
+          </svg>
+        </span>
+      </h2>
+ 
+      <p className="text-gray-500 text-base lg:text-lg max-w-xl mx-auto leading-relaxed">
+        Each collection curated for your holistic health journey —
+        straight from Indian farms to your doorstep.
+      </p>
+ 
+      {/* decorative line */}
+      <div className="flex items-center justify-center gap-3 mt-8">
+        <div className="h-px w-16 bg-gradient-to-r from-transparent to-[#0f3d2e]/20" />
+        <span className="text-lg">🌿</span>
+        <div className="h-px w-16 bg-gradient-to-l from-transparent to-[#0f3d2e]/20" />
+      </div>
+    </div>
+  );
+}
+ 
+/* ─────────────────────────────────────────────
+   BACKGROUND
+───────────────────────────────────────────── */
+function Background() {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {/* base */}
+      <div className="absolute inset-0 bg-[#fafaf7]" />
+      {/* mesh blobs */}
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] rounded-full bg-emerald-100/40 blur-[100px]" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-amber-100/40 blur-[80px]" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] rounded-full bg-teal-50/60 blur-[80px]" />
+      {/* fine grid */}
+      <div
+        className="absolute inset-0 opacity-[0.035]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(15,61,46,0.4) 1px,transparent 1px),
+                            linear-gradient(90deg,rgba(15,61,46,0.4) 1px,transparent 1px)`,
+          backgroundSize: '60px 60px',
+        }}
+      />
+      {/* noise */}
+      <div
+        className="absolute inset-0 opacity-[0.02]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='512' height='512' filter='url(%23n)'/%3E%3C/svg%3E")`,
+          backgroundSize: '200px 200px',
+        }}
+      />
+    </div>
+  );
+}
+ 
+/* ─────────────────────────────────────────────
+   MAIN EXPORT
+───────────────────────────────────────────── */
 export function CategoriesSection() {
   const { categoriesdata } = useAuth();
-
-  if (!categoriesdata?.rows?.length) {
-    return null;
-  }
-
+ 
+  if (!categoriesdata?.rows?.length) return null;
+ 
   return (
-    <section className="relative min-h-screen py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-      {/* Animated background */}
-      <AmbientBackground />
-
-      {/* Content container */}
+    <section className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <Background />
+ 
       <div className="relative max-w-7xl mx-auto">
-        {/* Section header - using CSS animation */}
-        <div className="text-center mb-16 animate-fadeUp" style={{ animationDelay: '0ms' }}>
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-blue-500/10 border border-white/50 backdrop-blur-sm mb-6">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            <span className="text-sm font-medium text-gray-700">Discover Premium Categories</span>
-          </div>
-
-          {/* Title */}
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
-            <span className="bg-gradient-to-r from-amber-500 via-emerald-500 to-blue-500 bg-clip-text text-transparent animate-gradient-x">
-              Shop by Category
-            </span>
-          </h2>
-
-          {/* Subtitle */}
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Explore our curated collection of premium wellness products, each category crafted with care for your holistic health journey
-          </p>
-        </div>
-
-        {/* Categories grid */}
+        <SectionHeader />
+ 
+        {/* grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {categoriesdata?.rows?.map((category, index) => (
+          {categoriesdata.rows.map((category, index) => (
             <CategoryCard
               key={category.id}
               category={category}
@@ -382,98 +346,50 @@ export function CategoriesSection() {
             />
           ))}
         </div>
-
-        {/* Bottom CTA - using CSS animation */}
-       
+ 
+        {/* bottom CTA strip */}
+        <div
+          className="mt-16 animate-fadeUp flex flex-col sm:flex-row items-center justify-between gap-6 px-8 py-6 rounded-2xl border border-[#0f3d2e]/10 bg-white/70 backdrop-blur-sm shadow-sm"
+          style={{ animationDelay: '500ms' }}
+        >
+          <div>
+            <p className="text-sm font-bold text-[#0f3d2e] tracking-wide">Can't decide?</p>
+            <p className="text-gray-500 text-sm">Browse all products across every category in one place.</p>
+          </div>
+          <Link href="/products">
+            <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0f3d2e] text-white text-sm font-bold hover:bg-emerald-800 transition-colors shadow-lg hover:shadow-emerald-900/20">
+              View All Products
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </Link>
+        </div>
       </div>
-
-      {/* Custom styles */}
+ 
+      {/* ── global keyframes ── */}
       <style jsx global>{`
         @keyframes fadeUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(28px); }
+          to   { opacity: 1; transform: translateY(0);    }
         }
-
-        @keyframes float {
-          0%, 100% {
-            transform: translate(0, 0) scale(1);
-          }
-          25% {
-            transform: translate(10px, -20px) scale(1.1);
-          }
-          50% {
-            transform: translate(-10px, 10px) scale(0.9);
-          }
-          75% {
-            transform: translate(15px, 15px) scale(1.05);
-          }
-        }
-
-        @keyframes shimmer {
-          0% {
-            background-position: 200% 0;
-          }
-          100% {
-            background-position: -200% 0;
-          }
-        }
-
-        @keyframes gradient-x {
-          0%, 100% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-        }
-
-        @keyframes gradient-rotate {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
-        }
-
         .animate-fadeUp {
-          animation: fadeUp 0.7s ease-out forwards;
+          animation: fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards;
+          opacity: 0;
         }
-
+        @keyframes shimmer {
+          0%   { background-position:  200% 0; }
+          100% { background-position: -200% 0; }
+        }
         .animate-shimmer {
-          animation: shimmer 2s ease-in-out infinite;
+          animation: shimmer 1.8s ease-in-out infinite;
         }
-
-        .animate-gradient-x {
-          animation: gradient-x 3s ease infinite;
-          background-size: 200% 200%;
-        }
-
-        .animate-gradient-rotate {
-          animation: gradient-rotate 3s ease infinite;
-        }
-
-        .bg-gradient-mesh {
-          background-image:
-            radial-gradient(at 40% 20%, rgba(245, 158, 11, 0.15) 0px, transparent 50%),
-            radial-gradient(at 80% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
-            radial-gradient(at 0% 50%, rgba(244, 63, 94, 0.1) 0px, transparent 50%),
-            radial-gradient(at 80% 50%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
-            radial-gradient(at 0% 100%, rgba(245, 158, 11, 0.1) 0px, transparent 50%),
-            radial-gradient(at 80% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+        @keyframes drawLine {
+          from { stroke-dashoffset: 300; }
+          to   { stroke-dashoffset: 0;   }
         }
       `}</style>
     </section>
   );
 }
-
+ 
 export default CategoriesSection;
+ 
