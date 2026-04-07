@@ -12,10 +12,19 @@ import {
   TrendingUp,
   ChevronRight
 } from 'lucide-react'
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useRef, useState, useEffect, useCallback } from 'react'
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(false)
 
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    setReduced(media.matches)
+  }, [])
+
+  return reduced
+}
 /* ─────────────────────────────────────────────
    DATA
 ───────────────────────────────────────────── */
@@ -50,12 +59,13 @@ const trustItems = [
 /* ─────────────────────────────────────────────
    HOOKS
 ───────────────────────────────────────────── */
-function AnimatedCounter({ value, suffix }: { value: number; suffix: string }) {
+function AnimatedCounter({ value, suffix,reduceMotion  }: any) {
   const [count, setCount] = useState(0)
   const hasAnimated = useRef(false)
   const ref = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
+    
     if (hasAnimated.current) return
     hasAnimated.current = true
     let startTime: number
@@ -69,7 +79,7 @@ function AnimatedCounter({ value, suffix }: { value: number; suffix: string }) {
     }
     requestAnimationFrame(animate)
   }, [value])
-
+if (reduceMotion) return <span>{value}{suffix}</span>
   return (
     <span ref={ref}>
       {value >= 1000
@@ -138,7 +148,7 @@ const MarqueeStrip = () => {
       <motion.div
         className="flex gap-8 sm:gap-10 whitespace-nowrap"
         animate={{ x: ["0%", "-50%"] }}
-        transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
+transition={{ duration: 28, repeat: 2, ease: "linear" }}
       >
         {repeated.map((item, i) => (
           <span key={i} className="text-[10px] sm:text-xs font-semibold tracking-[0.15em] uppercase text-emerald-200/80 flex items-center gap-2 sm:gap-3">
@@ -168,29 +178,13 @@ const BlobDecoration = () => (
           "M400,80 C550,60 720,160 740,300 C760,440 680,580 560,640 C440,700 260,680 160,580 C60,480 40,300 120,180 C200,60 250,100 400,80Z"
         ]
       }}
-      transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+      transition={{ duration: 20, repeat: 2, ease: "easeInOut" }}
     />
   </svg>
 )
 
 /** Orbiting dot rings */
-const OrbitRings = () => (
-  <div className="absolute inset-0 flex items-center justify-center pointer-events-none hidden md:flex">
-    {[220, 290, 360].map((r, i) => (
-      <motion.div
-        key={i}
-        className="absolute rounded-full border border-dashed"
-        style={{
-          width: r * 2,
-          height: r * 2,
-          borderColor: i === 1 ? "rgba(245,158,11,0.15)" : "rgba(16,185,129,0.12)",
-        }}
-        animate={{ rotate: i % 2 === 0 ? 360 : -360 }}
-        transition={{ duration: 40 + i * 10, repeat: Infinity, ease: "linear" }}
-      />
-    ))}
-  </div>
-)
+const OrbitRings = () => null
 
 /** Single floating product pill — hidden on small screens */
 const ProductPill = ({
@@ -207,12 +201,11 @@ const ProductPill = ({
       className="absolute hidden lg:block"
       style={style}
       initial={{ opacity: 0, scale: 0.7 }}
-      animate={{ opacity: 1, scale: 1, y: [0, -8, 0] }}
-      transition={{
-        opacity: { duration: 0.5, delay: product.delay + 0.8 },
-        scale:   { duration: 0.5, delay: product.delay + 0.8 },
-        y: { duration: 3.5 + product.delay, repeat: Infinity, ease: "easeInOut", delay: product.delay },
-      }}
+   animate={{ opacity: 1, scale: 1 }}
+    transition={{
+  opacity: { duration: 0.5, delay: product.delay + 0.8 },
+  scale: { duration: 0.5, delay: product.delay + 0.8 },
+}}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       whileHover={{ scale: 1.1 }}
@@ -242,23 +235,23 @@ const ProductPill = ({
 }
 
 /** Central hero orb with glossy enhancements */
-const HeroOrb = () => (
+const HeroOrb = ({ reduceMotion }: { reduceMotion: boolean }) => (
   <motion.div
     className="relative w-52 h-52 sm:w-60 sm:h-60 lg:w-80 lg:h-80"
-    animate={{ y: [0, -14, 0] }}
-    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+  animate={reduceMotion ? {} : { y: [0, -14, 0] }}
+transition={reduceMotion ? {} : { duration: 5, repeat: 2, ease: "easeInOut" }}
   >
     {/* outer glow — stronger, more diffused */}
     <motion.div
       className="absolute inset-[-20%] rounded-full bg-gradient-to-br from-emerald-400/30 via-teal-300/20 to-amber-300/25 blur-[60px]"
-      animate={{ scale: [1, 1.2, 1], opacity: [0.6, 0.9, 0.6] }}
-      transition={{ duration: 4, repeat: Infinity }}
+  animate={reduceMotion ? {} : { scale: [1, 1.2, 1], opacity: [0.6, 0.9, 0.6] }}
+transition={reduceMotion ? {} : { duration: 4, repeat: 2 }}
     />
     {/* secondary glow ring */}
     <motion.div
       className="absolute inset-[-8%] rounded-full bg-gradient-to-tr from-emerald-300/20 to-transparent blur-[40px]"
-      animate={{ rotate: [0, 180, 360] }}
-      transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+animate={reduceMotion ? {} : { rotate: 360 }}
+transition={reduceMotion ? {} : { duration: 6, repeat: 2 }}
     />
 
     {/* main circle with glossy glass effect */}
@@ -282,16 +275,16 @@ const HeroOrb = () => (
         style={{
           background: "conic-gradient(from 0deg, transparent 55%, rgba(255,255,255,0.5) 65%, rgba(255,255,255,0.2) 75%, transparent 85%)"
         }}
-        animate={{ rotate: 360 }}
-        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+  animate={reduceMotion ? {} : { rotate: 360 }}
+transition={reduceMotion ? {} : { duration: 6, repeat: 2 }}
       />
 
       {/* inner content */}
       <div className="relative z-0 text-center">
         <motion.div
           className="w-24 h-24 sm:w-28 sm:h-28 lg:w-36 lg:h-36 rounded-full bg-gradient-to-br from-[#0f3d2e] via-emerald-700 to-emerald-600 flex items-center justify-center mx-auto mb-3 shadow-[0_8px_32px_rgba(15,61,46,0.4),inset_0_1px_2px_rgba(255,255,255,0.15)]"
-          animate={{ rotate: [0, 4, -4, 0] }}
-          transition={{ duration: 5, repeat: Infinity }}
+  animate={reduceMotion ? {} : { rotate: 360 }}
+transition={reduceMotion ? {} : { duration: 6, repeat: 2 }}
         >
           {/* inner glossy highlight */}
           <div
@@ -320,8 +313,8 @@ const HeroOrb = () => (
           transformOrigin: `6px ${(i % 2 === 0 ? 148 : 128) + 6}px`,
           rotate: deg,
         }}
-        animate={{ rotate: [deg, deg + 360] }}
-        transition={{ duration: 10 + i * 2, repeat: Infinity, ease: "linear" }}
+animate={reduceMotion ? {} : { rotate: 360 }}
+transition={reduceMotion ? {} : { duration: 6, repeat: 2 }}
       />
     ))}
   </motion.div>
@@ -352,25 +345,10 @@ const BenefitCard = ({ b, index }: { b: typeof benefits[0]; index: number }) => 
    MAIN COMPONENT
 ───────────────────────────────────────────── */
 export function HeroSection() {
-  const mouseX = useMotionValue(0)
-  const mouseY = useMotionValue(0)
-  const springX = useSpring(mouseX, { stiffness: 40, damping: 20 })
-  const springY = useSpring(mouseY, { stiffness: 40, damping: 20 })
+
   const isLoaded = useRef(false)
   const [mounted, setMounted] = useState(true)
-
-  useEffect(() => {
-    isLoaded.current = true
-    const handler = (e: MouseEvent) => {
-      mouseX.set((e.clientX / window.innerWidth - 0.5) * 2)
-      mouseY.set((e.clientY / window.innerHeight - 0.5) * 2)
-    }
-    window.addEventListener('mousemove', handler)
-    return () => window.removeEventListener('mousemove', handler)
-  }, [])
-
-  const parallaxX = useTransform(springX, [-1, 1], [18, -18])
-  const parallaxY = useTransform(springY, [-1, 1], [14, -14])
+const reduceMotion = useReducedMotion()
 
   return (
     <section className="relative min-h-screen overflow-hidden bg-[#fafaf7] font-sans z-0">
@@ -391,17 +369,17 @@ export function HeroSection() {
 
       {/* Glossy mesh gradient blobs — multi-layered for depth */}
       <motion.div
-        className="absolute -top-40 -left-40 w-[400px] sm:w-[500px] lg:w-[600px] h-[400px] sm:h-[500px] lg:h-[600px] rounded-full bg-gradient-to-br from-emerald-200/40 via-emerald-100/20 to-teal-100/30 blur-[80px] sm:blur-[100px] lg:blur-[120px] pointer-events-none"
-        animate={{ x: useTransform(springX, v => v * 25), y: useTransform(springY, v => v * 25) }}
+        className="absolute -top-40 -left-40 w-[400px] sm:w-[500px] lg:w-[600px] h-[400px] sm:h-[500px] lg:h-[600px] rounded-full bg-gradient-to-br from-emerald-200/40 via-emerald-100/20 to-teal-100/30 blur-[25px] sm:blur-[30px] lg:blur-[40px] pointer-events-none"
+    
       />
       <motion.div
-        className="absolute -bottom-40 -right-20 w-[350px] sm:w-[450px] lg:w-[500px] h-[350px] sm:h-[450px] lg:h-[500px] rounded-full bg-gradient-to-tl from-amber-200/40 via-yellow-100/20 to-orange-100/30 blur-[70px] sm:blur-[90px] lg:blur-[100px] pointer-events-none"
-        animate={{ x: useTransform(springX, v => v * -18), y: useTransform(springY, v => v * -18) }}
+        className="absolute -bottom-40 -right-20 w-[350px] sm:w-[450px] lg:w-[500px] h-[350px] sm:h-[450px] lg:h-[500px] rounded-full bg-gradient-to-tl from-amber-200/40 via-yellow-100/20 to-orange-100/30 blur-[25px]  pointer-events-none"
+      
       />
       {/* third layer for depth — rose tint */}
       <motion.div
-        className="absolute top-1/3 right-1/4 w-[300px] sm:w-[400px] h-[300px] sm:h-[400px] rounded-full bg-gradient-to-br from-rose-100/20 to-transparent blur-[80px] sm:blur-[100px] pointer-events-none"
-        animate={{ x: useTransform(springX, v => v * 12), y: useTransform(springY, v => v * 12) }}
+        className="absolute top-1/3 right-1/4 w-[300px] sm:w-[400px] h-[300px] sm:h-[400px] rounded-full bg-gradient-to-br from-rose-100/20 to-transparent blur-[25px] pointer-events-none"
+      
       />
 
       {/* Fine grid */}
@@ -528,7 +506,7 @@ export function HeroSection() {
                       Shop Now
                       <motion.span
                         animate={{ x: [0, 4, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
+                        transition={{ duration: 1.5, repeat: 2 }}
                       >
                         <ArrowRight className="w-5 h-5" />
                       </motion.span>
@@ -578,7 +556,7 @@ export function HeroSection() {
                       className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0f3d2e]"
                       style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                     >
-                      {mounted && <AnimatedCounter value={s.value} suffix={s.suffix} />}
+                      {mounted &&<AnimatedCounter value={s.value} suffix={s.suffix} reduceMotion={reduceMotion} />}
                     </span>
                   </div>
                   <p className="text-[10px] sm:text-xs font-semibold text-gray-400 tracking-wider uppercase">{s.label}</p>
@@ -599,9 +577,9 @@ export function HeroSection() {
             {/* parallax container */}
             <motion.div
               className="relative"
-              style={{ x: parallaxX, y: parallaxY }}
+              
             >
-              <HeroOrb />
+       <HeroOrb reduceMotion={reduceMotion} />
             </motion.div>
 
             {/* ── Floating product pills (desktop only) ── */}
@@ -618,18 +596,18 @@ export function HeroSection() {
               transition={{
                 opacity: { delay: 0.8, duration: 0.4 },
                 scale: { delay: 0.8, type: "spring", bounce: 0.5 },
-                y: { duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1 },
+                y: { duration: 2.5, repeat: 2, ease: "easeInOut", delay: 1 },
               }}
             >
               <div className="relative">
                 <motion.div
                   className="absolute -inset-2 rounded-full bg-gradient-to-r from-red-500 to-orange-400 blur-lg opacity-50"
                   animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.7, 0.5] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
+                  transition={{ duration: 1.5, repeat: 2 }}
                 />
                 <div className="relative flex items-center gap-2 bg-gradient-to-r from-red-500 via-red-400 to-orange-400 text-white text-xs font-bold px-4 py-2.5 mt-8 rounded-full shadow-[0_4px_20px_rgba(239,68,68,0.3)] border border-red-300/30 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
-                  <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }} className="relative">
+                  <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: 2 }} className="relative">
                     🔥
                   </motion.span>
                   <span className="relative">Bestsellers</span>
@@ -645,7 +623,7 @@ export function HeroSection() {
               transition={{
                 opacity: { delay: 1.1, duration: 0.4 },
                 scale: { delay: 1.1, type: "spring" },
-                rotate: { duration: 4, repeat: Infinity, delay: 1.5 },
+                rotate: { duration: 4, repeat: 2, delay: 1.5 },
               }}
             >
               <div className="relative flex items-center gap-2 bg-white/85 backdrop-blur-xl rounded-full px-4 py-2.5 shadow-[0_4px_24px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/60 overflow-hidden">
@@ -665,7 +643,7 @@ export function HeroSection() {
               transition={{
                 opacity: { delay: 1.3, duration: 0.4 },
                 x: { delay: 1.3, duration: 0.4 },
-                y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1.5 },
+                y: { duration: 3, repeat: 2, ease: "easeInOut", delay: 1.5 },
               }}
             >
               <div className="relative flex items-center gap-2 bg-gradient-to-r from-[#0f3d2e] via-[#134d38] to-[#0f3d2e] backdrop-blur-xl rounded-full px-4 py-2.5 shadow-[0_4px_24px_rgba(15,61,46,0.3),inset_0_1px_1px_rgba(255,255,255,0.08)] border border-emerald-700/30 overflow-hidden">
@@ -754,7 +732,7 @@ export function HeroSection() {
                 "M0,30 C300,60 600,0 900,30 C1050,45 1150,15 1200,30 L1200,60 L0,60Z",
               ]
             }}
-            transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+            transition={{ duration: 9, repeat: 2, ease: "easeInOut" }}
           />
         </svg>
       </div>
