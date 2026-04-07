@@ -43,6 +43,18 @@ export function Header() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Close menu on resize to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 769) {
+        setIsMenuOpen(false)
+        setIsSearchOpen(false)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
  
   const searchProducts = async (query) => {
     if (!query.trim()) {
@@ -68,11 +80,6 @@ export function Header() {
  
   const handleLogout = () => logout('users')
  
-  const topBarVariants = {
-    initial: { y: -40, opacity: 0 },
-    animate: { y: 0, opacity: 1, transition: { duration: 0.5 } },
-  }
- 
   return (
     <>
       <style>{`
@@ -90,30 +97,32 @@ export function Header() {
           font-family: 'DM Sans', sans-serif;
         }
  
+        /* ── Top Bar ── */
         .top-bar {
           background: var(--brand-forest);
           color: rgba(255,255,255,0.85);
           font-size: 11.5px;
           letter-spacing: 0.04em;
-          padding: 8px 0;
+          padding: 7px 0;
           font-family: 'DM Sans', sans-serif;
         }
  
         .top-bar-inner {
           max-width: 1280px;
           margin: 0 auto;
-          padding: 0 24px;
+          padding: 0 16px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
-          flex-wrap: wrap;
+          gap: 8px;
+          min-height: 0;
         }
  
         .top-bar-contact {
           display: flex;
-          gap: 20px;
+          gap: 16px;
           align-items: center;
+          flex-shrink: 0;
         }
  
         .top-bar-contact a {
@@ -123,17 +132,18 @@ export function Header() {
           color: rgba(255,255,255,0.75);
           text-decoration: none;
           transition: color 0.2s;
+          white-space: nowrap;
         }
  
-        .top-bar-contact a:hover {
-          color: var(--brand-gold);
-        }
+        .top-bar-contact a:hover { color: var(--brand-gold); }
  
         .top-bar-badges {
           display: flex;
-          gap: 6px;
-          flex-wrap: wrap;
+          gap: 5px;
+          flex-wrap: nowrap;
+          align-items: center;
           justify-content: flex-end;
+          overflow: hidden;
         }
  
         .top-badge {
@@ -141,13 +151,14 @@ export function Header() {
           border: 1px solid rgba(255,255,255,0.15);
           color: rgba(255,255,255,0.85);
           border-radius: 20px;
-          padding: 2px 10px;
+          padding: 2px 8px;
           font-size: 10.5px;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.05em;
           text-transform: uppercase;
           display: flex;
           align-items: center;
           gap: 4px;
+          white-space: nowrap;
         }
  
         .top-badge.gold {
@@ -156,7 +167,7 @@ export function Header() {
           color: var(--brand-gold);
         }
  
-        /* Main Header */
+        /* ── Main Header ── */
         .main-header {
           background: var(--brand-cream);
           border-bottom: 1px solid rgba(26,58,42,0.1);
@@ -175,31 +186,33 @@ export function Header() {
         .header-inner {
           max-width: 1280px;
           margin: 0 auto;
-          padding: 0 24px;
+          padding: 0 16px;
         }
  
         .header-main-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          height: 72px;
-          gap: 16px;
+          height: 64px;
+          gap: 12px;
         }
  
-        /* Logo */
+        /* ── Logo ── */
         .logo-wrap {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 9px;
           text-decoration: none;
           flex-shrink: 0;
+          min-width: 0;
         }
  
         .logo-icon {
-          width: 44px;
-          height: 44px;
+          width: 40px;
+          height: 40px;
+          min-width: 40px;
           background: var(--brand-forest);
-          border-radius: 12px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -224,30 +237,33 @@ export function Header() {
           display: flex;
           flex-direction: column;
           line-height: 1;
+          min-width: 0;
         }
  
         .logo-title {
           font-family: 'Cormorant Garamond', serif;
-          font-size: 22px;
+          font-size: 20px;
           font-weight: 600;
           color: var(--brand-forest);
           letter-spacing: 0.01em;
+          white-space: nowrap;
         }
  
         .logo-sub {
-          font-size: 10px;
+          font-size: 9.5px;
           font-weight: 500;
-          letter-spacing: 0.18em;
+          letter-spacing: 0.16em;
           text-transform: uppercase;
           color: var(--brand-sage);
           margin-top: 1px;
+          white-space: nowrap;
         }
  
-        /* Desktop Search */
+        /* ── Desktop Search ── */
         .search-desktop {
           flex: 1;
-          max-width: 480px;
-          margin: 0 24px;
+          max-width: 460px;
+          margin: 0 16px;
           position: relative;
         }
  
@@ -259,21 +275,19 @@ export function Header() {
  
         .search-input {
           width: 100%;
-          height: 42px;
+          height: 40px;
           border-radius: 100px;
           border: 1.5px solid rgba(26,58,42,0.15);
           background: white;
-          padding: 0 44px 0 44px;
+          padding: 0 42px 0 40px;
           font-family: 'DM Sans', sans-serif;
-          font-size: 13.5px;
+          font-size: 13px;
           color: var(--brand-forest);
           outline: none;
           transition: border-color 0.2s, box-shadow 0.2s;
         }
  
-        .search-input::placeholder {
-          color: rgba(26,58,42,0.4);
-        }
+        .search-input::placeholder { color: rgba(26,58,42,0.4); }
  
         .search-input:focus {
           border-color: var(--brand-sage);
@@ -282,18 +296,18 @@ export function Header() {
  
         .search-icon-left {
           position: absolute;
-          left: 14px;
+          left: 13px;
           color: rgba(26,58,42,0.4);
           pointer-events: none;
-          width: 16px;
-          height: 16px;
+          width: 15px;
+          height: 15px;
         }
  
         .search-btn-inside {
           position: absolute;
-          right: 6px;
+          right: 5px;
           height: 30px;
-          padding: 0 14px;
+          padding: 0 13px;
           background: var(--brand-forest);
           color: white;
           border: none;
@@ -304,11 +318,9 @@ export function Header() {
           transition: background 0.2s;
         }
  
-        .search-btn-inside:hover {
-          background: var(--brand-moss);
-        }
+        .search-btn-inside:hover { background: var(--brand-moss); }
  
-        /* Search Results Dropdown */
+        /* ── Search Results Dropdown ── */
         .search-dropdown {
           position: absolute;
           top: calc(100% + 8px);
@@ -325,20 +337,18 @@ export function Header() {
         .search-result-item {
           display: flex;
           gap: 12px;
-          padding: 10px 16px;
+          padding: 10px 14px;
           cursor: pointer;
           transition: background 0.15s;
           align-items: center;
         }
  
-        .search-result-item:hover {
-          background: var(--brand-mint);
-        }
+        .search-result-item:hover { background: var(--brand-mint); }
  
         .search-result-img {
-          width: 48px;
-          height: 48px;
-          border-radius: 10px;
+          width: 44px;
+          height: 44px;
+          border-radius: 8px;
           object-fit: cover;
           background: var(--brand-mint);
           flex-shrink: 0;
@@ -350,7 +360,7 @@ export function Header() {
         }
  
         .search-result-name {
-          font-size: 13.5px;
+          font-size: 13px;
           font-weight: 500;
           color: var(--brand-forest);
           white-space: nowrap;
@@ -359,7 +369,7 @@ export function Header() {
         }
  
         .search-result-cat {
-          font-size: 11px;
+          font-size: 10.5px;
           color: var(--brand-sage);
           margin-top: 1px;
           text-transform: uppercase;
@@ -381,18 +391,18 @@ export function Header() {
           margin-left: 4px;
         }
  
-        /* Action Buttons */
+        /* ── Action Buttons ── */
         .header-actions {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 2px;
           flex-shrink: 0;
         }
  
         .action-btn {
-          width: 40px;
-          height: 40px;
-          border-radius: 10px;
+          width: 38px;
+          height: 38px;
+          border-radius: 9px;
           border: none;
           background: transparent;
           cursor: pointer;
@@ -403,6 +413,7 @@ export function Header() {
           transition: background 0.2s, color 0.2s;
           text-decoration: none;
           position: relative;
+          flex-shrink: 0;
         }
  
         .action-btn:hover {
@@ -410,43 +421,15 @@ export function Header() {
           color: var(--brand-moss);
         }
  
-        .action-btn.active {
-          background: var(--brand-mint);
-          color: var(--brand-sage);
-        }
- 
-        .cart-btn {
-          height: 40px;
-          padding: 0 16px;
-          border-radius: 10px;
-          border: 1.5px solid var(--brand-forest);
-          background: transparent;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 7px;
-          color: var(--brand-forest);
-          font-family: 'DM Sans', sans-serif;
-          font-size: 13px;
-          font-weight: 500;
-          transition: background 0.2s, color 0.2s;
-          text-decoration: none;
-        }
- 
-        .cart-btn:hover {
-          background: var(--brand-forest);
-          color: white;
-        }
- 
         .divider-v {
           width: 1px;
-          height: 24px;
+          height: 20px;
           background: rgba(26,58,42,0.12);
-          margin: 0 4px;
+          margin: 0 2px;
+          flex-shrink: 0;
         }
  
-        /* Nav */
+        /* ── Desktop Nav ── */
         .header-nav {
           border-top: 1px solid rgba(26,58,42,0.07);
         }
@@ -460,13 +443,11 @@ export function Header() {
           scrollbar-width: none;
         }
  
-        .nav-inner::-webkit-scrollbar {
-          display: none;
-        }
+        .nav-inner::-webkit-scrollbar { display: none; }
  
         .nav-link {
           position: relative;
-          padding: 13px 16px;
+          padding: 12px 14px;
           font-size: 13px;
           font-weight: 500;
           color: rgba(26,58,42,0.65);
@@ -480,8 +461,8 @@ export function Header() {
           content: '';
           position: absolute;
           bottom: 0;
-          left: 16px;
-          right: 16px;
+          left: 14px;
+          right: 14px;
           height: 2px;
           background: var(--brand-sage);
           border-radius: 2px 2px 0 0;
@@ -490,26 +471,12 @@ export function Header() {
           transform-origin: center;
         }
  
-        .nav-link:hover {
-          color: var(--brand-forest);
-        }
+        .nav-link:hover { color: var(--brand-forest); }
+        .nav-link:hover::after { transform: scaleX(1); }
  
-        .nav-link:hover::after {
-          transform: scaleX(1);
-        }
- 
-        .nav-link.special {
-          color: var(--brand-gold);
-          font-weight: 500;
-        }
- 
-        .nav-link.special:hover {
-          color: var(--brand-bark);
-        }
- 
-        .nav-link.special::after {
-          background: var(--brand-gold);
-        }
+        .nav-link.special { color: var(--brand-gold); font-weight: 500; }
+        .nav-link.special:hover { color: var(--brand-bark); }
+        .nav-link.special::after { background: var(--brand-gold); }
  
         .nav-new-badge {
           display: inline-flex;
@@ -528,14 +495,14 @@ export function Header() {
           top: -1px;
         }
  
-        /* Mobile Menu */
+        /* ── Mobile Menu ── */
         .mobile-menu {
           background: var(--brand-cream);
           border-top: 1px solid rgba(26,58,42,0.1);
         }
  
         .mobile-menu-inner {
-          padding: 16px 24px 24px;
+          padding: 14px 16px 20px;
           max-width: 1280px;
           margin: 0 auto;
         }
@@ -548,7 +515,7 @@ export function Header() {
           border: 1.5px solid rgba(26,58,42,0.15);
           border-radius: 12px;
           padding: 10px 14px;
-          margin-bottom: 20px;
+          margin-bottom: 16px;
         }
  
         .mobile-search-input {
@@ -559,15 +526,12 @@ export function Header() {
           font-size: 14px;
           color: var(--brand-forest);
           background: transparent;
+          min-width: 0;
         }
  
-        .mobile-search-input::placeholder {
-          color: rgba(26,58,42,0.4);
-        }
+        .mobile-search-input::placeholder { color: rgba(26,58,42,0.4); }
  
-        .mobile-nav-section {
-          margin-bottom: 16px;
-        }
+        .mobile-nav-section { margin-bottom: 12px; }
  
         .mobile-section-label {
           font-size: 10px;
@@ -575,7 +539,7 @@ export function Header() {
           letter-spacing: 0.12em;
           text-transform: uppercase;
           color: rgba(26,58,42,0.4);
-          margin-bottom: 8px;
+          margin-bottom: 6px;
           padding: 0 4px;
         }
  
@@ -587,30 +551,24 @@ export function Header() {
           border-radius: 10px;
           color: var(--brand-forest);
           text-decoration: none;
-          font-size: 14.5px;
+          font-size: 14px;
           font-weight: 400;
           transition: background 0.15s;
         }
  
-        .mobile-nav-link:hover {
-          background: var(--brand-mint);
-        }
- 
-        .mobile-nav-link.special {
-          color: var(--brand-bark);
-          font-weight: 500;
-        }
+        .mobile-nav-link:hover { background: var(--brand-mint); }
+        .mobile-nav-link.special { color: var(--brand-bark); font-weight: 500; }
  
         .mobile-divider {
           height: 1px;
           background: rgba(26,58,42,0.08);
-          margin: 12px 0;
+          margin: 10px 0;
         }
  
         .mobile-footer-actions {
           display: flex;
-          gap: 10px;
-          margin-top: 16px;
+          gap: 8px;
+          margin-top: 12px;
         }
  
         .mobile-action-pill {
@@ -622,7 +580,7 @@ export function Header() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 7px;
+          gap: 6px;
           font-family: 'DM Sans', sans-serif;
           font-size: 13px;
           font-weight: 500;
@@ -630,11 +588,12 @@ export function Header() {
           text-decoration: none;
           cursor: pointer;
           transition: background 0.2s;
+          white-space: nowrap;
+          min-width: 0;
+          overflow: hidden;
         }
  
-        .mobile-action-pill:hover {
-          background: var(--brand-mint);
-        }
+        .mobile-action-pill:hover { background: var(--brand-mint); }
  
         .mobile-action-pill.primary {
           background: var(--brand-forest);
@@ -642,41 +601,42 @@ export function Header() {
           color: white;
         }
  
-        .mobile-action-pill.primary:hover {
-          background: var(--brand-moss);
-        }
+        .mobile-action-pill.primary:hover { background: var(--brand-moss); }
  
-        /* Full Screen Search Overlay */
+        /* ── Mobile Search Overlay ── */
         .search-overlay-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(0,0,0,0.4);
+          background: rgba(0,0,0,0.45);
           backdrop-filter: blur(4px);
           z-index: 150;
           display: flex;
           align-items: flex-start;
           justify-content: center;
-          padding-top: 72px;
-          padding-left: 16px;
-          padding-right: 16px;
+          padding: 64px 12px 0;
         }
  
         .search-overlay-box {
           background: white;
           width: 100%;
           max-width: 600px;
-          border-radius: 20px;
-          padding: 20px;
+          border-radius: 18px;
+          padding: 16px;
           box-shadow: 0 32px 80px rgba(0,0,0,0.15);
+          max-height: calc(100vh - 80px);
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
  
         .search-overlay-input-row {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           border-bottom: 1.5px solid rgba(26,58,42,0.1);
-          padding-bottom: 14px;
-          margin-bottom: 14px;
+          padding-bottom: 12px;
+          margin-bottom: 12px;
+          flex-shrink: 0;
         }
  
         .search-overlay-input {
@@ -686,15 +646,16 @@ export function Header() {
           font-family: 'DM Sans', sans-serif;
           font-size: 16px;
           color: var(--brand-forest);
+          min-width: 0;
+          background: transparent;
         }
  
-        .search-overlay-input::placeholder {
-          color: rgba(26,58,42,0.35);
-        }
+        .search-overlay-input::placeholder { color: rgba(26,58,42,0.35); }
  
         .search-close-btn {
           width: 32px;
           height: 32px;
+          min-width: 32px;
           border-radius: 8px;
           border: none;
           background: rgba(26,58,42,0.06);
@@ -703,17 +664,59 @@ export function Header() {
           align-items: center;
           justify-content: center;
           color: var(--brand-forest);
-          flex-shrink: 0;
+        }
+
+        .search-overlay-results {
+          flex: 1;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
         }
  
+        /* ── Breakpoints ── */
+
+        /* Large desktop */
+        @media (min-width: 1024px) {
+          .header-inner { padding: 0 32px; }
+          .top-bar-inner { padding: 0 32px; }
+          .header-main-row { height: 72px; }
+          .logo-title { font-size: 22px; }
+        }
+
+        /* Tablet */
+        @media (max-width: 1023px) and (min-width: 769px) {
+          .search-desktop { max-width: 340px; margin: 0 12px; }
+        }
+
+        /* Mobile hide/show rules */
         @media (max-width: 768px) {
-          .search-desktop { display: none; }
-          .logo-title { font-size: 19px; }
-          .header-main-row { height: 64px; }
-          .top-bar-contact { display: none; }
-          .nav-desktop { display: none; }
+          .search-desktop { display: none !important; }
+          .nav-desktop { display: none !important; }
+          .desktop-only { display: none !important; }
+          .top-bar-contact { display: none !important; }
+          /* Show all badges on mobile but limit to 2 */
+          .top-badge:nth-child(n+3) { display: none; }
+          .header-main-row { height: 58px; gap: 6px; }
+          .logo-icon { width: 36px; height: 36px; min-width: 36px; border-radius: 9px; }
+          .logo-title { font-size: 18px; }
+          .logo-sub { font-size: 9px; letter-spacing: 0.12em; }
+          .action-btn { width: 36px; height: 36px; }
+          .divider-v { display: none; }
+          .top-bar { padding: 6px 0; }
+          .top-badge { font-size: 10px; padding: 2px 7px; }
         }
- 
+
+        /* Very small phones */
+        @media (max-width: 360px) {
+          .logo-sub { display: none; }
+          .logo-title { font-size: 16px; }
+          .logo-icon { width: 32px; height: 32px; min-width: 32px; }
+          .header-main-row { gap: 4px; }
+          .action-btn { width: 32px; height: 32px; }
+          .top-badge:nth-child(n+2) { display: none; }
+          .mobile-action-pill { font-size: 12px; padding: 0 8px; }
+        }
+
         @media (min-width: 769px) {
           .mobile-only { display: none !important; }
           .nav-desktop { display: block; }
@@ -741,13 +744,13 @@ export function Header() {
               </a>
             </div>
             <div className="top-bar-badges">
-              <span className="top-badge">
-                <Leaf size={10} />
-                100% Natural
-              </span>
               <span className="top-badge gold">
                 <Sparkles size={10} />
                 Free Shipping ₹500+
+              </span>
+              <span className="top-badge">
+                <Leaf size={10} />
+                100% Natural
               </span>
               <span className="top-badge">Lab Tested</span>
             </div>
@@ -766,10 +769,11 @@ export function Header() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
+                style={{ flexShrink: 0 }}
               >
                 <Link href="/" className="logo-wrap">
                   <div className="logo-icon">
-                    <Leaf size={22} />
+                    <Leaf size={20} />
                   </div>
                   <div className="logo-text">
                     <span className="logo-title">AyurVeda</span>
@@ -817,7 +821,6 @@ export function Header() {
                   )}
                 </div>
  
-                {/* Dropdown results */}
                 <AnimatePresence>
                   {showResults && (
                     <motion.div
@@ -856,7 +859,7 @@ export function Header() {
                               <div className="search-result-name">{item.name}</div>
                               <div className="search-result-cat">{item.category_name}</div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', flexShrink: 0 }}>
                               <span className="search-result-price">₹{item.price}</span>
                               {item.compareprice && (
                                 <span className="search-result-compare">₹{item.compareprice}</span>
@@ -883,36 +886,36 @@ export function Header() {
                   onClick={() => setIsSearchOpen(true)}
                   aria-label="Search"
                 >
-                  <Search size={19} />
+                  <Search size={18} />
                 </button>
  
-                {/* Wishlist */}
-                <Link href="/wishlist" className="action-btn" aria-label="Wishlist">
-                  <Heart size={19} />
+                {/* Wishlist — desktop only */}
+                <Link href="/wishlist" className="action-btn desktop-only" aria-label="Wishlist">
+                  <Heart size={18} />
                 </Link>
  
-                <div className="divider-v" />
+                <div className="divider-v desktop-only" />
  
                 {/* Account */}
                 {loginuserdata?.id ? (
                   <>
                     <Link href="/account" className="action-btn" aria-label="Account">
-                      <User size={19} />
+                      <User size={18} />
                     </Link>
-                    <button className="action-btn" onClick={handleLogout} aria-label="Logout">
-                      <LogOut size={19} />
+                    <button className="action-btn desktop-only" onClick={handleLogout} aria-label="Logout">
+                      <LogOut size={18} />
                     </button>
                   </>
                 ) : (
                   <Link href="/auth" className="action-btn" aria-label="Login">
-                    <User size={19} />
+                    <User size={18} />
                   </Link>
                 )}
  
                 {/* Cart */}
                 <CartSheet />
  
-                {/* Hamburger */}
+                {/* Hamburger — mobile only */}
                 <button
                   className="action-btn mobile-only"
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -921,11 +924,11 @@ export function Header() {
                   <AnimatePresence mode="wait">
                     {isMenuOpen ? (
                       <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                        <X size={20} />
+                        <X size={19} />
                       </motion.div>
                     ) : (
                       <motion.div key="open" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                        <Menu size={20} />
+                        <Menu size={19} />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -936,7 +939,7 @@ export function Header() {
             {/* Desktop Nav */}
             <nav className="header-nav nav-desktop">
               <div className="nav-inner">
-                {categoriesdata?.rows?.map((cat: any, i: number) => (
+                {categoriesdata?.rows?.map((cat: any) => (
                   <Link
                     key={cat?.id}
                     href={`/category/${cat?.id}`}
@@ -966,14 +969,14 @@ export function Header() {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
                 style={{ overflow: 'hidden' }}
               >
                 <div className="mobile-menu-inner">
  
                   {/* Mobile Search */}
                   <div className="mobile-search-wrap">
-                    <Search size={16} style={{ color: 'rgba(26,58,42,0.4)', flexShrink: 0 }} />
+                    <Search size={15} style={{ color: 'rgba(26,58,42,0.4)', flexShrink: 0 }} />
                     <input
                       className="mobile-search-input"
                       placeholder="Search organic products..."
@@ -1000,7 +1003,7 @@ export function Header() {
                         className="mobile-nav-link"
                       >
                         <span>{cat?.name}</span>
-                        <ChevronDown size={14} style={{ transform: 'rotate(-90deg)', opacity: 0.4 }} />
+                        <ChevronDown size={14} style={{ transform: 'rotate(-90deg)', opacity: 0.4, flexShrink: 0 }} />
                       </Link>
                     ))}
                   </div>
@@ -1018,6 +1021,16 @@ export function Header() {
                     </Link>
                     <Link href="/offers" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link special">
                       <span>✦ Offers & Deals</span>
+                    </Link>
+                  </div>
+
+                  <div className="mobile-divider" />
+
+                  {/* Wishlist row — mobile only */}
+                  <div className="mobile-nav-section">
+                    <Link href="/wishlist" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
+                      <span>Wishlist</span>
+                      <Heart size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
                     </Link>
                   </div>
  
@@ -1041,10 +1054,6 @@ export function Header() {
                         <Link href="/auth" onClick={() => setIsMenuOpen(false)} className="mobile-action-pill primary">
                           <User size={15} />
                           Login / Register
-                        </Link>
-                        <Link href="/wishlist" onClick={() => setIsMenuOpen(false)} className="mobile-action-pill">
-                          <Heart size={15} />
-                          Wishlist
                         </Link>
                       </>
                     )}
@@ -1070,14 +1079,14 @@ export function Header() {
             >
               <motion.div
                 className="search-overlay-box"
-                initial={{ opacity: 0, y: -20, scale: 0.96 }}
+                initial={{ opacity: 0, y: -16, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.96 }}
-                transition={{ duration: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
+                exit={{ opacity: 0, y: -16, scale: 0.97 }}
+                transition={{ duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="search-overlay-input-row">
-                  <Search size={20} style={{ color: 'rgba(26,58,42,0.4)', flexShrink: 0 }} />
+                  <Search size={19} style={{ color: 'rgba(26,58,42,0.4)', flexShrink: 0 }} />
                   <input
                     autoFocus
                     className="search-overlay-input"
@@ -1093,55 +1102,57 @@ export function Header() {
                     }}
                   />
                   <button className="search-close-btn" onClick={() => setIsSearchOpen(false)}>
-                    <X size={16} />
+                    <X size={15} />
                   </button>
                 </div>
  
-                {searchLoading && (
-                  <div style={{ padding: '16px', textAlign: 'center', fontSize: 13, color: 'rgba(26,58,42,0.45)' }}>
-                    Searching...
-                  </div>
-                )}
+                <div className="search-overlay-results">
+                  {searchLoading && (
+                    <div style={{ padding: '16px', textAlign: 'center', fontSize: 13, color: 'rgba(26,58,42,0.45)' }}>
+                      Searching...
+                    </div>
+                  )}
  
-                {showResults && !searchLoading && (
-                  <div style={{ maxHeight: '55vh', overflowY: 'auto' }}>
-                    {searchResults.length === 0 ? (
-                      <div style={{ padding: '20px 0', textAlign: 'center', fontSize: 13, color: 'rgba(26,58,42,0.45)' }}>
-                        No products found for "{searchQuery}"
-                      </div>
-                    ) : (
-                      searchResults.map((item: any) => (
-                        <div
-                          key={item.id}
-                          className="search-result-item"
-                          onClick={() => {
-                            router.push(`/product/${item.id}`)
-                            setIsSearchOpen(false)
-                            setSearchQuery('')
-                            setSearchResults([])
-                            setShowResults(false)
-                          }}
-                        >
-                          <img
-                            src={item?.images?.[0] || '/placeholder.png'}
-                            className="search-result-img"
-                            alt={item.name}
-                          />
-                          <div className="search-result-info">
-                            <div className="search-result-name">{item.name}</div>
-                            <div className="search-result-cat">{item.category_name}</div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'baseline' }}>
-                            <span className="search-result-price">₹{item.price}</span>
-                            {item.compareprice && (
-                              <span className="search-result-compare">₹{item.compareprice}</span>
-                            )}
-                          </div>
+                  {showResults && !searchLoading && (
+                    <>
+                      {searchResults.length === 0 ? (
+                        <div style={{ padding: '20px 0', textAlign: 'center', fontSize: 13, color: 'rgba(26,58,42,0.45)' }}>
+                          No products found for "{searchQuery}"
                         </div>
-                      ))
-                    )}
-                  </div>
-                )}
+                      ) : (
+                        searchResults.map((item: any) => (
+                          <div
+                            key={item.id}
+                            className="search-result-item"
+                            onClick={() => {
+                              router.push(`/product/${item.id}`)
+                              setIsSearchOpen(false)
+                              setSearchQuery('')
+                              setSearchResults([])
+                              setShowResults(false)
+                            }}
+                          >
+                            <img
+                              src={item?.images?.[0] || '/placeholder.png'}
+                              className="search-result-img"
+                              alt={item.name}
+                            />
+                            <div className="search-result-info">
+                              <div className="search-result-name">{item.name}</div>
+                              <div className="search-result-cat">{item.category_name}</div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'baseline', flexShrink: 0 }}>
+                              <span className="search-result-price">₹{item.price}</span>
+                              {item.compareprice && (
+                                <span className="search-result-compare">₹{item.compareprice}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </>
+                  )}
+                </div>
               </motion.div>
             </motion.div>
           )}
