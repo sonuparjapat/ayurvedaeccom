@@ -760,9 +760,18 @@ const generateInvoice = async () => {
 
 <AppModal open={open} onClose={() => closeModal()} title="Order Details">
 
-  {current && (
+ {current && (() => {
 
-    <div className="space-y-6">
+  const breakup = current?.shipping_address?.price_breakup || {}
+
+  const subtotal = breakup?.subtotal || current?.total_amount || 0
+  const gst = breakup?.gst || 0
+  const delivery = breakup?.delivery || 0
+  const platform = breakup?.platform_fee || 0
+  const total = breakup?.grand_total || current?.total_amount || 0
+
+   return (
+     <div className="space-y-6">
 
 
       {/* ================= ORDER HEADER ================= */}
@@ -867,7 +876,27 @@ const generateInvoice = async () => {
         </div>
 
       </div>
+{/* ================= ADDRESS ================= */}
 
+<div className="bg-gray-50 rounded-xl p-6 space-y-3">
+
+  <h3 className="text-lg font-bold text-gray-900">
+    Delivery Address
+  </h3>
+
+  <div className="text-gray-700 text-sm leading-6">
+
+    <p className="font-semibold">
+      {current?.shipping_address?.name}
+    </p>
+
+    <p>{current?.shipping_address?.phone}</p>
+
+    <p>{current?.shipping_address?.address}</p>
+
+  </div>
+
+</div>
 
       {/* ================= ORDER DETAILS ================= */}
 
@@ -888,7 +917,7 @@ const generateInvoice = async () => {
             <span className="text-gray-600">Subtotal</span>
 
             <span className="font-semibold text-gray-900">
-              ₹{Number(current.total_amount).toLocaleString('en-IN')}
+            ₹{Number(subtotal).toLocaleString('en-IN')}
             </span>
 
           </div>
@@ -899,11 +928,23 @@ const generateInvoice = async () => {
             <span className="text-gray-600">Tax</span>
 
             <span className="font-semibold text-gray-900">
-              ₹0.00
+     ₹{Number(gst).toLocaleString('en-IN')}
             </span>
 
           </div>
+<div className="flex justify-between items-center py-3 border-b border-gray-200">
+  <span className="text-gray-600">Delivery</span>
+  <span className="font-semibold text-gray-900">
+    ₹{Number(delivery).toLocaleString('en-IN')}
+  </span>
+</div>
 
+<div className="flex justify-between items-center py-3 border-b border-gray-200">
+  <span className="text-gray-600">Platform Fee</span>
+  <span className="font-semibold text-gray-900">
+    ₹{Number(platform).toLocaleString('en-IN')}
+  </span>
+</div>
 
           <div className="flex justify-between items-center py-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg px-4 mt-4">
 
@@ -914,7 +955,7 @@ const generateInvoice = async () => {
 
             <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
 
-              ₹{Number(current.total_amount).toLocaleString('en-IN')}
+            ₹{Number(total).toLocaleString('en-IN')}
 
             </span>
 
@@ -1070,9 +1111,9 @@ const generateInvoice = async () => {
       </div>
 
 
-    </div>
+    </div>)}
 
-  )}
+  )()}
 
 </AppModal>
 
