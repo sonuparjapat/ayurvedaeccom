@@ -2,7 +2,7 @@ const pool = require("../../config/db")
 const PDFDocument = require('pdfkit')
 const fs = require("fs")
 const path = require("path")
- const puppeteer = require("puppeteer-core")
+const puppeteer = require("puppeteer")
 const { uploadInvoiceToCloud } = require("../../utils/uploadInvoicetoCloud");
 const { uploadInvoiceToAWS } = require("../../utils/awsUpload");
 const { platform } = require("os")
@@ -301,9 +301,8 @@ exports.generateInvoice = async (req, res) => {
 
     /* ================= PDF ================= */
 
- const browser = await puppeteer.launch({
+const browser = await puppeteer.launch({
   headless: "new",
-  executablePath: "/opt/render/.cache/puppeteer/chrome/linux-145.0.7632.67/chrome-linux64/chrome",
   args: [
     "--no-sandbox",
     "--disable-setuid-sandbox",
