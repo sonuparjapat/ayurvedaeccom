@@ -6,7 +6,7 @@ const puppeteer = require("puppeteer")
 const { uploadInvoiceToCloud } = require("../../utils/uploadInvoicetoCloud");
 const { uploadInvoiceToAWS } = require("../../utils/awsUpload");
 const { platform } = require("os")
-
+process.env.PUPPETEER_CACHE_DIR = "/opt/render/.cache/puppeteer";
 /* =====================================
    GET INVOICES (UNCHANGED)
 ===================================== */
@@ -301,10 +301,16 @@ exports.generateInvoice = async (req, res) => {
 
     /* ================= PDF ================= */
 
-    const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox"]
-    });
+   const browser = await puppeteer.launch({
+  headless: "new",
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu"
+  ],
+  executablePath: puppeteer.executablePath()
+});
 
     const page = await browser.newPage();
 
