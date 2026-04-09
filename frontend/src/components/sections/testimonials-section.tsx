@@ -1,200 +1,154 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Star, Quote, MapPin, ShoppingBag, Users, TrendingUp, Clock, Award, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { motion, useInView, AnimatePresence } from 'framer-motion'
+import {
+  Star, ShoppingBag, Leaf, ShieldCheck, Truck, HeartHandshake,
+  FlaskConical, Award, BadgeCheck, ChevronLeft, ChevronRight, Quote
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import axios from '@/lib/axios'
 import { notify } from '@/app/utils/notify'
 
-const testimonials = [
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface Testimonial {
+  user_name: string
+  rating: number
+  comment: string
+  product_name: string
+  avatar?: string
+}
+
+// ─── Static data ──────────────────────────────────────────────────────────────
+const WHY_US = [
   {
-    name: "Priya Sharma",
-    location: "Mumbai, Maharashtra",
-    rating: 5,
-    comment: "Amazing quality of dry fruits! The almonds are so fresh and the packaging is excellent. Will definitely order again.",
-    product: "Premium Almonds",
-    avatar: "PS",
-    verified: true
+    icon: Leaf,
+    title: '100% Organic',
+    body: 'Every product is certified organic — no synthetic additives, preservatives, or shortcuts. Nature, bottled.',
+    accent: '#4ADE80',
   },
   {
-    name: "Rajesh Kumar",
-    location: "Delhi, NCR",
-    rating: 5,
-    comment: "The Ayurvedic herbs have made a significant difference in my health. Authentic products and great customer service.",
-    product: "Ashwagandha Powder",
-    avatar: "RK",
-    verified: true
+    icon: FlaskConical,
+    title: 'Lab Tested',
+    body: 'Third-party lab testing on every batch for purity, potency, and heavy-metal safety before it reaches you.',
+    accent: '#FBBF24',
   },
   {
-    name: "Anita Patel",
-    location: "Ahmedabad, Gujarat",
-    rating: 5,
-    comment: "Finally found fresh tofu in India! The soya paneer is perfect for my healthy recipes. Thank you AyurVeda Foods!",
-    product: "Organic Tofu",
-    avatar: "AP",
-    verified: true
+    icon: Truck,
+    title: 'Farm to Doorstep',
+    body: 'Direct partnerships with 200+ farmers. No middlemen. You pay less; farmers earn more. Win-win.',
+    accent: '#60A5FA',
   },
   {
-    name: "Dr. Suresh Menon",
-    location: "Bangalore, Karnataka",
-    rating: 5,
-    comment: "As a healthcare practitioner, I recommend these products to my patients. The quality and authenticity are unmatched.",
-    product: "Turmeric Powder",
-    avatar: "SM",
-    verified: true
+    icon: HeartHandshake,
+    title: 'Community Rooted',
+    body: 'We reinvest 2% of every order into rural farming communities across India. Shopping here does good.',
+    accent: '#F472B6',
   },
   {
-    name: "Meera Reddy",
-    location: "Hyderabad, Telangana",
-    rating: 5,
-    comment: "The dehydrated vegetables retain their nutrients and flavor. Perfect for my busy lifestyle. Fast delivery too!",
-    product: "Dehydrated Vegetables Mix",
-    avatar: "MR",
-    verified: true
+    icon: ShieldCheck,
+    title: 'FSSAI Certified',
+    body: 'Fully compliant with Indian food safety standards. Certified, audited, and re-inspected every year.',
+    accent: '#A78BFA',
   },
   {
-    name: "Vikram Singh",
-    location: "Jaipur, Rajasthan",
-    rating: 5,
-    comment: "Excellent customer service and premium quality products. The packaging ensures freshness. Highly recommended!",
-    product: "Mixed Dry Fruits",
-    avatar: "VS",
-    verified: true
-  }
+    icon: Award,
+    title: 'Award Winning',
+    body: 'Recognised by India Organic Awards 2023 & 2024 for excellence in Ayurvedic product authenticity.',
+    accent: '#FB923C',
+  },
 ]
 
-
-const stats = [
-  { label: "Happy Customers", value: "10,000+", icon: Users, suffix: "" },
-  { label: "Average Rating", value: "4.8", icon: Star, suffix: "/5" },
-  { label: "Repeat Orders", value: "95", icon: TrendingUp, suffix: "%" },
-  { label: "Avg. Delivery", value: "24", icon: Clock, suffix: "hrs" }
+const STATS = [
+  { value: '10K+', label: 'Happy Customers' },
+  { value: '4.8★', label: 'Average Rating' },
+  { value: '200+', label: 'Farming Partners' },
+  { value: '24h', label: 'Average Delivery' },
 ]
 
-function StarRating({ rating }: { rating: number }) {
+// ─── Star Rating ──────────────────────────────────────────────────────────────
+function Stars({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5">
       {[...Array(5)].map((_, i) => (
-        <motion.div
+        <Star
           key={i}
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ delay: i * 0.1, type: "spring", stiffness: 300 }}
-        >
-          <Star
-            className={cn(
-              "w-4 h-4 transition-all duration-300",
-              i < rating 
-                ? "fill-amber-400 text-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,0.6)]" 
-                : "text-gray-300"
-            )}
-          />
-        </motion.div>
+          className={cn('w-4 h-4', i < rating ? 'fill-amber-400 text-amber-400' : 'text-stone-600')}
+        />
       ))}
     </div>
   )
 }
 
-function AvatarWithGlow({ initials, name }: { initials: string; name: string }) {
-  const colors = [
-    "from-emerald-400 to-teal-500",
-    "from-amber-400 to-orange-500", 
-    "from-violet-400 to-purple-500",
-    "from-rose-400 to-pink-500",
-    "from-blue-400 to-indigo-500",
-    "from-cyan-400 to-sky-500"
-  ]
-  const colorIndex = Math.abs(name.charCodeAt(0)) % colors.length
-
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+const GRADIENTS = [
+  'from-emerald-600 to-teal-700',
+  'from-amber-500 to-orange-600',
+  'from-violet-600 to-purple-700',
+  'from-rose-500 to-pink-600',
+  'from-sky-500 to-blue-600',
+  'from-teal-500 to-cyan-600',
+]
+function Avatar({ name }: { name: string }) {
+  const initials = (name || '??').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+  const idx = Math.abs((name || '').charCodeAt(0) + (name || '').charCodeAt(1 || 0)) % GRADIENTS.length
   return (
-    <div className="relative group">
-      <div className={cn(
-        "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500",
-        colors[colorIndex]
-      )} />
-      <div className={cn(
-        "relative w-12 h-12 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-sm shadow-lg ring-2 ring-white/50",
-        colors[colorIndex]
-      )}>
-        {initials}
-      </div>
+    <div
+      className={cn(
+        'w-11 h-11 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-sm shrink-0',
+        GRADIENTS[idx]
+      )}
+    >
+      {initials}
     </div>
   )
 }
 
-function TestimonialCard({ testimonial, index }: { testimonial: any; index: number }) {
+// ─── Single Testimonial Card ──────────────────────────────────────────────────
+function TestimonialCard({ t, delay = 0 }: { t: Testimonial; delay?: number }) {
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true, margin: '-60px' })
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50, rotateX: -10 }}
-      whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.6, delay: index * 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-      whileHover={{ y: -8, transition: { duration: 0.3 } }}
-      className="group relative h-full"
+      ref={ref}
+      initial={{ opacity: 0, y: 40 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
+      className="relative flex flex-col h-full group"
     >
-      {/* Glow effect */}
-      <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-200 via-teal-200 to-cyan-200 rounded-3xl blur-xl opacity-0 group-hover:opacity-70 transition-all duration-500" />
-      
-      {/* Shimmer effect */}
-      <div className="absolute inset-0 rounded-3xl overflow-hidden">
-        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-      </div>
+      {/* card */}
+      <div className="relative flex flex-col flex-1 rounded-3xl border border-white/[0.07] bg-[#141a14] overflow-hidden transition-transform duration-300 group-hover:-translate-y-1.5">
+        {/* top accent line */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 via-teal-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-      {/* Card */}
-      <div className="relative h-full bg-white/80 backdrop-blur-xl rounded-3xl border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.08)] overflow-hidden">
-        {/* Top gradient accent */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400" />
-        
-        {/* Quote icon */}
-        <div className="absolute top-4 right-4 opacity-10">
-          <Quote className="w-12 h-12 text-emerald-600" />
-        </div>
+        {/* giant quote */}
+        <Quote className="absolute top-4 right-5 w-10 h-10 text-emerald-900/60 -scale-x-100" />
 
-        <div className="p-6 relative">
-          {/* Header */}
-          <div className="flex items-start gap-4 mb-5">
-            <AvatarWithGlow initials={testimonial.avatar} name={testimonial?.user_name} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="font-bold text-gray-900 text-lg tracking-tight">{testimonial?.user_name}</h4>
-                {/* {testimonial.verified && ( */}
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Verified
-                  </span>
-                {/* )} */}
-              </div>
-              {/* <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-0.5">
-                <MapPin className="w-3.5 h-3.5" />
-                <span>{testimonial.location}</span>
-              </div> */}
+        <div className="flex flex-col flex-1 p-6 gap-4">
+          {/* header */}
+          <div className="flex items-center gap-3">
+            <Avatar name={t.user_name} />
+            <div>
+              <p className="font-semibold text-stone-100 text-[15px] leading-tight">{t.user_name}</p>
+              <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-[2px] rounded-full bg-emerald-900/60 text-emerald-400 text-[11px] font-medium">
+                <BadgeCheck className="w-3 h-3" /> Verified Buyer
+              </span>
             </div>
           </div>
 
-          {/* Rating */}
-          <div className="mb-4">
-            <StarRating rating={testimonial?.rating} />
-          </div>
+          {/* stars */}
+          <Stars rating={t.rating} />
 
-          {/* Comment */}
-          <blockquote className="text-gray-700 leading-relaxed mb-5 text-[15px] relative">
-            <span className="text-emerald-500 text-2xl font-serif leading-none mr-1">"</span>
-            {testimonial?.comment}
-            <span className="text-emerald-500 text-2xl font-serif leading-none ml-1">"</span>
+          {/* comment */}
+          <blockquote className="text-stone-300 text-[14.5px] leading-relaxed flex-1 italic">
+            "{t.comment}"
           </blockquote>
 
-          {/* Footer */}
-          <div className="flex items-center gap-2 pt-4 border-t border-gray-100">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center">
-              <ShoppingBag className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Purchased</p>
-              <p className="text-sm font-semibold text-emerald-700">{testimonial.product_name}</p>
-            </div>
+          {/* product tag */}
+          <div className="flex items-center gap-2 pt-4 border-t border-white/[0.06]">
+            <ShoppingBag className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <p className="text-[13px] text-emerald-400 font-medium truncate">{t.product_name}</p>
           </div>
         </div>
       </div>
@@ -202,229 +156,292 @@ function TestimonialCard({ testimonial, index }: { testimonial: any; index: numb
   )
 }
 
-function StatCard({ stat, index }: { stat: typeof stats[0]; index: number }) {
-  const Icon = stat.icon
-  
+// ─── Why Choose Us Card ───────────────────────────────────────────────────────
+function WhyCard({ item, index }: { item: typeof WHY_US[0]; index: number }) {
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true, margin: '-40px' })
+  const Icon = item.icon
+
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8, y: 30 }}
-      whileInView={{ opacity: 1, scale: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group relative"
+      ref={ref}
+      initial={{ opacity: 0, y: 30 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.5, delay: (index % 3) * 0.08, ease: [0.22, 1, 0.36, 1] }}
+      className="group relative rounded-2xl border border-white/[0.06] bg-[#111711] p-6 flex gap-4 hover:border-white/[0.14] transition-colors duration-300 overflow-hidden"
     >
-      <div className="absolute -inset-1 bg-gradient-to-r from-emerald-200 to-teal-200 rounded-2xl blur-lg opacity-0 group-hover:opacity-60 transition-all duration-500" />
-      <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300">
-        <div className="flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-            <Icon className="w-7 h-7 text-emerald-600" />
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              {stat.value}
-            </span>
-            <span className="text-xl font-bold text-emerald-500">{stat.suffix}</span>
-          </div>
-          <p className="text-gray-600 font-medium mt-2">{stat.label}</p>
-        </div>
+      {/* glow dot */}
+      <div
+        className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500"
+        style={{ background: item.accent }}
+      />
+
+      {/* icon */}
+      <div
+        className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center"
+        style={{ background: `${item.accent}18` }}
+      >
+        <Icon className="w-5 h-5" style={{ color: item.accent }} />
+      </div>
+
+      <div>
+        <h4 className="font-semibold text-stone-100 text-[15px] mb-1">{item.title}</h4>
+        <p className="text-stone-400 text-[13.5px] leading-relaxed">{item.body}</p>
       </div>
     </motion.div>
   )
 }
 
-function FloatingOrbs() {
+// ─── Stat Counter ─────────────────────────────────────────────────────────────
+function StatPill({ value, label, delay }: { value: string; label: string; delay: number }) {
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true })
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Large gradient orbs */}
-      <motion.div
-        animate={{
-          x: [0, 30, 0],
-          y: [0, -20, 0],
-        }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-br from-emerald-200/40 to-teal-200/40 rounded-full blur-3xl"
-      />
-      <motion.div
-        animate={{
-          x: [0, -20, 0],
-          y: [0, 30, 0],
-        }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-40 right-20 w-96 h-96 bg-gradient-to-br from-cyan-200/30 to-sky-200/30 rounded-full blur-3xl"
-      />
-      <motion.div
-        animate={{
-          x: [0, 25, 0],
-          y: [0, -15, 0],
-        }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-20 left-1/3 w-80 h-80 bg-gradient-to-br from-teal-200/30 to-emerald-200/30 rounded-full blur-3xl"
-      />
-    </div>
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={inView ? { opacity: 1, scale: 1 } : {}}
+      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col items-center text-center"
+    >
+      <span className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-b from-emerald-300 to-teal-500 bg-clip-text text-transparent tracking-tight leading-none">
+        {value}
+      </span>
+      <span className="mt-2 text-stone-400 text-sm font-medium">{label}</span>
+    </motion.div>
   )
 }
 
-function SparkleEffect() {
-  const sparkles = Array.from({ length: 12 }, (_, i) => ({
-    id: i,
-    delay: Math.random() * 5,
-    duration: 2 + Math.random() * 2,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: 8 + Math.random() * 8
-  }))
-
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {sparkles.map((sparkle) => (
-        <motion.div
-          key={sparkle.id}
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{
-            opacity: [0, 1, 0],
-            scale: [0, 1, 0],
-            rotate: [0, 180, 360]
-          }}
-          transition={{
-            duration: sparkle.duration,
-            delay: sparkle.delay,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          style={{ left: `${sparkle.x}%`, top: `${sparkle.y}%` }}
-          className="absolute"
-        >
-          <Sparkles className="text-amber-300/60" style={{ width: sparkle.size, height: sparkle.size }} />
-        </motion.div>
-      ))}
-    </div>
-  )
-}
-
+// ─── Main Export ──────────────────────────────────────────────────────────────
 export function TestimonialsSection() {
-  const [testdata, setTestdata] = useState<any>([])
-  const [loading, setLoading] = useState<boolean>(false)
+  const [reviews, setReviews] = useState<Testimonial[]>([])
+  const [loading, setLoading] = useState(false)
+
+  // Carousel state
+  const CARDS_PER_VIEW = 3
+  const [page, setPage] = useState(0)
+  const totalPages = Math.ceil(reviews.length / CARDS_PER_VIEW)
+  const visible = reviews.slice(page * CARDS_PER_VIEW, page * CARDS_PER_VIEW + CARDS_PER_VIEW)
 
   useEffect(() => {
-    fetchProducts()
+    fetchReviews()
   }, [])
 
-  const fetchProducts = async () => {
+  const fetchReviews = async () => {
     try {
       setLoading(true)
       const res = await axios.get('/shop/reviews', {
-        params: { rating: 5, limit: 5, page: 1 },
+        params: { rating: 5, limit: 9, page: 1 },
       })
-      setTestdata(res.data.data || [])
+      setReviews(res.data.data || [])
     } catch {
-      notify.error('Unable to load products')
+      notify.error('Unable to load reviews')
     } finally {
       setLoading(false)
     }
   }
-console.log(testdata,"testdata")
+
+  const prev = () => setPage((p) => Math.max(0, p - 1))
+  const next = () => setPage((p) => Math.min(totalPages - 1, p + 1))
+
   return (
-    <section className="relative py-20 lg:py-28 overflow-hidden bg-gradient-to-b from-gray-50 via-white to-emerald-50/30">
-      {/* Background effects */}
-      <FloatingOrbs />
-      <SparkleEffect />
+    <section className="relative bg-[#0d120d] text-white overflow-hidden">
+      {/* ── Decorative background pattern ── */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.04]"
+        style={{
+          backgroundImage: `radial-gradient(circle, #4ade80 1px, transparent 1px)`,
+          backgroundSize: '32px 32px',
+        }}
+      />
 
-      {/* Grid pattern overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8882_1px,transparent_1px),linear-gradient(to_bottom,#8882_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
+      {/* ── Big ambient glow ── */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-emerald-900/30 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+      {/* ═══════════════════════════════════════════════
+          HERO HEADLINE — WHY CHOOSE US
+      ════════════════════════════════════════════════ */}
+      <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 pt-20 lg:pt-28">
+
+        {/* ── Badge ── */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          transition={{ duration: 0.5 }}
+          className="flex justify-center mb-6"
         >
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 border border-emerald-200/50 mb-6"
-          >
-            <Award className="w-4 h-4 text-emerald-600" />
-            <span className="text-sm font-semibold text-emerald-700">Trusted by Thousands</span>
-          </motion.div>
-
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6">
-            <span className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
-              What Our Customers
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 bg-clip-text text-transparent">
-              Say About Us
-            </span>
-          </h2>
-
-          <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Join thousands of satisfied customers who have transformed their wellness journey 
-            with our premium Ayurvedic products and organic foods.
-          </p>
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-emerald-700/50 bg-emerald-950/60 text-emerald-400 text-sm font-semibold tracking-wide uppercase">
+            <Leaf className="w-3.5 h-3.5" /> Why AyurVeda Foods
+          </span>
         </motion.div>
 
-        {/* Testimonials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-20">
-          {testdata?.map((testimonial, index) => (
-            <TestimonialCard key={testimonial?.user_name} testimonial={testimonial} index={index} />
+        {/* ── Headline ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.05 }}
+          className="text-center mb-4"
+        >
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1]">
+            <span className="text-stone-100">The cleanest food on</span>
+            <br />
+            <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+              the internet. Period.
+            </span>
+          </h2>
+        </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="text-center text-stone-400 max-w-2xl mx-auto text-lg leading-relaxed mb-14"
+        >
+          We obsess over every ingredient so you never have to second-guess what you're putting in your body.
+        </motion.p>
+
+        {/* ── Why-us grid ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-20">
+          {WHY_US.map((item, i) => (
+            <WhyCard key={item.title} item={item} index={i} />
           ))}
         </div>
 
-        {/* Stats Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="relative"
-        >
-          {/* Stats container with glass effect */}
-          <div className="relative bg-gradient-to-br from-white/60 to-white/40 backdrop-blur-xl rounded-[2rem] border border-white/50 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] p-8 lg:p-12 overflow-hidden">
-            {/* Decorative corner gradients */}
-            <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-emerald-200/50 to-transparent rounded-full -translate-x-1/2 -translate-y-1/2" />
-            <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-tl from-teal-200/50 to-transparent rounded-full translate-x-1/2 translate-y-1/2" />
-            
-            {/* Stats header */}
-            <div className="text-center mb-10 relative">
-              <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                Our Impact in Numbers
-              </h3>
-              <p className="text-gray-600">Delivering excellence across India</p>
-            </div>
-
-            {/* Stats grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 relative">
-              {stats.map((stat, index) => (
-                <StatCard key={stat.label} stat={stat} index={index} />
-              ))}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Bottom CTA */}
+        {/* ── Stats bar ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-center mt-16"
+          transition={{ duration: 0.6 }}
+          className="relative rounded-3xl border border-white/[0.07] bg-[#111811] px-8 py-10 mb-24 overflow-hidden"
         >
-          <p className="text-gray-600 mb-4">Ready to start your wellness journey?</p>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-semibold rounded-full shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-300"
+          {/* inner glow */}
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/40 via-transparent to-teal-950/20 pointer-events-none" />
+          <div className="relative grid grid-cols-2 sm:grid-cols-4 gap-8">
+            {STATS.map((s, i) => (
+              <StatPill key={s.label} value={s.value} label={s.label} delay={i * 0.08} />
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ══════════════════════════════════════════════
+            TESTIMONIALS
+        ═══════════════════════════════════════════════ */}
+
+        {/* ── Sub-header ── */}
+        <div className="text-center mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-700/40 bg-amber-950/40 text-amber-400 text-sm font-semibold tracking-wide uppercase mb-5"
           >
-            <span>Shop Now</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </motion.button>
+            <Star className="w-3.5 h-3.5 fill-amber-400" /> Verified Reviews
+          </motion.div>
+          <motion.h3
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.05 }}
+            className="text-3xl sm:text-4xl font-extrabold tracking-tight text-stone-100 mb-3"
+          >
+            What real customers say
+          </motion.h3>
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-stone-400 max-w-xl mx-auto text-base"
+          >
+            Every review is from a verified purchase. No paid placements, no filters.
+          </motion.p>
+        </div>
+
+        {/* ── Cards ── */}
+        {loading ? (
+          /* Skeleton */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-64 rounded-3xl bg-white/[0.04] animate-pulse" />
+            ))}
+          </div>
+        ) : reviews.length === 0 ? (
+          <p className="text-center text-stone-500 py-16">No reviews yet — be the first!</p>
+        ) : (
+          <>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={page}
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+              >
+                {visible.map((t, i) => (
+                  <TestimonialCard key={t.user_name + i} t={t} delay={i * 0.07} />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <button
+                  onClick={prev}
+                  disabled={page === 0}
+                  className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-stone-400 hover:text-white hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <div className="flex gap-2">
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPage(i)}
+                      className={cn(
+                        'h-2 rounded-full transition-all duration-300',
+                        i === page ? 'w-6 bg-emerald-400' : 'w-2 bg-stone-600 hover:bg-stone-400'
+                      )}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={next}
+                  disabled={page === totalPages - 1}
+                  className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-stone-400 hover:text-white hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── CTA ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="text-center pt-10 pb-24"
+        >
+          <p className="text-stone-400 mb-6 text-base">
+            Join <span className="text-emerald-400 font-semibold">10,000+</span> customers already living healthier.
+          </p>
+          <motion.a
+            href="/shop"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="inline-flex items-center gap-2.5 px-9 py-4 rounded-full font-semibold text-[15px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_0_40px_rgba(52,211,153,0.35)] hover:shadow-[0_0_60px_rgba(52,211,153,0.5)] transition-shadow duration-300"
+          >
+            <ShoppingBag className="w-4.5 h-4.5" />
+            Shop the Collection
+          </motion.a>
         </motion.div>
       </div>
     </section>
