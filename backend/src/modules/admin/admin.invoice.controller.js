@@ -1,4 +1,4 @@
-process.env.PUPPETEER_EXECUTABLE_PATH = "/opt/render/.cache/puppeteer/chrome/linux-146.0.7680.153/chrome-linux64/chrome";
+
 const pool = require("../../config/db")
 const PDFDocument = require('pdfkit')
 const fs = require("fs")
