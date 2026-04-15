@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-      "postinstall": "node node_modules/puppeteer/install.mjs"
+    "dev": "nodemon src/server.js"
+
   },
   "keywords": [],
   "author": "",
@@ -30,6 +30,7 @@
     "npm": "^11.9.0",
     "pdfkit": "^0.17.2",
     "pg": "^8.18.0",
+    "puppeteer": "^24.41.0",
     "razorpay": "^2.9.6",
     "uuid": "^8.3.2",
     "validator": "^13.15.26"
