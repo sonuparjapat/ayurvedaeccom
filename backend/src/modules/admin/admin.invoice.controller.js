@@ -303,16 +303,16 @@ exports.generateInvoice = async (req, res) => {
     /* ================= PDF ================= */
 
 const browser = await puppeteer.launch({
- headless: "new",
- executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
- args: [
-   "--no-sandbox",
-   "--disable-setuid-sandbox",
-   "--disable-dev-shm-usage",
-   "--disable-gpu",
-   "--single-process",
-   "--no-zygote"
- ]
+  headless: "new",
+  executablePath: puppeteer.executablePath(),
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--single-process",
+    "--no-zygote"
+  ]
 });
     const page = await browser.newPage();
 
