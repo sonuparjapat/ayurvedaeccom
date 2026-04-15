@@ -30,6 +30,11 @@ import {
   X,
   Sparkles,
   Leaf,
+  Truck,
+  Shield,
+  RefreshCw,
+  Zap,
+  Filter,
 } from 'lucide-react'
 
 import { motion, AnimatePresence } from 'framer-motion'
@@ -61,9 +66,9 @@ export default function ProductsPageContent() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-const params = useSearchParams()
+  const params = useSearchParams()
   const q = params.get('q') || ''
-  const [search, setSearch] = useState(q||'')
+  const [search, setSearch] = useState(q || '')
   const [category, setCategory] = useState('all')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
@@ -79,10 +84,12 @@ const params = useSearchParams()
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
-  const { handleCart, fetchCart, cartdata, loginuserdata,getwishlist } = useAuth()
+  const { handleCart, fetchCart, cartdata, loginuserdata, getwishlist } = useAuth()
   const router = useRouter()
-const {wishlistdata}=useAuth()
+  const { wishlistdata } = useAuth()
+
   /* ---------- FETCH ---------- */
   useEffect(() => {
     fetchCategories()
@@ -178,67 +185,311 @@ const {wishlistdata}=useAuth()
     setSortOrder('desc')
     setPage(1)
   }
-console.log(wishlistdata,"wishlistdata")
+
   const hasActiveFilters = minPrice || maxPrice || rating !== '0' || inStock || discount || sortBy !== 'created_at'
+  const activeFiltersCount = [minPrice, maxPrice, rating !== '0', inStock, discount, sortBy !== 'created_at'].filter(Boolean).length
 
   /* ================= UI ================= */
   return (
     <>
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
         :root {
-          --cream: #faf7f2;
-          --warm-white: #f5f0e8;
+          --cream: #faf8f3;
+          --warm-white: #f5f1e8;
           --gold: #b8860b;
           --gold-light: #d4a843;
           --gold-pale: #f0e6c8;
+          --gold-faint: #fdf8ee;
           --charcoal: #1a1a1a;
           --dark-brown: #2c1f0e;
           --medium-brown: #5c4a32;
           --light-brown: #8b6e4e;
-          --sage: #7a8c6e;
+          --sage: #5d7a52;
+          --sage-light: #7a9c6e;
           --terracotta: #c4673a;
+          --emerald: #1a6b4a;
+          --emerald-light: #2d8a60;
+          --emerald-pale: #e8f5ee;
         }
 
         .font-display { font-family: 'Cormorant Garamond', serif; }
         .font-body { font-family: 'DM Sans', sans-serif; }
 
-        .gold-shimmer {
-          background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%);
-          background-size: 200% 200%;
-          animation: shimmer 3s ease infinite;
+        /* ── PREMIUM CARD ── */
+        .product-card {
+          position: relative;
+          transition:
+            transform 0.5s cubic-bezier(0.23, 1, 0.32, 1),
+            box-shadow 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+          transform-style: preserve-3d;
+          will-change: transform;
         }
-        @keyframes shimmer {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-
-        .card-hover {
-          transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-        .card-hover:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 32px 64px rgba(44, 31, 14, 0.15), 0 8px 16px rgba(44, 31, 14, 0.08);
+        .product-card:hover {
+          transform: translateY(-10px) scale(1.018);
+          box-shadow:
+            0 32px 64px rgba(44, 31, 14, 0.18),
+            0 8px 24px rgba(44, 31, 14, 0.1),
+            0 0 0 1px rgba(212, 168, 67, 0.2) !important;
         }
 
-        .img-zoom img {
-          transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-        .img-zoom:hover img {
-          transform: scale(1.08);
-        }
-
-        .grain-overlay::before {
+        /* Shimmer sweep on hover */
+        .product-card::before {
           content: '';
           position: absolute;
           inset: 0;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+          border-radius: inherit;
+          background: linear-gradient(
+            110deg,
+            transparent 20%,
+            rgba(255, 255, 255, 0.55) 50%,
+            transparent 80%
+          );
+          background-size: 250% 100%;
+          background-position: 200% 0;
+          opacity: 0;
+          transition: opacity 0.3s ease;
           pointer-events: none;
-          z-index: 1;
-          opacity: 0.4;
+          z-index: 10;
         }
+        .product-card:hover::before {
+          opacity: 1;
+          animation: shimmerSweep 0.65s ease forwards;
+        }
+        @keyframes shimmerSweep {
+          from { background-position: 200% 0; }
+          to   { background-position: -50% 0; }
+        }
+
+        /* Gold border glow on hover */
+        .product-card::after {
+          content: '';
+          position: absolute;
+          inset: -1px;
+          border-radius: inherit;
+          background: linear-gradient(135deg, rgba(212,168,67,0.6) 0%, rgba(184,134,11,0.3) 50%, rgba(212,168,67,0.5) 100%);
+          opacity: 0;
+          transition: opacity 0.4s ease;
+          pointer-events: none;
+          z-index: -1;
+        }
+        .product-card:hover::after {
+          opacity: 1;
+        }
+
+        /* Image zoom */
+        .card-img-wrap {
+          overflow: hidden;
+        }
+        .card-img-wrap img {
+          transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          will-change: transform;
+        }
+        .product-card:hover .card-img-wrap img {
+          transform: scale(1.12);
+        }
+
+        /* Overlay fade */
+        .card-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            to top,
+            rgba(26, 12, 3, 0.52) 0%,
+            rgba(26, 12, 3, 0.12) 45%,
+            transparent 70%
+          );
+          opacity: 0;
+          transition: opacity 0.4s ease;
+        }
+        .product-card:hover .card-overlay {
+          opacity: 1;
+        }
+
+        /* Floating action buttons */
+        .card-actions {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          z-index: 20;
+        }
+        .card-action-btn {
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255,255,255,0.96);
+          border: none;
+          cursor: pointer;
+          transition:
+            transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+            opacity 0.25s ease,
+            background 0.2s ease;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.14);
+          opacity: 0;
+          transform: translateX(10px);
+        }
+        .product-card:hover .card-action-btn {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        .product-card:hover .card-action-btn:nth-child(1) { transition-delay: 0s; }
+        .product-card:hover .card-action-btn:nth-child(2) { transition-delay: 0.06s; }
+        .card-action-btn:hover {
+          transform: scale(1.15) !important;
+          background: var(--dark-brown) !important;
+        }
+        .card-action-btn:hover svg { color: white !important; }
+
+        /* Wishlist always visible */
+        .wishlist-always {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+
+        /* Add to cart — slide up on hover */
+        .card-cta-wrap {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          padding: 0 14px 14px;
+          transform: translateY(8px);
+          opacity: 0;
+          transition: transform 0.35s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.3s ease;
+          z-index: 20;
+        }
+        .product-card:hover .card-cta-wrap {
+          transform: translateY(0);
+          opacity: 1;
+        }
+
+        /* Card body slide */
+        .card-body {
+          position: relative;
+          transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        /* Gold accent line */
+        .gold-accent-line {
+          position: absolute;
+          bottom: 0;
+          left: 50%;
+          transform: translateX(-50%) scaleX(0);
+          width: 60%;
+          height: 2px;
+          background: linear-gradient(to right, transparent, var(--gold-light), transparent);
+          transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+          transform-origin: center;
+        }
+        .product-card:hover .gold-accent-line {
+          transform: translateX(-50%) scaleX(1);
+        }
+
+        /* Category pill */
+        .cat-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.13em;
+          text-transform: uppercase;
+          padding: 3px 10px;
+          border-radius: 100px;
+          background: var(--gold-pale);
+          color: var(--gold);
+          border: 1px solid rgba(184,134,11,0.2);
+        }
+
+        /* Stock indicator dot */
+        .stock-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          display: inline-block;
+          animation: pulseDot 2s ease infinite;
+        }
+        @keyframes pulseDot {
+          0%,100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+
+        /* btn-gold */
+        .btn-gold {
+          background: linear-gradient(135deg, #b8860b 0%, #d4a843 50%, #b8860b 100%);
+          background-size: 200% 200%;
+          animation: goldShift 3s ease infinite;
+          transition: opacity 0.2s ease, transform 0.15s ease;
+        }
+        .btn-gold:hover { opacity: 0.92; transform: translateY(-1px); }
+        .btn-gold:active { transform: scale(0.97); }
+        @keyframes goldShift {
+          0%,100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        .btn-outline-brown {
+          background: transparent;
+          border: 1.5px solid var(--gold-pale);
+          color: var(--medium-brown);
+          transition: all 0.2s ease;
+        }
+        .btn-outline-brown:hover {
+          background: var(--gold-faint);
+          border-color: var(--gold-light);
+          color: var(--dark-brown);
+        }
+
+        /* List card */
+        .list-card {
+          transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.4s ease;
+          position: relative;
+          overflow: hidden;
+        }
+        .list-card::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: linear-gradient(to bottom, var(--gold-light), var(--terracotta));
+          transform: scaleY(0);
+          transition: transform 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+          transform-origin: top;
+          border-radius: 0 2px 2px 0;
+        }
+        .list-card:hover {
+          transform: translateX(6px);
+          box-shadow: 0 12px 40px rgba(44,31,14,0.12), 0 2px 8px rgba(44,31,14,0.06) !important;
+        }
+        .list-card:hover::before { transform: scaleY(1); }
+        .list-card .card-img-wrap img {
+          transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .list-card:hover .card-img-wrap img { transform: scale(1.08); }
+
+        /* Skeleton shimmer */
+        .wave-skeleton {
+          background: linear-gradient(90deg, #ede8de 25%, #f7f2e8 50%, #ede8de 75%);
+          background-size: 200% 100%;
+          animation: waveSkeleton 1.6s ease infinite;
+        }
+        @keyframes waveSkeleton {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
+        /* Sidebar & misc */
+        .filter-chip { transition: all 0.18s ease; cursor: pointer; }
+        .filter-chip:hover { transform: translateY(-1px); }
 
         .custom-select {
           appearance: none;
@@ -248,32 +499,70 @@ console.log(wishlistdata,"wishlistdata")
           padding-right: 36px;
         }
 
-        .skeleton-wave {
-          background: linear-gradient(90deg, #f0e6c8 25%, #f8f2e4 50%, #f0e6c8 75%);
-          background-size: 200% 100%;
-          animation: wave 1.5s ease infinite;
+        .page-dot { transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .page-dot:hover:not(:disabled) { transform: translateY(-2px); }
+
+        /* Heart pop */
+        @keyframes heartPop {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.35); }
+          100% { transform: scale(1); }
         }
-        @keyframes wave {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
+        .heart-active { animation: heartPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        /* Image number badge */
+        .img-badge-discount {
+          position: absolute;
+          top: 14px;
+          left: 14px;
+          padding: 5px 11px;
+          border-radius: 100px;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.04em;
+          color: white;
+          background: var(--terracotta);
+          backdrop-filter: blur(4px);
+          box-shadow: 0 2px 8px rgba(196,103,58,0.4);
+          z-index: 15;
+        }
+        .img-badge-low {
+          position: absolute;
+          top: 14px;
+          left: 14px;
+          padding: 5px 11px;
+          border-radius: 100px;
+          font-size: 11px;
+          font-weight: 800;
+          color: white;
+          background: #e65100;
+          z-index: 15;
+          box-shadow: 0 2px 8px rgba(230,81,0,0.4);
         }
 
-        .filter-chip {
-          transition: all 0.2s ease;
+        /* Price */
+        .price-main {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 24px;
+          font-weight: 600;
+          color: var(--dark-brown);
+          line-height: 1;
         }
-        .filter-chip:hover {
-          transform: translateY(-1px);
+        .price-strike {
+          font-size: 13px;
+          text-decoration: line-through;
+          color: #c0b09a;
+        }
+        .price-save {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--emerald);
+          background: var(--emerald-pale);
+          padding: 2px 7px;
+          border-radius: 100px;
         }
 
-        .page-btn {
-          transition: all 0.2s ease;
-        }
-        .page-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-        }
-
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button { opacity: 0.6; }
+        input[type=number]::-webkit-inner-spin-button { opacity: 0.5; }
       `}</style>
 
       <div className="min-h-screen font-body" style={{ background: 'var(--cream)' }}>
@@ -281,140 +570,128 @@ console.log(wishlistdata,"wishlistdata")
 
         {/* ================= HERO ================= */}
         <div
-          className="relative overflow-hidden grain-overlay"
+          className="relative overflow-hidden"
           style={{
-            background: 'linear-gradient(135deg, var(--dark-brown) 0%, #1f1208 40%, var(--medium-brown) 100%)',
-            paddingTop: '5rem',
-            paddingBottom: '5rem',
+            background: 'linear-gradient(140deg, #1e1208 0%, #2c1f0e 45%, #3d2912 100%)',
+            paddingTop: '4.5rem',
+            paddingBottom: '4.5rem',
           }}
         >
-          {/* Decorative orbs */}
-          <div
-            className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-10 blur-3xl"
-            style={{ background: 'var(--gold-light)', transform: 'translate(30%, -30%)' }}
-          />
-          <div
-            className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-10 blur-3xl"
-            style={{ background: 'var(--terracotta)', transform: 'translate(-30%, 30%)' }}
-          />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full opacity-8 blur-[80px] pointer-events-none" style={{ background: '#c4673a', transform: 'translate(40%, -40%)' }} />
+          <div className="absolute bottom-0 left-0 w-[350px] h-[350px] rounded-full opacity-6 blur-[60px] pointer-events-none" style={{ background: '#b8860b', transform: 'translate(-35%, 35%)' }} />
+          <div className="absolute top-0 inset-x-0 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(212,168,67,0.4), transparent)' }} />
+          <div className="absolute bottom-0 inset-x-0 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(212,168,67,0.3), transparent)' }} />
 
-          {/* Decorative horizontal lines */}
-          <div className="absolute inset-x-0 top-8 flex items-center justify-center gap-4 opacity-20">
-            <div className="h-px flex-1 max-w-xs" style={{ background: 'var(--gold)' }} />
-            <Leaf size={12} color="var(--gold)" />
-            <div className="h-px flex-1 max-w-xs" style={{ background: 'var(--gold)' }} />
-          </div>
+          <div className="max-w-7xl mx-auto px-6 relative z-10">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+              <motion.div
+                initial={{ opacity: 0, x: -24 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-px w-8" style={{ background: 'var(--gold-light)' }} />
+                  <span className="text-[10px] tracking-[0.4em] uppercase font-body font-semibold" style={{ color: 'var(--gold-light)' }}>
+                    Premium Ayurvedic
+                  </span>
+                </div>
+                <h1 className="font-display text-5xl md:text-6xl font-light text-white leading-tight mb-4" style={{ letterSpacing: '-0.02em' }}>
+                  Our <em className="italic" style={{ color: 'var(--gold-light)' }}>Collection</em>
+                </h1>
+                <p className="text-sm font-body" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  Handcrafted wellness from nature&apos;s finest ingredients
+                </p>
+              </motion.div>
 
-          <div className="max-w-7xl mx-auto px-6 text-center relative z-10">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
-              <p
-                className="text-xs tracking-[0.35em] uppercase mb-4 font-body font-medium"
-                style={{ color: 'var(--gold-light)' }}
+              <motion.div
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.7, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="hidden lg:flex items-center gap-6"
               >
-                Premium Ayurvedic Collection
-              </p>
-              <h1
-                className="font-display text-6xl md:text-7xl lg:text-8xl font-light text-white mb-4"
-                style={{ letterSpacing: '-0.02em', lineHeight: 1.05 }}
-              >
-                Our{' '}
-                <em
-                  className="italic font-light"
-                  style={{ color: 'var(--gold-light)' }}
-                >
-                  Products
-                </em>
-              </h1>
-              <div className="flex items-center justify-center gap-4 mt-6 opacity-30">
-                <div className="h-px w-20" style={{ background: 'var(--gold)' }} />
-                <Sparkles size={14} color="var(--gold)" />
-                <div className="h-px w-20" style={{ background: 'var(--gold)' }} />
-              </div>
-            </motion.div>
+                {[
+                  { icon: Truck, label: 'Free Delivery', sub: 'Orders over ₹499' },
+                  { icon: Shield, label: 'Secure Pay', sub: '100% protected' },
+                  { icon: RefreshCw, label: 'Easy Returns', sub: '7-day policy' },
+                ].map(({ icon: Icon, label, sub }) => (
+                  <div key={label} className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.25)' }}>
+                      <Icon size={15} style={{ color: 'var(--gold-light)' }} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-white leading-none mb-0.5">{label}</p>
+                      <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{sub}</p>
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+        {/* ================= MAIN ================= */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
 
-          {/* ================= CONTROLS ================= */}
+          {/* ================= TOP BAR ================= */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="rounded-3xl p-5 sm:p-7 mb-8 flex flex-col lg:flex-row gap-4 justify-between items-center"
-            style={{
-              background: 'white',
-              boxShadow: '0 4px 24px rgba(44,31,14,0.07), 0 1px 4px rgba(44,31,14,0.05)',
-              border: '1px solid rgba(184,134,11,0.12)',
-            }}
+            className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-6"
           >
-            {/* SEARCH */}
-            <div className="relative w-full lg:w-[420px]">
-              <Search
-                className="absolute left-4 top-1/2 -translate-y-1/2"
-                size={17}
-                style={{ color: 'var(--gold)' }}
-              />
+            <div className="relative flex-1 max-w-[440px]">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--gold)' }} />
               <input
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1) }}
                 placeholder="Search products…"
-                className="w-full pl-12 pr-4 py-3.5 rounded-2xl text-sm font-body outline-none transition-all"
+                className="w-full pl-11 pr-4 py-3 rounded-2xl text-sm font-body outline-none transition-all"
                 style={{
-                  background: 'var(--warm-white)',
-                  border: '1.5px solid transparent',
+                  background: 'white',
+                  border: '1.5px solid rgba(184,134,11,0.15)',
                   color: 'var(--charcoal)',
                   fontFamily: 'inherit',
+                  boxShadow: '0 2px 8px rgba(44,31,14,0.04)',
                 }}
-                onFocus={e => (e.target.style.borderColor = 'var(--gold)')}
-                onBlur={e => (e.target.style.borderColor = 'transparent')}
+                onFocus={e => { e.target.style.borderColor = 'var(--gold)'; e.target.style.boxShadow = '0 0 0 3px rgba(184,134,11,0.08)' }}
+                onBlur={e => { e.target.style.borderColor = 'rgba(184,134,11,0.15)'; e.target.style.boxShadow = '0 2px 8px rgba(44,31,14,0.04)' }}
               />
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap justify-center">
-              {/* Total count */}
+            <div className="flex items-center gap-2.5 flex-wrap">
               {!loading && (
-                <span className="text-sm font-body" style={{ color: 'var(--light-brown)' }}>
-                  <strong style={{ color: 'var(--charcoal)' }}>{total}</strong> products
+                <span className="text-sm font-body hidden sm:block" style={{ color: 'var(--light-brown)' }}>
+                  <strong style={{ color: 'var(--charcoal)' }}>{total}</strong> results
                 </span>
               )}
 
-              {/* FILTER TOGGLE */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-medium transition-all"
+                className="flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-semibold transition-all relative"
                 style={{
-                  background: showFilters ? 'var(--dark-brown)' : 'var(--gold-pale)',
+                  background: showFilters ? 'var(--dark-brown)' : 'white',
                   color: showFilters ? 'white' : 'var(--medium-brown)',
+                  border: showFilters ? 'none' : '1.5px solid rgba(184,134,11,0.18)',
+                  boxShadow: showFilters ? '0 4px 12px rgba(44,31,14,0.2)' : '0 2px 8px rgba(44,31,14,0.04)',
                   fontFamily: 'inherit',
-                  border: 'none',
                   cursor: 'pointer',
                 }}
               >
                 <SlidersHorizontal size={15} />
-                Filters
+                <span>Filters</span>
                 {hasActiveFilters && (
-                  <span
-                    className="w-2 h-2 rounded-full inline-block"
-                    style={{ background: 'var(--gold)' }}
-                  />
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center" style={{ background: 'var(--gold)', color: 'white' }}>
+                    {activeFiltersCount}
+                  </span>
                 )}
               </button>
 
-              {/* VIEW MODE */}
-              <div
-                className="flex rounded-2xl overflow-hidden"
-                style={{ border: '1.5px solid var(--gold-pale)' }}
-              >
+              <div className="flex rounded-2xl overflow-hidden" style={{ border: '1.5px solid rgba(184,134,11,0.18)', background: 'white' }}>
                 {(['grid', 'list'] as const).map(mode => (
                   <button
                     key={mode}
                     onClick={() => setViewMode(mode)}
-                    className="p-3 transition-all"
+                    className="px-3 py-2.5 transition-all"
                     style={{
                       background: viewMode === mode ? 'var(--dark-brown)' : 'transparent',
                       color: viewMode === mode ? 'white' : 'var(--light-brown)',
@@ -422,548 +699,595 @@ console.log(wishlistdata,"wishlistdata")
                       cursor: 'pointer',
                     }}
                   >
-                    {mode === 'grid' ? <Grid size={16} /> : <List size={16} />}
+                    {mode === 'grid' ? <Grid size={15} /> : <List size={15} />}
                   </button>
                 ))}
               </div>
             </div>
           </motion.div>
 
-          {/* ================= FILTERS ================= */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-                className="overflow-hidden mb-8"
-              >
-                <div
-                  className="rounded-3xl p-6 sm:p-8"
-                  style={{
-                    background: 'white',
-                    boxShadow: '0 4px 24px rgba(44,31,14,0.07)',
-                    border: '1px solid rgba(184,134,11,0.12)',
-                  }}
+          {/* ================= LAYOUT ================= */}
+          <div className="flex gap-7">
+
+            {/* ====== SIDEBAR ====== */}
+            <AnimatePresence>
+              {showFilters && (
+                <motion.aside
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 280, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  className="hidden lg:block flex-shrink-0 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between mb-6">
-                    <h3
-                      className="font-display text-xl font-semibold"
-                      style={{ color: 'var(--dark-brown)' }}
-                    >
-                      Refine Results
-                    </h3>
-                    {hasActiveFilters && (
-                      <button
-                        onClick={clearFilters}
-                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-all"
-                        style={{
-                          background: 'var(--gold-pale)',
-                          color: 'var(--medium-brown)',
-                          border: 'none',
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                        }}
-                      >
-                        <X size={12} /> Clear all
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                    {/* CATEGORY */}
-                    <div>
-                      <label
-                        className="block text-xs font-medium tracking-wider uppercase mb-3"
-                        style={{ color: 'var(--light-brown)' }}
-                      >
-                        Category
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {['all', ...categories].map(c => (
-                          <button
-                            key={c}
-                            onClick={() => { setCategory(c); setPage(1) }}
-                            className="filter-chip px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                            style={{
-                              background: category === c ? 'var(--dark-brown)' : 'var(--warm-white)',
-                              color: category === c ? 'white' : 'var(--medium-brown)',
-                              border: category === c ? '1.5px solid var(--dark-brown)' : '1.5px solid var(--gold-pale)',
-                              cursor: 'pointer',
-                              fontFamily: 'inherit',
-                              textTransform: 'capitalize',
-                            }}
-                          >
-                            {c}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* PRICE */}
-                    <div>
-                      <label
-                        className="block text-xs font-medium tracking-wider uppercase mb-3"
-                        style={{ color: 'var(--light-brown)' }}
-                      >
-                        Price Range
-                      </label>
-                      <div className="flex gap-2">
-                        {[
-                          { placeholder: 'Min ₹', value: minPrice, onChange: setMinPrice },
-                          { placeholder: 'Max ₹', value: maxPrice, onChange: setMaxPrice },
-                        ].map((field, i) => (
-                          <input
-                            key={i}
-                            type="number"
-                            placeholder={field.placeholder}
-                            value={field.value}
-                            onChange={e => field.onChange(e.target.value)}
-                            className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
-                            style={{
-                              background: 'var(--warm-white)',
-                              border: '1.5px solid transparent',
-                              color: 'var(--charcoal)',
-                              fontFamily: 'inherit',
-                            }}
-                            onFocus={e => (e.target.style.borderColor = 'var(--gold)')}
-                            onBlur={e => (e.target.style.borderColor = 'transparent')}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* RATING + SORT */}
-                    <div>
-                      <label
-                        className="block text-xs font-medium tracking-wider uppercase mb-3"
-                        style={{ color: 'var(--light-brown)' }}
-                      >
-                        Sort & Rating
-                      </label>
-                      <div className="flex gap-2">
-                        <select
-                          value={rating}
-                          onChange={e => setRating(e.target.value)}
-                          className="custom-select flex-1 px-3 py-2.5 rounded-xl text-sm outline-none"
-                          style={{
-                            background: 'var(--warm-white)',
-                            border: '1.5px solid var(--gold-pale)',
-                            color: 'var(--charcoal)',
-                            fontFamily: 'inherit',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <option value="0">All Ratings</option>
-                          <option value="4">4★ +</option>
-                          <option value="3">3★ +</option>
-                          <option value="2">2★ +</option>
-                        </select>
-
-                        <select
-                          value={sortBy}
-                          onChange={e => setSortBy(e.target.value)}
-                          className="custom-select flex-1 px-3 py-2.5 rounded-xl text-sm outline-none"
-                          style={{
-                            background: 'var(--warm-white)',
-                            border: '1.5px solid var(--gold-pale)',
-                            color: 'var(--charcoal)',
-                            fontFamily: 'inherit',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <option value="created_at">Newest</option>
-                          <option value="price">Price</option>
-                          <option value="averagerating">Rating</option>
-                          <option value="name">Name</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* TOGGLES */}
-                    <div className="flex gap-6">
-                      {[
-                        { label: 'In Stock', value: inStock, onChange: setInStock },
-                        { label: 'On Sale', value: discount, onChange: setDiscount },
-                      ].map(toggle => (
-                        <label
-                          key={toggle.label}
-                          className="flex items-center gap-3 cursor-pointer select-none"
-                        >
-                          <div
-                            onClick={() => toggle.onChange(!toggle.value)}
-                            className="relative w-11 h-6 rounded-full transition-all duration-300 flex-shrink-0"
-                            style={{
-                              background: toggle.value ? 'var(--dark-brown)' : 'var(--gold-pale)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <div
-                              className="absolute top-1 w-4 h-4 rounded-full transition-all duration-300"
-                              style={{
-                                left: toggle.value ? '24px' : '4px',
-                                background: toggle.value ? 'var(--gold-light)' : 'var(--light-brown)',
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium" style={{ color: 'var(--medium-brown)' }}>
-                            {toggle.label}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ================= PRODUCTS ================= */}
-          {loading ? (
-            <div
-              className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-6`}
-            >
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="rounded-3xl overflow-hidden" style={{ background: 'white' }}>
-                  <div className="h-72 skeleton-wave" />
-                  <div className="p-6 space-y-3">
-                    <div className="h-3 w-20 rounded-full skeleton-wave" />
-                    <div className="h-5 w-3/4 rounded-full skeleton-wave" />
-                    <div className="h-3 w-full rounded-full skeleton-wave" />
-                    <div className="h-3 w-2/3 rounded-full skeleton-wave" />
-                    <div className="h-10 rounded-2xl skeleton-wave mt-4" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : products.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-24"
-            >
-              <Package size={48} style={{ color: 'var(--gold-pale)', margin: '0 auto 16px' }} />
-              <h3 className="font-display text-2xl mb-2" style={{ color: 'var(--medium-brown)' }}>
-                No products found
-              </h3>
-              <p className="text-sm" style={{ color: 'var(--light-brown)' }}>
-                Try adjusting your filters or search term
-              </p>
-            </motion.div>
-          ) : (
-            <div
-              className={`grid ${
-                viewMode === 'grid'
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-                  : 'grid-cols-1'
-              } gap-6 lg:gap-8`}
-            >
-              {products.map((product, i) => {
-                const inCart = cartdata?.items?.filter(c => c.product_id == product.id).length >= 1
-                const discountPct = getDiscount(product.price, product.compareprice)
-                const isOutOfStock = product.inventory === 0
-                const isLowStock = product.inventory > 0 && product.inventory <= 5
-
-                return (
-                  <motion.div
-                    key={product.id}
-                    initial={{ opacity: 0, y: 28 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.06, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    className={`card-hover rounded-3xl overflow-hidden ${viewMode === 'list' ? 'flex' : ''}`}
+                  <div
+                    className="rounded-3xl p-6 sticky top-6"
                     style={{
                       background: 'white',
-                      boxShadow: '0 2px 16px rgba(44,31,14,0.06), 0 1px 4px rgba(44,31,14,0.04)',
-                      border: '1px solid rgba(184,134,11,0.08)',
+                      border: '1px solid rgba(184,134,11,0.12)',
+                      boxShadow: '0 4px 20px rgba(44,31,14,0.06)',
+                      width: 280,
                     }}
                   >
-                    {/* IMAGE */}
-                    <div
-                      className={`relative overflow-hidden img-zoom ${
-                        viewMode === 'list' ? 'w-52 flex-shrink-0' : 'h-64'
-                      }`}
-                      style={{ background: 'var(--warm-white)' }}
-                    >
-                      <img
-                        src={getImageUrl(product.images)}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-
-                      {/* Gradient overlay bottom */}
-                      {!isOutOfStock && (
-                        <div
-                          className="absolute inset-x-0 bottom-0 h-16"
-                          style={{
-                            background: 'linear-gradient(to top, rgba(255,255,255,0.3), transparent)',
-                          }}
-                        />
-                      )}
-
-                      {/* OUT OF STOCK overlay */}
-                      {isOutOfStock && (
-                        <div
-                          className="absolute inset-0 flex flex-col items-center justify-center gap-2"
-                          style={{ background: 'rgba(26,10,3,0.65)', backdropFilter: 'blur(2px)' }}
-                        >
-                          <Package size={28} color="white" />
-                          <span className="text-white text-xs font-medium tracking-wider uppercase font-body">
-                            Unavailable
-                          </span>
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: 'var(--gold-pale)' }}>
+                          <Filter size={13} style={{ color: 'var(--gold)' }} />
                         </div>
-                      )}
-
-                      {/* DISCOUNT BADGE */}
-                      {discountPct && !isOutOfStock && (
-                        <div
-                          className="absolute top-4 left-4 px-2.5 py-1 rounded-full text-xs font-semibold font-body"
-                          style={{ background: 'var(--terracotta)', color: 'white' }}
+                        <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--dark-brown)' }}>Refine</h3>
+                      </div>
+                      {hasActiveFilters && (
+                        <button
+                          onClick={clearFilters}
+                          className="text-xs font-semibold flex items-center gap-1 px-2.5 py-1 rounded-full transition-all"
+                          style={{ background: 'var(--gold-pale)', color: 'var(--medium-brown)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                         >
-                          -{discountPct}%
-                        </div>
+                          <X size={10} /> Clear
+                        </button>
                       )}
+                    </div>
 
-                      {/* WISHLIST */}
-                      <button
-                        onClick={() => toggleLike(product.id)}
-                        className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Category</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {['all', ...categories].map(c => (
+                            <button
+                              key={c}
+                              onClick={() => { setCategory(c); setPage(1) }}
+                              className="filter-chip px-3 py-1.5 rounded-full text-xs font-medium"
+                              style={{
+                                background: category === c ? 'var(--dark-brown)' : 'var(--warm-white)',
+                                color: category === c ? 'white' : 'var(--medium-brown)',
+                                border: category === c ? '1.5px solid var(--dark-brown)' : '1.5px solid var(--gold-pale)',
+                                fontFamily: 'inherit',
+                                textTransform: 'capitalize',
+                              }}
+                            >{c}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                      <div>
+                        <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Price Range</p>
+                        <div className="flex gap-2">
+                          {[
+                            { placeholder: 'Min ₹', value: minPrice, onChange: setMinPrice },
+                            { placeholder: 'Max ₹', value: maxPrice, onChange: setMaxPrice },
+                          ].map((field, i) => (
+                            <input
+                              key={i}
+                              type="number"
+                              placeholder={field.placeholder}
+                              value={field.value}
+                              onChange={e => field.onChange(e.target.value)}
+                              className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
+                              style={{ background: 'var(--warm-white)', border: '1.5px solid transparent', color: 'var(--charcoal)', fontFamily: 'inherit' }}
+                              onFocus={e => (e.target.style.borderColor = 'var(--gold)')}
+                              onBlur={e => (e.target.style.borderColor = 'transparent')}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                      <div>
+                        <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Min Rating</p>
+                        <select value={rating} onChange={e => setRating(e.target.value)} className="custom-select w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: 'var(--warm-white)', border: '1.5px solid var(--gold-pale)', color: 'var(--charcoal)', fontFamily: 'inherit', cursor: 'pointer' }}>
+                          <option value="0">All Ratings</option>
+                          <option value="4">4★ & above</option>
+                          <option value="3">3★ & above</option>
+                          <option value="2">2★ & above</option>
+                        </select>
+                      </div>
+                      <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                      <div>
+                        <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Sort By</p>
+                        <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="custom-select w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: 'var(--warm-white)', border: '1.5px solid var(--gold-pale)', color: 'var(--charcoal)', fontFamily: 'inherit', cursor: 'pointer' }}>
+                          <option value="created_at">Newest First</option>
+                          <option value="price">Price: Low to High</option>
+                          <option value="averagerating">Top Rated</option>
+                          <option value="name">Name A–Z</option>
+                        </select>
+                      </div>
+                      <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                      <div className="space-y-3">
+                        {[
+                          { label: 'In Stock Only', value: inStock, onChange: setInStock },
+                          { label: 'On Sale', value: discount, onChange: setDiscount },
+                        ].map(toggle => (
+                          <label key={toggle.label} className="flex items-center justify-between cursor-pointer select-none">
+                            <span className="text-sm font-medium" style={{ color: 'var(--medium-brown)' }}>{toggle.label}</span>
+                            <div onClick={() => toggle.onChange(!toggle.value)} className="relative w-11 h-6 rounded-full transition-all duration-300 flex-shrink-0" style={{ background: toggle.value ? 'var(--dark-brown)' : 'var(--gold-pale)', cursor: 'pointer' }}>
+                              <div className="absolute top-1 w-4 h-4 rounded-full transition-all duration-300" style={{ left: toggle.value ? '24px' : '4px', background: toggle.value ? 'var(--gold-light)' : 'var(--light-brown)', boxShadow: toggle.value ? '0 1px 4px rgba(184,134,11,0.4)' : 'none' }} />
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.aside>
+              )}
+            </AnimatePresence>
+
+            {/* ====== PRODUCTS AREA ====== */}
+            <div className="flex-1 min-w-0">
+
+              {/* Active filter tags */}
+              {hasActiveFilters && (
+                <div className="flex flex-wrap gap-2 mb-5">
+                  {minPrice && <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'var(--gold-pale)', color: 'var(--medium-brown)' }}>Min ₹{minPrice} <button onClick={() => setMinPrice('')}><X size={10} /></button></span>}
+                  {maxPrice && <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'var(--gold-pale)', color: 'var(--medium-brown)' }}>Max ₹{maxPrice} <button onClick={() => setMaxPrice('')}><X size={10} /></button></span>}
+                  {rating !== '0' && <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: '#fff8e1', color: '#b8860b' }}>{rating}★ & above <button onClick={() => setRating('0')}><X size={10} /></button></span>}
+                  {inStock && <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'var(--emerald-pale)', color: 'var(--emerald)' }}>In Stock <button onClick={() => setInStock(false)}><X size={10} /></button></span>}
+                  {discount && <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: '#fce8e1', color: 'var(--terracotta)' }}>On Sale <button onClick={() => setDiscount(false)}><X size={10} /></button></span>}
+                </div>
+              )}
+
+              {/* Mobile filter button */}
+              <div className="flex items-center justify-between lg:hidden mb-5">
+                <p className="text-sm font-body" style={{ color: 'var(--light-brown)' }}>
+                  {!loading && <><strong style={{ color: 'var(--charcoal)' }}>{total}</strong> products</>}
+                </p>
+                <button onClick={() => setMobileFiltersOpen(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold relative" style={{ background: 'white', border: '1.5px solid rgba(184,134,11,0.2)', color: 'var(--medium-brown)', fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 8px rgba(44,31,14,0.04)' }}>
+                  <Filter size={14} /> Filters
+                  {hasActiveFilters && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center" style={{ background: 'var(--gold)', color: 'white' }}>{activeFiltersCount}</span>}
+                </button>
+              </div>
+
+              {/* ====== PRODUCTS GRID ====== */}
+              {loading ? (
+                <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'} gap-5`}>
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="rounded-3xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(184,134,11,0.08)' }}>
+                      <div className="h-64 wave-skeleton" />
+                      <div className="p-5 space-y-3">
+                        <div className="h-2.5 w-16 rounded-full wave-skeleton" />
+                        <div className="h-5 w-3/4 rounded-full wave-skeleton" />
+                        <div className="h-3 w-full rounded-full wave-skeleton" />
+                        <div className="h-3 w-2/3 rounded-full wave-skeleton" />
+                        <div className="h-10 rounded-2xl wave-skeleton mt-2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : products.length === 0 ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-24">
+                  <div className="w-20 h-20 rounded-full mx-auto mb-5 flex items-center justify-center" style={{ background: 'var(--gold-pale)' }}>
+                    <Package size={32} style={{ color: 'var(--gold)' }} />
+                  </div>
+                  <h3 className="font-display text-2xl font-semibold mb-2" style={{ color: 'var(--medium-brown)' }}>No products found</h3>
+                  <p className="text-sm mb-6" style={{ color: 'var(--light-brown)' }}>Try adjusting your filters or search term</p>
+                  {hasActiveFilters && (
+                    <button onClick={clearFilters} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-semibold btn-gold text-white" style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <X size={14} /> Clear Filters
+                    </button>
+                  )}
+                </motion.div>
+              ) : (
+                <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'} gap-5`}>
+                  {products.map((product, i) => {
+                    const inCart = cartdata?.items?.filter(c => c.product_id == product.id).length >= 1
+                    const discountPct = getDiscount(product.price, product.compareprice)
+                    const isOutOfStock = product.inventory === 0
+                    const isLowStock = product.inventory > 0 && product.inventory <= 5
+                    const isWishlisted = !!(wishlistdata?.items?.find((item: any) => item?.id == product?.id)?.id)
+
+                    /* ─── LIST VIEW ─── */
+                    if (viewMode === 'list') {
+                      return (
+                        <motion.div
+                          key={product.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.05, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+                          className="list-card rounded-3xl flex"
+                          style={{ background: 'white', border: '1px solid rgba(184,134,11,0.1)', boxShadow: '0 2px 12px rgba(44,31,14,0.05)' }}
+                        >
+                          <div className="relative w-44 sm:w-56 flex-shrink-0 card-img-wrap rounded-l-3xl" style={{ background: 'var(--warm-white)', overflow: 'hidden' }}>
+                            <img src={getImageUrl(product.images)} alt={product.name} className="w-full h-full object-cover" />
+                            {isOutOfStock && (
+                              <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(26,10,3,0.6)' }}>
+                                <span className="text-white text-xs font-semibold tracking-wider uppercase">Unavailable</span>
+                              </div>
+                            )}
+                            {discountPct && !isOutOfStock && <div className="img-badge-discount">-{discountPct}%</div>}
+                          </div>
+
+                          <div className="flex-1 p-5 flex flex-col">
+                            <div className="flex items-start justify-between mb-2">
+                              <span className="cat-pill">{product.category_name}</span>
+                              <button
+                                onClick={() => toggleLike(product.id)}
+                                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
+                                style={{ background: isWishlisted ? '#fef0ee' : 'var(--warm-white)', border: isWishlisted ? '1.5px solid #f5c6bb' : '1.5px solid var(--gold-pale)', cursor: 'pointer' }}
+                              >
+                                <Heart size={14} fill={isWishlisted ? '#c4673a' : 'transparent'} color={isWishlisted ? '#c4673a' : 'var(--light-brown)'} />
+                              </button>
+                            </div>
+                            <h3 className="font-display text-xl font-semibold mb-1 leading-tight" style={{ color: 'var(--dark-brown)' }}>{product.name}</h3>
+                            <p className="text-sm leading-relaxed mb-3 line-clamp-2 flex-1" style={{ color: 'var(--light-brown)' }}>{product.shortdescription}</p>
+
+                            <div className="flex items-center gap-2 mb-3">
+                              <StarRating productId={product.id} avgRating={product.averagerating} refresh={fetchProducts} />
+                              <span className="text-xs" style={{ color: 'var(--light-brown)' }}>({product.reviewcount})</span>
+                              {isLowStock && <span className="text-xs font-semibold px-2 py-0.5 rounded-full ml-auto" style={{ background: '#fff3e0', color: '#e65100' }}>Only {product.inventory} left</span>}
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-baseline gap-2">
+                                <span className="price-main">{formatPrice(product.price)}</span>
+                                {product.compareprice && <span className="price-strike">{formatPrice(product.compareprice)}</span>}
+                              </div>
+                              <div className="flex gap-2">
+                                <Link href={`/product/${product.id}`}>
+                                  <button className="btn-outline-brown flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold" style={{ cursor: 'pointer', fontFamily: 'inherit' }}><Eye size={13} /> View</button>
+                                </Link>
+                                {isOutOfStock ? (
+                                  <button disabled className="px-4 py-2 rounded-2xl text-xs font-semibold" style={{ background: '#f5f5f5', color: '#bbb', border: '1.5px solid #e0e0e0', cursor: 'not-allowed', fontFamily: 'inherit' }}>Sold Out</button>
+                                ) : inCart ? (
+                                  <button onClick={() => handleCart(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold" style={{ background: 'var(--sage)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Check size={13} /> In Cart</button>
+                                ) : (
+                                  <button onClick={() => addToCart(product.id)} className="btn-gold flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold text-white" style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><ShoppingCart size={13} /> Add</button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )
+                    }
+
+                    /* ─── GRID CARD (PREMIUM) ─── */
+                    return (
+                      <motion.div
+                        key={product.id}
+                        initial={{ opacity: 0, y: 32, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ delay: i * 0.07, duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
+                        className="product-card rounded-3xl overflow-visible group"
                         style={{
-                          background: 'rgba(255,255,255,0.92)',
-                          backdropFilter: 'blur(4px)',
-                          border: 'none',
-                          cursor: 'pointer',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                          background: 'white',
+                          border: '1px solid rgba(184,134,11,0.1)',
+                          boxShadow: '0 4px 16px rgba(44,31,14,0.07)',
+                          borderRadius: '24px',
                         }}
                       >
-  <Heart
-        size={18}
-        strokeWidth={2}
-        className="transition-all duration-200"
-        fill={wishlistdata?.items?.find((item:any)=>item?.id==product?.id)?.id ? "red" : "transparent"}
-        color={wishlistdata?.items?.find((item:any)=>item?.id==product?.id)?.id  ? "red" : "var(--terracotta)"}
-      />
-                      </button>
-                    </div>
-
-                    {/* INFO */}
-                    <div className={`p-5 sm:p-6 flex flex-col ${viewMode === 'list' ? 'flex-1' : ''}`}>
-                      {/* Category */}
-                      <div className="flex items-center justify-between mb-2">
-                        <span
-                          className="text-xs font-semibold tracking-widest uppercase font-body"
-                          style={{ color: 'var(--gold)' }}
+                        {/* ── IMAGE ZONE ── */}
+                        <div
+                          className="card-img-wrap relative"
+                          style={{
+                            height: 260,
+                            background: 'var(--warm-white)',
+                            borderRadius: '24px 24px 0 0',
+                            overflow: 'hidden',
+                          }}
                         >
-                          {product.category_name}
-                        </span>
+                          <img
+                            src={getImageUrl(product.images)}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                          />
 
-                        {/* Stock badge */}
-                        {isLowStock ? (
-                          <span
-                            className="text-xs font-medium px-2 py-0.5 rounded-full font-body"
-                            style={{ background: '#fff3e0', color: '#e65100' }}
+                          {/* Gradient overlay */}
+                          <div className="card-overlay" style={{ borderRadius: '24px 24px 0 0' }} />
+
+                          {/* Out of stock */}
+                          {isOutOfStock && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10" style={{ background: 'rgba(26,10,3,0.65)', backdropFilter: 'blur(3px)' }}>
+                              <Package size={28} color="white" />
+                              <span className="text-white text-xs font-semibold tracking-wider uppercase font-body">Unavailable</span>
+                            </div>
+                          )}
+
+                          {/* Badges */}
+                          {discountPct && !isOutOfStock && <div className="img-badge-discount">-{discountPct}%</div>}
+                          {isLowStock && !isOutOfStock && <div className="img-badge-low">Only {product.inventory} left</div>}
+
+                          {/* Floating actions — slide in on hover */}
+                          <div className="card-actions">
+                            <button
+                              onClick={() => toggleLike(product.id)}
+                              className={`card-action-btn wishlist-always ${isWishlisted ? 'heart-active' : ''}`}
+                              style={{
+                                opacity: 1,
+                                transform: 'none',
+                                background: isWishlisted ? '#fef0ee' : 'rgba(255,255,255,0.96)',
+                              }}
+                            >
+                              <Heart size={15} fill={isWishlisted ? '#c4673a' : 'transparent'} color={isWishlisted ? '#c4673a' : 'var(--medium-brown)'} />
+                            </button>
+                            <Link href={`/product/${product.id}`}>
+                              <button className="card-action-btn">
+                                <Eye size={14} style={{ color: 'var(--medium-brown)' }} />
+                              </button>
+                            </Link>
+                          </div>
+
+                          {/* Quick Add CTA — slides up on hover */}
+                          {!isOutOfStock && (
+                            <div className="card-cta-wrap">
+                              {inCart ? (
+                                <button
+                                  onClick={() => handleCart(true)}
+                                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-semibold"
+                                  style={{ background: 'var(--sage)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(4px)' }}
+                                >
+                                  <Check size={15} /> In Cart
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => addToCart(product.id)}
+                                  className="btn-gold w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-semibold text-white"
+                                  style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                                >
+                                  <ShoppingCart size={15} /> Add to Cart
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* ── CARD BODY ── */}
+                        <div className="card-body p-5 pb-6" style={{ position: 'relative' }}>
+                          {/* Gold accent line */}
+                          <div className="gold-accent-line" />
+
+                          {/* Top row */}
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="cat-pill">{product.category_name}</span>
+                            {!isOutOfStock && !isLowStock && (
+                              <span className="flex items-center gap-1.5 text-[10px] font-semibold" style={{ color: 'var(--emerald)' }}>
+                                <span className="stock-dot" style={{ background: 'var(--emerald)' }} />
+                                In Stock
+                              </span>
+                            )}
+                            {isLowStock && (
+                              <span className="flex items-center gap-1.5 text-[10px] font-semibold" style={{ color: '#e65100' }}>
+                                <span className="stock-dot" style={{ background: '#e65100' }} />
+                                Low Stock
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Name */}
+                          <h3
+                            className="font-display font-semibold leading-tight mb-1.5"
+                            style={{ color: 'var(--dark-brown)', fontSize: '19px' }}
                           >
-                            Only {product.inventory} left
-                          </span>
-                        ) : !isOutOfStock ? (
-                          <span
-                            className="text-xs font-medium px-2 py-0.5 rounded-full font-body"
-                            style={{ background: '#e8f5e9', color: '#2e7d32' }}
+                            {product.name}
+                          </h3>
+
+                          {/* Description */}
+                          <p
+                            className="text-sm leading-relaxed mb-3 line-clamp-2"
+                            style={{ color: 'var(--light-brown)' }}
                           >
-                            In Stock
-                          </span>
-                        ) : null}
-                      </div>
+                            {product.shortdescription}
+                          </p>
 
-                      {/* Name */}
-                      <h3
-                        className="font-display text-xl sm:text-2xl font-semibold mb-1.5 leading-tight"
-                        style={{ color: 'var(--dark-brown)' }}
-                      >
-                        {product.name}
-                      </h3>
+                          {/* Rating */}
+                          <div className="flex items-center gap-2 mb-4">
+                            <StarRating productId={product.id} avgRating={product.averagerating} refresh={fetchProducts} />
+                            <span className="text-xs" style={{ color: 'var(--light-brown)' }}>({product.reviewcount})</span>
+                          </div>
 
-                      {/* Description */}
-                      <p
-                        className="text-sm leading-relaxed mb-3 line-clamp-2 font-body flex-1"
-                        style={{ color: 'var(--light-brown)' }}
-                      >
-                        {product.shortdescription}
-                      </p>
+                          {/* Price row */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              <span className="price-main">{formatPrice(product.price)}</span>
+                              {product.compareprice && (
+                                <span className="price-strike">{formatPrice(product.compareprice)}</span>
+                              )}
+                              {discountPct && (
+                                <span className="price-save">Save {discountPct}%</span>
+                              )}
+                            </div>
 
-                      {/* Rating */}
-                      <div className="flex items-center gap-2 mb-4">
-                        <StarRating
-                          productId={product.id}
-                          avgRating={product.averagerating}
-                          refresh={fetchProducts}
-                        />
-                        <span className="text-xs font-body" style={{ color: 'var(--light-brown)' }}>
-                          ({product.reviewcount})
-                        </span>
-                      </div>
+                            {/* View button (always visible) */}
+                            <Link href={`/product/${product.id}`}>
+                              <button
+                                className="btn-outline-brown flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-semibold"
+                                style={{ cursor: 'pointer', fontFamily: 'inherit' }}
+                              >
+                                <Eye size={13} /> View
+                              </button>
+                            </Link>
+                          </div>
 
-                      {/* Price */}
-                      <div className="flex items-center gap-2.5 mb-5">
-                        <span
-                          className="font-display text-2xl font-semibold"
-                          style={{ color: 'var(--dark-brown)' }}
-                        >
-                          {formatPrice(product.price)}
-                        </span>
-                        {product.compareprice && (
-                          <span
-                            className="text-sm line-through font-body"
-                            style={{ color: '#bbb' }}
-                          >
-                            {formatPrice(product.compareprice)}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* ACTIONS */}
-                      <div className="flex gap-3 mt-auto">
-                        <Link href={`/product/${product.id}`} className="flex-1">
-                          <button
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium font-body transition-all hover:opacity-80"
-                            style={{
-                              background: 'var(--warm-white)',
-                              color: 'var(--medium-brown)',
-                              border: '1.5px solid var(--gold-pale)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <Eye size={15} />
-                            View
-                          </button>
-                        </Link>
-
-                        {isOutOfStock ? (
-                          <button
-                            disabled
-                            className="flex-1 py-3 rounded-2xl text-sm font-medium font-body"
-                            style={{
-                              background: '#f5f5f5',
-                              color: '#bbb',
-                              border: '1.5px solid #e0e0e0',
-                              cursor: 'not-allowed',
-                            }}
-                          >
-                            Out of Stock
-                          </button>
-                        ) : inCart ? (
-                          <button
-                            onClick={() => handleCart(true)}
-                            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold font-body transition-all hover:opacity-90"
-                            style={{
-                              background: 'var(--sage)',
-                              color: 'white',
-                              border: 'none',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <Check size={15} />
-                            In Cart
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => addToCart(product.id)}
-                            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold font-body transition-all hover:opacity-90 gold-shimmer"
-                            style={{
-                              color: 'white',
-                              border: 'none',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <ShoppingCart size={15} />
-                            Add to Cart
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* ================= PAGINATION ================= */}
-          {totalPages > 1 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="flex justify-center items-center gap-2 mt-14"
-            >
-              <button
-                disabled={page === 1}
-                onClick={() => setPage(p => p - 1)}
-                className="page-btn w-10 h-10 rounded-2xl flex items-center justify-center transition-all"
-                style={{
-                  background: page === 1 ? 'var(--warm-white)' : 'white',
-                  border: '1.5px solid var(--gold-pale)',
-                  color: page === 1 ? '#bbb' : 'var(--medium-brown)',
-                  cursor: page === 1 ? 'not-allowed' : 'pointer',
-                  boxShadow: page === 1 ? 'none' : '0 2px 8px rgba(44,31,14,0.08)',
-                }}
-              >
-                <ChevronLeft size={17} />
-              </button>
-
-              {Array.from({ length: totalPages }).map((_, i) => {
-                const isActive = page === i + 1
-                const isNear = Math.abs(page - (i + 1)) <= 2
-
-                if (!isNear && i !== 0 && i !== totalPages - 1) {
-                  if (i === 1 || i === totalPages - 2) {
-                    return (
-                      <span key={i} className="px-1" style={{ color: 'var(--light-brown)' }}>
-                        …
-                      </span>
+                          {/* Static cart button (for touch / non-hover) visible only on mobile */}
+                          {!isOutOfStock && (
+                            <div className="mt-3 lg:hidden">
+                              {inCart ? (
+                                <button onClick={() => handleCart(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-semibold" style={{ background: 'var(--sage)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                  <Check size={14} /> In Cart
+                                </button>
+                              ) : (
+                                <button onClick={() => addToCart(product.id)} className="btn-gold w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-semibold text-white" style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                  <ShoppingCart size={14} /> Add to Cart
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {isOutOfStock && (
+                            <div className="mt-3">
+                              <button disabled className="w-full py-2.5 rounded-2xl text-sm font-semibold" style={{ background: '#f5f5f5', color: '#bbb', border: '1.5px solid #e0e0e0', cursor: 'not-allowed', fontFamily: 'inherit' }}>Sold Out</button>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
                     )
-                  }
-                  return null
-                }
+                  })}
+                </div>
+              )}
 
-                return (
+              {/* ================= PAGINATION ================= */}
+              {totalPages > 1 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="flex justify-center items-center gap-2 mt-12"
+                >
                   <button
-                    key={i}
-                    onClick={() => setPage(i + 1)}
-                    className="page-btn w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-semibold font-body transition-all"
-                    style={{
-                      background: isActive ? 'var(--dark-brown)' : 'white',
-                      color: isActive ? 'white' : 'var(--medium-brown)',
-                      border: isActive ? 'none' : '1.5px solid var(--gold-pale)',
-                      cursor: 'pointer',
-                      boxShadow: isActive ? '0 4px 16px rgba(44,31,14,0.25)' : '0 2px 8px rgba(44,31,14,0.05)',
-                    }}
+                    disabled={page === 1}
+                    onClick={() => setPage(p => p - 1)}
+                    className="page-dot w-10 h-10 rounded-2xl flex items-center justify-center"
+                    style={{ background: page === 1 ? 'var(--warm-white)' : 'white', border: '1.5px solid rgba(184,134,11,0.18)', color: page === 1 ? '#ccc' : 'var(--medium-brown)', cursor: page === 1 ? 'not-allowed' : 'pointer', boxShadow: page === 1 ? 'none' : '0 2px 8px rgba(44,31,14,0.06)' }}
                   >
-                    {i + 1}
+                    <ChevronLeft size={16} />
                   </button>
-                )
-              })}
 
-              <button
-                disabled={page === totalPages}
-                onClick={() => setPage(p => p + 1)}
-                className="page-btn w-10 h-10 rounded-2xl flex items-center justify-center transition-all"
-                style={{
-                  background: page === totalPages ? 'var(--warm-white)' : 'white',
-                  border: '1.5px solid var(--gold-pale)',
-                  color: page === totalPages ? '#bbb' : 'var(--medium-brown)',
-                  cursor: page === totalPages ? 'not-allowed' : 'pointer',
-                  boxShadow: page === totalPages ? 'none' : '0 2px 8px rgba(44,31,14,0.08)',
-                }}
-              >
-                <ChevronRight size={17} />
-              </button>
-            </motion.div>
-          )}
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const isActive = page === i + 1
+                    const isNear = Math.abs(page - (i + 1)) <= 2
+                    if (!isNear && i !== 0 && i !== totalPages - 1) {
+                      if (i === 1 || i === totalPages - 2) return <span key={i} className="px-1 text-sm" style={{ color: 'var(--light-brown)' }}>…</span>
+                      return null
+                    }
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setPage(i + 1)}
+                        className="page-dot w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-semibold font-body"
+                        style={{ background: isActive ? 'var(--dark-brown)' : 'white', color: isActive ? 'white' : 'var(--medium-brown)', border: isActive ? 'none' : '1.5px solid rgba(184,134,11,0.18)', cursor: 'pointer', boxShadow: isActive ? '0 4px 14px rgba(44,31,14,0.25)' : '0 2px 6px rgba(44,31,14,0.04)' }}
+                      >
+                        {i + 1}
+                      </button>
+                    )
+                  })}
+
+                  <button
+                    disabled={page === totalPages}
+                    onClick={() => setPage(p => p + 1)}
+                    className="page-dot w-10 h-10 rounded-2xl flex items-center justify-center"
+                    style={{ background: page === totalPages ? 'var(--warm-white)' : 'white', border: '1.5px solid rgba(184,134,11,0.18)', color: page === totalPages ? '#ccc' : 'var(--medium-brown)', cursor: page === totalPages ? 'not-allowed' : 'pointer', boxShadow: page === totalPages ? 'none' : '0 2px 8px rgba(44,31,14,0.06)' }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </motion.div>
+              )}
+
+              {totalPages > 1 && !loading && (
+                <p className="text-center text-xs mt-3" style={{ color: 'var(--light-brown)' }}>
+                  Page {page} of {totalPages} · {total} products
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         <Footer />
       </div>
+
+      {/* ================= MOBILE FILTER DRAWER ================= */}
+      <AnimatePresence>
+        {mobileFiltersOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileFiltersOpen(false)} />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed left-0 top-0 bottom-0 w-80 bg-white z-50 shadow-2xl flex flex-col lg:hidden"
+              style={{ borderRight: '1px solid rgba(184,134,11,0.12)' }}
+            >
+              <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(184,134,11,0.1)' }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: 'var(--gold-pale)' }}>
+                    <Filter size={13} style={{ color: 'var(--gold)' }} />
+                  </div>
+                  <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--dark-brown)' }}>Filters</h3>
+                  {hasActiveFilters && <span className="w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center" style={{ background: 'var(--gold)', color: 'white' }}>{activeFiltersCount}</span>}
+                </div>
+                <button onClick={() => setMobileFiltersOpen(false)} className="p-2 rounded-xl transition-colors hover:bg-gray-50" style={{ border: 'none', cursor: 'pointer', background: 'transparent' }}>
+                  <X size={17} style={{ color: 'var(--medium-brown)' }} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-5 space-y-6">
+                <div>
+                  <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Category</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['all', ...categories].map(c => (
+                      <button key={c} onClick={() => { setCategory(c); setPage(1) }} className="filter-chip px-3 py-1.5 rounded-full text-xs font-medium" style={{ background: category === c ? 'var(--dark-brown)' : 'var(--warm-white)', color: category === c ? 'white' : 'var(--medium-brown)', border: category === c ? '1.5px solid var(--dark-brown)' : '1.5px solid var(--gold-pale)', fontFamily: 'inherit', textTransform: 'capitalize' }}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                <div>
+                  <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Price Range</p>
+                  <div className="flex gap-2">
+                    {[{ placeholder: 'Min ₹', value: minPrice, onChange: setMinPrice }, { placeholder: 'Max ₹', value: maxPrice, onChange: setMaxPrice }].map((field, i) => (
+                      <input key={i} type="number" placeholder={field.placeholder} value={field.value} onChange={e => field.onChange(e.target.value)} className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ background: 'var(--warm-white)', border: '1.5px solid transparent', color: 'var(--charcoal)', fontFamily: 'inherit' }} onFocus={e => (e.target.style.borderColor = 'var(--gold)')} onBlur={e => (e.target.style.borderColor = 'transparent')} />
+                    ))}
+                  </div>
+                </div>
+                <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                <div>
+                  <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Min Rating</p>
+                  <select value={rating} onChange={e => setRating(e.target.value)} className="custom-select w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: 'var(--warm-white)', border: '1.5px solid var(--gold-pale)', color: 'var(--charcoal)', fontFamily: 'inherit', cursor: 'pointer' }}>
+                    <option value="0">All Ratings</option>
+                    <option value="4">4★ & above</option>
+                    <option value="3">3★ & above</option>
+                    <option value="2">2★ & above</option>
+                  </select>
+                </div>
+                <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                <div>
+                  <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Sort By</p>
+                  <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="custom-select w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: 'var(--warm-white)', border: '1.5px solid var(--gold-pale)', color: 'var(--charcoal)', fontFamily: 'inherit', cursor: 'pointer' }}>
+                    <option value="created_at">Newest First</option>
+                    <option value="price">Price: Low to High</option>
+                    <option value="averagerating">Top Rated</option>
+                    <option value="name">Name A–Z</option>
+                  </select>
+                </div>
+                <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                <div className="space-y-3">
+                  {[{ label: 'In Stock Only', value: inStock, onChange: setInStock }, { label: 'On Sale', value: discount, onChange: setDiscount }].map(toggle => (
+                    <label key={toggle.label} className="flex items-center justify-between cursor-pointer select-none">
+                      <span className="text-sm font-medium" style={{ color: 'var(--medium-brown)' }}>{toggle.label}</span>
+                      <div onClick={() => toggle.onChange(!toggle.value)} className="relative w-11 h-6 rounded-full transition-all duration-300" style={{ background: toggle.value ? 'var(--dark-brown)' : 'var(--gold-pale)', cursor: 'pointer' }}>
+                        <div className="absolute top-1 w-4 h-4 rounded-full transition-all duration-300" style={{ left: toggle.value ? '24px' : '4px', background: toggle.value ? 'var(--gold-light)' : 'var(--light-brown)' }} />
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {hasActiveFilters && (
+                  <button onClick={clearFilters} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-semibold" style={{ background: 'var(--gold-pale)', color: 'var(--medium-brown)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <X size={13} /> Clear All Filters
+                  </button>
+                )}
+              </div>
+
+              <div className="p-5" style={{ borderTop: '1px solid rgba(184,134,11,0.1)' }}>
+                <button onClick={() => setMobileFiltersOpen(false)} className="btn-gold w-full py-3 rounded-2xl text-sm font-semibold text-white" style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Show {total} Products
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   )
 }
