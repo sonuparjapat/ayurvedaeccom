@@ -3,7 +3,8 @@ const pool = require("../../config/db")
 const PDFDocument = require('pdfkit')
 const fs = require("fs")
 const path = require("path")
-const puppeteer = require("puppeteer")
+const PDFDocument = require("pdfkit");
+
 const { uploadInvoiceToCloud } = require("../../utils/uploadInvoicetoCloud");
 const { uploadInvoiceToAWS } = require("../../utils/awsUpload");
 const { platform } = require("os")
