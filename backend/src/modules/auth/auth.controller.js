@@ -62,15 +62,28 @@ exports.createAdmin = async (req, res) => {
 
     /* Send Credentials */
 
-   await mailer.emails.send({
-  from: `${process.env.APP_NAME} <${process.env.MAIL_FROM}>`,
-  to: email,
-  subject: "Admin Account Created",
-  html: `
-    <h3>Admin Access</h3>
-    <p>Email: ${email}</p>
-    <p>Password: ${tempPass}</p>
-    <p>Please change after login.</p>
+   await mailer.sendTransacEmail({
+  sender: {
+    email:
+      process.env.MAIL_FROM,
+    name:
+      process.env.APP_NAME
+  },
+
+  to: [
+    {
+      email
+    }
+  ],
+
+  subject:
+   "Admin Account Created",
+
+  htmlContent: `
+   <h3>Admin Access</h3>
+   <p>Email: ${email}</p>
+   <p>Password: ${tempPass}</p>
+   <p>Please change after login</p>
   `
 });
 

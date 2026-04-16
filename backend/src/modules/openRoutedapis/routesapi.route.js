@@ -12,20 +12,45 @@ router.get('/categories/:id', categoryCtrl.getCategoryById)
 router.post('/categories',upload.single('image'), categoryCtrl.createCategory)
 
 router.put('/categories/:id',upload.single('image'), categoryCtrl.updateCategory)
-router.get("/test-mail", async (req,res)=>{
+router.get("/test-mail",
+ async(req,res)=>{
   try{
-    console.log(`${process.env.APP_NAME} <${process.env.MAIL_FROM}>`)
-    await mailer.emails.send({
-      from: `${process.env.APP_NAME} <${process.env.MAIL_FROM}>`,
-      to: "sgate.sonu@gmail.com"||"sonuparjapat.connect@gmail.com",
-      subject: "Test Email",
-      html: "<h1>Resend working</h1>"
-    });
+console.log(
+ process.env.BREVO_API_KEY,"HIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+);
+   await mailer
+   .sendTransacEmail({
+    sender:{
+     email:
+      process.env
+      .MAIL_FROM,
+     name:
+      process.env
+      .APP_NAME
+    },
 
-    res.json({success:true});
+    to:[
+     {
+      email:
+      "sgate.sonu@gmail.com"
+     }
+    ],
+
+    subject:
+     "Brevo Test",
+
+    htmlContent:
+     "<h1>Working</h1>"
+   });
+
+   res.json({
+    success:true
+   });
+
   }catch(err){
-    console.log(err);
-    res.status(500).json(err);
+   console.log(err);
+   res.status(500)
+   .json(err);
   }
 });
 router.delete('/categories/:id', categoryCtrl.deleteCategory)
