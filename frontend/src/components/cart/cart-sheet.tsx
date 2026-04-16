@@ -73,57 +73,98 @@ const {handleCart,opencart,setOpencart,totalCartProducts,fetchCart,cartdata,cart
 
   /* ================= UPDATE QTY ================= */
 
-  const updateQuantity = async (
-    productId: number,
-    newQty: number,
-    stock: number
-  ) => {
-console.log(newQty,stock)
-    if (newQty < 1) return
+const updateQuantity = async (
+  productId: number,
+  newQty: number,
+  stock: number
+) => {
+  if (newQty < 1) return;
 
-    const finalQty = Math.min(newQty, stock)
-console.log(finalQty,"finalquantity")
-    try {
+  const finalQty = Math.min(
+    newQty,
+    stock
+  );
 
-      setLoading(true)
+  try {
+    setLoading(true);
 
-      await axios.put('/cart', {
-        productId,
-        quantity: finalQty
-      })
+    const payload: any = {
+      productId,
+      quantity: finalQty
+    };
 
-    await fetchCart(loginuserdata?.id,true)
-
-    } catch (err) {
-      console.error('Update qty error:', err)
-      alert('Unable to update cart')
-
-    } finally {
-      setLoading(false)
+    if (!loginuserdata?.id) {
+      payload.sessionId =
+        localStorage.getItem(
+          "guest_session_id"
+        );
     }
+
+    await axios.put(
+      "/cart",
+      payload
+    );
+
+    await fetchCart(
+      loginuserdata?.id,
+      true
+    );
+
+  } catch (err: any) {
+    toast.error(
+      err?.response?.data
+        ?.message ||
+      "Oops..Unable to update cart"
+    );
+
+  } finally {
+    setLoading(false);
   }
+};
 
 
 
   /* ================= REMOVE ================= */
 
-  const removeFromCart = async (productId: number) => {
-    try {
+ const removeFromCart = async (
+  productId: number
+) => {
+  try {
+    setLoading(true);
 
-      setLoading(true)
+    let url = `/cart/${productId}`;
 
-      await axios.delete(`/cart/${productId}`)
+    if (!loginuserdata?.id) {
+      const sessionId =
+        localStorage.getItem(
+          "guest_session_id"
+        );
 
-      await fetchCart(loginuserdata?.id,true)
-
-    } catch (err) {
-      console.error('Remove cart error:', err)
-      alert('Unable to remove item')
-
-    } finally {
-      setLoading(false)
+      url += `?sessionId=${sessionId}`;
     }
+
+    await axios.delete(url);
+
+    await fetchCart(
+      loginuserdata?.id,
+      true
+    );
+
+    toast.success(
+      "Woah..Item removed Succcessfully"
+    );
+
+  } catch (err: any) {
+    toast.error(
+      err?.response?.data
+        ?.message ||
+      "Oops..Unable to remove item"
+    );
+
+  } finally {
+    setLoading(false);
   }
+};
 
 
 
@@ -351,14 +392,27 @@ console.log(finalQty,"finalquantity")
         </span>
       </div>
 
-      <Link href="/checkout">
-        <Button
-          onClick={() => setOpencart(false)}
-          className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md"
-        >
-          Checkout
-        </Button>
-      </Link>
+      {/* <Link> */}
+      <Button
+  onClick={() => {
+    setOpencart(false);
+
+    if (!loginuserdata?.id) {
+      toast.error(
+        "Please login to continue checkout"
+      );
+
+      router.push("/auth");
+      return;
+    }
+
+    router.push("/checkout");
+  }}
+  className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md"
+>
+  Checkout
+</Button>
+      {/* </Link> */}
 
       <Button
         variant="outline"

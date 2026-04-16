@@ -139,58 +139,102 @@ console.log(product, "cccccccccccccccccccccccccccccccccc")
 
   /* ================= CART ================= */
 
-  const addToCart = async () => {
+const addToCart = async () => {
+  if (!product) return;
 
-    if (!product) return
-
-    if (product.inventory === 0) {
-      notify.error('Out of stock')
-      return
-    }
-
-    try {
-
-      if (cartLoading) return
-
-      setCartLoading(true)
-
-      const finalQty = Math.min(qty, product.inventory)
-
-
-    cartdata?.items?.filter((item:any)=>item?.product_id==product?.id)?.length>=1? await axios.put('/cart', {
-        productId: product.id,
-        quantity: finalQty
-      }):await axios.post('/cart', {
-        productId: product.id,
-        quantity: finalQty
-      })
-
-
-      toast.success('Added to cart')
-fetchCart(loginuserdata?.id)
-    } catch (err: any) {
-
-      if (err?.response?.status === 401) {
-
-        toast.error('Please login first')
-        router.push('/auth')
-
-      } else if (err?.response?.data?.message) {
-
-        toast.error(err.response.data.message)
-
-      } else {
-
-        toast.error('Something went wrong')
-
-      }
-
-    } finally {
-
-      setCartLoading(false)
-
-    }
+  if (product.inventory === 0) {
+    notify.error("Opps...Product is Out of stock");
+    return;
   }
+
+  try {
+    if (cartLoading) return;
+
+    setCartLoading(true);
+
+    const finalQty = Math.min(
+      qty,
+      product.inventory
+    );
+
+    const payload: any = {
+      productId: product.id,
+      quantity: finalQty
+    };
+
+    /* guest user support */
+    if (!loginuserdata?.id) {
+      const sessionId =
+        localStorage.getItem(
+          "guest_session_id"
+        );
+
+      if (sessionId) {
+        payload.sessionId = sessionId;
+      }
+    }
+
+    const alreadyInCart =
+      cartdata?.items?.filter(
+        (item: any) =>
+          item?.product_id ==
+          product?.id
+      )?.length >= 1;
+
+    if (alreadyInCart) {
+      await axios.put(
+        "/cart",
+        payload
+      );
+    } else {
+      await axios.post(
+        "/cart",
+        payload
+      );
+    }
+
+    toast.success(
+      "Wooah..Product Added to cart"
+    );
+
+    fetchCart(
+      loginuserdata?.id
+    );
+
+  } catch (err: any) {
+    if (
+      err?.response?.status === 400
+    ) {
+      toast.error(
+        err?.response?.data
+          ?.message ||
+        "Invalid request"
+      );
+
+    } else if (
+      err?.response?.status === 404
+    ) {
+      toast.error(
+        "Oops..Product not found"
+      );
+
+    } else if (
+      err?.response?.status === 500
+    ) {
+      toast.error(
+        "Something went wrong"
+      );
+
+    } else {
+      toast.error(
+        "Oops..Unable to add cart"
+      );
+    }
+
+  } finally {
+    setCartLoading(false);
+  }
+};
 
 
 

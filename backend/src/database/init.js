@@ -329,6 +329,42 @@ const initDB = async () => {
       ON company_settings(is_active)
     `);
 
+  ////////////////////////guest sessions///////////////
+await client.query(`CREATE TABLE IF NOT EXISTS guest_sessions (
+ id SERIAL PRIMARY KEY,
+ session_id VARCHAR(120) UNIQUE NOT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ expires_at TIMESTAMP,
+ is_active BOOLEAN DEFAULT TRUE,
+ ip_address VARCHAR(50),
+ user_agent TEXT
+);`)
+
+///////////////////guest cart///////////////////
+await client.query(`CREATE TABLE IF NOT EXISTS guest_cart (
+ id SERIAL PRIMARY KEY,
+ guest_session_id VARCHAR(120) REFERENCES guest_sessions(session_id) ON DELETE CASCADE,
+ product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+ quantity INT DEFAULT 1 CHECK(quantity > 0),
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE(guest_session_id, product_id)
+);`)
+await client.query(`
+  CREATE INDEX IF NOT EXISTS idx_guest_sessions_active
+  ON guest_sessions(is_active)
+`);
+
+await client.query(`
+  CREATE INDEX IF NOT EXISTS idx_guest_sessions_expiry
+  ON guest_sessions(expires_at)
+`);
+
+await client.query(`
+  CREATE INDEX IF NOT EXISTS idx_guest_cart_session
+  ON guest_cart(guest_session_id)
+`);
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

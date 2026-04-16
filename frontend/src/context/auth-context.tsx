@@ -29,7 +29,7 @@ export interface User {
 interface AuthContextType {
   loginuserdata: User | null
   loading: boolean
-  login: (data: User) => void
+ login: (data: User) => Promise<void>
   logout: () => void
   setLoginUserdata: React.Dispatch<React.SetStateAction<User | null>>
 
@@ -37,7 +37,7 @@ interface AuthContextType {
   opencart: boolean
   setOpencart: React.Dispatch<React.SetStateAction<boolean>>
   totalCartProducts: number
-  fetchCart: (id: number, value?: boolean) => void
+fetchCart: (id?: number, value?: boolean) => void
   handleCart: (value: boolean) => void
 }
 
@@ -138,7 +138,36 @@ const loadReviews = useCallback(
   []
 );
 
+const getGuestSessionId = useCallback(
+  () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("guest_session_id");
+},[]);
 
+const createGuestSession = async () => {
+  try {
+    let sessionId = getGuestSessionId();
+
+    if (sessionId) return sessionId;
+
+    const res = await axios.post("/cart/guest-session");
+
+    if (res.status === 200 && res.data?.sessionId) {
+      localStorage.setItem(
+        "guest_session_id",
+        res.data.sessionId
+      );
+
+      return res.data.sessionId;
+    }
+
+    return null;
+
+  } catch (err) {
+    console.log(err);
+    return null;
+  }
+};
 
   const router = useRouter()
   const pathname=usePathname()
@@ -147,38 +176,49 @@ const loadReviews = useCallback(
      Fetch Cart
   ====================== */
 
-  const fetchCart = async (id: number, value?: boolean) => {
+const fetchCart = async (id?: number, value?: boolean) => {
+  try {
+    setCartLoading(true);
 
-    if (!id) return
-await getwishlist()
-    try {
-      setCartLoading(true)
-      const res = await axios.get("/cart")
+    let url = "/cart";
 
-      setCartData({
-      items: res.data.items||[],
-      subtotal: res.data.subtotal||0,
-      totalItems: res.data.items.length||0
-    })
-      setTotalCartProducts(res?.data?.totalCartProducts || 0)
+    const currentUserId = id || loginuserdata?.id;
 
-      if (value !== undefined) {
-        setOpencart(value)
+    if (!currentUserId) {
+      const sessionId = await createGuestSession();
+
+      if (sessionId) {
+        url = `/cart?sessionId=${sessionId}`;
       }
+    }
 
-    } catch (err:any) {
-      console.log(err)
-        if (err?.response?.status === 401) {
-      notify.error('Please login first')
-      window.location.href = '/'
-    } 
-    else {
-      notify.error('Failed to load cart')
+    const res = await axios.get(url);
+
+    const items = res?.data?.items || [];
+
+    setCartData({
+      items,
+      subtotal: res?.data?.subtotal || 0,
+      totalItems: items.length
+    });
+
+    setTotalCartProducts(items.length);
+
+    if (value !== undefined) {
+      setOpencart(value);
     }
-    }finally{
-      setCartLoading(false)
+
+  } catch (err: any) {
+    console.log(err);
+
+    if (err?.response?.status === 500) {
+      notify.error("Oops! Unable to load cart");
     }
+
+  } finally {
+    setCartLoading(false);
   }
+};
   // ======================fetch categores=================
   const fetchcat=useCallback(async()=>{
 try{const res=await getCategories()
@@ -287,79 +327,118 @@ setWishlistdata({
  loading:false,
       totalItems:wishlistres?.data?.pagination?.totalPages
     })
-  }catch(err){
-    if(err?.response?.status==401){
-      router.push('/')
-    }
-  }finally{
+  }catch (err:any) {
+  if (err?.response?.status === 401) {
+    setWishlistdata({
+      items: [],
+      totalItems: 0,
+      loading: false
+    });
+    return;
+  }
+}finally{
       setWishlistdata((pre:any)=>({...pre,loading:false}))
   }
 }
- const fetchUser = async () => {
-if(pathname!="/adminauth"&&pathname!="/auth"&&pathname!="/"){
+const fetchUser = async () => {
+  if (
+    pathname === "/adminauth" ||
+    pathname === "/auth"
+  ) {
+    setLoading(false);
+    return;
+  }
 
+  try {
+    await getsettings();
 
-      try {
-await getsettings()
-        const res:any = await axios.get("/users/me")
-console.log(res,"response")
-        if (res.status==200) {
-          setLoginUserdata(res.data.user)
-          if(res?.data?.user?.role==3){
-fetchCart(res.data.user.id)
-          }
-          if([1,2]?.includes(Number(res?.data?.user?.role))){
-getintdata(res?.data?.user)
+    const res: any = await axios.get("/users/me");
 
-          }
-          await fetchcat()
-              
-        }
+    if (res.status === 200) {
+      setLoginUserdata(res.data.user);
 
-      } catch (err) {
-        setLoginUserdata(null)
-      if(err?.response?.status==401){
-    notify.error('Please login first')
-     
-          router.push("/")}}
-        
-       finally {
-        setLoading(false)
-      }}
+      if (res?.data?.user?.role == 3) {
+        fetchCart(res.data.user.id);
+      }
+
+      if (
+        [1, 2].includes(
+          Number(res?.data?.user?.role)
+        )
+      ) {
+        getintdata();
+      }
+
+      await fetchcat();
     }
-  useEffect(() => {
 
-   
-    fetchUser()
-fetchcat()
+  } catch (err: any) {
+    setLoginUserdata(null);
+  } finally {
+    setLoading(false);
+  }
+};
+useEffect(() => {
+  const init = async () => {
+    await fetchUser();
+    await fetchcat();
 
+    if (
+      pathname !== "/adminauth" &&
+      pathname !== "/auth" &&
+      !loginuserdata?.id
+    ) {
+      fetchCart();
+    }
+  };
 
-
-  }, [])
+  init();
+}, []);
 
   /* ======================
      Handle Cart
   ====================== */
 
-  const handleCart = (value: boolean) => {
-    if (loginuserdata?.id) {
-      fetchCart(loginuserdata.id, value)
-    }
-  }
+const handleCart = (value: boolean) => {
+  fetchCart(undefined, value);
+};
 
   /* ======================
      Login
   ====================== */
 
-  const login = async(data: User) => {
-    await getintdata()
-    setLoginUserdata(data)
-    if(data?.role==3){
-  fetchCart(data.id)
+const login = async (data: User) => {
+  await getintdata();
+
+  setLoginUserdata(data);
+
+  try {
+    const sessionId =
+      getGuestSessionId();
+
+    if (
+      sessionId &&
+      data?.role == 3
+    ) {
+      await axios.post(
+        "/cart/merge",
+        { sessionId }
+      );
+
+      localStorage.removeItem(
+        "guest_session_id"
+      );
     }
-     await fetchcat()
-   
+  } catch (err) {
+    console.log(err);
   }
+
+  if (data?.role == 3) {
+    await fetchCart(data.id);
+  }
+
+  await fetchcat();
+};
 
   /* ======================
      Logout
@@ -373,7 +452,11 @@ fetchcat()
 
       if (res.status === 200) {
 if(type=="users"){
-  setCartData([])
+setCartData({
+  items: [],
+  subtotal: 0,
+  totalItems: 0
+});
         setTotalCartProducts(0)
 
         router.push("/auth")

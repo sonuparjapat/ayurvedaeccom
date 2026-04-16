@@ -1,14 +1,28 @@
 const pool = require("../../config/db");
+const crypto = require("crypto");
+const validateGuestSession = async (sessionId) => {
+  if (!sessionId) return false;
 
+  const check = await pool.query(`
+    SELECT session_id
+    FROM guest_sessions
+    WHERE session_id = $1
+    AND is_active = true
+    AND expires_at > NOW()
+    LIMIT 1
+  `, [sessionId]);
+
+  return check.rows.length > 0;
+};
 
 /* ================= ADD TO CART ================= */
 
 exports.addToCart = async (req, res) => {
   try {
 
-    const userId = req.user.id; // from auth middleware
-    const { productId, quantity } = req.body;
-console.log(req.body,"body coming")
+    const userId = req?.user?.id; // from auth middleware
+  const { productId, quantity, sessionId } = req.body;
+
     if (!productId) {
       return res.status(400).json({ message: "Product ID required" });
     }
@@ -29,20 +43,42 @@ console.log(req.body,"body coming")
     if (product.rows[0].inventory < qty) {
       return res.status(400).json({ message: "Not enough stock" });
     }
+   /* logged in user */
+    if (userId) {
+      await pool.query(`
+        INSERT INTO cart (user_id, product_id, quantity)
+        VALUES ($1,$2,$3)
+        ON CONFLICT (user_id, product_id)
+        DO UPDATE SET quantity = cart.quantity + EXCLUDED.quantity
+      `, [userId, productId, qty]);
 
+      return res.json({ message: "wooah!!.. product added to cart" });
+    }
 
-    // Insert or Update cart
-    await pool.query(
-      `
-      INSERT INTO cart (user_id, product_id, quantity)
+    /* guest user */
+    
+    if (!sessionId) {
+      return res.status(400).json({ message: "Guest session required" });
+    }
+const valid =
+  await validateGuestSession(
+    sessionId
+  );
+
+if (!valid) {
+  return res.status(400).json({
+    message:
+      "Invalid guest session"
+  });
+}
+    await pool.query(`
+      INSERT INTO guest_cart (guest_session_id, product_id, quantity)
       VALUES ($1,$2,$3)
-      ON CONFLICT (user_id, product_id)
-      DO UPDATE SET quantity = cart.quantity + EXCLUDED.quantity
-      `,
-      [userId, productId, qty]
-    );
+      ON CONFLICT (guest_session_id, product_id)
+      DO UPDATE SET quantity = guest_cart.quantity + EXCLUDED.quantity
+    `, [sessionId, productId, qty]);
 
-    res.json({ message: "Added to cart" });
+    res.json({ message: "Product Added to guest cart" });
 
   } catch (err) {
     console.error("Add to cart error:", err);
@@ -50,44 +86,102 @@ console.log(req.body,"body coming")
   }
 };
 
+exports.createGuestSession = async (req, res) => {
+  try {
+    const sessionId = "gst_" + crypto.randomBytes(24).toString("hex");
 
+    await pool.query(`
+      INSERT INTO guest_sessions(
+        session_id,
+        expires_at,
+        ip_address,
+        user_agent
+      )
+      VALUES($1, NOW() + INTERVAL '30 days', $2, $3)
+    `, [
+      sessionId,
+      req.ip,
+      req.headers["user-agent"] || null
+    ]);
+
+    res.json({
+      success: true,
+      sessionId
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 /* ================= GET USER CART ================= */
 
-exports.getCart = async (req,res)=>{
+exports.getCart = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const sessionId = req.query.sessionId;
 
-  const userId=req.user.id
+    let data;
 
-  const data = await pool.query(`
+    if (userId) {
+      data = await pool.query(`
+        SELECT
+          c.product_id,
+          c.quantity,
+          p.name,
+          p.price,
+          p.images,
+          p.inventory,
+          p.gst_percent,
+          p.category_name,
+          p.category_id
+        FROM cart c
+        JOIN products p ON p.id = c.product_id
+        WHERE c.user_id=$1
+      `, [userId]);
 
-    SELECT
-      c.product_id,
-      c.quantity,
-      p.name,
-      p.price,
-      p.images,
-      p.inventory,
-      p.gst_percent,
-      p.category_name,
-      p.category_id
+    } else {
+      if (!sessionId) {
+        return res.json({
+          success: true,
+          items: [],
+          subtotal: 0
+        });
+      }
 
-    FROM cart c
-    JOIN products p
-    ON p.id=c.product_id
-    WHERE c.user_id=$1
+      data = await pool.query(`
+        SELECT
+          c.product_id,
+          c.quantity,
+          p.name,
+          p.price,
+          p.images,
+          p.inventory,
+          p.gst_percent,
+          p.category_name,
+          p.category_id
+        FROM guest_cart c
+        JOIN products p ON p.id = c.product_id
+        WHERE c.guest_session_id=$1
+      `, [sessionId]);
+    }
 
-  `,[userId])
+    const subtotal = data.rows.reduce(
+      (a, b) => a + Number(b.price) * Number(b.quantity),
+      0
+    );
 
-  const subtotal = data.rows.reduce(
-    (a,b)=>a + b.price*b.quantity,0
-  )
+    res.json({
+      success: true,
+      items: data.rows,
+      subtotal
+    });
 
-  res.json({
-    success:true,
-    items:data.rows,
-    subtotal
-  })
-}
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 
 
@@ -95,27 +189,63 @@ exports.getCart = async (req,res)=>{
 
 exports.updateCartQty = async (req, res) => {
   try {
+    const userId = req.user?.id;
+    const { productId, quantity, sessionId } = req.body;
 
-    const userId = req.user.id;
-    const { productId, quantity } = req.body;
-console.log(req.body,"body coming")
     if (!productId || quantity < 1) {
       return res.status(400).json({ message: "Invalid data" });
     }
+const product =
+ await pool.query(
+   "SELECT inventory FROM products WHERE id=$1",
+   [productId]
+ );
 
-    await pool.query(
-      `
-      UPDATE cart
-      SET quantity = $1
-      WHERE user_id = $2 AND product_id = $3
-      `,
-      [quantity, userId, productId]
-    );
+if (!product.rows.length) {
+ return res.status(404).json({
+   message:
+   "Product not found"
+ });
+}
 
-    res.json({ message: "Cart updated" });
+if (
+ quantity >
+ product.rows[0].inventory
+) {
+ return res.status(400).json({
+   message:
+   "Not enough stock"
+ });
+}
+    if (userId) {
+      await pool.query(`
+        UPDATE cart
+        SET quantity=$1
+        WHERE user_id=$2 AND product_id=$3
+      `, [quantity, userId, productId]);
+
+    } else {
+      const valid =
+ await validateGuestSession(
+   sessionId
+ );
+
+if (!valid) {
+ return res.status(400).json({
+   message:
+   "Invalid guest session"
+ });
+}
+      await pool.query(`
+        UPDATE guest_cart
+        SET quantity=$1
+        WHERE guest_session_id=$2 AND product_id=$3
+      `, [quantity, sessionId, productId]);
+    }
+
+    res.json({ message: "Woah..Cart updated Successfully" });
 
   } catch (err) {
-    console.error("Update cart error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -126,22 +256,37 @@ console.log(req.body,"body coming")
 
 exports.removeFromCart = async (req, res) => {
   try {
-
-    const userId = req.user.id;
+    const userId = req.user?.id;
     const { productId } = req.params;
+    const sessionId = req.query.sessionId;
 
-    await pool.query(
-      `
-      DELETE FROM cart
-      WHERE user_id = $1 AND product_id = $2
-      `,
-      [userId, productId]
-    );
+    if (userId) {
+      await pool.query(`
+        DELETE FROM cart
+        WHERE user_id=$1 AND product_id=$2
+      `, [userId, productId]);
 
-    res.json({ message: "Item removed" });
+    } else {
+      const valid =
+ await validateGuestSession(
+   sessionId
+ );
+
+if (!valid) {
+ return res.status(400).json({
+   message:
+   "Invalid guest session"
+ });
+}
+      await pool.query(`
+        DELETE FROM guest_cart
+        WHERE guest_session_id=$1 AND product_id=$2
+      `, [sessionId, productId]);
+    }
+
+    res.json({ message: "Item Removed Successfully" });
 
   } catch (err) {
-    console.error("Remove cart error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -152,18 +297,176 @@ exports.removeFromCart = async (req, res) => {
 
 exports.clearCart = async (req, res) => {
   try {
+    const userId = req.user?.id;
+    const { sessionId } = req.body;
 
-    const userId = req.user.id;
+    if (userId) {
+      await pool.query(
+        "DELETE FROM cart WHERE user_id=$1",
+        [userId]
+      );
 
-    await pool.query(
-      "DELETE FROM cart WHERE user_id=$1",
-      [userId]
-    );
+    } else {
+      const valid =
+ await validateGuestSession(
+   sessionId
+ );
+
+if (!valid) {
+ return res.status(400).json({
+   message:
+   "Invalid guest session"
+ });
+}
+      await pool.query(
+        "DELETE FROM guest_cart WHERE guest_session_id=$1",
+        [sessionId]
+      );
+    }
 
     res.json({ message: "Cart cleared" });
 
   } catch (err) {
-    console.error("Clear cart error:", err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.mergeGuestCart = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const userId = req?.user?.id;
+    const { sessionId } = req.body;
+
+    if (!userId) {
+      await client.query("ROLLBACK");
+      return res.status(401).json({
+        message: "Unauthorized"
+      });
+    }
+
+    if (!sessionId) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Guest session required"
+      });
+    }
+
+    /* validate active guest session */
+    const sessionCheck = await client.query(`
+      SELECT session_id
+      FROM guest_sessions
+      WHERE session_id = $1
+      AND is_active = true
+      AND expires_at > NOW()
+      LIMIT 1
+    `, [sessionId]);
+
+    if (!sessionCheck.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Invalid or expired guest session"
+      });
+    }
+
+    /* get guest cart items */
+    const items = await client.query(`
+      SELECT product_id, quantity
+      FROM guest_cart
+      WHERE guest_session_id = $1
+    `, [sessionId]);
+
+    for (const item of items.rows) {
+      /* product stock check */
+      const product = await client.query(`
+        SELECT inventory
+        FROM products
+        WHERE id = $1
+        LIMIT 1
+      `, [item.product_id]);
+
+      /* skip deleted product */
+      if (!product.rows.length) {
+        continue;
+      }
+
+      const stock = Number(
+        product.rows[0].inventory
+      );
+
+      if (stock < 1) {
+        continue;
+      }
+
+      const allowedQty = Math.min(
+        Number(item.quantity),
+        stock
+      );
+
+      await client.query(`
+        INSERT INTO cart (
+          user_id,
+          product_id,
+          quantity
+        )
+        VALUES ($1,$2,$3)
+
+        ON CONFLICT (
+          user_id,
+          product_id
+        )
+
+        DO UPDATE SET quantity =
+        LEAST(
+          cart.quantity +
+          EXCLUDED.quantity,
+          $4
+        )
+      `, [
+        userId,
+        item.product_id,
+        allowedQty,
+        stock
+      ]);
+    }
+
+    /* delete guest cart */
+    await client.query(`
+      DELETE FROM guest_cart
+      WHERE guest_session_id = $1
+    `, [sessionId]);
+
+    /* deactivate session */
+    await client.query(`
+      UPDATE guest_sessions
+      SET
+        is_active = false,
+        updated_at = NOW()
+      WHERE session_id = $1
+    `, [sessionId]);
+
+    await client.query("COMMIT");
+
+    return res.json({
+      success: true,
+      message: "Cart merged successfully"
+    });
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+
+    console.error(
+      "Merge guest cart error:",
+      err
+    );
+
+    return res.status(500).json({
+      message: "Server error"
+    });
+
+  } finally {
+    client.release();
   }
 };

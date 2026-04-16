@@ -3,18 +3,21 @@ const router = express.Router();
 
 
 const cartController = require("./cart.controller");
-const { auth } = require("../../middlewares/auth");
+const { auth, optionalAuth } = require("../../middlewares/auth");
 
 
-router.post("/", auth, cartController.addToCart);
+/* create guest session */
+router.post("/guest-session", cartController.createGuestSession);
+router.post("/",optionalAuth, cartController.addToCart);
 
-router.get("/", auth, cartController.getCart);
+router.get("/",optionalAuth, cartController.getCart);
 
-router.put("/", auth, cartController.updateCartQty);
+router.put("/", optionalAuth, cartController.updateCartQty);
 
-router.delete("/:productId", auth, cartController.removeFromCart);
+router.delete("/:productId", optionalAuth, cartController.removeFromCart);
 
-router.delete("/", auth, cartController.clearCart);
-
+router.delete("/", optionalAuth, cartController.clearCart);
+/* merge after login */
+router.post("/merge", auth, cartController.mergeGuestCart);
 
 module.exports = router;

@@ -401,20 +401,88 @@ console.log(slug,'idfsdfsdf')
     }
   }
 
-  const addToCart = async (pid: number) => {
-    if (!loginuserdata?.id) { notify.error('Please login to add items'); router.push('/auth'); return }
-    if (isInCart(pid)) {handleCart(true); return }
-    try {
-      setCartLoading(p => ({ ...p, [pid]: true }))
-      await axios.post('/cart', { productId: pid, quantity: 1 })
-      fetchCart(loginuserdata.id)
-      notify.success('Added to cart!')
-    } catch {
-      notify.error('Add to cart failed')
-    } finally {
-      setCartLoading(p => ({ ...p, [pid]: false }))
+ const addToCart = async (pid: number) => {
+  try {
+    /* if already in cart open cart */
+    if (isInCart(pid)) {
+      handleCart(true);
+      return;
     }
+
+    setCartLoading((p) => ({
+      ...p,
+      [pid]: true
+    }));
+
+    const payload: any = {
+      productId: pid,
+      quantity: 1
+    };
+
+    /* guest support */
+    if (!loginuserdata?.id) {
+      const sessionId =
+        localStorage.getItem(
+          "guest_session_id"
+        );
+
+      if (sessionId) {
+        payload.sessionId = sessionId;
+      }
+    }
+
+    const res = await axios.post(
+      "/cart",
+      payload
+    );
+
+    if (res.status === 200) {
+      fetchCart(
+        loginuserdata?.id
+      );
+
+      notify.success(
+        "Woah..Product is Added to cart!"
+      );
+    }
+
+  } catch (err: any) {
+    if (
+      err?.response?.status === 400
+    ) {
+      notify.error(
+        err?.response?.data
+          ?.message ||
+        "Oops..Unable to add item"
+      );
+
+    } else if (
+      err?.response?.status === 404
+    ) {
+      notify.error(
+        "Oops..Product not found"
+      );
+
+    } else if (
+      err?.response?.status === 500
+    ) {
+      notify.error(
+        "Server issue. Try again."
+      );
+
+    } else {
+      notify.error(
+        "Oops..Add to cart failed"
+      );
+    }
+
+  } finally {
+    setCartLoading((p) => ({
+      ...p,
+      [pid]: false
+    }));
   }
+};
 
   const clearAllFilters = () => {
     setSearchInput('')

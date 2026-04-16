@@ -81,58 +81,96 @@ const resetForms = () => {
 
   /* ================= LOGIN ================= */
 
-  const handleLogin = async (e: React.FormEvent) => {
+ const handleLogin = async (
+  e: React.FormEvent
+) => {
+  e.preventDefault();
 
-    e.preventDefault()
+  setErrors({});
+  setSuccessMessage("");
 
-    setErrors({})
-    setSuccessMessage('')
+  if (
+    !loginForm.email ||
+    !loginForm.password
+  ) {
+    return setErrors({
+      general:
+        "All fields are required"
+    });
+  }
 
+  if (
+    !isValidEmail(
+      loginForm.email
+    )
+  ) {
+    return setErrors({
+      email:
+        "Invalid email format"
+    });
+  }
 
-    if (!loginForm.email || !loginForm.password) {
-      return setErrors({
-        general: 'All fields are required'
-      })
-    }
+  try {
+    setIsLoading(true);
 
-    if (!isValidEmail(loginForm.email)) {
-      return setErrors({
-        email: 'Invalid email format'
-      })
-    }
+    const res = await axios.post(
+      "/users/login",
+      loginForm
+    );
 
+    /* login context handles merge */
+    await login(
+      res.data.user
+    );
 
-    try {
+    toast.success(
+      "Welcome back 👋"
+    );
 
-      setIsLoading(true)
+    router.push(
+      "/account"
+    );
 
-      const res = await axios.post(
-        '/users/login',
-        loginForm
-      )
+  } catch (err: any) {
+    console.error(err);
 
-      login(res.data.user)
-
-      toast.success('Welcome back 👋')
-
-      router.push('/account')
-
-
-    } catch (err: any) {
-
-      console.error(err)
-
+    if (
+      err?.response?.status === 401
+    ) {
       setErrors({
         general:
-          err?.response?.data?.message ||
-          'Login failed'
-      })
+          "Invalid credentials"
+      });
 
+    } else if (
+      err?.response?.status === 429
+    ) {
+      setErrors({
+        general:
+          "Too many attempts. Try later."
+      });
 
-    } finally {
-      setIsLoading(false)
+    } else if (
+      err?.response?.status === 500
+    ) {
+      setErrors({
+        general:
+          "Server issue. Try again."
+      });
+
+    } else {
+      setErrors({
+        general:
+          err?.response?.data
+            ?.message ||
+          "Login failed"
+      });
     }
+
+  } finally {
+    setIsLoading(false);
   }
+};
 
 
   /* ================= REGISTER ================= */

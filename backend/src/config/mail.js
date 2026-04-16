@@ -1,14 +1,7 @@
-const nodemailer = require('nodemailer')
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.sendgrid.net',
-  port: 587,
-  secure: false,
+const resend = new Resend(
+  process.env.RESEND_API_KEY
+);
 
-  auth: {
-    user: 'apikey', // always "apikey"
-    pass: process.env.SENDGRID_KEY,
-  },
-})
-
-module.exports = transporter
+module.exports = resend;

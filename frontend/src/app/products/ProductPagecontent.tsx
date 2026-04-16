@@ -158,20 +158,61 @@ export default function ProductsPageContent() {
     }
   }
 
-  const addToCart = async (id: string) => {
+const addToCart = async (id: string) => {
+  try {
+    const payload: any = {
+      productId: id,
+      quantity: 1
+    };
+
     if (!loginuserdata?.id) {
-      notify.error('Login first')
-      router.push('/auth')
-      return
+      const sessionId =
+        localStorage.getItem("guest_session_id");
+
+      if (sessionId) {
+        payload.sessionId = sessionId;
+      }
     }
-    try {
-      await axios.post('/cart', { productId: id, quantity: 1 })
-      notify.success('Added to cart')
-      fetchCart(loginuserdata?.id)
-    } catch {
-      notify.error('Add to cart failed')
+
+    const res = await axios.post("/cart", payload);
+
+    if (res.status === 200) {
+      notify.success("Added to cart");
+
+      fetchCart(
+        loginuserdata?.id,
+        false
+      );
+    }
+
+  } catch (err: any) {
+    console.log(err);
+
+    if (err?.response?.status === 400) {
+      notify.error(
+        err?.response?.data?.message ||
+        "Ooops..Unable to add item"
+      );
+
+    } else if (
+      err?.response?.status === 404
+    ) {
+      notify.error("Oops..Product not found");
+
+    } else if (
+      err?.response?.status === 500
+    ) {
+      notify.error(
+        "Server issue.Please Try again."
+      );
+
+    } else {
+      notify.error(
+        "OOps..Add to cart failed"
+      );
     }
   }
+};
 
   const totalPages = Math.ceil(total / limit)
 
