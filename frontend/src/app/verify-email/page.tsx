@@ -82,10 +82,7 @@ const {
 setTimeout(() => {
   router.push('/')
   
-  setTimeout(() => {
-    setAuthMode('login')
-    setOpenauth(true)
-  }, 400)
+ 
 
 }, 1800)
         setMessage(
