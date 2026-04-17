@@ -48,6 +48,7 @@ router.post('/users/send-mobile-otp',controller.sendMobileOtp)
 router.post('/send-login-otp',controller.sendLoginOtp)
 router.post('/verify-login-otp',controller.verifyLoginOtp)
 router.post("/forgot-password", controller.forgotPassword);
+router.post('/reset-password',controller.resetPassword)
 // ========================export data =======================
 router.get("/export", auth, exportData);
 /* ================= CURRENT USER ================= */

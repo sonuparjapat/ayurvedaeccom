@@ -1391,6 +1391,90 @@ exports.resendVerification = async (req, res) => {
     });
   }
 };
+
+exports.resetPassword = async (req, res) => {
+  try {
+
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Token and password are required."
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password must be at least 6 characters long."
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT id
+      FROM users
+      WHERE reset_token = $1
+      AND reset_token_expiry > NOW()
+      LIMIT 1
+      `,
+      [token]
+    );
+
+    if (!result.rowCount) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This reset link is invalid or expired."
+      });
+    }
+
+    const user = result.rows[0];
+
+    const hash =
+      await bcrypt.hash(
+        password,
+        12
+      );
+
+    await pool.query(
+      `
+      UPDATE users
+      SET
+        password = $1,
+        reset_token = NULL,
+        reset_token_expiry = NULL,
+        login_attempts = 0,
+        locked_until = NULL,
+        updated_at = NOW()
+      WHERE id = $2
+      `,
+      [hash, user.id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Your password has been reset successfully."
+    });
+
+  } catch (err) {
+
+    console.error(
+      "RESET PASSWORD ERROR:",
+      err
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to reset password right now."
+    });
+  }
+};
 /* ================= LOGOUT ================= */
 
 exports.logout = async (req, res) => {
