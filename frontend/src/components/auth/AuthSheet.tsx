@@ -14,10 +14,11 @@ import {
   User, Mail, Lock, Phone, Eye, EyeOff,
   ArrowRight, Send, ShieldCheck, Smartphone,
   RefreshCw, LogIn, UserPlus, KeyRound,
-  CheckCircle2, Layers, LucideIcon
+  CheckCircle2, LucideIcon, Leaf, Sprout,
+  FlowerIcon, BookOpen
 } from 'lucide-react'
 
-// ── Typed field component — inline styles win over Tailwind/shadcn resets ──
+// ── Typed field component ──
 interface AuthInputProps {
   icon: LucideIcon
   type?: string
@@ -30,11 +31,10 @@ interface AuthInputProps {
 function AuthInput({ icon: Icon, type = 'text', placeholder, value, onChange, rightSlot, inputStyle }: AuthInputProps) {
   return (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-      {/* Left icon — absolutely positioned, never inside the input flow */}
       <span style={{
         position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        pointerEvents: 'none', zIndex: 2, color: 'rgba(255,255,255,0.3)',
+        pointerEvents: 'none', zIndex: 2, color: '#7eb87a',
         width: '16px', height: '16px', flexShrink: 0,
       }}>
         <Icon size={15} strokeWidth={1.8} />
@@ -48,25 +48,27 @@ function AuthInput({ icon: Icon, type = 'text', placeholder, value, onChange, ri
           width: '100%',
           paddingTop: '11px',
           paddingBottom: '11px',
-          paddingLeft: '42px',          /* always 42px — icon is 13px left + 16px wide + 13px gap */
+          paddingLeft: '42px',
           paddingRight: rightSlot ? '42px' : '14px',
-          background: 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '10px',
+          background: '#f9f6f0',
+          border: '1.5px solid #e0d8cc',
+          borderRadius: '9px',
           fontSize: '14px',
-          color: '#fff',
+          color: '#2d2a20',
           outline: 'none',
           boxSizing: 'border-box',
-          transition: 'border 0.2s, background 0.2s',
+          transition: 'border 0.2s, background 0.2s, box-shadow 0.2s',
           ...inputStyle,
         }}
         onFocus={e => {
-          e.currentTarget.style.borderColor = 'rgba(99,102,241,0.6)'
-          e.currentTarget.style.background = 'rgba(99,102,241,0.06)'
+          e.currentTarget.style.borderColor = '#7eb87a'
+          e.currentTarget.style.background = '#f4f9f3'
+          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(126,184,122,0.12)'
         }}
         onBlur={e => {
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
-          e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+          e.currentTarget.style.borderColor = '#e0d8cc'
+          e.currentTarget.style.background = '#f9f6f0'
+          e.currentTarget.style.boxShadow = 'none'
         }}
       />
       {rightSlot && (
@@ -85,19 +87,19 @@ function AuthInput({ icon: Icon, type = 'text', placeholder, value, onChange, ri
 type AuthMode = 'login' | 'register' | 'otp' | 'mobileOtp' | 'forgot' | 'verifySent'
 
 const TAB_CONFIG = [
-  { key: 'login',     label: 'Login',      Icon: LogIn },
-  { key: 'register',  label: 'Register',   Icon: UserPlus },
-  { key: 'otp',       label: 'OTP',        Icon: KeyRound },
-  { key: 'mobileOtp', label: 'Mobile',     Icon: Smartphone },
+  { key: 'login',     label: 'Login',    Icon: LogIn },
+  { key: 'register',  label: 'Register', Icon: UserPlus },
+  { key: 'otp',       label: 'OTP',      Icon: KeyRound },
+  { key: 'mobileOtp', label: 'Mobile',   Icon: Smartphone },
 ] as const
 
 const HEADERS: Record<AuthMode, { title: string; subtitle: string }> = {
-  login:       { title: 'Welcome back',    subtitle: 'Sign in to your account' },
-  register:    { title: 'Create account',  subtitle: 'Fill in your details below' },
-  otp:         { title: 'OTP login',       subtitle: 'Passwordless sign in via email' },
-  mobileOtp:   { title: 'Mobile login',    subtitle: 'Sign in with your phone number' },
-  forgot:      { title: 'Reset password',  subtitle: 'We\'ll send a recovery link' },
-  verifySent:  { title: 'Check your inbox',subtitle: 'Verification email sent' },
+  login:      { title: 'Welcome back',      subtitle: 'Sign in to your wellness journey' },
+  register:   { title: 'Join the journey',  subtitle: 'Create your organic wellness account' },
+  otp:        { title: 'OTP login',         subtitle: 'Passwordless sign in via email' },
+  mobileOtp:  { title: 'Mobile login',      subtitle: 'Sign in with your phone number' },
+  forgot:     { title: 'Reset password',    subtitle: 'We\'ll send you a recovery link' },
+  verifySent: { title: 'Check your inbox',  subtitle: 'Verification email has been sent' },
 }
 
 export function AuthSheet() {
@@ -148,7 +150,7 @@ export function AuthSheet() {
       setLoading(true)
       const res = await axios.post('/users/login', loginForm)
       await login(res.data.user)
-      toast.success('Welcome back 👋')
+      toast.success('Welcome back 🌿')
       handlePostLogin()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Login failed')
@@ -242,169 +244,230 @@ export function AuthSheet() {
       <SheetContent
         side="right"
         className="w-full sm:max-w-md flex flex-col z-[9999] p-0 border-0"
-        style={{ background: 'var(--auth-bg, #0f0f13)' }}
+        style={{ background: '#faf7f2' }}
       >
         <style>{`
-          .auth-sheet-inner { height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
+          .auth-sheet-inner {
+            height: 100%; display: flex; flex-direction: column;
+            overflow-y: auto; background: #faf7f2;
+          }
 
           /* ── Header ── */
           .auth-header {
-            padding: 32px 28px 24px;
-            background: linear-gradient(160deg, #1a1a2e 0%, #12122a 60%, #0f0f13 100%);
+            padding: 28px 24px 22px;
+            background: linear-gradient(160deg, #eef7ec 0%, #e8f3e6 55%, #f0ede6 100%);
             position: relative; overflow: hidden; flex-shrink: 0;
+            border-bottom: 1px solid rgba(126,184,122,0.2);
           }
           .auth-header::before {
-            content: ''; position: absolute; top: -60px; right: -60px;
-            width: 200px; height: 200px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%);
+            content: ''; position: absolute; top: -55px; right: -55px;
+            width: 190px; height: 190px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(126,184,122,0.18) 0%, transparent 70%);
           }
           .auth-header::after {
-            content: ''; position: absolute; bottom: -40px; left: -30px;
-            width: 160px; height: 160px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%);
+            content: ''; position: absolute; bottom: -35px; left: -25px;
+            width: 150px; height: 150px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(193,123,42,0.1) 0%, transparent 70%);
+          }
+
+          /* Decorative leaf */
+          .auth-leaf-deco {
+            position: absolute; top: 14px; right: 22px; z-index: 0;
+            opacity: 0.12; color: #4e8a5f;
           }
 
           /* Brand */
-          .auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; position: relative; z-index: 1; }
+          .auth-brand {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 20px; position: relative; z-index: 1;
+          }
           .auth-brand-icon {
-            width: 38px; height: 38px; border-radius: 10px;
-            background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4);
+            width: 40px; height: 40px; border-radius: 12px;
+            background: rgba(126,184,122,0.22);
+            border: 1.5px solid rgba(78,138,95,0.35);
             display: flex; align-items: center; justify-content: center;
           }
-          .auth-brand-name { color: rgba(255,255,255,0.7); font-size: 13px; font-weight: 500; letter-spacing: 0.3px; }
+          .auth-brand-name {
+            color: #1e3a2a; font-size: 14px;
+            font-weight: 700; letter-spacing: 0.3px; line-height: 1.2;
+          }
+          .auth-brand-tag {
+            color: #7a9e7e; font-size: 9.5px;
+            letter-spacing: 1.3px; text-transform: uppercase;
+          }
 
           /* Heading */
           .auth-heading { position: relative; z-index: 1; }
-          .auth-title { color: #fff; font-size: 24px; font-weight: 600; margin-bottom: 4px; line-height: 1.2; }
-          .auth-subtitle { color: rgba(255,255,255,0.45); font-size: 13.5px; }
+          .auth-title {
+            color: #1e3a2a; font-size: 22px;
+            font-weight: 700; margin-bottom: 4px; line-height: 1.2;
+          }
+          .auth-subtitle { color: #7a9e7e; font-size: 13px; }
 
           /* Tabs */
           .auth-tabs {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
-            background: rgba(255,255,255,0.06); border-radius: 12px;
-            padding: 4px; margin-top: 24px; position: relative; z-index: 1;
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px;
+            background: rgba(0,0,0,0.04);
+            border: 1.5px solid rgba(126,184,122,0.22);
+            border-radius: 10px; padding: 3px;
+            margin-top: 20px; position: relative; z-index: 1;
           }
           .auth-tab {
-            display: flex; align-items: center; justify-content: center; gap: 5px;
-            padding: 8px 4px; border: none; background: transparent;
-            color: rgba(255,255,255,0.4); font-size: 12px; font-weight: 500;
-            border-radius: 9px; cursor: pointer; transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 3px;
+            padding: 7px 4px; border: none; background: transparent;
+            color: #9ab89a; font-size: 10px; font-weight: 500;
+            border-radius: 7px; cursor: pointer; transition: all 0.2s;
+            letter-spacing: 0.3px;
           }
-          .auth-tab:hover { color: rgba(255,255,255,0.7); }
-          .auth-tab.active { background: rgba(99,102,241,0.25); color: #fff; border: 1px solid rgba(99,102,241,0.3); }
+          .auth-tab:hover { color: #4e8a5f; background: rgba(126,184,122,0.08); }
+          .auth-tab.active {
+            background: #fff;
+            color: #3a6b4a;
+            border: 1.5px solid rgba(78,138,95,0.28);
+            box-shadow: 0 1px 4px rgba(78,138,95,0.12);
+            font-weight: 600;
+          }
           .auth-tab svg { width: 13px; height: 13px; flex-shrink: 0; }
 
           /* Body */
-          .auth-body { padding: 28px 28px 32px; flex: 1; background: #0f0f13; }
+          .auth-body {
+            padding: 24px 24px 30px;
+            flex: 1; background: #faf7f2;
+          }
+
+          /* Herb divider */
+          .herb-divider {
+            display: flex; align-items: center; gap: 8px;
+            margin: 2px 0 18px;
+            color: #b0c8af; font-size: 10px; letter-spacing: 1.2px;
+          }
+          .herb-divider::before, .herb-divider::after {
+            content: ''; flex: 1; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(126,184,122,0.35), transparent);
+          }
 
           /* Fields */
-          .auth-field { margin-bottom: 16px; }
+          .auth-field { margin-bottom: 15px; }
           .auth-label {
-            display: block; font-size: 11px; font-weight: 600;
-            color: rgba(255,255,255,0.35); letter-spacing: 0.8px;
-            text-transform: uppercase; margin-bottom: 7px;
+            display: flex; align-items: center; gap: 5px;
+            font-size: 10.5px; font-weight: 700;
+            color: #5a7a5e; letter-spacing: 0.9px;
+            text-transform: uppercase; margin-bottom: 6px;
           }
-          .auth-input-wrap { position: relative; }
-          .auth-input-icon {
-            position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
-            color: rgba(255,255,255,0.3); display: flex; pointer-events: none;
+          .auth-label-dot {
+            width: 4px; height: 4px; border-radius: 50%;
+            background: #7eb87a;
+            flex-shrink: 0;
           }
-          .auth-input-icon svg { width: 15px; height: 15px; }
-          .auth-input {
-            width: 100%; padding: 11px 13px 11px 40px;
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px; font-size: 14px; color: #fff;
-            outline: none; transition: border 0.2s, background 0.2s;
-          }
-          .auth-input::placeholder { color: rgba(255,255,255,0.2); }
-          .auth-input:focus { border-color: rgba(99,102,241,0.6); background: rgba(99,102,241,0.06); }
-          .auth-eye {
-            position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
-            background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.3);
-            padding: 4px; display: flex; transition: color 0.2s;
-          }
-          .auth-eye:hover { color: rgba(255,255,255,0.6); }
-          .auth-eye svg { width: 15px; height: 15px; }
 
           /* Forgot link */
-          .auth-forgot-row { text-align: right; margin: -6px 0 12px; }
+          .auth-forgot-row { text-align: right; margin: -4px 0 12px; }
           .auth-forgot-btn {
-            background: none; border: none; font-size: 12px;
-            color: rgba(99,102,241,0.9); cursor: pointer; padding: 0;
+            background: none; border: none; font-size: 11.5px;
+            color: #4e8a5f; cursor: pointer; padding: 0; font-weight: 500;
           }
-          .auth-forgot-btn:hover { text-decoration: underline; }
+          .auth-forgot-btn:hover { text-decoration: underline; color: #3a6b4a; }
 
           /* Primary button */
           .auth-primary-btn {
-            width: 100%; padding: 12px 16px; margin-top: 8px;
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            border: none; border-radius: 10px; color: #fff;
-            font-size: 14px; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            transition: opacity 0.2s, transform 0.15s; letter-spacing: 0.2px;
+            width: 100%; padding: 12px 16px; margin-top: 6px;
+            background: linear-gradient(135deg, #4e8a5f 0%, #3a6b4a 100%);
+            border: none;
+            border-radius: 10px; color: #fff;
+            font-size: 13.5px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+            transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 12px rgba(58,107,74,0.25);
           }
-          .auth-primary-btn:hover:not(:disabled) { opacity: 0.88; }
+          .auth-primary-btn:hover:not(:disabled) { opacity: 0.90; box-shadow: 0 4px 18px rgba(58,107,74,0.32); }
           .auth-primary-btn:active:not(:disabled) { transform: scale(0.98); }
-          .auth-primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+          .auth-primary-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
           .auth-primary-btn svg { width: 15px; height: 15px; }
 
           /* Secondary button */
           .auth-secondary-btn {
-            width: 100%; padding: 11px 16px; margin-top: 8px;
-            background: transparent; border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px; color: rgba(255,255,255,0.6);
-            font-size: 13.5px; cursor: pointer;
+            width: 100%; padding: 10px 16px; margin-top: 8px;
+            background: #fff;
+            border: 1.5px solid #dde8db;
+            border-radius: 10px; color: #5a7a5e;
+            font-size: 13px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; gap: 7px;
             transition: all 0.2s;
           }
-          .auth-secondary-btn:hover { border-color: rgba(99,102,241,0.4); color: #a5b4fc; background: rgba(99,102,241,0.06); }
+          .auth-secondary-btn:hover {
+            border-color: #7eb87a;
+            color: #3a6b4a;
+            background: #f4f9f3;
+          }
+          .auth-secondary-btn:disabled { opacity: 0.4; cursor: not-allowed; }
           .auth-secondary-btn svg { width: 14px; height: 14px; }
 
           /* Info box */
           .auth-info-box {
             display: flex; align-items: flex-start; gap: 10px;
-            padding: 12px 14px; background: rgba(99,102,241,0.08);
-            border: 1px solid rgba(99,102,241,0.2); border-radius: 10px;
-            margin-bottom: 18px;
+            padding: 11px 13px;
+            background: rgba(126,184,122,0.1);
+            border: 1.5px solid rgba(126,184,122,0.28);
+            border-radius: 9px; margin-bottom: 16px;
           }
-          .auth-info-box svg { width: 16px; height: 16px; color: #818cf8; flex-shrink: 0; margin-top: 1px; }
-          .auth-info-box p { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.5; }
+          .auth-info-box svg { width: 16px; height: 16px; color: #4e8a5f; flex-shrink: 0; margin-top: 1px; }
+          .auth-info-box p { font-size: 12.5px; color: #5a7a5e; line-height: 1.55; }
 
           /* OTP sent badge */
           .auth-sent-badge {
-            display: inline-flex; align-items: center; gap: 5px;
-            background: rgba(16,185,129,0.12); color: #34d399;
-            border-radius: 20px; padding: 3px 10px; font-size: 11.5px; font-weight: 500;
+            display: inline-flex; align-items: center; gap: 4px;
+            background: rgba(78,138,95,0.12); color: #3a6b4a;
+            border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 600;
+            border: 1px solid rgba(78,138,95,0.22);
           }
-          .auth-sent-badge svg { width: 12px; height: 12px; }
-
-          /* Divider */
-          .auth-divider {
-            display: flex; align-items: center; gap: 10px; margin: 18px 0;
-          }
-          .auth-divider-line { flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
-          .auth-divider-text { font-size: 12px; color: rgba(255,255,255,0.2); }
+          .auth-sent-badge svg { width: 11px; height: 11px; }
 
           /* Success */
           .auth-success-wrap { text-align: center; padding: 8px 0; }
           .auth-success-icon {
             width: 72px; height: 72px; border-radius: 50%;
-            background: rgba(99,102,241,0.1); border: 2px solid rgba(99,102,241,0.25);
+            background: rgba(78,138,95,0.1);
+            border: 2px solid rgba(78,138,95,0.25);
             display: inline-flex; align-items: center; justify-content: center;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
           }
-          .auth-success-icon svg { width: 30px; height: 30px; color: #818cf8; }
-          .auth-success-title { font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 8px; }
-          .auth-success-sub { font-size: 13.5px; color: rgba(255,255,255,0.4); line-height: 1.7; margin-bottom: 24px; }
+          .auth-success-icon svg { width: 30px; height: 30px; color: #4e8a5f; }
+          .auth-success-title { font-size: 19px; font-weight: 700; color: #1e3a2a; margin-bottom: 8px; }
+          .auth-success-sub {
+            font-size: 13px; color: #7a9e7e;
+            line-height: 1.7; margin-bottom: 22px;
+          }
 
-          /* Resend section */
+          /* Resend */
           .auth-resend-section {
-            margin-top: 20px; padding-top: 18px;
-            border-top: 1px solid rgba(255,255,255,0.06);
+            margin-top: 18px; padding-top: 16px;
+            border-top: 1px solid #e8e2d8;
           }
-          .auth-resend-label { font-size: 11px; color: rgba(255,255,255,0.25); text-align: center; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.6px; }
+          .auth-resend-label {
+            font-size: 10.5px; color: #9ab89a;
+            text-align: center; margin-bottom: 8px;
+            text-transform: uppercase; letter-spacing: 0.7px;
+          }
 
-          /* Override Sheet */
+          /* Trust badges */
+          .auth-trust-badges {
+            display: flex; gap: 6px; margin-top: 20px; flex-wrap: wrap;
+          }
+          .auth-badge {
+            background: rgba(78,138,95,0.08);
+            color: #4e8a5f;
+            border: 1px solid rgba(78,138,95,0.2);
+            border-radius: 20px; padding: 3px 10px;
+            font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
+          }
+          .auth-badge-amber {
+            background: rgba(193,123,42,0.08);
+            color: #a06828;
+            border: 1px solid rgba(193,123,42,0.22);
+          }
+
           [data-radix-popper-content-wrapper] { z-index: 9999 !important; }
         `}</style>
 
@@ -412,16 +475,27 @@ export function AuthSheet() {
 
           {/* ── HEADER ── */}
           <SheetHeader className="auth-header p-0 space-y-0">
+            {/* Decorative leaf */}
+            <div className="auth-leaf-deco">
+              <Leaf size={72} strokeWidth={1} />
+            </div>
+
+            {/* Brand */}
             <div className="auth-brand">
               <div className="auth-brand-icon">
-                <Layers size={18} color="rgba(165,180,252,0.9)" />
+                <Sprout size={19} color="#4e8a5f" strokeWidth={1.7} />
               </div>
-              <span className="auth-brand-name">YourApp</span>
+              <div>
+                <div className="auth-brand-name">VanaOrganic</div>
+                <div className="auth-brand-tag">Pure · Natural · Ayurvedic</div>
+              </div>
             </div>
+
             <div className="auth-heading">
               <div className="auth-title">{header.title}</div>
               <div className="auth-subtitle">{header.subtitle}</div>
             </div>
+
             <nav className="auth-tabs" aria-label="Authentication modes">
               {TAB_CONFIG.map(({ key, label, Icon }) => (
                 <button
@@ -441,13 +515,23 @@ export function AuthSheet() {
             {/* LOGIN */}
             {authMode === 'login' && (
               <div>
+                <div className="herb-divider">✦ &nbsp; secure login &nbsp; ✦</div>
+
                 <div className="auth-field">
-                  <label className="auth-label">Email address</label>
+                  <label className="auth-label">
+                    <span className="auth-label-dot" />
+                    Email address
+                  </label>
                   <AuthInput icon={Mail} type="email" placeholder="you@example.com"
-                    value={loginForm.email} onChange={e => setLoginForm({ ...loginForm, email: e.target.value })} />
+                    value={loginForm.email}
+                    onChange={e => setLoginForm({ ...loginForm, email: e.target.value })} />
                 </div>
+
                 <div className="auth-field">
-                  <label className="auth-label">Password</label>
+                  <label className="auth-label">
+                    <span className="auth-label-dot" />
+                    Password
+                  </label>
                   <AuthInput
                     icon={Lock}
                     type={showPassword ? 'text' : 'password'}
@@ -456,24 +540,36 @@ export function AuthSheet() {
                     onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
                     rightSlot={
                       <button type="button"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', display: 'flex', padding: 0 }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ab89a', display: 'flex', padding: 0 }}
                         onClick={() => setShowPassword(!showPassword)}>
                         {showPassword ? <EyeOff size={15} strokeWidth={1.8} /> : <Eye size={15} strokeWidth={1.8} />}
                       </button>
                     }
                   />
                 </div>
+
                 <div className="auth-forgot-row">
-                  <button className="auth-forgot-btn" onClick={() => setAuthMode('forgot')}>Forgot password?</button>
+                  <button className="auth-forgot-btn" onClick={() => setAuthMode('forgot')}>
+                    Forgot password?
+                  </button>
                 </div>
+
                 <button className="auth-primary-btn" disabled={loading} onClick={handleLogin}>
-                  <LogIn size={15} strokeWidth={2} /> {loading ? 'Signing in…' : 'Sign in to account'}
+                  <Leaf size={15} strokeWidth={2} />
+                  {loading ? 'Signing in…' : 'Sign in to account'}
                 </button>
+
                 <div className="auth-resend-section">
                   <div className="auth-resend-label">Email not verified yet?</div>
                   <button className="auth-secondary-btn" onClick={handleResendVerification}>
                     <RefreshCw size={14} strokeWidth={1.8} /> Resend verification email
                   </button>
+                </div>
+
+                <div className="auth-trust-badges">
+                  <span className="auth-badge">🌿 100% Organic</span>
+                  <span className="auth-badge auth-badge-amber">✨ Ayurvedic</span>
+                  <span className="auth-badge">🛡 Lab Tested</span>
                 </div>
               </div>
             )}
@@ -481,28 +577,39 @@ export function AuthSheet() {
             {/* REGISTER */}
             {authMode === 'register' && (
               <div>
+                <div className="herb-divider">✦ &nbsp; create account &nbsp; ✦</div>
+
                 <div className="auth-field">
-                  <label className="auth-label">Full name</label>
-                  <AuthInput icon={User} placeholder="John Doe"
-                    value={registerForm.name} onChange={e => setRegisterForm({ ...registerForm, name: e.target.value })} />
+                  <label className="auth-label"><span className="auth-label-dot" /> Full name</label>
+                  <AuthInput icon={User} placeholder="Your full name"
+                    value={registerForm.name}
+                    onChange={e => setRegisterForm({ ...registerForm, name: e.target.value })} />
                 </div>
+
                 <div className="auth-field">
-                  <label className="auth-label">Email address</label>
+                  <label className="auth-label"><span className="auth-label-dot" /> Email address</label>
                   <AuthInput icon={Mail} type="email" placeholder="you@example.com"
-                    value={registerForm.email} onChange={e => setRegisterForm({ ...registerForm, email: e.target.value })} />
+                    value={registerForm.email}
+                    onChange={e => setRegisterForm({ ...registerForm, email: e.target.value })} />
                 </div>
+
                 <div className="auth-field">
-                  <label className="auth-label">Mobile number</label>
+                  <label className="auth-label"><span className="auth-label-dot" /> Mobile number</label>
                   <AuthInput icon={Phone} type="tel" placeholder="+91 98765 43210"
-                    value={registerForm.phone} onChange={e => setRegisterForm({ ...registerForm, phone: e.target.value })} />
+                    value={registerForm.phone}
+                    onChange={e => setRegisterForm({ ...registerForm, phone: e.target.value })} />
                 </div>
+
                 <div className="auth-field">
-                  <label className="auth-label">Password</label>
+                  <label className="auth-label"><span className="auth-label-dot" /> Password</label>
                   <AuthInput icon={Lock} type="password" placeholder="Create a strong password"
-                    value={registerForm.password} onChange={e => setRegisterForm({ ...registerForm, password: e.target.value })} />
+                    value={registerForm.password}
+                    onChange={e => setRegisterForm({ ...registerForm, password: e.target.value })} />
                 </div>
+
                 <button className="auth-primary-btn" disabled={loading} onClick={handleRegister}>
-                  <UserPlus size={15} strokeWidth={2} /> {loading ? 'Creating account…' : 'Create account'}
+                  <Sprout size={15} strokeWidth={2} />
+                  {loading ? 'Creating account…' : 'Create account'}
                 </button>
               </div>
             )}
@@ -511,25 +618,30 @@ export function AuthSheet() {
             {authMode === 'otp' && (
               <div>
                 <div className="auth-info-box">
-                  <KeyRound size={16} strokeWidth={1.8} style={{ color: '#818cf8', flexShrink: 0, marginTop: '1px' }} />
+                  <KeyRound size={16} strokeWidth={1.8} />
                   <p>Enter your email to receive a one-time login code. No password needed.</p>
                 </div>
+
                 <div className="auth-field">
-                  <label className="auth-label">Email address</label>
+                  <label className="auth-label"><span className="auth-label-dot" /> Email address</label>
                   <AuthInput icon={Mail} type="email" placeholder="you@example.com"
-                    value={otpForm.identifier} onChange={e => setOtpForm({ ...otpForm, identifier: e.target.value })} />
+                    value={otpForm.identifier}
+                    onChange={e => setOtpForm({ ...otpForm, identifier: e.target.value })} />
                 </div>
+
                 {otpSent && (
                   <div className="auth-field">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '7px' }}>
-                      <label className="auth-label" style={{ margin: 0 }}>Enter OTP</label>
-                      <span className="auth-sent-badge"><CheckCircle2 size={12} /> Code sent</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <label className="auth-label" style={{ margin: 0 }}><span className="auth-label-dot" /> Enter OTP</label>
+                      <span className="auth-sent-badge"><CheckCircle2 size={11} /> Code sent</span>
                     </div>
                     <AuthInput icon={ShieldCheck} placeholder="6-digit code"
-                      value={otpForm.otp} onChange={e => setOtpForm({ ...otpForm, otp: e.target.value })}
+                      value={otpForm.otp}
+                      onChange={e => setOtpForm({ ...otpForm, otp: e.target.value })}
                       inputStyle={{ letterSpacing: '6px', fontWeight: 600 }} />
                   </div>
                 )}
+
                 {!otpSent ? (
                   <button className="auth-primary-btn" disabled={loading || otpTimer > 0} onClick={handleSendOtp}>
                     <Send size={15} strokeWidth={2} />
@@ -538,10 +650,12 @@ export function AuthSheet() {
                 ) : (
                   <>
                     <button className="auth-primary-btn" disabled={loading} onClick={handleVerifyOtp}>
-                      <ShieldCheck size={15} strokeWidth={2} /> {loading ? 'Verifying…' : 'Verify & sign in'}
+                      <ShieldCheck size={15} strokeWidth={2} />
+                      {loading ? 'Verifying…' : 'Verify & sign in'}
                     </button>
                     <button className="auth-secondary-btn" disabled={otpTimer > 0} onClick={handleSendOtp}>
-                      <RefreshCw size={14} strokeWidth={1.8} /> {otpTimer > 0 ? `Resend in ${otpTimer}s` : 'Resend code'}
+                      <RefreshCw size={14} strokeWidth={1.8} />
+                      {otpTimer > 0 ? `Resend in ${otpTimer}s` : 'Resend code'}
                     </button>
                   </>
                 )}
@@ -552,16 +666,20 @@ export function AuthSheet() {
             {authMode === 'forgot' && (
               <div>
                 <div className="auth-info-box">
-                  <Mail size={16} strokeWidth={1.8} style={{ color: '#818cf8', flexShrink: 0, marginTop: '1px' }} />
+                  <Mail size={16} strokeWidth={1.8} />
                   <p>Enter the email linked to your account and we'll send a secure reset link.</p>
                 </div>
+
                 <div className="auth-field">
-                  <label className="auth-label">Email address</label>
+                  <label className="auth-label"><span className="auth-label-dot" /> Email address</label>
                   <AuthInput icon={Mail} type="email" placeholder="you@example.com"
-                    value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} />
+                    value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)} />
                 </div>
+
                 <button className="auth-primary-btn" disabled={loading} onClick={handleForgotPassword}>
-                  <Send size={15} strokeWidth={2} /> {loading ? 'Sending…' : 'Send reset link'}
+                  <Send size={15} strokeWidth={2} />
+                  {loading ? 'Sending…' : 'Send reset link'}
                 </button>
                 <button className="auth-secondary-btn" onClick={() => setAuthMode('login')}>
                   ← Back to login
@@ -573,25 +691,30 @@ export function AuthSheet() {
             {authMode === 'mobileOtp' && (
               <div>
                 <div className="auth-info-box">
-                  <Smartphone size={16} strokeWidth={1.8} style={{ color: '#818cf8', flexShrink: 0, marginTop: '1px' }} />
+                  <Smartphone size={16} strokeWidth={1.8} />
                   <p>Enter your mobile number to receive a one-time code via SMS.</p>
                 </div>
+
                 <div className="auth-field">
-                  <label className="auth-label">Mobile number</label>
+                  <label className="auth-label"><span className="auth-label-dot" /> Mobile number</label>
                   <AuthInput icon={Phone} type="tel" placeholder="+91 98765 43210"
-                    value={mobileForm.phone} onChange={e => setMobileForm({ ...mobileForm, phone: e.target.value })} />
+                    value={mobileForm.phone}
+                    onChange={e => setMobileForm({ ...mobileForm, phone: e.target.value })} />
                 </div>
+
                 {mobileOtpSent && (
                   <div className="auth-field">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '7px' }}>
-                      <label className="auth-label" style={{ margin: 0 }}>SMS code</label>
-                      <span className="auth-sent-badge"><CheckCircle2 size={12} /> SMS sent</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <label className="auth-label" style={{ margin: 0 }}><span className="auth-label-dot" /> SMS code</label>
+                      <span className="auth-sent-badge"><CheckCircle2 size={11} /> SMS sent</span>
                     </div>
                     <AuthInput icon={ShieldCheck} placeholder="6-digit code"
-                      value={mobileForm.otp} onChange={e => setMobileForm({ ...mobileForm, otp: e.target.value })}
+                      value={mobileForm.otp}
+                      onChange={e => setMobileForm({ ...mobileForm, otp: e.target.value })}
                       inputStyle={{ letterSpacing: '6px', fontWeight: 600 }} />
                   </div>
                 )}
+
                 {!mobileOtpSent ? (
                   <button className="auth-primary-btn" disabled={loading || mobileOtpTimer > 0} onClick={handleSendMobileOtp}>
                     <Send size={15} strokeWidth={2} />
@@ -600,10 +723,12 @@ export function AuthSheet() {
                 ) : (
                   <>
                     <button className="auth-primary-btn" disabled={loading} onClick={handleVerifyMobileOtp}>
-                      <ShieldCheck size={15} strokeWidth={2} /> {loading ? 'Verifying…' : 'Verify & sign in'}
+                      <ShieldCheck size={15} strokeWidth={2} />
+                      {loading ? 'Verifying…' : 'Verify & sign in'}
                     </button>
                     <button className="auth-secondary-btn" disabled={mobileOtpTimer > 0} onClick={handleSendMobileOtp}>
-                      <RefreshCw size={14} strokeWidth={1.8} /> {mobileOtpTimer > 0 ? `Resend in ${mobileOtpTimer}s` : 'Resend SMS'}
+                      <RefreshCw size={14} strokeWidth={1.8} />
+                      {mobileOtpTimer > 0 ? `Resend in ${mobileOtpTimer}s` : 'Resend SMS'}
                     </button>
                   </>
                 )}
@@ -614,11 +739,11 @@ export function AuthSheet() {
             {authMode === 'verifySent' && (
               <div className="auth-success-wrap">
                 <div className="auth-success-icon">
-                  <Mail size={30} strokeWidth={1.8} style={{ color: '#818cf8' }} />
+                  <Mail size={30} strokeWidth={1.8} />
                 </div>
                 <div className="auth-success-title">Check your inbox</div>
                 <p className="auth-success-sub">
-                  We've sent a verification link to your email address. Click the link to activate your account.
+                  We've sent a verification link to your email address. Click the link to activate your account and begin your wellness journey.
                 </p>
                 <button className="auth-primary-btn" onClick={() => setAuthMode('login')}>
                   <ArrowRight size={15} strokeWidth={2} /> Go to login
