@@ -65,7 +65,18 @@ const router=useRouter()
 
 const [liked,setLiked] = useState(false)
 const [likeLoading,setLikeLoading] = useState(false)
-const {handleCart,opencart,setOpencart,totalCartProducts,fetchCart,cartdata,cartloading,loginuserdata}=useAuth()
+const {
+  handleCart,
+  opencart,
+  setOpencart,
+  totalCartProducts,
+  fetchCart,
+  cartdata,
+  cartloading,
+  loginuserdata,
+  setOpenauth,
+  setAuthMode,setPostLoginRedirect
+} = useAuth()
   /* ================= FETCH CART ================= */
 
 
@@ -395,19 +406,27 @@ const updateQuantity = async (
       {/* <Link> */}
       <Button
   onClick={() => {
-    setOpencart(false);
+  setOpencart(false);
 
-    if (!loginuserdata?.id) {
-      toast.error(
-        "Please login to continue checkout"
-      );
+ if (!loginuserdata?.id) {
 
-      router.push("/auth");
-      return;
-    }
+  toast.error(
+    "Please login to continue checkout"
+  )
 
-    router.push("/checkout");
-  }}
+  setPostLoginRedirect(
+    "/checkout"
+  )
+
+  setAuthMode("login")
+
+  setTimeout(() => {
+    setOpenauth(true)
+  }, 150)
+
+  return
+}
+}}
   className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md"
 >
   Checkout

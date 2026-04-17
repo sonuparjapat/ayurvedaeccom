@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/auth-context";
+import { AuthSheet } from "@/components/auth/AuthSheet";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,28 +54,32 @@ export default function RootLayout({
           className={`${inter.variable} font-sans antialiased bg-background text-foreground relative z-0`}
         >
           {children}
+  <AuthSheet />
 
 <Toaster
   position="bottom-right"
   reverseOrder={false}
+  containerStyle={{
+    zIndex: 999999,
+  }}
   toastOptions={{
     duration: 3500,
     style: {
-      borderRadius: '10px',
-      background: '#1f2937',
-      color: '#fff',
-      fontSize: '14px',
+      borderRadius: "10px",
+      background: "#1f2937",
+      color: "#fff",
+      fontSize: "14px",
     },
     success: {
       iconTheme: {
-        primary: '#10b981',
-        secondary: '#fff',
+        primary: "#10b981",
+        secondary: "#fff",
       },
     },
     error: {
       iconTheme: {
-        primary: '#ef4444',
-        secondary: '#fff',
+        primary: "#ef4444",
+        secondary: "#fff",
       },
     },
   }}

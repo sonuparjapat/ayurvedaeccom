@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import axios from '@/lib/axios'
-
+import { useAuth } from '@/context/auth-context'
 import {
   Card,
   CardContent,
@@ -13,8 +13,7 @@ import {
 } from '@/components/ui/card'
 
 import { Button } from '@/components/ui/button'
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
+
 
 
 /* ======================
@@ -27,7 +26,10 @@ type Status = 'loading' | 'success' | 'error'
 export default function VerifyEmailPage() {
 
   const router = useRouter()
-
+const {
+  setOpenauth,
+  setAuthMode
+} = useAuth()
   const [token, setToken] = useState<string | null>(null)
 
   const [status, setStatus] = useState<Status>('loading')
@@ -77,7 +79,15 @@ export default function VerifyEmailPage() {
         if (!isMounted) return
 
         setStatus('success')
+setTimeout(() => {
+  router.push('/')
+  
+  setTimeout(() => {
+    setAuthMode('login')
+    setOpenauth(true)
+  }, 400)
 
+}, 1800)
         setMessage(
           res.data?.message ||
           'Your email has been verified successfully!'
@@ -109,88 +119,72 @@ export default function VerifyEmailPage() {
      UI
   ====================== */
 
-  return (
-    <div className="min-h-screen flex flex-col">
+return (
+  <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-amber-50 flex items-center justify-center px-4">
 
-      <Header />
+    <Card className="w-full max-w-md shadow-2xl border-0 rounded-2xl">
 
-      <main className="flex-1 bg-gradient-to-br from-emerald-50 via-white to-amber-50 flex items-center justify-center px-4">
+      <CardHeader className="text-center pb-2">
+        <CardTitle className="text-2xl font-bold">
+          Email Verification
+        </CardTitle>
+      </CardHeader>
 
-        <Card className="w-full max-w-md shadow-xl">
+      <CardContent className="text-center space-y-5 p-6">
 
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">
-              Email Verification
-            </CardTitle>
-          </CardHeader>
+        {status === 'loading' && (
+          <>
+            <Loader2 className="w-12 h-12 mx-auto text-emerald-600 animate-spin" />
 
+            <p className="text-gray-600">
+              Verifying your email, please wait...
+            </p>
+          </>
+        )}
 
-          <CardContent className="text-center space-y-4">
+        {status === 'success' && (
+          <>
+            <CheckCircle className="w-12 h-12 mx-auto text-green-600" />
 
-            {/* Loading */}
-            {status === 'loading' && (
-              <>
-                <Loader2
-                  className="w-10 h-10 mx-auto text-emerald-600 animate-spin"
-                />
+            <p className="text-green-700 font-medium">
+              {message}
+            </p>
 
-                <p className="text-gray-600">
-                  Verifying your email, please wait…
-                </p>
-              </>
-            )}
+            <Button
+              className="w-full"
+              onClick={() =>
+                router.push("/")
+              }
+            >
+              Continue Shopping
+            </Button>
+          </>
+        )}
 
+        {status === 'error' && (
+          <>
+            <AlertCircle className="w-12 h-12 mx-auto text-red-600" />
 
-            {/* Success */}
-            {status === 'success' && (
-              <>
-                <CheckCircle
-                  className="w-10 h-10 mx-auto text-green-600"
-                />
+            <p className="text-red-700 font-medium">
+              {message}
+            </p>
 
-                <p className="text-green-700 font-medium">
-                  {message}
-                </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() =>
+                router.push("/")
+              }
+            >
+              Go Home
+            </Button>
+          </>
+        )}
 
-                <Button
-                  className="w-full mt-4"
-                  onClick={() => router.push('/auth')}
-                >
-                  Go to Login
-                </Button>
-              </>
-            )}
+      </CardContent>
 
+    </Card>
 
-            {/* Error */}
-            {status === 'error' && (
-              <>
-                <AlertCircle
-                  className="w-10 h-10 mx-auto text-red-600"
-                />
-
-                <p className="text-red-700 font-medium">
-                  {message}
-                </p>
-
-                <Button
-                  variant="outline"
-                  className="w-full mt-4"
-                  onClick={() => router.push('/auth')}
-                >
-                  Back to Login
-                </Button>
-              </>
-            )}
-
-          </CardContent>
-
-        </Card>
-
-      </main>
-
-      <Footer />
-
-    </div>
-  )
+  </div>
+)
 }

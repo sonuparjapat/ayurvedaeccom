@@ -15,28 +15,70 @@ const initDB = async () => {
     `);
 
     /* ================= USERS ================= */
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        role INTEGER DEFAULT 3 REFERENCES roles(id),
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(150) UNIQUE NOT NULL,
-        phone VARCHAR(20),
-        password TEXT NOT NULL,
-        address1 TEXT,
-        address2 TEXT,
-        pincode VARCHAR(10),
-        state VARCHAR(50),
-        country VARCHAR(50),
-        is_verified BOOLEAN DEFAULT FALSE,
-        verification_token TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_active BOOLEAN DEFAULT TRUE
-      )
-    `);
+ await client.query(`
+  CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+
+    role INTEGER DEFAULT 3 REFERENCES roles(id),
+
+    name VARCHAR(100) NOT NULL,
+
+    email VARCHAR(150) UNIQUE NOT NULL,
+
+    phone VARCHAR(20),
+
+    password TEXT NOT NULL,
+
+    address1 TEXT,
+    address2 TEXT,
+
+    pincode VARCHAR(10),
+    state VARCHAR(50),
+    country VARCHAR(50),
+
+    /* ================= EMAIL VERIFICATION ================= */
+    is_verified BOOLEAN DEFAULT FALSE,
+    verification_token TEXT,
+    email_verified_at TIMESTAMP,
+
+    /* ================= PHONE VERIFICATION ================= */
+    phone_verified BOOLEAN DEFAULT FALSE,
+    phone_verified_at TIMESTAMP,
+
+    /* ================= OTP LOGIN SYSTEM ================= */
+    otp_code VARCHAR(10),
+    otp_type VARCHAR(20),
+    otp_expiry TIMESTAMP,
+    otp_attempts INT DEFAULT 0,
+
+    /* ================= SECURITY ================= */
+    login_attempts INT DEFAULT 0,
+    locked_until TIMESTAMP,
+    last_login TIMESTAMP,
+    last_login_ip VARCHAR(50),
+
+    /* ================= PASSWORD RESET ================= */
+    reset_token TEXT,
+    reset_token_expiry TIMESTAMP,
+
+    /* ================= PROFILE / FUTURE ================= */
+    avatar TEXT,
+    google_id VARCHAR(255),
+
+    /* ================= STATUS ================= */
+    is_active BOOLEAN DEFAULT TRUE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+
+    /* ================= TIMESTAMPS ================= */
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);`);
+await client.query(`CREATE INDEX IF NOT EXISTS idx_users_verified ON users(is_verified);`);
+await client.query(`CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);`);
 
     /* ================= USER ADDRESSES ================= */

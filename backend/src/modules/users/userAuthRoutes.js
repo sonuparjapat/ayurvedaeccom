@@ -39,8 +39,15 @@ router.put("/address/default/:id", auth, usercontroller.setDefaultAddress);
 router.get("/settings", auth, getSettings);
 
 router.put("/settings", auth, updateSettings);
-
-
+// via mobile
+router.post('/users/verify-mobile-otp',controller.verifyMobileOtp)
+// resend verification link
+router.post(`/users/resend-verification`,controller.resendVerification)
+router.post('/users/send-mobile-otp',controller.sendMobileOtp)
+// viaemail
+router.post('/send-login-otp',controller.sendLoginOtp)
+router.post('/verify-login-otp',controller.verifyLoginOtp)
+router.post("/forgot-password", controller.forgotPassword);
 // ========================export data =======================
 router.get("/export", auth, exportData);
 /* ================= CURRENT USER ================= */

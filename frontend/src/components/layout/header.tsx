@@ -25,7 +25,13 @@ import useDebounce from '../debounce'
  
 export function Header() {
   const router = useRouter()
-  const { loginuserdata, logout, categoriesdata } = useAuth()
+const {
+  loginuserdata,
+  logout,
+  categoriesdata,
+  setOpenauth,
+  setAuthMode
+} = useAuth()
  
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -35,7 +41,9 @@ export function Header() {
   const [searchResults, setSearchResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
-  const [activeCategory, setActiveCategory] = useState(null)
+
+
+
   const searchRef = useRef(null)
  
   useEffect(() => {
@@ -907,9 +915,16 @@ export function Header() {
                     </button>
                   </>
                 ) : (
-                  <Link href="/auth" className="action-btn" aria-label="Login">
-                    <User size={18} />
-                  </Link>
+                <button
+  className="action-btn"
+  aria-label="Login"
+  onClick={() => {
+    setAuthMode('login')
+    setOpenauth(true)
+  }}
+>
+  <User size={18} />
+</button>
                 )}
  
                 {/* Cart */}
@@ -1051,10 +1066,17 @@ export function Header() {
                       </>
                     ) : (
                       <>
-                        <Link href="/auth" onClick={() => setIsMenuOpen(false)} className="mobile-action-pill primary">
+                      <button
+  onClick={() => {
+    setIsMenuOpen(false)
+    setAuthMode('login')
+    setOpenauth(true)
+  }}
+  className="mobile-action-pill primary"
+>
                           <User size={15} />
                           Login / Register
-                        </Link>
+                        </button>
                       </>
                     )}
                   </div>

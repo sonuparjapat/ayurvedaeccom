@@ -39,6 +39,10 @@ interface AuthContextType {
   totalCartProducts: number
 fetchCart: (id?: number, value?: boolean) => void
   handleCart: (value: boolean) => void
+ openauth: boolean
+setOpenauth: React.Dispatch<React.SetStateAction<boolean>>
+authMode: "login" | "register" | "otp"
+setAuthMode: React.Dispatch<React.SetStateAction<"login" | "register" | "otp">>
 }
 
 /* ======================
@@ -61,6 +65,11 @@ export const AuthProvider = ({
   const [loading, setLoading] = useState(true)
 
   const [opencart, setOpencart] = useState(false)
+  const [openauth, setOpenauth] = useState(false)
+
+const [authMode, setAuthMode] = useState<
+  "login" | "register" | "otp"
+>("login")
   const [totalCartProducts, setTotalCartProducts] = useState(0)
   const [cartdata, setCartData] = useState<any>({})
 const [cartloading,setCartLoading]=useState<boolean>(false)
@@ -80,6 +89,9 @@ const [reviewsData, setReviewsData] = useState({
   },
   error: null,
 });
+const [postLoginRedirect,
+  setPostLoginRedirect] =
+  useState("")
 const [categoriesdata,setCategoriesdata]=useState<any>([])
 const [orders,setOrders]=useState<any>([])
 const [topratedReviews,setTopRatedReviews]=useState<any>([])
@@ -497,6 +509,12 @@ wishlistdata,
     orders,loadOrders,
     fetchUser,
     categoriesdata,
+    openauth,
+setOpenauth,
+authMode,
+setAuthMode,
+postLoginRedirect,
+setPostLoginRedirect,
       }}
     >
       {children}
