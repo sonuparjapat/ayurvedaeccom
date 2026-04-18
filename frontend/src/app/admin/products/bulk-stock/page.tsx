@@ -3,10 +3,15 @@
 import { useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
+import { Package } from 'lucide-react'
+
 import {
-  UploadCloud,
-  Loader2,
-} from 'lucide-react'
+  BulkPageHeader,
+  BulkExampleCard,
+  BulkUploadBox,
+  BulkSubmitButton,
+  BulkSummaryStats,
+} from '@/components/admin/BulkUi'
 
 export default function BulkStockPage() {
   const [file, setFile] =
@@ -31,7 +36,10 @@ export default function BulkStockPage() {
       const form =
         new FormData()
 
-      form.append('file', file)
+      form.append(
+        'file',
+        file
+      )
 
       const res =
         await axios.post(
@@ -61,73 +69,34 @@ export default function BulkStockPage() {
   return (
     <div className="space-y-6">
 
-      <div>
-        <h1 className="text-2xl font-bold">
-          Bulk Stock Update
-        </h1>
+      <BulkPageHeader
+        title="Bulk Stock Update"
+        subtitle="Update product inventory using CSV file"
+        icon={<Package size={24} />}
+      />
 
-        <p className="text-sm text-gray-500">
-          Upload CSV with SKU and inventory
-        </p>
-      </div>
+      <BulkExampleCard
+        title="CSV Example"
+        lines={`sku,inventory
+APL001,40
+NK101,12
+PUMA55,0`}
+      />
 
-      <label className="block">
+      <BulkUploadBox
+        file={file}
+        setFile={setFile}
+      />
 
-        <div className="border-2 border-dashed rounded-2xl p-10 text-center bg-white cursor-pointer">
-          {file
-            ? file.name
-            : 'Click to upload CSV'}
-        </div>
-
-        <input
-          hidden
-          type="file"
-          accept=".csv"
-          onChange={(e)=>
-            e.target.files?.[0] &&
-            setFile(
-              e.target.files[0]
-            )
-          }
-        />
-
-      </label>
-
-      <button
+      <BulkSubmitButton
+        loading={loading}
+        text="Update Stock"
         onClick={submit}
-        disabled={loading}
-        className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-semibold flex items-center gap-2"
-      >
-        {loading && (
-          <Loader2
-            size={18}
-            className="animate-spin"
-          />
-        )}
+      />
 
-        <UploadCloud size={18} />
-        Update Stock
-      </button>
-
-      {report && (
-
-      <div className="bg-white border rounded-2xl p-5 space-y-2">
-
-        <div>
-          Updated:
-          {' '}
-          {report?.summary?.updated || 0}
-        </div>
-
-        <div>
-          Failed:
-          {' '}
-          {report?.summary?.failed || 0}
-        </div>
-
-      </div>
-
-      )}
+      <BulkSummaryStats
+        report={report}
+      />
 
     </div>
   )

@@ -74,6 +74,13 @@ router.post(
   bulkController.uploadBulkFiles,
   bulkController.bulkStatusUpdate
 )
+router.post(
+  '/products/bulk-category',
+  auth,
+  admin,
+  bulkController.uploadBulkFiles,
+  bulkController.bulkCategoryUpdate
+)
 router.get(
   '/logs',
   auth,

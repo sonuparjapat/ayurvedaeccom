@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
-import { Power } from 'lucide-react'
+import { FolderTree } from 'lucide-react'
 
 import {
   BulkPageHeader,
@@ -13,7 +13,7 @@ import {
   BulkSummaryStats,
 } from '@/components/admin/BulkUi'
 
-export default function BulkStatusPage() {
+export default function BulkCategoryPage() {
   const [file, setFile] =
     useState<File|null>(null)
 
@@ -43,7 +43,7 @@ export default function BulkStatusPage() {
 
       const res =
         await axios.post(
-          '/admin/products/bulk-status',
+          '/admin/products/bulk-category',
           form
         )
 
@@ -53,7 +53,7 @@ export default function BulkStatusPage() {
 
       toast.success(
         res?.data?.message ||
-        'Status updated'
+        'Category updated'
       )
 
     } catch (err:any) {
@@ -70,17 +70,22 @@ export default function BulkStatusPage() {
     <div className="space-y-6">
 
       <BulkPageHeader
-        title="Bulk Status Update"
-        subtitle="Update product status using CSV"
-        icon={<Power size={24} />}
+        title="Bulk Category Update"
+        subtitle="Update product category using CSV"
+        icon={<FolderTree size={24} />}
       />
 
       <BulkExampleCard
         title="CSV Example"
-        lines={`sku,status
-APL001,active
-NK101,inactive
-PUMA55,draft`}
+        lines={`sku,category_id
+APL001,5
+NK101,12
+
+OR
+
+sku,category_name
+APL001,Smartphones
+NK101,Running Shoes`}
       />
 
       <BulkUploadBox
@@ -90,7 +95,7 @@ PUMA55,draft`}
 
       <BulkSubmitButton
         loading={loading}
-        text="Update Status"
+        text="Update Categories"
         onClick={submit}
       />
 

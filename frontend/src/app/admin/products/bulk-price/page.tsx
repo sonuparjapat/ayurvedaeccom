@@ -3,10 +3,15 @@
 import { useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
+import { IndianRupee } from 'lucide-react'
+
 import {
-  UploadCloud,
-  Loader2
-} from 'lucide-react'
+  BulkPageHeader,
+  BulkExampleCard,
+  BulkUploadBox,
+  BulkSubmitButton,
+  BulkSummaryStats,
+} from '@/components/admin/BulkUi'
 
 export default function BulkPricePage() {
   const [file, setFile] =
@@ -31,7 +36,10 @@ export default function BulkPricePage() {
       const form =
         new FormData()
 
-      form.append('file', file)
+      form.append(
+        'file',
+        file
+      )
 
       const res =
         await axios.post(
@@ -39,11 +47,13 @@ export default function BulkPricePage() {
           form
         )
 
-      setReport(res.data)
+      setReport(
+        res.data
+      )
 
       toast.success(
         res?.data?.message ||
-        'Price updated'
+        'Prices updated'
       )
 
     } catch (err:any) {
@@ -59,86 +69,34 @@ export default function BulkPricePage() {
   return (
     <div className="space-y-6">
 
-      <div>
-        <h1 className="text-2xl font-bold">
-          Bulk Price Update
-        </h1>
+      <BulkPageHeader
+        title="Bulk Price Update"
+        subtitle="Update price and compare price using CSV"
+        icon={<IndianRupee size={24} />}
+      />
 
-        <p className="text-sm text-gray-500">
-          Upload CSV with SKU, price and compare price
-        </p>
-      </div>
-
-      <div className="bg-white border rounded-2xl p-4 text-sm text-gray-600">
-        Example CSV:
-        <pre className="mt-2 text-xs">
-sku,price,compareprice
+      <BulkExampleCard
+        title="CSV Example"
+        lines={`sku,price,compareprice
 APL001,74999,89999
 NK101,2499,3999
-        </pre>
-      </div>
+PUMA55,1999,2999`}
+      />
 
-      <label className="block">
-        <div className="border-2 border-dashed rounded-2xl p-10 text-center bg-white cursor-pointer">
-          {file
-            ? file.name
-            : 'Click to upload CSV'}
-        </div>
+      <BulkUploadBox
+        file={file}
+        setFile={setFile}
+      />
 
-        <input
-          hidden
-          type="file"
-          accept=".csv"
-          onChange={(e)=>
-            e.target.files?.[0] &&
-            setFile(
-              e.target.files[0]
-            )
-          }
-        />
-      </label>
-
-      <button
+      <BulkSubmitButton
+        loading={loading}
+        text="Update Prices"
         onClick={submit}
-        disabled={loading}
-        className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-semibold flex items-center gap-2"
-      >
-        {loading && (
-          <Loader2
-            size={18}
-            className="animate-spin"
-          />
-        )}
+      />
 
-        <UploadCloud size={18} />
-        Update Prices
-      </button>
-
-      {report && (
-
-      <div className="bg-white border rounded-2xl p-5 space-y-2">
-
-        <div>
-          Updated:
-          {' '}
-          {report?.summary?.updated || 0}
-        </div>
-
-        <div>
-          Failed:
-          {' '}
-          {report?.summary?.failed || 0}
-        </div>
-
-        <div>
-          Total:
-          {' '}
-          {report?.summary?.total || 0}
-        </div>
-
-      </div>
-
-      )}
+      <BulkSummaryStats
+        report={report}
+      />
 
     </div>
   )

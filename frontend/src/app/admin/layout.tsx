@@ -133,6 +133,12 @@ export default function AdminLayout({
 >
   Bulk Status
 </MenuItem>
+<MenuItem
+  href="/admin/products/bulk-category"
+  icon={<Package size={18} />}
+>
+  Bulk Category
+</MenuItem>
           <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />}>
             Orders
           </MenuItem>
