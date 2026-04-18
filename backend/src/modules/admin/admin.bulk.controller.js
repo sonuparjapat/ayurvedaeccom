@@ -572,145 +572,99 @@ await addAdminLog({
     })
   }
 }
-exports.bulkStockUpdate = async (
-  req,
-  res
-) => {
+exports.bulkStockUpdate =
+async (req, res) => {
   try {
+
     if (!req.files?.file?.[0]) {
       return res.status(400).json({
         success: false,
-        message: 'CSV file required',
+        message:
+          'CSV file required'
       })
     }
+
+    const fs =
+      require('fs')
+
+    const path =
+      require('path')
+
+    const {
+      createJob
+    } = require('../../utils/jobQueue')
 
     const csvFile =
       req.files.file[0]
 
-    const rows = []
+    const tempDir =
+      path.join(
+        process.cwd(),
+        'uploads',
+        'temp'
+      )
 
-    const readable =
-      new stream.Readable()
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(
+        tempDir,
+        { recursive:true }
+      )
+    }
 
-    readable.push(
+    const stamp =
+      Date.now() +
+      '-' +
+      Math.round(
+        Math.random() * 100000
+      )
+
+    const csvPath =
+      path.join(
+        tempDir,
+        `${stamp}-stock.csv`
+      )
+
+    fs.writeFileSync(
+      csvPath,
       csvFile.buffer
     )
 
-    readable.push(null)
-
-    readable
-      .pipe(csv())
-      .on(
-        'data',
-        (row) =>
-          rows.push(row)
-      )
-
-      .on(
-        'end',
-        async () => {
-
-        let updated = 0
-        let failed = []
-
-        for (
-          let i = 0;
-          i < rows.length;
-          i++
-        ) {
-          const rowNo = i + 2
-          const r = rows[i]
-
-          try {
-            const sku =
-              (
-                r.sku || ''
-              ).trim()
-
-            const inventory =
-              Number(
-                r.inventory
-              )
-
-            if (!sku) {
-              throw new Error(
-                'SKU missing'
-              )
-            }
-
-            if (
-              inventory < 0 ||
-              Number.isNaN(
-                inventory
-              )
-            ) {
-              throw new Error(
-                'Invalid inventory'
-              )
-            }
-
-            const result =
-              await pool.query(
-                `
-                UPDATE products
-                SET inventory=$1
-                WHERE LOWER(sku)=LOWER($2)
-                RETURNING id
-                `,
-                [
-                  inventory,
-                  sku,
-                ]
-              )
-
-            if (
-              !result.rowCount
-            ) {
-              throw new Error(
-                'SKU not found'
-              )
-            }
-
-            updated++
-
-          } catch (err) {
-
-            failed.push({
-              row: rowNo,
-              sku:
-                r.sku || '',
-              error:
-                err.message ||
-                'Failed',
-            })
-
-          }
-        }
-
-        return res.json({
-          success: true,
-          message:
-            'Stock update completed',
-          summary: {
-            updated,
-            failed:
-              failed.length,
-            total:
-              rows.length,
-          },
-          failed,
-        })
-
+    const job =
+      await createJob({
+        jobType:
+          'bulk_stock',
+        payload:{
+          csvPath
+        },
+        userId:
+          req.user?.id || null
       })
 
+    return res.status(200).json({
+      success: true,
+      message:
+        'Bulk stock queued successfully',
+      data:{
+        jobId:
+          job.id,
+        status:
+          job.status
+      }
+    })
+
   } catch (err) {
-    console.error(err)
+
+    console.error(
+      'bulkStockUpdate:',
+      err
+    )
 
     return res.status(500).json({
-      success: false,
+      success:false,
       message:
-        'Stock update failed',
+        'Stock update failed'
     })
+
   }
 }
 
@@ -831,551 +785,293 @@ exports.getAdminLogs = async (
 }
 
 // bulk update
-exports.bulkPriceUpdate = async (
-  req,
-  res
-) => {
+exports.bulkPriceUpdate =
+async (req, res) => {
   try {
+
     if (!req.files?.file?.[0]) {
       return res.status(400).json({
         success: false,
-        message: 'CSV file required',
+        message:
+          'CSV file required'
       })
     }
+
+    const fs =
+      require('fs')
+
+    const path =
+      require('path')
+
+    const {
+      createJob
+    } = require('../../utils/jobQueue')
 
     const csvFile =
       req.files.file[0]
 
-    const rows = []
+    const tempDir =
+      path.join(
+        process.cwd(),
+        'uploads',
+        'temp'
+      )
 
-    const readable =
-      new stream.Readable()
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(
+        tempDir,
+        { recursive:true }
+      )
+    }
 
-    readable.push(
+    const stamp =
+      Date.now() +
+      '-' +
+      Math.round(
+        Math.random() * 100000
+      )
+
+    const csvPath =
+      path.join(
+        tempDir,
+        `${stamp}-price.csv`
+      )
+
+    fs.writeFileSync(
+      csvPath,
       csvFile.buffer
     )
 
-    readable.push(null)
-
-    readable
-      .pipe(csv())
-      .on(
-        'data',
-        (row) =>
-          rows.push(row)
-      )
-      .on(
-        'end',
-        async () => {
-
-        let updated = 0
-        let failed = []
-
-        for (
-          let i = 0;
-          i < rows.length;
-          i++
-        ) {
-          const rowNo = i + 2
-          const r = rows[i]
-
-          try {
-            const sku =
-              (
-                r.sku || ''
-              ).trim()
-
-            const price =
-              Number(r.price)
-
-            const compareprice =
-              Number(
-                r.compareprice || 0
-              )
-
-            if (!sku) {
-              throw new Error(
-                'SKU missing'
-              )
-            }
-
-            if (
-              price <= 0 ||
-              Number.isNaN(price)
-            ) {
-              throw new Error(
-                'Invalid price'
-              )
-            }
-
-            if (
-              compareprice < 0 ||
-              Number.isNaN(compareprice)
-            ) {
-              throw new Error(
-                'Invalid compare price'
-              )
-            }
-
-            const result =
-              await pool.query(
-                `
-                UPDATE products
-                SET price=$1,
-                    compareprice=$2
-                WHERE LOWER(sku)=LOWER($3)
-                RETURNING id
-                `,
-                [
-                  price,
-                  compareprice,
-                  sku
-                ]
-              )
-
-            if (
-              !result.rowCount
-            ) {
-              throw new Error(
-                'SKU not found'
-              )
-            }
-
-            updated++
-
-          } catch (err) {
-
-            failed.push({
-              row: rowNo,
-              sku:
-                r.sku || '',
-              error:
-                err.message ||
-                'Failed',
-            })
-
-          }
-        }
-
-        await addAdminLog({
-          adminId:
-            req.user?.id || null,
-          action:
-            'BULK_PRICE_UPDATE',
-          module:
-            'PRICE',
-          details: {
-            updated,
-            failed:
-              failed.length,
-            total:
-              rows.length,
-          },
-          ip: req.ip,
-        })
-
-        return res.json({
-          success: true,
-          message:
-            'Price update completed',
-          summary: {
-            updated,
-            failed:
-              failed.length,
-            total:
-              rows.length,
-          },
-          failed,
-        })
-
+    const job =
+      await createJob({
+        jobType:
+          'bulk_price',
+        payload:{
+          csvPath
+        },
+        userId:
+          req.user?.id || null
       })
 
+    return res.status(200).json({
+      success: true,
+      message:
+        'Bulk price queued successfully',
+      data:{
+        jobId:
+          job.id,
+        status:
+          job.status
+      }
+    })
+
   } catch (err) {
-    console.error(err)
+
+    console.error(
+      'bulkPriceUpdate:',
+      err
+    )
 
     return res.status(500).json({
-      success: false,
+      success:false,
       message:
-        'Price update failed',
+        'Price update failed'
     })
+
   }
 }
 
 // bulk status update 
-exports.bulkStatusUpdate = async (
-  req,
-  res
-) => {
+exports.bulkStatusUpdate =
+async (req, res) => {
   try {
+
     if (!req.files?.file?.[0]) {
       return res.status(400).json({
-        success: false,
-        message: 'CSV file required',
+        success:false,
+        message:
+          'CSV file required'
       })
     }
+
+    const fs =
+      require('fs')
+
+    const path =
+      require('path')
+
+    const {
+      createJob
+    } = require('../../utils/jobQueue')
 
     const csvFile =
       req.files.file[0]
 
-    const rows = []
+    const tempDir =
+      path.join(
+        process.cwd(),
+        'uploads',
+        'temp'
+      )
 
-    const readable =
-      new stream.Readable()
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(
+        tempDir,
+        { recursive:true }
+      )
+    }
 
-    readable.push(
+    const stamp =
+      Date.now() +
+      '-' +
+      Math.round(
+        Math.random() * 100000
+      )
+
+    const csvPath =
+      path.join(
+        tempDir,
+        `${stamp}-status.csv`
+      )
+
+    fs.writeFileSync(
+      csvPath,
       csvFile.buffer
     )
 
-    readable.push(null)
-
-    readable
-      .pipe(csv())
-      .on(
-        'data',
-        (row) =>
-          rows.push(row)
-      )
-      .on(
-        'end',
-        async () => {
-
-        let updated = 0
-        let failed = []
-
-        const allowed =
-          [
-            'draft',
-            'active',
-            'inactive'
-          ]
-
-        for (
-          let i = 0;
-          i < rows.length;
-          i++
-        ) {
-          const rowNo = i + 2
-          const r = rows[i]
-
-          try {
-            const sku =
-              (
-                r.sku || ''
-              ).trim()
-
-            const status =
-              (
-                r.status || ''
-              )
-              .trim()
-              .toLowerCase()
-
-            if (!sku) {
-              throw new Error(
-                'SKU missing'
-              )
-            }
-
-            if (
-              !allowed.includes(
-                status
-              )
-            ) {
-              throw new Error(
-                'Invalid status'
-              )
-            }
-
-            const result =
-              await pool.query(
-                `
-                UPDATE products
-                SET status=$1
-                WHERE LOWER(sku)=LOWER($2)
-                RETURNING id
-                `,
-                [
-                  status,
-                  sku
-                ]
-              )
-
-            if (
-              !result.rowCount
-            ) {
-              throw new Error(
-                'SKU not found'
-              )
-            }
-
-            updated++
-
-          } catch (err) {
-
-            failed.push({
-              row: rowNo,
-              sku:
-                r.sku || '',
-              error:
-                err.message ||
-                'Failed',
-            })
-
-          }
-        }
-
-        await addAdminLog({
-          adminId:
-            req.user?.id || null,
-          action:
-            'BULK_STATUS_UPDATE',
-          module:
-            'PRODUCTS',
-          details: {
-            updated,
-            failed:
-              failed.length,
-            total:
-              rows.length,
-          },
-          ip: req.ip,
-        })
-
-        return res.json({
-          success: true,
-          message:
-            'Status update completed',
-          summary: {
-            updated,
-            failed:
-              failed.length,
-            total:
-              rows.length,
-          },
-          failed,
-        })
-
+    const job =
+      await createJob({
+        jobType:
+          'bulk_status',
+        payload:{
+          csvPath
+        },
+        userId:
+          req.user?.id || null
       })
 
+    return res.status(200).json({
+      success:true,
+      message:
+        'Bulk status queued successfully',
+      data:{
+        jobId:
+          job.id,
+        status:
+          job.status
+      }
+    })
+
   } catch (err) {
-    console.error(err)
+
+    console.error(
+      'bulkStatusUpdate:',
+      err
+    )
 
     return res.status(500).json({
-      success: false,
+      success:false,
       message:
-        'Status update failed',
+        'Status update failed'
     })
+
   }
 }
 
 // bulk categories update
-exports.bulkCategoryUpdate = async (
-  req,
-  res
-) => {
+exports.bulkCategoryUpdate =
+async (req, res) => {
   try {
+
     if (!req.files?.file?.[0]) {
       return res.status(400).json({
         success: false,
-        message: 'CSV file required',
+        message:
+          'CSV file required'
       })
     }
+
+    const fs =
+      require('fs')
+
+    const path =
+      require('path')
+
+    const {
+      createJob
+    } = require('../../utils/jobQueue')
 
     const csvFile =
       req.files.file[0]
 
-    const rows = []
+    const tempDir =
+      path.join(
+        process.cwd(),
+        'uploads',
+        'temp'
+      )
 
-    const readable =
-      new stream.Readable()
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(
+        tempDir,
+        { recursive:true }
+      )
+    }
 
-    readable.push(
+    const stamp =
+      Date.now() +
+      '-' +
+      Math.round(
+        Math.random() * 100000
+      )
+
+    const csvPath =
+      path.join(
+        tempDir,
+        `${stamp}-category.csv`
+      )
+
+    fs.writeFileSync(
+      csvPath,
       csvFile.buffer
     )
 
-    readable.push(null)
-
-    readable
-      .pipe(csv())
-      .on(
-        'data',
-        (row) =>
-          rows.push(row)
-      )
-      .on(
-        'end',
-        async () => {
-
-        const catRes =
-          await pool.query(
-            `
-            SELECT
-              id,
-              name,
-              gst_percent
-            FROM categories
-            `
-          )
-
-        const byId = {}
-        const byName = {}
-
-        catRes.rows.forEach(
-          (c) => {
-            byId[c.id] = c
-
-            byName[
-              c.name
-              .toLowerCase()
-            ] = c
-          }
-        )
-
-        let updated = 0
-        let failed = []
-
-        for (
-          let i = 0;
-          i < rows.length;
-          i++
-        ) {
-          const rowNo = i + 2
-          const r = rows[i]
-
-          try {
-            const sku =
-              (
-                r.sku || ''
-              ).trim()
-
-            const categoryId =
-              (
-                r.category_id || ''
-              ).trim()
-
-            const categoryName =
-              (
-                r.category_name || ''
-              ).trim()
-
-            if (!sku) {
-              throw new Error(
-                'SKU missing'
-              )
-            }
-
-            let category =
-              null
-
-            if (
-              categoryId
-            ) {
-              category =
-                byId[
-                  Number(
-                    categoryId
-                  )
-                ]
-            } else if (
-              categoryName
-            ) {
-              category =
-                byName[
-                  categoryName
-                  .toLowerCase()
-                ]
-            }
-
-            if (!category) {
-              throw new Error(
-                'Category not found'
-              )
-            }
-
-            const result =
-              await pool.query(
-                `
-                UPDATE products
-                SET
-                  category_id=$1,
-                  category_name=$2,
-                  gst_percent=$3
-                WHERE LOWER(sku)=LOWER($4)
-                RETURNING id
-                `,
-                [
-                  category.id,
-                  category.name,
-                  category.gst_percent || 0,
-                  sku
-                ]
-              )
-
-            if (
-              !result.rowCount
-            ) {
-              throw new Error(
-                'SKU not found'
-              )
-            }
-
-            updated++
-
-          } catch (err) {
-
-            failed.push({
-              row: rowNo,
-              sku:
-                r.sku || '',
-              error:
-                err.message ||
-                'Failed',
-            })
-
-          }
-        }
-
-        await addAdminLog({
-          adminId:
-            req.user?.id || null,
-          action:
-            'BULK_CATEGORY_UPDATE',
-          module:
-            'PRODUCTS',
-          details: {
-            updated,
-            failed:
-              failed.length,
-            total:
-              rows.length,
-          },
-          ip: req.ip,
-        })
-
-        return res.json({
-          success: true,
-          message:
-            'Category update completed',
-          summary: {
-            updated,
-            failed:
-              failed.length,
-            total:
-              rows.length,
-          },
-          failed,
-        })
-
+    const job =
+      await createJob({
+        jobType:
+          'bulk_category',
+        payload:{
+          csvPath
+        },
+        userId:
+          req.user?.id || null
       })
 
+    return res.status(200).json({
+      success: true,
+      message:
+        'Bulk category queued successfully',
+      data:{
+        jobId:
+          job.id,
+        status:
+          job.status
+      }
+    })
+
   } catch (err) {
-    console.error(err)
+
+    console.error(
+      'bulkCategoryUpdate:',
+      err
+    )
 
     return res.status(500).json({
-      success: false,
+      success:false,
       message:
-        'Category update failed',
+        'Category update failed'
     })
+
   }
 }
 

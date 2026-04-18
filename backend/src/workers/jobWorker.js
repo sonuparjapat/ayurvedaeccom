@@ -1,4 +1,5 @@
-
+const pool =
+require('../config/db')
 
 const {
   updateJob
@@ -6,28 +7,36 @@ const {
 
 const processBulkImagesJob =
 require('../services/processBulkImagesJob')
-const pool = require('../config/db')
+
+const processBulkStockJob =
+require('../services/processBulkStockJob')
+
+const processBulkCategoryJob =
+require('../services/processBulkCategoryJob')
+
+const processBulkPriceJob =
+require('../services/processBulkPriceJob')
+
+const processBulkStatusJob =
+require('../services/processBulkStatusJob')
 
 let running = false
 
 async function runWorker() {
 
   if (running) return
-
   running = true
 
   try {
 
     const result =
-      await pool.query(
-        `
+      await pool.query(`
         SELECT *
         FROM admin_jobs
         WHERE status='pending'
         ORDER BY id ASC
         LIMIT 1
-        `
-      )
+      `)
 
     if (!result.rowCount) {
       running = false
@@ -40,9 +49,8 @@ async function runWorker() {
     await updateJob(
       job.id,
       {
-        status:
-          'processing',
-        progress: 10,
+        status:'processing',
+        progress:10,
         started_at:
           new Date()
       }
@@ -50,52 +58,50 @@ async function runWorker() {
 
     try {
 
-      if (
-        job.job_type ===
-        'bulk_images'
-      ) {
+      let output = null
 
-        const output =
-          await processBulkImagesJob(
-            job
-          )
+      if (job.job_type === 'bulk_images')
+        output =
+          await processBulkImagesJob(job)
 
-        await updateJob(
-          job.id,
-          {
-            status:
-              'completed',
-            progress:100,
-            result:
-              output,
-            completed_at:
-              new Date()
-          }
+      else if (job.job_type === 'bulk_stock')
+        output =
+          await processBulkStockJob(job)
+
+      else if (job.job_type === 'bulk_category')
+        output =
+          await processBulkCategoryJob(job)
+
+      else if (job.job_type === 'bulk_price')
+        output =
+          await processBulkPriceJob(job)
+
+      else if (job.job_type === 'bulk_status')
+        output =
+          await processBulkStatusJob(job)
+
+      else
+        throw new Error(
+          'Unknown job type'
         )
 
-      } else {
-
-        await updateJob(
-          job.id,
-          {
-            status:
-              'failed',
-            error_text:
-              'Unknown job type',
-            completed_at:
-              new Date()
-          }
-        )
-
-      }
+      await updateJob(
+        job.id,
+        {
+          status:'completed',
+          progress:100,
+          result:output,
+          completed_at:
+            new Date()
+        }
+      )
 
     } catch (err) {
 
       await updateJob(
         job.id,
         {
-          status:
-            'failed',
+          status:'failed',
           error_text:
             err.message,
           completed_at:
@@ -106,19 +112,17 @@ async function runWorker() {
     }
 
   } catch (err) {
-
     console.error(
       'Worker error:',
       err
     )
-
   }
 
   running = false
 }
 
-module.exports = function startWorker() {
-
+module.exports =
+function startWorker() {
   setInterval(
     runWorker,
     5000
