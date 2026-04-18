@@ -85,222 +85,120 @@ iPhone 15,iphone-15,79999,89999,10,APL001,Mobiles,Apple,active,Short text,Long t
    Bulk Upload
 ========================= */
 
-exports.bulkUpload = async (req, res) => {
+exports.bulkUpload =
+async (req, res) => {
   try {
+
     if (!req.files?.file?.[0]) {
       return res.status(400).json({
-        success: false,
-        message: 'CSV file required',
+        success:false,
+        message:
+          'CSV file required'
       })
     }
 
-    const csvFile = req.files.file[0]
-    const rows = []
+    const fs =
+      require('fs')
 
-    const readable = new stream.Readable()
-    readable.push(csvFile.buffer)
-    readable.push(null)
+    const path =
+      require('path')
 
-    readable
-      .pipe(csv())
-      .on('data', (row) => rows.push(row))
-      .on('end', async () => {
+    const {
+      createJob
+    } = require('../../utils/jobQueue')
 
-        /* ================= ZIP FILES ================= */
-        let zipEntries = []
+    const csvFile =
+      req.files.file[0]
 
-        if (req.files?.imagesZip?.[0]) {
-          const zip = new AdmZip(
-            req.files.imagesZip[0].buffer
-          )
+    const zipFile =
+      req.files?.imagesZip?.[0] || null
 
-          zipEntries = zip
-            .getEntries()
-            .filter(
-              (f) => !f.isDirectory
-            )
-        }
+    const tempDir =
+      path.join(
+        process.cwd(),
+        'uploads',
+        'temp'
+      )
 
-        /* ================= CATEGORY MAP ================= */
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(
+        tempDir,
+        { recursive:true }
+      )
+    }
 
-        const catRes = await pool.query(
-          `SELECT id,name,gst_percent FROM categories`
+    const stamp =
+      Date.now() +
+      '-' +
+      Math.round(
+        Math.random() * 100000
+      )
+
+    const csvPath =
+      path.join(
+        tempDir,
+        `${stamp}-validate.csv`
+      )
+
+    fs.writeFileSync(
+      csvPath,
+      csvFile.buffer
+    )
+
+    let zipPath = null
+
+    if (zipFile) {
+      zipPath =
+        path.join(
+          tempDir,
+          `${stamp}-validate.zip`
         )
 
-        const categoryMap = {}
+      fs.writeFileSync(
+        zipPath,
+        zipFile.buffer
+      )
+    }
 
-        catRes.rows.forEach((c) => {
-          categoryMap[
-            c.name.toLowerCase()
-          ] = c
-        })
-
-        /* ================= EXISTING SKU ================= */
-
-        const skuRes = await pool.query(
-          `SELECT sku FROM products WHERE sku IS NOT NULL`
-        )
-
-        const existingSku = new Set(
-          skuRes.rows.map((r) =>
-            String(r.sku).trim().toLowerCase()
-          )
-        )
-
-        const csvSku = new Set()
-
-        const errors = []
-        const validRows = []
-
-        /* ================= LOOP ================= */
-
-        for (let i = 0; i < rows.length; i++) {
-          const rowNo = i + 2
-          const r = rows[i]
-
-          const rowErrors = []
-
-          const name = (r.name || '').trim()
-          const sku = (r.sku || '').trim()
-          const price = Number(r.price || 0)
-          const inventory = Number(
-            r.inventory || 0
-          )
-
-          const category_name =
-            (r.category_name || '').trim()
-
-          const status =
-            (r.status || 'draft')
-              .trim()
-              .toLowerCase()
-
-          if (!name)
-            rowErrors.push(
-              'Name required'
-            )
-
-          if (!sku)
-            rowErrors.push(
-              'SKU required'
-            )
-
-          if (price <= 0)
-            rowErrors.push(
-              'Valid price required'
-            )
-
-          if (inventory < 0)
-            rowErrors.push(
-              'Invalid inventory'
-            )
-
-          if (
-            !['draft', 'active', 'inactive']
-              .includes(status)
-          ) {
-            rowErrors.push(
-              'Invalid status'
-            )
-          }
-
-          const cat =
-            categoryMap[
-              category_name.toLowerCase()
-            ]
-
-          if (!cat) {
-            rowErrors.push(
-              'Category not found'
-            )
-          }
-
-          if (
-            csvSku.has(
-              sku.toLowerCase()
-            )
-          ) {
-            rowErrors.push(
-              'Duplicate SKU in CSV'
-            )
-          }
-
-          if (
-            existingSku.has(
-              sku.toLowerCase()
-            )
-          ) {
-            rowErrors.push(
-              'SKU already exists'
-            )
-          }
-
-          csvSku.add(
-            sku.toLowerCase()
-          )
-
-          /* Image Check */
-
-          const matchedImages =
-            zipEntries.filter((f) =>
-              f.entryName
-                .toLowerCase()
-                .startsWith(
-                  sku.toLowerCase() + '-'
-                )
-            )
-
-          if (
-            req.files?.imagesZip?.[0] &&
-            matchedImages.length === 0
-          ) {
-            rowErrors.push(
-              'No image found in ZIP'
-            )
-          }
-
-          if (rowErrors.length) {
-            errors.push({
-              row: rowNo,
-              sku,
-              errors: rowErrors,
-            })
-          } else {
-            validRows.push({
-              raw: r,
-              category: cat,
-              images: matchedImages,
-            })
-          }
-        }
-
-        /* ================= RESPONSE ================= */
-
-        return res.status(200).json({
-          success: true,
-          message:
-            errors.length
-              ? 'Validation completed with issues'
-              : 'Validation successful',
-          summary: {
-            totalRows: rows.length,
-            validRows:
-              validRows.length,
-            failedRows:
-              errors.length,
-          },
-          errors,
-        })
+    const job =
+      await createJob({
+        jobType:
+          'bulk_upload',
+        payload:{
+          csvPath,
+          zipPath
+        },
+        userId:
+          req.user?.id || null
       })
 
+    return res.status(200).json({
+      success:true,
+      message:
+        'Bulk validation queued successfully',
+      data:{
+        jobId:
+          job.id,
+        status:
+          job.status,
+        hasZip:
+          !!zipPath
+      }
+    })
+
   } catch (err) {
-    console.error(err)
+
+    console.error(
+      'bulkUpload:',
+      err
+    )
 
     return res.status(500).json({
-      success: false,
+      success:false,
       message:
-        'Bulk validation failed',
+        'Bulk validation failed'
     })
+
   }
 }
 
