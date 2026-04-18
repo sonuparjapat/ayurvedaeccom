@@ -7,7 +7,9 @@ const {
 } = require('../../utils/adminLogger')
 const {
   uploadImageToAWS,
-  deleteFromAWS
+  deleteFromAWS,
+    uploadImageFromUrl
+
 } = require('../../utils/awsImageUpload')
 const path = require('path')
 
@@ -1364,6 +1366,265 @@ exports.bulkCategoryUpdate = async (
       success: false,
       message:
         'Category update failed',
+    })
+  }
+}
+
+
+exports.bulkImagesUpdate = async (
+  req,
+  res
+) => {
+  try {
+    if (!req.files?.file?.[0]) {
+      return res.status(400).json({
+        success:false,
+        message:'CSV file required'
+      })
+    }
+
+    const csvFile =
+      req.files.file[0]
+
+    const zipFile =
+      req.files?.zip?.[0] || null
+
+    const rows = []
+
+    const readable =
+      new stream.Readable()
+
+    readable.push(
+      csvFile.buffer
+    )
+
+    readable.push(null)
+
+    readable
+      .pipe(csv())
+      .on(
+        'data',
+        row => rows.push(row)
+      )
+      .on(
+        'end',
+        async () => {
+
+        let zipEntries = []
+
+        if (zipFile) {
+          const zip =
+            new AdmZip(
+              zipFile.buffer
+            )
+
+          zipEntries =
+            zip.getEntries()
+        }
+
+        let updated = 0
+        let failed = []
+
+        for (
+          let i = 0;
+          i < rows.length;
+          i++
+        ) {
+          const rowNo = i + 2
+          const r = rows[i]
+
+          try {
+
+            const sku =
+              (
+                r.sku || ''
+              ).trim()
+
+            const mode =
+              (
+                r.mode || 'replace'
+              )
+              .trim()
+              .toLowerCase()
+
+            const imageUrls =
+              (
+                r.image_urls || ''
+              )
+              .trim()
+
+            if (!sku) {
+              throw new Error(
+                'SKU missing'
+              )
+            }
+
+            let newImages = []
+
+            /* ZIP Images */
+            const skuFiles =
+              zipEntries.filter(
+                e =>
+                  !e.isDirectory &&
+                  e.entryName
+                  .toLowerCase()
+                  .startsWith(
+                    sku.toLowerCase()
+                  )
+              )
+
+            for (const f of skuFiles) {
+
+              const buffer =
+                f.getData()
+
+              const fakeFile = {
+                buffer,
+                originalname:
+                  f.entryName,
+                mimetype:
+                  'image/jpeg'
+              }
+
+              const url =
+                await uploadImageToAWS(
+                  fakeFile,
+                  'products'
+                )
+
+              newImages.push(url)
+            }
+
+            /* URL Images */
+            if (
+              newImages.length === 0 &&
+              imageUrls
+            ) {
+              const links =
+                imageUrls
+                  .split('|')
+                  .map(x =>
+                    x.trim()
+                  )
+                  .filter(Boolean)
+
+              for (const link of links) {
+                const url =
+                  await uploadImageFromUrl(
+                    link,
+                    'products'
+                  )
+
+                newImages.push(url)
+              }
+            }
+
+            if (
+              newImages.length === 0
+            ) {
+              throw new Error(
+                'No images found'
+              )
+            }
+
+            const old =
+              await pool.query(
+                `
+                SELECT images
+                FROM products
+                WHERE LOWER(sku)=LOWER($1)
+                `,
+                [sku]
+              )
+
+            if (
+              !old.rowCount
+            ) {
+              throw new Error(
+                'SKU not found'
+              )
+            }
+
+            let finalImages =
+              newImages
+
+            if (
+              mode === 'append'
+            ) {
+              finalImages = [
+                ...(old.rows[0]
+                  .images || []),
+                ...newImages
+              ]
+            }
+
+            await pool.query(
+              `
+              UPDATE products
+              SET images=$1
+              WHERE LOWER(sku)=LOWER($2)
+              `,
+              [
+                finalImages,
+                sku
+              ]
+            )
+
+            updated++
+
+          } catch (err) {
+
+            failed.push({
+              row: rowNo,
+              sku:
+                r.sku || '',
+              error:
+                err.message
+            })
+
+          }
+        }
+
+        await addAdminLog({
+          adminId:
+            req.user?.id || null,
+          action:
+            'BULK_IMAGES_UPDATE',
+          module:
+            'PRODUCTS',
+          details:{
+            updated,
+            failed:
+              failed.length,
+            total:
+              rows.length
+          },
+          ip:req.ip
+        })
+
+        return res.json({
+          success:true,
+          message:
+            'Images updated successfully',
+          summary:{
+            updated,
+            failed:
+              failed.length,
+            total:
+              rows.length
+          },
+          failed
+        })
+
+      })
+
+  } catch (err) {
+    console.error(err)
+
+    return res.status(500).json({
+      success:false,
+      message:
+        'Bulk image update failed'
     })
   }
 }

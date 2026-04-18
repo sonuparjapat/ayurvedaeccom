@@ -139,6 +139,12 @@ export default function AdminLayout({
 >
   Bulk Category
 </MenuItem>
+<MenuItem
+  href="/admin/products/bulk-images"
+  icon={<Package size={18} />}
+>
+  Bulk Images
+</MenuItem>
           <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />}>
             Orders
           </MenuItem>

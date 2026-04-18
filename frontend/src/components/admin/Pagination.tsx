@@ -25,7 +25,7 @@ export default function Pagination({ pagination }: Props) {
     <div className="flex justify-center gap-2 flex-wrap">
 
       {Array.from(
-        { length: pagination.totalPages },
+        { length: pagination?.totalPages },
         (_, i) => i + 1
       ).map(page => (
 
@@ -33,7 +33,7 @@ export default function Pagination({ pagination }: Props) {
           key={page}
           onClick={() => go(page)}
           className={`px-3 py-1 rounded border
-          ${pagination.page === page
+          ${pagination?.page === page
             ? "bg-indigo-600 text-white"
             : "bg-white"
           }`}

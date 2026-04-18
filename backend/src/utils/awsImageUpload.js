@@ -2,7 +2,7 @@ const {
   PutObjectCommand,
   DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
-
+const axios=require("axios")
 const { s3 } = require("../config/aws");
 
 const path = require("path");
@@ -81,3 +81,52 @@ exports.deleteFromAWS = async (url) => {
     console.log("AWS Delete Error:", err);
   }
 };
+
+exports.uploadImageFromUrl = async (
+  imageUrl,
+  folder = 'products'
+) => {
+  try {
+
+    const response =
+      await axios.get(
+        imageUrl,
+        {
+          responseType:
+            'arraybuffer',
+          timeout: 15000,
+        }
+      )
+
+    const ext =
+      imageUrl
+        .split('?')[0]
+        .split('.')
+        .pop() || 'jpg'
+
+    const fakeFile = {
+      buffer:
+        Buffer.from(
+          response.data
+        ),
+      originalname:
+        `remote.${ext}`,
+      mimetype:
+        response.headers[
+          'content-type'
+        ] ||
+        'image/jpeg',
+    }
+
+    return await exports
+      .uploadImageToAWS(
+        fakeFile,
+        folder
+      )
+
+  } catch (err) {
+    throw new Error(
+      'Failed to fetch image URL'
+    )
+  }
+}
