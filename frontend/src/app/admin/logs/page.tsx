@@ -5,9 +5,9 @@ import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Search } from 'lucide-react'
 
-import DynamicTable from '@/components/DynamicTable'
-import Pagination from '@/components/Pagination'
-import AppModal from '@/components/AppModal'
+import DynamicTable from '@/components/table/table'
+import Pagination from '@/components/admin/Pagination'
+import AppModal from '@/components/modal/AppModal'
 
 export default function LogsPage() {
   const [rows, setRows] =
