@@ -4,7 +4,7 @@ import { useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Package } from 'lucide-react'
-
+import downloadFailedCsv from '@/app/utils/downloadFailedCsv'
 import {
   BulkPageHeader,
   BulkExampleCard,
@@ -97,7 +97,21 @@ PUMA55,0`}
       <BulkSummaryStats
         report={report}
       />
+{report?.failed?.length > 0 && (
 
+<button
+  onClick={() =>
+    downloadFailedCsv(
+      report.failed,
+      'stock_failed_rows.csv'
+    )
+  }
+  className="px-5 py-3 rounded-xl bg-red-600 text-white font-semibold"
+>
+  Download Failed CSV
+</button>
+
+)}
     </div>
   )
 }

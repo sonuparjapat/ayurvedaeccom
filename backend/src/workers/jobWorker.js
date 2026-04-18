@@ -1,0 +1,130 @@
+
+
+const {
+  updateJob
+} = require('../utils/jobQueue')
+
+const processBulkImagesJob =
+require('../services/processBulkImagesJob')
+const pool = require('../config/db')
+
+let running = false
+
+async function runWorker() {
+
+  if (running) return
+
+  running = true
+
+  try {
+
+    const result =
+      await pool.query(
+        `
+        SELECT *
+        FROM admin_jobs
+        WHERE status='pending'
+        ORDER BY id ASC
+        LIMIT 1
+        `
+      )
+
+    if (!result.rowCount) {
+      running = false
+      return
+    }
+
+    const job =
+      result.rows[0]
+
+    await updateJob(
+      job.id,
+      {
+        status:
+          'processing',
+        progress: 10,
+        started_at:
+          new Date()
+      }
+    )
+
+    try {
+
+      if (
+        job.job_type ===
+        'bulk_images'
+      ) {
+
+        const output =
+          await processBulkImagesJob(
+            job
+          )
+
+        await updateJob(
+          job.id,
+          {
+            status:
+              'completed',
+            progress:100,
+            result:
+              output,
+            completed_at:
+              new Date()
+          }
+        )
+
+      } else {
+
+        await updateJob(
+          job.id,
+          {
+            status:
+              'failed',
+            error_text:
+              'Unknown job type',
+            completed_at:
+              new Date()
+          }
+        )
+
+      }
+
+    } catch (err) {
+
+      await updateJob(
+        job.id,
+        {
+          status:
+            'failed',
+          error_text:
+            err.message,
+          completed_at:
+            new Date()
+        }
+      )
+
+    }
+
+  } catch (err) {
+
+    console.error(
+      'Worker error:',
+      err
+    )
+
+  }
+
+  running = false
+}
+
+module.exports = function startWorker() {
+
+  setInterval(
+    runWorker,
+    5000
+  )
+
+  console.log(
+    '✅ Job worker started'
+  )
+}

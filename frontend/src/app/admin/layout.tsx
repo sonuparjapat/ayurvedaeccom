@@ -145,6 +145,18 @@ export default function AdminLayout({
 >
   Bulk Images
 </MenuItem>
+<MenuItem
+  href="/admin/import-history"
+  icon={<List size={18} />}
+>
+  Import History
+</MenuItem>
+<MenuItem
+  href="/admin/jobs"
+  icon={<List size={18} />}
+>
+  Jobs
+</MenuItem>
           <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />}>
             Orders
           </MenuItem>

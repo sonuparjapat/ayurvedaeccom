@@ -13,6 +13,8 @@ const cartRoutes = require("./modules/cart/cart.routes");
 const settingRoutes=require("./modules/settings/settings.routes")
 const companyRoutes=require("./modules/companyDetails/companyRoutes")
 const routedapis=require("./modules/openRoutedapis/routesapi.route")
+const startWorker =
+require('./workers/jobWorker')
 const app = express();
 
 

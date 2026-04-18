@@ -382,6 +382,31 @@ await client.query(`CREATE TABLE IF NOT EXISTS guest_sessions (
  ip_address VARCHAR(50),
  user_agent TEXT
 );`)
+
+
+// queue table
+
+await client.query(`CREATE TABLE IF NOT EXISTS admin_jobs (
+  id SERIAL PRIMARY KEY,
+  job_type VARCHAR(100) NOT NULL,
+  status VARCHAR(30) DEFAULT 'pending',
+  progress INTEGER DEFAULT 0,
+  payload JSONB DEFAULT '{}',
+  result JSONB DEFAULT '{}',
+  error_text TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP
+)`)
+await client.query(`
+CREATE INDEX IF NOT EXISTS idx_admin_jobs_status
+ON admin_jobs(status)
+`)
+await client.query(`
+CREATE INDEX IF NOT EXISTS idx_admin_jobs_created
+ON admin_jobs(created_at DESC)
+`)
 // admin logs
 await client.query(`CREATE TABLE IF NOT EXISTS admin_logs (
   id SERIAL PRIMARY KEY,

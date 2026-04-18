@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import { Search } from 'lucide-react'
 
 import DynamicTable from '@/components/table/table'
-import Pagination from '@/components/admin/Pagination'
+import Pagination from '@/components/Paginationcom'
 import AppModal from '@/components/modal/AppModal'
 
 export default function LogsPage() {

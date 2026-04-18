@@ -11,8 +11,17 @@ const {
     uploadImageFromUrl
 
 } = require('../../utils/awsImageUpload')
-const path = require('path')
 
+const pool = require('../../config/db')
+const fs =
+require('fs')
+
+const path =
+require('path')
+
+const {
+  createJob
+} = require('../../utils/jobQueue')
 const getMimeType = (fileName = '') => {
   const ext = path
     .extname(fileName)
@@ -1371,17 +1380,27 @@ exports.bulkCategoryUpdate = async (
 }
 
 
-exports.bulkImagesUpdate = async (
-  req,
-  res
-) => {
+exports.bulkImagesUpdate =
+async (req, res) => {
   try {
+
     if (!req.files?.file?.[0]) {
       return res.status(400).json({
-        success:false,
-        message:'CSV file required'
+        success: false,
+        message:
+          'CSV file required'
       })
     }
+
+    const fs =
+      require('fs')
+
+    const path =
+      require('path')
+
+    const {
+      createJob
+    } = require('../../utils/jobQueue')
 
     const csvFile =
       req.files.file[0]
@@ -1389,242 +1408,224 @@ exports.bulkImagesUpdate = async (
     const zipFile =
       req.files?.zip?.[0] || null
 
-    const rows = []
+    const tempDir =
+      path.join(
+        process.cwd(),
+        'uploads',
+        'temp'
+      )
 
-    const readable =
-      new stream.Readable()
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(
+        tempDir,
+        { recursive:true }
+      )
+    }
 
-    readable.push(
+    const stamp =
+      Date.now() +
+      '-' +
+      Math.round(
+        Math.random() * 100000
+      )
+
+    const csvPath =
+      path.join(
+        tempDir,
+        `${stamp}-bulk.csv`
+      )
+
+    fs.writeFileSync(
+      csvPath,
       csvFile.buffer
     )
 
-    readable.push(null)
+    let zipPath = null
 
-    readable
-      .pipe(csv())
-      .on(
-        'data',
-        row => rows.push(row)
+    if (zipFile) {
+
+      zipPath =
+        path.join(
+          tempDir,
+          `${stamp}-images.zip`
+        )
+
+      fs.writeFileSync(
+        zipPath,
+        zipFile.buffer
       )
-      .on(
-        'end',
-        async () => {
+    }
 
-        let zipEntries = []
-
-        if (zipFile) {
-          const zip =
-            new AdmZip(
-              zipFile.buffer
-            )
-
-          zipEntries =
-            zip.getEntries()
-        }
-
-        let updated = 0
-        let failed = []
-
-        for (
-          let i = 0;
-          i < rows.length;
-          i++
-        ) {
-          const rowNo = i + 2
-          const r = rows[i]
-
-          try {
-
-            const sku =
-              (
-                r.sku || ''
-              ).trim()
-
-            const mode =
-              (
-                r.mode || 'replace'
-              )
-              .trim()
-              .toLowerCase()
-
-            const imageUrls =
-              (
-                r.image_urls || ''
-              )
-              .trim()
-
-            if (!sku) {
-              throw new Error(
-                'SKU missing'
-              )
-            }
-
-            let newImages = []
-
-            /* ZIP Images */
-            const skuFiles =
-              zipEntries.filter(
-                e =>
-                  !e.isDirectory &&
-                  e.entryName
-                  .toLowerCase()
-                  .startsWith(
-                    sku.toLowerCase()
-                  )
-              )
-
-            for (const f of skuFiles) {
-
-              const buffer =
-                f.getData()
-
-              const fakeFile = {
-                buffer,
-                originalname:
-                  f.entryName,
-                mimetype:
-                  'image/jpeg'
-              }
-
-              const url =
-                await uploadImageToAWS(
-                  fakeFile,
-                  'products'
-                )
-
-              newImages.push(url)
-            }
-
-            /* URL Images */
-            if (
-              newImages.length === 0 &&
-              imageUrls
-            ) {
-              const links =
-                imageUrls
-                  .split('|')
-                  .map(x =>
-                    x.trim()
-                  )
-                  .filter(Boolean)
-
-              for (const link of links) {
-                const url =
-                  await uploadImageFromUrl(
-                    link,
-                    'products'
-                  )
-
-                newImages.push(url)
-              }
-            }
-
-            if (
-              newImages.length === 0
-            ) {
-              throw new Error(
-                'No images found'
-              )
-            }
-
-            const old =
-              await pool.query(
-                `
-                SELECT images
-                FROM products
-                WHERE LOWER(sku)=LOWER($1)
-                `,
-                [sku]
-              )
-
-            if (
-              !old.rowCount
-            ) {
-              throw new Error(
-                'SKU not found'
-              )
-            }
-
-            let finalImages =
-              newImages
-
-            if (
-              mode === 'append'
-            ) {
-              finalImages = [
-                ...(old.rows[0]
-                  .images || []),
-                ...newImages
-              ]
-            }
-
-            await pool.query(
-              `
-              UPDATE products
-              SET images=$1
-              WHERE LOWER(sku)=LOWER($2)
-              `,
-              [
-                finalImages,
-                sku
-              ]
-            )
-
-            updated++
-
-          } catch (err) {
-
-            failed.push({
-              row: rowNo,
-              sku:
-                r.sku || '',
-              error:
-                err.message
-            })
-
-          }
-        }
-
-        await addAdminLog({
-          adminId:
-            req.user?.id || null,
-          action:
-            'BULK_IMAGES_UPDATE',
-          module:
-            'PRODUCTS',
-          details:{
-            updated,
-            failed:
-              failed.length,
-            total:
-              rows.length
-          },
-          ip:req.ip
-        })
-
-        return res.json({
-          success:true,
-          message:
-            'Images updated successfully',
-          summary:{
-            updated,
-            failed:
-              failed.length,
-            total:
-              rows.length
-          },
-          failed
-        })
-
+    const job =
+      await createJob({
+        jobType:
+          'bulk_images',
+        payload: {
+          csvPath,
+          zipPath
+        },
+        userId:
+          req.user?.id || null
       })
 
+    return res.status(200).json({
+      success: true,
+      message:
+        'Bulk images queued successfully',
+      data: {
+        jobId:
+          job.id,
+        status:
+          job.status,
+        hasZip:
+          !!zipPath
+      }
+    })
+
   } catch (err) {
+
+    console.error(
+      'bulkImagesUpdate:',
+      err
+    )
+
+    return res.status(500).json({
+      success: false,
+      message:
+        'Failed to queue bulk images'
+    })
+
+  }
+}
+
+// jobs 
+exports.getJobs = async (
+  req,
+  res
+) => {
+  try {
+
+    const page =
+      Number(
+        req.query.page || 1
+      )
+
+    const limit =
+      Number(
+        req.query.limit || 20
+      )
+
+    const offset =
+      (page - 1) * limit
+
+    const countResult =
+      await pool.query(`
+        SELECT COUNT(*)::int AS total
+        FROM admin_jobs
+      `)
+
+    const total =
+      countResult.rows[0].total
+
+    const result =
+      await pool.query(
+        `
+        SELECT
+          id,
+          job_type,
+          status,
+          progress,
+          payload,
+          result,
+          error_text,
+          created_by,
+          created_at,
+          started_at,
+          completed_at
+        FROM admin_jobs
+        ORDER BY id DESC
+        LIMIT $1
+        OFFSET $2
+        `,
+        [
+          limit,
+          offset
+        ]
+      )
+
+    return res.json({
+      success: true,
+      data:
+        result.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages:
+          Math.ceil(
+            total / limit
+          )
+      }
+    })
+
+  } catch (err) {
+
     console.error(err)
 
     return res.status(500).json({
       success:false,
       message:
-        'Bulk image update failed'
+        'Failed to load jobs'
     })
+
+  }
+}
+
+exports.getJobById = async (
+  req,
+  res
+) => {
+  try {
+
+    const { id } =
+      req.params
+
+    const result =
+      await pool.query(
+        `
+        SELECT *
+        FROM admin_jobs
+        WHERE id=$1
+        LIMIT 1
+        `,
+        [id]
+      )
+
+    if (
+      !result.rowCount
+    ) {
+      return res.status(404).json({
+        success:false,
+        message:
+          'Job not found'
+      })
+    }
+
+    return res.json({
+      success:true,
+      data:
+        result.rows[0]
+    })
+
+  } catch (err) {
+
+    console.error(err)
+
+    return res.status(500).json({
+      success:false,
+      message:
+        'Failed to load job'
+    })
+
   }
 }

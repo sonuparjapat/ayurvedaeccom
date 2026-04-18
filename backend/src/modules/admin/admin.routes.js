@@ -133,6 +133,19 @@ router.get(
 router.get('/overview',auth,admin, analyticscontroller.getOverviewAnalytics);
 // get status code 
 router.get('/status_codes',auth,controller.getstauscodes)
+router.get(
+  '/jobs',
+  auth,
+  admin,
+  bulkController.getJobs
+)
+
+router.get(
+  '/jobs/:id',
+  auth,
+  admin,
+  bulkController.getJobById
+)
 router.get('/:id', controller.getOrderById)
 
 router.put('/orders/:id/status', controller.updateOrderStatus)
