@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState,useEffect } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 
@@ -17,9 +17,20 @@ export default function BulkUploadPage() {
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [zipFile, setZipFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-const [result, setResult] = useState<any>(null)
-const [importing, setImporting] = useState(false)
-const [finalReport, setFinalReport] = useState<any>(null)
+const [result, setResult] =
+  useState<any>(null)
+
+const [importing, setImporting] =
+  useState(false)
+
+const [finalReport, setFinalReport] =
+  useState<any>(null)
+
+const [validationJobId, setValidationJobId] =
+  useState<number | null>(null)
+
+const [importJobId, setImportJobId] =
+  useState<number | null>(null)
 const [progress, setProgress] = useState(0)
 const [progressText, setProgressText] =
   useState('')
@@ -95,7 +106,108 @@ const [progressText, setProgressText] =
 
   return timer
 }
+const pollJob = async (
+  id:number,
+  type:'validate'|'import'
+) => {
 
+  const timer =
+    setInterval(async () => {
+
+    try {
+
+      const res =
+        await axios.get(
+          '/admin/jobs?page=1&limit=100'
+        )
+
+      const rows =
+        res?.data?.data || []
+
+      const job =
+        rows.find(
+          (x:any) => x.id === id
+        )
+
+      if (!job) return
+
+      if (
+        job.status === 'completed'
+      ) {
+
+        clearInterval(timer)
+
+        setProgress(100)
+
+        setProgressText(
+          type === 'validate'
+          ? 'Validation completed'
+          : 'Import completed'
+        )
+
+        if (type === 'validate') {
+
+          setResult({
+            summary:{
+              totalRows:
+                job.result?.totalRows || 0,
+              validRows:
+                job.result?.validRows || 0,
+              failedRows:
+                job.result?.failedRows || 0
+            },
+            errors:
+              job.result?.errors || []
+          })
+
+        } else {
+
+          setFinalReport({
+            summary:{
+              imported:
+                job.result?.imported || 0,
+              failed:
+                job.result?.failed?.length || 0,
+              total:
+                job.result?.total || 0
+            },
+            failed:
+              job.result?.failed || []
+          })
+
+        }
+
+        toast.success(
+          type === 'validate'
+          ? 'Validation completed'
+          : 'Import completed'
+        )
+
+        setTimeout(() => {
+          setProgress(0)
+          setProgressText('')
+        }, 1200)
+      }
+
+      if (
+        job.status === 'failed'
+      ) {
+
+        clearInterval(timer)
+
+        toast.error(
+          job.error_text ||
+          'Job failed'
+        )
+
+        setProgress(0)
+        setProgressText('')
+      }
+
+    } catch {}
+
+  }, 3000)
+}
   const submit = async () => {
     if (!csvFile) {
       return toast.error('Please upload CSV file')
@@ -124,13 +236,20 @@ setProgress(100)
 setProgressText(
   'Validation completed'
 )
-setResult(res.data)
+const jobId =
+  res?.data?.data?.jobId
+
+setValidationJobId(jobId)
 
 toast.success(
   res?.data?.message ||
-  'Validation completed'
+  'Validation started'
 )
 
+pollJob(
+  jobId,
+  'validate'
+)
     } catch (err: any) {
       clearInterval(timer)
 setProgress(0)
@@ -181,14 +300,20 @@ setProgress(100)
 setProgressText(
   'Import completed'
 )
-    setFinalReport(
-      res.data
-    )
+const jobId =
+  res?.data?.data?.jobId
 
-    toast.success(
-      res?.data?.message ||
-      'Import completed'
-    )
+setImportJobId(jobId)
+
+toast.success(
+  res?.data?.message ||
+  'Import started'
+)
+
+pollJob(
+  jobId,
+  'import'
+)
 
   } catch (err:any) {
     clearInterval(timer)
