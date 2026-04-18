@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   Building,
+  UploadCloud,
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
@@ -105,7 +106,33 @@ export default function AdminLayout({
           <MenuItem href="/admin/products" icon={<Package size={18} />}>
             Products
           </MenuItem>
-
+            <MenuItem href="/admin/products/bulk-upload" icon={<UploadCloud size={18} />}>
+    Bulk Upload
+          </MenuItem>
+<MenuItem
+  href="/admin/products/bulk-stock"
+  icon={<Package size={18} />}
+>
+  Bulk Stock
+</MenuItem>
+<MenuItem
+  href="/admin/products/bulk-price"
+  icon={<Package size={18} />}
+>
+  Bulk Price
+</MenuItem>
+<MenuItem
+  href="/admin/logs"
+  icon={<List size={18} />}
+>
+  Logs
+</MenuItem>
+<MenuItem
+  href="/admin/products/bulk-status"
+  icon={<Package size={18} />}
+>
+  Bulk Status
+</MenuItem>
           <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />}>
             Orders
           </MenuItem>

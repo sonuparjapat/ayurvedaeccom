@@ -454,3 +454,147 @@ async function getItems(id){
   `,[id])
   return res.rows
 }
+
+
+
+exports.bulkStockUpdate = async (
+  req,
+  res
+) => {
+  try {
+    if (!req.files?.file?.[0]) {
+      return res.status(400).json({
+        success: false,
+        message: 'CSV file required',
+      })
+    }
+
+    const csvFile =
+      req.files.file[0]
+
+    const rows = []
+
+    const readable =
+      new stream.Readable()
+
+    readable.push(
+      csvFile.buffer
+    )
+
+    readable.push(null)
+
+    readable
+      .pipe(csv())
+      .on(
+        'data',
+        (row) =>
+          rows.push(row)
+      )
+
+      .on(
+        'end',
+        async () => {
+
+        let updated = 0
+        let failed = []
+
+        for (
+          let i = 0;
+          i < rows.length;
+          i++
+        ) {
+          const rowNo = i + 2
+          const r = rows[i]
+
+          try {
+            const sku =
+              (
+                r.sku || ''
+              ).trim()
+
+            const inventory =
+              Number(
+                r.inventory
+              )
+
+            if (!sku) {
+              throw new Error(
+                'SKU missing'
+              )
+            }
+
+            if (
+              inventory < 0 ||
+              Number.isNaN(
+                inventory
+              )
+            ) {
+              throw new Error(
+                'Invalid inventory'
+              )
+            }
+
+            const result =
+              await pool.query(
+                `
+                UPDATE products
+                SET inventory=$1
+                WHERE LOWER(sku)=LOWER($2)
+                RETURNING id
+                `,
+                [
+                  inventory,
+                  sku,
+                ]
+              )
+
+            if (
+              !result.rowCount
+            ) {
+              throw new Error(
+                'SKU not found'
+              )
+            }
+
+            updated++
+
+          } catch (err) {
+
+            failed.push({
+              row: rowNo,
+              sku:
+                r.sku || '',
+              error:
+                err.message ||
+                'Failed',
+            })
+
+          }
+        }
+
+        return res.json({
+          success: true,
+          message:
+            'Stock update completed',
+          summary: {
+            updated,
+            failed:
+              failed.length,
+            total:
+              rows.length,
+          },
+          failed,
+        })
+
+      })
+
+  } catch (err) {
+    console.error(err)
+
+    return res.status(500).json({
+      success: false,
+      message:
+        'Stock update failed',
+    })
+  }
+}

@@ -3,7 +3,7 @@ const router = express.Router()
 
 
 const controller = require('../admin/admin.controller')
-
+const bulkController = require('../admin/admin.bulk.controller')
 const upload = require('../../config/multer')
 const { allowRoles } = require('../../middlewares/role')
 const { auth } = require('../../middlewares/auth')
@@ -32,7 +32,54 @@ router.get('/stats', auth, admin, controller.stats)
 
 router.get('/recent-orders', auth, admin, controller.recentOrders)
 router.get('/products', auth, admin, controller.getAll)
+router.get(
+  '/products/bulk-template',
+  auth,
+  admin,
+  bulkController.downloadTemplate
+)
 
+router.post(
+  '/products/bulk-upload',
+  auth,
+  admin,
+  bulkController.uploadBulkFiles,
+  bulkController.bulkUpload
+)
+router.post(
+  '/products/bulk-import',
+  auth,
+  admin,
+  bulkController.uploadBulkFiles,
+  bulkController.bulkImport
+)
+router.post(
+  '/products/bulk-stock',
+  auth,
+  admin,
+  bulkController.uploadBulkFiles,
+  bulkController.bulkStockUpdate
+)
+router.post(
+  '/products/bulk-price',
+  auth,
+  admin,
+  bulkController.uploadBulkFiles,
+  bulkController.bulkPriceUpdate
+)
+router.post(
+  '/products/bulk-status',
+  auth,
+  admin,
+  bulkController.uploadBulkFiles,
+  bulkController.bulkStatusUpdate
+)
+router.get(
+  '/logs',
+  auth,
+  admin,
+  bulkController.getAdminLogs
+)
 router.post(
   '/products',
   auth,
@@ -86,5 +133,6 @@ router.put('/orders/:id/status', controller.updateOrderStatus)
 // router.post('/orders/:id/invoice', invoicecontroller.generateInvoice)
 
 router.post('/orders/:id/tracking', shipingcontroller.addTracking)
-
+// bulk upload routes
+// router.post('')
 module.exports = router

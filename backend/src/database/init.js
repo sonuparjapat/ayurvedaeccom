@@ -382,7 +382,21 @@ await client.query(`CREATE TABLE IF NOT EXISTS guest_sessions (
  ip_address VARCHAR(50),
  user_agent TEXT
 );`)
+// admin logs
+await client.query(`CREATE TABLE IF NOT EXISTS admin_logs (
+  id SERIAL PRIMARY KEY,
+  admin_id INTEGER REFERENCES users(id),
+  action VARCHAR(100) NOT NULL,
+  module VARCHAR(100) NOT NULL,
+  details JSONB DEFAULT '{}',
+  ip_address VARCHAR(60),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);`)
+await client.query(`CREATE INDEX IF NOT EXISTS idx_admin_logs_created
+ON admin_logs(created_at)`);
 
+await client.query(`CREATE INDEX IF NOT EXISTS idx_admin_logs_admin
+ON admin_logs(admin_id)`);
 ///////////////////guest cart///////////////////
 await client.query(`CREATE TABLE IF NOT EXISTS guest_cart (
  id SERIAL PRIMARY KEY,
