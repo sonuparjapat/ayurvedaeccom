@@ -20,6 +20,9 @@ require('../services/processBulkPriceJob')
 const processBulkStatusJob =
 require('../services/processBulkStatusJob')
 
+const processBulkImportJob =
+require('../services/processBulkImportJob')
+
 let running = false
 
 async function runWorker() {
@@ -79,6 +82,10 @@ async function runWorker() {
       else if (job.job_type === 'bulk_status')
         output =
           await processBulkStatusJob(job)
+
+      else if (job.job_type === 'bulk_import')
+        output =
+          await processBulkImportJob(job)
 
       else
         throw new Error(

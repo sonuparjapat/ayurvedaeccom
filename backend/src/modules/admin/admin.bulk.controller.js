@@ -305,271 +305,120 @@ exports.bulkUpload = async (req, res) => {
 }
 
 
-exports.bulkImport = async (req, res) => {
+exports.bulkImport =
+async (req, res) => {
   try {
+
     if (!req.files?.file?.[0]) {
       return res.status(400).json({
-        success: false,
-        message: 'CSV file required',
+        success:false,
+        message:
+          'CSV file required'
       })
     }
 
-    const csvFile = req.files.file[0]
-    const rows = []
+    const fs =
+      require('fs')
 
-    const readable = new stream.Readable()
-    readable.push(csvFile.buffer)
-    readable.push(null)
+    const path =
+      require('path')
 
-    readable
-      .pipe(csv())
-      .on('data', (row) => rows.push(row))
-      .on('end', async () => {
+    const {
+      createJob
+    } = require('../../utils/jobQueue')
 
-        let zipEntries = []
+    const csvFile =
+      req.files.file[0]
 
-        if (req.files?.imagesZip?.[0]) {
-          const zip = new AdmZip(
-            req.files.imagesZip[0].buffer
-          )
+    const zipFile =
+      req.files?.imagesZip?.[0] || null
 
-          zipEntries = zip
-            .getEntries()
-            .filter((f) => !f.isDirectory)
-        }
+    const tempDir =
+      path.join(
+        process.cwd(),
+        'uploads',
+        'temp'
+      )
 
-        const catRes = await pool.query(
-          `SELECT id,name,gst_percent FROM categories`
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(
+        tempDir,
+        { recursive:true }
+      )
+    }
+
+    const stamp =
+      Date.now() +
+      '-' +
+      Math.round(
+        Math.random() * 100000
+      )
+
+    const csvPath =
+      path.join(
+        tempDir,
+        `${stamp}-import.csv`
+      )
+
+    fs.writeFileSync(
+      csvPath,
+      csvFile.buffer
+    )
+
+    let zipPath = null
+
+    if (zipFile) {
+      zipPath =
+        path.join(
+          tempDir,
+          `${stamp}-images.zip`
         )
 
-        const categoryMap = {}
+      fs.writeFileSync(
+        zipPath,
+        zipFile.buffer
+      )
+    }
 
-        catRes.rows.forEach((c) => {
-          categoryMap[
-            c.name.toLowerCase()
-          ] = c
-        })
-
-        let successCount = 0
-        let failed = []
-
-        for (let i = 0; i < rows.length; i++) {
-          const rowNo = i + 2
-          const r = rows[i]
-
-          try {
-            const name =
-              (r.name || '').trim()
-
-            const slug =
-              (r.slug || '')
-                .trim()
-
-            const sku =
-              (r.sku || '').trim()
-
-            const price =
-              Number(r.price || 0)
-
-            const compareprice =
-              Number(
-                r.compareprice || 0
-              )
-
-            const inventory =
-              Number(
-                r.inventory || 0
-              )
-
-            const status =
-              (r.status || 'draft')
-                .trim()
-                .toLowerCase()
-
-            const brand =
-              (r.brand || '').trim()
-
-            const category_name =
-              (
-                r.category_name || ''
-              ).trim()
-
-            if (
-              !name ||
-              !sku ||
-              price <= 0
-            ) {
-              throw new Error(
-                'Required fields missing'
-              )
-            }
-
-            const cat =
-              categoryMap[
-                category_name.toLowerCase()
-              ]
-
-            if (!cat) {
-              throw new Error(
-                'Category not found'
-              )
-            }
-
-            /* SKU Exists */
-            const skuCheck =
-              await pool.query(
-                `SELECT id FROM products WHERE LOWER(sku)=LOWER($1) LIMIT 1`,
-                [sku]
-              )
-
-            if (
-              skuCheck.rowCount
-            ) {
-              throw new Error(
-                'SKU already exists'
-              )
-            }
-
-            /* Images */
-            const matched =
-              zipEntries.filter(
-                (f) =>
-                  f.entryName
-                    .toLowerCase()
-                    .startsWith(
-                      sku.toLowerCase() + '-'
-                    )
-              )
-
-            const imageUrls = []
-
-            for (const img of matched) {
-              const buffer =
-                img.getData()
-
-              const file = {
-                buffer,
-                originalname:
-                  img.entryName,
-mimetype: getMimeType(img.entryName),
-              }
-
-              const url =
-                await uploadImageToAWS(
-                  file,
-                  'products'
-                )
-
-              imageUrls.push(url)
-            }
-
-            await pool.query(
-              `
-              INSERT INTO products (
-                name,
-                slug,
-                shortdescription,
-                longdescription,
-                price,
-                compareprice,
-                inventory,
-                sku,
-                category_id,
-                category_name,
-                brand,
-                status,
-                images,
-                meta_title,
-                meta_description,
-                meta_keywords,
-                gst_percent
-              )
-              VALUES (
-                $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17
-              )
-            `,
-              [
-                name,
-             slug || `${sku.toLowerCase()}-${Date.now()}-${i}`,
-                r.shortdescription || '',
-                r.longdescription || '',
-                price,
-                compareprice,
-                inventory,
-                sku,
-                cat.id,
-                cat.name,
-                brand,
-                status,
-                JSON.stringify(
-                  imageUrls
-                ),
-                r.meta_title || '',
-                r.meta_description || '',
-                r.meta_keywords || '',
-                cat.gst_percent || 0,
-              ]
-            )
-
-            successCount++
-
-          } catch (err) {
-            for (const url of imageUrls || []) {
-  try {
-    await deleteFromAWS(url)
-  } catch {}
-}
-            failed.push({
-              row: rowNo,
-              sku:
-                r.sku || '',
-              error:
-                err.message ||
-                'Failed',
-            })
-          }
-        }
-await addAdminLog({
-  adminId:
-    req.user?.id || null,
-  action:
-    'BULK_IMPORT',
-  module:
-    'PRODUCTS',
-  details:{
-    imported:
-      successCount,
-    failed:
-      failed.length,
-    total:
-      rows.length
-  },
-  ip:req.ip
-})
-        return res.json({
-          success: true,
-          message:
-            'Bulk import completed',
-          summary: {
-            imported:
-              successCount,
-            failed:
-              failed.length,
-            total:
-              rows.length,
-          },
-          failed,
-        })
+    const job =
+      await createJob({
+        jobType:
+          'bulk_import',
+        payload:{
+          csvPath,
+          zipPath
+        },
+        userId:
+          req.user?.id || null
       })
 
+    return res.status(200).json({
+      success:true,
+      message:
+        'Bulk import queued successfully',
+      data:{
+        jobId:
+          job.id,
+        status:
+          job.status,
+        hasZip:
+          !!zipPath
+      }
+    })
+
   } catch (err) {
-    console.error(err)
+
+    console.error(
+      'bulkImport:',
+      err
+    )
 
     return res.status(500).json({
-      success: false,
+      success:false,
       message:
-        'Import failed',
+        'Import failed'
     })
+
   }
 }
 exports.bulkStockUpdate =
