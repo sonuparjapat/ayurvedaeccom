@@ -57,9 +57,10 @@ exports.uploadBulkFiles = upload.fields([
 
 exports.downloadTemplate = async (req, res) => {
   try {
+
     const csvContent =
-`name,slug,price,compareprice,inventory,sku,category_id,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords
-Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,Himalaya,active,Short text,Long text,Meta title,Meta desc,keywords`
+`name,slug,price,compareprice,inventory,sku,category_id,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords,images
+Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,Himalaya,active,Short text,Long text,Meta title,Meta desc,keywords,https://site.com/a.jpg|https://site.com/b.jpg`
 
     res.setHeader(
       'Content-Type',
@@ -73,11 +74,13 @@ Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,Himalaya,active,Shor
 
     return res.send(csvContent)
 
-  } catch {
+  } catch (err) {
+
     return res.status(500).json({
       success:false,
       message:'Template failed'
     })
+
   }
 }
 exports.downloadCategoryTemplate = async (req,res)=>{
