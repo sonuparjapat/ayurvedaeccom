@@ -1,4 +1,3 @@
-const fs = require('fs')
 const stream = require('stream')
 const csv = require('csv-parser')
 
@@ -9,6 +8,13 @@ const {
   addAdminLog
 } = require('../utils/adminLogger')
 
+const {
+  downloadFileFromUrl
+} = require('../utils/awsImageUpload')
+
+const safeDeleteAws =
+require('../utils/safeDeleteAws')
+
 module.exports =
 async function processBulkCategoryJob(job) {
 
@@ -16,7 +22,7 @@ async function processBulkCategoryJob(job) {
     job.payload || {}
 
   const csvBuffer =
-    fs.readFileSync(
+    await downloadFileFromUrl(
       payload.csvPath
     )
 
@@ -31,67 +37,57 @@ async function processBulkCategoryJob(job) {
   await new Promise(
     (resolve, reject) => {
 
-    readable
-      .pipe(csv())
-      .on(
-        'data',
-        row => rows.push(row)
-      )
-      .on('end', resolve)
-      .on('error', reject)
+      readable
+        .pipe(csv())
+        .on(
+          'data',
+          row => rows.push(row)
+        )
+        .on('end', resolve)
+        .on('error', reject)
 
-  })
+    }
+  )
 
   const catRes =
-    await pool.query(
-      `
+    await pool.query(`
       SELECT
         id,
         name,
         gst_percent
       FROM categories
-      `
-    )
+    `)
 
   const byId = {}
-  const byName = {}
 
-  catRes.rows.forEach(
-    (c) => {
-      byId[c.id] = c
-      byName[
-        c.name.toLowerCase()
-      ] = c
-    }
-  )
+  catRes.rows.forEach(c => {
+    byId[
+      Number(c.id)
+    ] = c
+  })
 
   let updated = 0
-  let failed = []
+  const failed = []
 
   for (
     let i = 0;
     i < rows.length;
     i++
   ) {
+
     const rowNo = i + 2
     const r = rows[i]
 
     try {
 
       const sku =
-        (
-          r.sku || ''
-        ).trim()
+        (r.sku || '')
+        .trim()
 
       const categoryId =
-        (
-          r.category_id || ''
-        ).trim()
-
-      const categoryName =
-        (
-          r.category_name || ''
-        ).trim()
+        Number(
+          r.category_id || 0
+        )
 
       if (!sku) {
         throw new Error(
@@ -99,34 +95,19 @@ async function processBulkCategoryJob(job) {
         )
       }
 
-      let category = null
-
-      if (categoryId) {
-        category =
-          byId[
-            Number(
-              categoryId
-            )
-          ]
-      } else if (
-        categoryName
-      ) {
-        category =
-          byName[
-            categoryName
-            .toLowerCase()
-          ]
-      }
+      const category =
+        byId[
+          categoryId
+        ]
 
       if (!category) {
         throw new Error(
-          'Category not found'
+          'Invalid category_id'
         )
       }
 
       const result =
-        await pool.query(
-          `
+        await pool.query(`
           UPDATE products
           SET
             category_id=$1,
@@ -134,14 +115,12 @@ async function processBulkCategoryJob(job) {
             gst_percent=$3
           WHERE LOWER(sku)=LOWER($4)
           RETURNING id
-          `,
-          [
-            category.id,
-            category.name,
-            category.gst_percent || 0,
-            sku
-          ]
-        )
+        `,[
+          category.id,
+          category.name,
+          category.gst_percent || 0,
+          sku
+        ])
 
       if (
         !result.rowCount
@@ -156,14 +135,12 @@ async function processBulkCategoryJob(job) {
     } catch (err) {
 
       failed.push({
-        row: rowNo,
-        sku:
-          r.sku || '',
+        row:rowNo,
+        sku:r.sku || '',
         error:
           err.message ||
           'Failed'
       })
-
     }
   }
 
@@ -185,16 +162,15 @@ async function processBulkCategoryJob(job) {
   })
 
   try {
-    if (
-      payload.csvPath &&
-      fs.existsSync(
-        payload.csvPath
-      )
-    ) {
-      fs.unlinkSync(
-        payload.csvPath
-      )
-    }
+
+    await safeDeleteAws(
+      payload.csvPath,
+      {
+        source:'bulk_temp',
+        refId:job.id
+      }
+    )
+
   } catch {}
 
   return {
