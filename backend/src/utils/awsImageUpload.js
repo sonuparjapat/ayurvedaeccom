@@ -4,10 +4,31 @@ const {
 } = require("@aws-sdk/client-s3");
 const axios=require("axios")
 const { s3 } = require("../config/aws");
-
+const axios = require('axios')
 const path = require("path");
 
+exports.uploadTempFileToAWS =
+async function (
+  buffer,
+  fileName,
+  mimeType
+) {
+  return await uploadBufferToAWS(
+    buffer,
+    `bulk-temp/${fileName}`,
+    mimeType
+  )
+}
 
+exports.downloadFileFromUrl =
+async function (url) {
+  const res = await axios.get(
+    url,
+    { responseType:'arraybuffer' }
+  )
+
+  return Buffer.from(res.data)
+}
 // ==========================
 // Upload Image to S3
 // ==========================

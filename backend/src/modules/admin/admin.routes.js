@@ -56,7 +56,7 @@ router.post(
   '/products/bulk-import',
   auth,
   admin,
-  bulkController.uploadBulkFiles,
+  express.json(),
   bulkController.bulkImport
 )
 router.post(
