@@ -228,7 +228,7 @@ const [progressText, setProgressText] =
 
       const res = await axios.post('/admin/products/bulk-import', {
         validationJobId
-n      })
+      })
 
       const jobId = res?.data?.data?.jobId
       toast.success(res?.data?.message || 'Import started')
