@@ -422,6 +422,19 @@ ON admin_logs(created_at)`);
 
 await client.query(`CREATE INDEX IF NOT EXISTS idx_admin_logs_admin
 ON admin_logs(admin_id)`);
+
+// clenaup queue
+await pool.query(`CREATE TABLE IF NOT EXISTS file_cleanup_queue (
+  id SERIAL PRIMARY KEY,
+  file_url TEXT NOT NULL,
+  source VARCHAR(50) DEFAULT 'bulk_import',
+  ref_id INTEGER,
+  status VARCHAR(20) DEFAULT 'pending',
+  retry_count INTEGER DEFAULT 0,
+  last_error TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`)
 ///////////////////guest cart///////////////////
 await client.query(`CREATE TABLE IF NOT EXISTS guest_cart (
  id SERIAL PRIMARY KEY,

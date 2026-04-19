@@ -1,6 +1,9 @@
 const pool =
 require('../config/db')
 
+const processCleanupQueue =
+require('../services/processCleanupQueue')
+
 const {
   updateJob
 } = require('../utils/jobQueue')
@@ -31,6 +34,7 @@ let running = false
 async function runWorker() {
 
   if (running) return
+
   running = true
 
   try {
@@ -44,7 +48,11 @@ async function runWorker() {
         LIMIT 1
       `)
 
+    /* NO JOB FOUND */
     if (!result.rowCount) {
+
+      await processCleanupQueue()
+
       running = false
       return
     }
@@ -66,38 +74,67 @@ async function runWorker() {
 
       let output = null
 
-      if (job.job_type === 'bulk_images')
+      if (
+        job.job_type ===
+        'bulk_images'
+      ) {
         output =
           await processBulkImagesJob(job)
+      }
 
-      else if (job.job_type === 'bulk_stock')
+      else if (
+        job.job_type ===
+        'bulk_stock'
+      ) {
         output =
           await processBulkStockJob(job)
+      }
 
-      else if (job.job_type === 'bulk_category')
+      else if (
+        job.job_type ===
+        'bulk_category'
+      ) {
         output =
           await processBulkCategoryJob(job)
+      }
 
-      else if (job.job_type === 'bulk_price')
+      else if (
+        job.job_type ===
+        'bulk_price'
+      ) {
         output =
           await processBulkPriceJob(job)
+      }
 
-      else if (job.job_type === 'bulk_status')
+      else if (
+        job.job_type ===
+        'bulk_status'
+      ) {
         output =
           await processBulkStatusJob(job)
+      }
 
-      else if (job.job_type === 'bulk_import')
+      else if (
+        job.job_type ===
+        'bulk_import'
+      ) {
         output =
           await processBulkImportJob(job)
+      }
 
-      else if (job.job_type === 'bulk_upload')
+      else if (
+        job.job_type ===
+        'bulk_upload'
+      ) {
         output =
           await processBulkUploadJob(job)
+      }
 
-      else
+      else {
         throw new Error(
           'Unknown job type'
         )
+      }
 
       await updateJob(
         job.id,
@@ -125,11 +162,16 @@ async function runWorker() {
 
     }
 
+    /* ALWAYS RUN CLEANUP AFTER JOB */
+    await processCleanupQueue()
+
   } catch (err) {
+
     console.error(
       'Worker error:',
       err
     )
+
   }
 
   running = false
@@ -137,6 +179,7 @@ async function runWorker() {
 
 module.exports =
 function startWorker() {
+
   setInterval(
     runWorker,
     5000
