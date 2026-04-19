@@ -1,43 +1,68 @@
 const {
   PutObjectCommand,
-  DeleteObjectCommand,
-} = require("@aws-sdk/client-s3");
-const axios=require("axios")
-const { s3 } = require("../config/aws");
+  DeleteObjectCommand
+} = require(
+  "@aws-sdk/client-s3"
+)
 
-const path = require("path");
+const axios =
+require("axios")
+
+const {
+  s3
+} = require(
+  "../config/aws"
+)
+
+const path =
+require("path")
+
+const BUCKET =
+process.env.AWS_BUCKET_NAME
+
+const REGION =
+process.env.AWS_REGION
+
+function buildAwsUrl(key) {
+  return `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`
+}
+
+/* core uploader */
 async function uploadBufferToAWS(
   buffer,
   key,
-  mimeType = 'application/octet-stream'
+  mimeType =
+    "application/octet-stream"
 ) {
+
+  if (!buffer) {
+    throw new Error(
+      "Buffer missing"
+    )
+  }
 
   const command =
     new PutObjectCommand({
-
-      Bucket:
-        process.env
-        .AWS_BUCKET_NAME,
-
+      Bucket: BUCKET,
       Key: key,
-
       Body: buffer,
-
       ContentType:
         mimeType
-
     })
 
   await s3.send(command)
 
-  return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`
+  return buildAwsUrl(key)
 }
+
+/* temp files */
 exports.uploadTempFileToAWS =
 async function (
   buffer,
   fileName,
   mimeType
 ) {
+
   return await uploadBufferToAWS(
     buffer,
     `bulk-temp/${fileName}`,
@@ -45,93 +70,117 @@ async function (
   )
 }
 
+/* download any file */
 exports.downloadFileFromUrl =
 async function (url) {
-  const res = await axios.get(
-    url,
-    { responseType:'arraybuffer' }
-  )
 
-  return Buffer.from(res.data)
+  const res =
+    await axios.get(url,{
+      responseType:
+        "arraybuffer",
+      timeout:15000,
+      maxContentLength:
+        50 * 1024 * 1024
+    })
+
+  return Buffer.from(
+    res.data
+  )
 }
-// ==========================
-// Upload Image to S3
-// ==========================
-exports.uploadImageToAWS = async (file, folder = "products") => {
+
+/* upload product image */
+exports.uploadImageToAWS =
+async function (
+  file,
+  folder = "products"
+) {
 
   try {
 
-    if (!file || !file.buffer) {
-      throw new Error("File buffer missing");
+    if (
+      !file ||
+      !file.buffer
+    ) {
+      throw new Error(
+        "File buffer missing"
+      )
     }
 
-    const ext = path.extname(file.originalname);
+    const ext =
+      path.extname(
+        file.originalname ||
+        "image.jpg"
+      ) || ".jpg"
 
-    const safeFolder = folder || "products";
+    const safeFolder =
+      folder || "products"
 
-    const fileName =
+    const key =
       `${safeFolder}/` +
       Date.now() +
       "-" +
-      Math.round(Math.random() * 1e9) +
-      ext;
+      Math.round(
+        Math.random() * 1e9
+      ) +
+      ext
 
-    const command = new PutObjectCommand({
-
-      Bucket: process.env.AWS_BUCKET_NAME,
-
-      Key: fileName,
-
-      Body: file.buffer,
-
-      ContentType: file.mimetype,
-
-    });
-
-    await s3.send(command);
-
-    return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+    return await uploadBufferToAWS(
+      file.buffer,
+      key,
+      file.mimetype ||
+      "image/jpeg"
+    )
 
   } catch (err) {
 
-    console.error("AWS Upload Error:", err);
-    throw err;
+    console.error(
+      "AWS Upload Error:",
+      err.message
+    )
 
+    throw err
   }
-};
+}
 
-
-// ==========================
-// Delete from S3
-// ==========================
-exports.deleteFromAWS = async (url) => {
+/* delete any AWS file */
+exports.deleteFromAWS =
+async function (url) {
 
   try {
 
-    if (!url) return;
+    if (!url) return
 
-    const key = url.split(".com/")[1];
+    const key =
+      new URL(url)
+      .pathname
+      .slice(1)
 
-    const command = new DeleteObjectCommand({
+    if (!key) return
 
-      Bucket: process.env.AWS_BUCKET_NAME,
+    const command =
+      new DeleteObjectCommand({
+        Bucket: BUCKET,
+        Key: key
+      })
 
-      Key: key,
-
-    });
-
-    await s3.send(command);
+    await s3.send(command)
 
   } catch (err) {
 
-    console.log("AWS Delete Error:", err);
+    console.log(
+      "AWS Delete Error:",
+      err.message
+    )
   }
-};
+}
 
-exports.uploadImageFromUrl = async (
+/* upload image from external URL */
+exports.uploadImageFromUrl =
+async function (
   imageUrl,
-  folder = 'products'
-) => {
+  folder = "products"
+) {
+
   try {
 
     const response =
@@ -139,16 +188,17 @@ exports.uploadImageFromUrl = async (
         imageUrl,
         {
           responseType:
-            'arraybuffer',
-          timeout: 15000,
+            "arraybuffer",
+          timeout:15000,
+          maxContentLength:
+            20 * 1024 * 1024
         }
       )
 
     const ext =
-      imageUrl
-        .split('?')[0]
-        .split('.')
-        .pop() || 'jpg'
+      path.extname(
+        imageUrl.split("?")[0]
+      ) || ".jpg"
 
     const fakeFile = {
       buffer:
@@ -156,12 +206,12 @@ exports.uploadImageFromUrl = async (
           response.data
         ),
       originalname:
-        `remote.${ext}`,
+        `remote${ext}`,
       mimetype:
         response.headers[
-          'content-type'
+          "content-type"
         ] ||
-        'image/jpeg',
+        "image/jpeg"
     }
 
     return await exports
@@ -171,8 +221,9 @@ exports.uploadImageFromUrl = async (
       )
 
   } catch (err) {
+
     throw new Error(
-      'Failed to fetch image URL'
+      "Failed to fetch image URL"
     )
   }
 }
