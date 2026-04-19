@@ -6,7 +6,32 @@ const axios=require("axios")
 const { s3 } = require("../config/aws");
 
 const path = require("path");
+async function uploadBufferToAWS(
+  buffer,
+  key,
+  mimeType = 'application/octet-stream'
+) {
 
+  const command =
+    new PutObjectCommand({
+
+      Bucket:
+        process.env
+        .AWS_BUCKET_NAME,
+
+      Key: key,
+
+      Body: buffer,
+
+      ContentType:
+        mimeType
+
+    })
+
+  await s3.send(command)
+
+  return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`
+}
 exports.uploadTempFileToAWS =
 async function (
   buffer,
