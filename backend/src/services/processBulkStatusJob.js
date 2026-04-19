@@ -1,4 +1,3 @@
-const fs = require('fs')
 const stream = require('stream')
 const csv = require('csv-parser')
 
@@ -9,6 +8,13 @@ const {
   addAdminLog
 } = require('../utils/adminLogger')
 
+const {
+  downloadFileFromUrl
+} = require('../utils/awsImageUpload')
+
+const safeDeleteAws =
+require('../utils/safeDeleteAws')
+
 module.exports =
 async function processBulkStatusJob(job) {
 
@@ -16,7 +22,7 @@ async function processBulkStatusJob(job) {
     job.payload || {}
 
   const csvBuffer =
-    fs.readFileSync(
+    await downloadFileFromUrl(
       payload.csvPath
     )
 
@@ -31,19 +37,20 @@ async function processBulkStatusJob(job) {
   await new Promise(
     (resolve, reject) => {
 
-    readable
-      .pipe(csv())
-      .on(
-        'data',
-        row => rows.push(row)
-      )
-      .on('end', resolve)
-      .on('error', reject)
+      readable
+        .pipe(csv())
+        .on(
+          'data',
+          row => rows.push(row)
+        )
+        .on('end', resolve)
+        .on('error', reject)
 
-  })
+    }
+  )
 
   let updated = 0
-  let failed = []
+  const failed = []
 
   const allowed = [
     'draft',
@@ -56,20 +63,18 @@ async function processBulkStatusJob(job) {
     i < rows.length;
     i++
   ) {
+
     const rowNo = i + 2
     const r = rows[i]
 
     try {
 
       const sku =
-        (
-          r.sku || ''
-        ).trim()
+        (r.sku || '')
+        .trim()
 
       const status =
-        (
-          r.status || ''
-        )
+        (r.status || '')
         .trim()
         .toLowerCase()
 
@@ -90,18 +95,15 @@ async function processBulkStatusJob(job) {
       }
 
       const result =
-        await pool.query(
-          `
+        await pool.query(`
           UPDATE products
           SET status=$1
           WHERE LOWER(sku)=LOWER($2)
           RETURNING id
-          `,
-          [
-            status,
-            sku
-          ]
-        )
+        `,[
+          status,
+          sku
+        ])
 
       if (
         !result.rowCount
@@ -116,14 +118,12 @@ async function processBulkStatusJob(job) {
     } catch (err) {
 
       failed.push({
-        row: rowNo,
-        sku:
-          r.sku || '',
+        row:rowNo,
+        sku:r.sku || '',
         error:
           err.message ||
           'Failed'
       })
-
     }
   }
 
@@ -145,16 +145,15 @@ async function processBulkStatusJob(job) {
   })
 
   try {
-    if (
-      payload.csvPath &&
-      fs.existsSync(
-        payload.csvPath
-      )
-    ) {
-      fs.unlinkSync(
-        payload.csvPath
-      )
-    }
+
+    await safeDeleteAws(
+      payload.csvPath,
+      {
+        source:'bulk_temp',
+        refId:job.id
+      }
+    )
+
   } catch {}
 
   return {

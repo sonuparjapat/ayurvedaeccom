@@ -4,7 +4,7 @@ const {
 } = require("@aws-sdk/client-s3");
 const axios=require("axios")
 const { s3 } = require("../config/aws");
-const axios = require('axios')
+
 const path = require("path");
 
 exports.uploadTempFileToAWS =
