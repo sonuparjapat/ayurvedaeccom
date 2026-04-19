@@ -414,9 +414,7 @@ const updateQuantity = async (
     "Please login to continue checkout"
   )
 
-  setPostLoginRedirect(
-    "/checkout"
-  )
+ 
 
   setAuthMode("login")
 
@@ -425,6 +423,11 @@ const updateQuantity = async (
   }, 150)
 
   return
+}else{
+  setOpenauth(false)
+   setPostLoginRedirect(
+    "/checkout"
+  )
 }
 }}
   className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md"
