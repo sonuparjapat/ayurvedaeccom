@@ -2,22 +2,31 @@ const multer = require('multer')
 const csv = require('csv-parser')
 const AdmZip = require('adm-zip')
 const stream = require('stream')
+const fs =
+  require('fs')
+
+const path =
+  require('path')
+
 const {
- addAdminLog
+  createJob
+} = require('../../utils/jobQueue')
+const {
+  addAdminLog
 } = require('../../utils/adminLogger')
 const {
   uploadImageToAWS,
   deleteFromAWS,
-    uploadImageFromUrl
+  uploadImageFromUrl
 
 } = require('../../utils/awsImageUpload')
 
 const pool = require('../../config/db')
 const fs =
-require('fs')
+  require('fs')
 
 const path =
-require('path')
+  require('path')
 
 const {
   createJob
@@ -59,7 +68,7 @@ exports.downloadTemplate = async (req, res) => {
   try {
 
     const csvContent =
-`name,slug,price,compareprice,inventory,sku,category_id,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords,images
+      `name,slug,price,compareprice,inventory,sku,category_id,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords,images
 Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,Himalaya,active,Short text,Long text,Meta title,Meta desc,keywords,https://site.com/a.jpg|https://site.com/b.jpg`
 
     res.setHeader(
@@ -77,14 +86,14 @@ Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,Himalaya,active,Shor
   } catch (err) {
 
     return res.status(500).json({
-      success:false,
-      message:'Template failed'
+      success: false,
+      message: 'Template failed'
     })
 
   }
 }
-exports.downloadCategoryTemplate = async (req,res)=>{
-  try{
+exports.downloadCategoryTemplate = async (req, res) => {
+  try {
 
     const result = await pool.query(`
       SELECT id,name,gst_percent
@@ -96,7 +105,7 @@ exports.downloadCategoryTemplate = async (req,res)=>{
     let csv =
       'id,name,gst_percent\n'
 
-    result.rows.forEach(row=>{
+    result.rows.forEach(row => {
       csv += `${row.id},"${row.name}",${row.gst_percent}\n`
     })
 
@@ -112,10 +121,10 @@ exports.downloadCategoryTemplate = async (req,res)=>{
 
     return res.send(csv)
 
-  }catch(err){
+  } catch (err) {
     return res.status(500).json({
-      success:false,
-      message:'Failed to download categories'
+      success: false,
+      message: 'Failed to download categories'
     })
   }
 }
@@ -125,142 +134,134 @@ exports.downloadCategoryTemplate = async (req,res)=>{
 ========================= */
 
 exports.bulkUpload =
-async (req, res) => {
-  try {
+  async (req, res) => {
+    try {
 
-    if (!req.files?.file?.[0]) {
-      return res.status(400).json({
-        success:false,
-        message:
-          'CSV file required'
-      })
-    }
+      if (!req.files?.file?.[0]) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'CSV file required'
+        })
+      }
 
-    const fs =
-      require('fs')
 
-    const path =
-      require('path')
 
-    const {
-      createJob
-    } = require('../../utils/jobQueue')
+      const csvFile =
+        req.files.file[0]
 
-    const csvFile =
-      req.files.file[0]
+      const zipFile =
+        req.files?.imagesZip?.[0] || null
 
-    const zipFile =
-      req.files?.imagesZip?.[0] || null
+      const tempDir =
+        path.join(
+          process.cwd(),
+          'uploads',
+          'temp'
+        )
 
-    const tempDir =
-      path.join(
-        process.cwd(),
-        'uploads',
-        'temp'
-      )
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(
+          tempDir,
+          { recursive: true }
+        )
+      }
 
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(
-        tempDir,
-        { recursive:true }
-      )
-    }
+      const stamp =
+        Date.now() +
+        '-' +
+        Math.round(
+          Math.random() * 100000
+        )
 
-    const stamp =
-      Date.now() +
-      '-' +
-      Math.round(
-        Math.random() * 100000
-      )
-
-    const csvPath =
-      path.join(
-        tempDir,
-        `${stamp}-validate.csv`
-      )
-
-    fs.writeFileSync(
-      csvPath,
-      csvFile.buffer
-    )
-
-    let zipPath = null
-
-    if (zipFile) {
-      zipPath =
+      const csvPath =
         path.join(
           tempDir,
-          `${stamp}-validate.zip`
+          `${stamp}-validate.csv`
         )
 
       fs.writeFileSync(
-        zipPath,
-        zipFile.buffer
+        csvPath,
+        csvFile.buffer
       )
-    }
 
-    const job =
-      await createJob({
-        jobType:
-          'bulk_upload',
-        payload:{
-          csvPath,
-          zipPath
-        },
-        userId:
-          req.user?.id || null
+      let zipPath = null
+
+      if (zipFile) {
+        zipPath =
+          path.join(
+            tempDir,
+            `${stamp}-validate.zip`
+          )
+
+        fs.writeFileSync(
+          zipPath,
+          zipFile.buffer
+        )
+      }
+
+      const job =
+        await createJob({
+          jobType:
+            'bulk_upload',
+          payload: {
+            csvPath,
+            zipPath
+          },
+          userId:
+            req.user?.id || null
+        })
+
+      return res.status(200).json({
+        success: true,
+        message:
+          'Bulk validation queued successfully',
+        data: {
+          jobId:
+            job.id,
+          status:
+            job.status,
+          hasZip:
+            !!zipPath
+        }
       })
 
-    return res.status(200).json({
-      success:true,
-      message:
-        'Bulk validation queued successfully',
-      data:{
-        jobId:
-          job.id,
-        status:
-          job.status,
-        hasZip:
-          !!zipPath
-      }
-    })
+    } catch (err) {
 
-  } catch (err) {
+      console.error(
+        'bulkUpload:',
+        err
+      )
 
-    console.error(
-      'bulkUpload:',
-      err
-    )
+      return res.status(500).json({
+        success: false,
+        message:
+          'Bulk validation failed'
+      })
 
-    return res.status(500).json({
-      success:false,
-      message:
-        'Bulk validation failed'
-    })
-
+    }
   }
-}
 
 
 exports.bulkImport =
-async (req, res) => {
-  try {
+  async (req, res) => {
+    try {
 
-    const validationJobId =
-      Number(
-        req.body.validationJobId || 0
-      )
+      const validationJobId =
+        Number(
+          req.body.validationJobId || 0
+        )
 
-    if (!validationJobId) {
-      return res.status(400).json({
-        success:false,
-        message:'validationJobId required'
-      })
-    }
+      if (!validationJobId) {
+        return res.status(400).json({
+          success: false,
+          message: 'validationJobId required'
+        })
+      }
 
-    const oldJob =
-      await pool.query(
-        `
+      const oldJob =
+        await pool.query(
+          `
         SELECT *
         FROM admin_jobs
         WHERE id=$1
@@ -268,154 +269,154 @@ async (req, res) => {
         AND status='completed'
         LIMIT 1
         `,
-        [validationJobId]
+          [validationJobId]
+        )
+
+      if (!oldJob.rowCount) {
+        return res.status(404).json({
+          success: false,
+          message: 'Validation job not found'
+        })
+      }
+
+      const oldResult =
+        oldJob.rows[0].result || {}
+
+      if (
+        !oldResult.csvPath
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validated files missing'
+        })
+      }
+
+      const job =
+        await createJob({
+          jobType: 'bulk_import',
+          payload: {
+            csvPath:
+              oldResult.csvPath,
+            zipPath:
+              oldResult.zipPath || null
+          },
+          userId:
+            req.user?.id || null
+        })
+
+      return res.status(200).json({
+        success: true,
+        message: 'Import started',
+        data: {
+          jobId: job.id,
+          status: job.status
+        }
+      })
+
+    } catch (err) {
+
+      return res.status(500).json({
+        success: false,
+        message: 'Import failed'
+      })
+
+    }
+  }
+exports.bulkStockUpdate =
+  async (req, res) => {
+    try {
+
+      if (!req.files?.file?.[0]) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'CSV file required'
+        })
+      }
+
+      const fs =
+        require('fs')
+
+      const path =
+        require('path')
+
+      const {
+        createJob
+      } = require('../../utils/jobQueue')
+
+      const csvFile =
+        req.files.file[0]
+
+      const tempDir =
+        path.join(
+          process.cwd(),
+          'uploads',
+          'temp'
+        )
+
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(
+          tempDir,
+          { recursive: true }
+        )
+      }
+
+      const stamp =
+        Date.now() +
+        '-' +
+        Math.round(
+          Math.random() * 100000
+        )
+
+      const csvPath =
+        path.join(
+          tempDir,
+          `${stamp}-stock.csv`
+        )
+
+      fs.writeFileSync(
+        csvPath,
+        csvFile.buffer
       )
 
-    if (!oldJob.rowCount) {
-      return res.status(404).json({
-        success:false,
-        message:'Validation job not found'
-      })
-    }
+      const job =
+        await createJob({
+          jobType:
+            'bulk_stock',
+          payload: {
+            csvPath
+          },
+          userId:
+            req.user?.id || null
+        })
 
-    const oldResult =
-      oldJob.rows[0].result || {}
-
-    if (
-      !oldResult.csvPath
-    ) {
-      return res.status(400).json({
-        success:false,
-        message:'Validated files missing'
-      })
-    }
-
-    const job =
-      await createJob({
-        jobType:'bulk_import',
-        payload:{
-          csvPath:
-            oldResult.csvPath,
-          zipPath:
-            oldResult.zipPath || null
-        },
-        userId:
-          req.user?.id || null
+      return res.status(200).json({
+        success: true,
+        message:
+          'Bulk stock queued successfully',
+        data: {
+          jobId:
+            job.id,
+          status:
+            job.status
+        }
       })
 
-    return res.status(200).json({
-      success:true,
-      message:'Import started',
-      data:{
-        jobId:job.id,
-        status:job.status
-      }
-    })
+    } catch (err) {
 
-  } catch (err) {
+      console.error(
+        'bulkStockUpdate:',
+        err
+      )
 
-    return res.status(500).json({
-      success:false,
-      message:'Import failed'
-    })
-
-  }
-}
-exports.bulkStockUpdate =
-async (req, res) => {
-  try {
-
-    if (!req.files?.file?.[0]) {
-      return res.status(400).json({
+      return res.status(500).json({
         success: false,
         message:
-          'CSV file required'
-      })
-    }
-
-    const fs =
-      require('fs')
-
-    const path =
-      require('path')
-
-    const {
-      createJob
-    } = require('../../utils/jobQueue')
-
-    const csvFile =
-      req.files.file[0]
-
-    const tempDir =
-      path.join(
-        process.cwd(),
-        'uploads',
-        'temp'
-      )
-
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(
-        tempDir,
-        { recursive:true }
-      )
-    }
-
-    const stamp =
-      Date.now() +
-      '-' +
-      Math.round(
-        Math.random() * 100000
-      )
-
-    const csvPath =
-      path.join(
-        tempDir,
-        `${stamp}-stock.csv`
-      )
-
-    fs.writeFileSync(
-      csvPath,
-      csvFile.buffer
-    )
-
-    const job =
-      await createJob({
-        jobType:
-          'bulk_stock',
-        payload:{
-          csvPath
-        },
-        userId:
-          req.user?.id || null
+          'Stock update failed'
       })
 
-    return res.status(200).json({
-      success: true,
-      message:
-        'Bulk stock queued successfully',
-      data:{
-        jobId:
-          job.id,
-        status:
-          job.status
-      }
-    })
-
-  } catch (err) {
-
-    console.error(
-      'bulkStockUpdate:',
-      err
-    )
-
-    return res.status(500).json({
-      success:false,
-      message:
-        'Stock update failed'
-    })
-
+    }
   }
-}
 
 // /////////////////////logs/////////////
 exports.getAdminLogs = async (
@@ -508,14 +509,14 @@ exports.getAdminLogs = async (
         total:
           Number(
             count.rows[0]
-            .count
+              .count
           ),
         page,
         pages:
           Math.ceil(
             Number(
               count.rows[0]
-              .count
+                .count
             ) / limit
           ),
         limit,
@@ -526,7 +527,7 @@ exports.getAdminLogs = async (
     console.error(err)
 
     return res.status(500).json({
-      success:false,
+      success: false,
       message:
         'Failed to load logs'
     })
@@ -535,413 +536,413 @@ exports.getAdminLogs = async (
 
 // bulk update
 exports.bulkPriceUpdate =
-async (req, res) => {
-  try {
+  async (req, res) => {
+    try {
 
-    if (!req.files?.file?.[0]) {
-      return res.status(400).json({
-        success: false,
-        message:
-          'CSV file required'
-      })
-    }
-
-    const fs =
-      require('fs')
-
-    const path =
-      require('path')
-
-    const {
-      createJob
-    } = require('../../utils/jobQueue')
-
-    const csvFile =
-      req.files.file[0]
-
-    const tempDir =
-      path.join(
-        process.cwd(),
-        'uploads',
-        'temp'
-      )
-
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(
-        tempDir,
-        { recursive:true }
-      )
-    }
-
-    const stamp =
-      Date.now() +
-      '-' +
-      Math.round(
-        Math.random() * 100000
-      )
-
-    const csvPath =
-      path.join(
-        tempDir,
-        `${stamp}-price.csv`
-      )
-
-    fs.writeFileSync(
-      csvPath,
-      csvFile.buffer
-    )
-
-    const job =
-      await createJob({
-        jobType:
-          'bulk_price',
-        payload:{
-          csvPath
-        },
-        userId:
-          req.user?.id || null
-      })
-
-    return res.status(200).json({
-      success: true,
-      message:
-        'Bulk price queued successfully',
-      data:{
-        jobId:
-          job.id,
-        status:
-          job.status
+      if (!req.files?.file?.[0]) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'CSV file required'
+        })
       }
-    })
 
-  } catch (err) {
+      const fs =
+        require('fs')
 
-    console.error(
-      'bulkPriceUpdate:',
-      err
-    )
+      const path =
+        require('path')
 
-    return res.status(500).json({
-      success:false,
-      message:
-        'Price update failed'
-    })
+      const {
+        createJob
+      } = require('../../utils/jobQueue')
 
-  }
-}
+      const csvFile =
+        req.files.file[0]
 
-// bulk status update 
-exports.bulkStatusUpdate =
-async (req, res) => {
-  try {
+      const tempDir =
+        path.join(
+          process.cwd(),
+          'uploads',
+          'temp'
+        )
 
-    if (!req.files?.file?.[0]) {
-      return res.status(400).json({
-        success:false,
-        message:
-          'CSV file required'
-      })
-    }
-
-    const fs =
-      require('fs')
-
-    const path =
-      require('path')
-
-    const {
-      createJob
-    } = require('../../utils/jobQueue')
-
-    const csvFile =
-      req.files.file[0]
-
-    const tempDir =
-      path.join(
-        process.cwd(),
-        'uploads',
-        'temp'
-      )
-
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(
-        tempDir,
-        { recursive:true }
-      )
-    }
-
-    const stamp =
-      Date.now() +
-      '-' +
-      Math.round(
-        Math.random() * 100000
-      )
-
-    const csvPath =
-      path.join(
-        tempDir,
-        `${stamp}-status.csv`
-      )
-
-    fs.writeFileSync(
-      csvPath,
-      csvFile.buffer
-    )
-
-    const job =
-      await createJob({
-        jobType:
-          'bulk_status',
-        payload:{
-          csvPath
-        },
-        userId:
-          req.user?.id || null
-      })
-
-    return res.status(200).json({
-      success:true,
-      message:
-        'Bulk status queued successfully',
-      data:{
-        jobId:
-          job.id,
-        status:
-          job.status
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(
+          tempDir,
+          { recursive: true }
+        )
       }
-    })
 
-  } catch (err) {
+      const stamp =
+        Date.now() +
+        '-' +
+        Math.round(
+          Math.random() * 100000
+        )
 
-    console.error(
-      'bulkStatusUpdate:',
-      err
-    )
-
-    return res.status(500).json({
-      success:false,
-      message:
-        'Status update failed'
-    })
-
-  }
-}
-
-// bulk categories update
-exports.bulkCategoryUpdate =
-async (req, res) => {
-  try {
-
-    if (!req.files?.file?.[0]) {
-      return res.status(400).json({
-        success: false,
-        message:
-          'CSV file required'
-      })
-    }
-
-    const fs =
-      require('fs')
-
-    const path =
-      require('path')
-
-    const {
-      createJob
-    } = require('../../utils/jobQueue')
-
-    const csvFile =
-      req.files.file[0]
-
-    const tempDir =
-      path.join(
-        process.cwd(),
-        'uploads',
-        'temp'
-      )
-
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(
-        tempDir,
-        { recursive:true }
-      )
-    }
-
-    const stamp =
-      Date.now() +
-      '-' +
-      Math.round(
-        Math.random() * 100000
-      )
-
-    const csvPath =
-      path.join(
-        tempDir,
-        `${stamp}-category.csv`
-      )
-
-    fs.writeFileSync(
-      csvPath,
-      csvFile.buffer
-    )
-
-    const job =
-      await createJob({
-        jobType:
-          'bulk_category',
-        payload:{
-          csvPath
-        },
-        userId:
-          req.user?.id || null
-      })
-
-    return res.status(200).json({
-      success: true,
-      message:
-        'Bulk category queued successfully',
-      data:{
-        jobId:
-          job.id,
-        status:
-          job.status
-      }
-    })
-
-  } catch (err) {
-
-    console.error(
-      'bulkCategoryUpdate:',
-      err
-    )
-
-    return res.status(500).json({
-      success:false,
-      message:
-        'Category update failed'
-    })
-
-  }
-}
-
-
-exports.bulkImagesUpdate =
-async (req, res) => {
-  try {
-
-    if (!req.files?.file?.[0]) {
-      return res.status(400).json({
-        success: false,
-        message:
-          'CSV file required'
-      })
-    }
-
-    const fs =
-      require('fs')
-
-    const path =
-      require('path')
-
-    const {
-      createJob
-    } = require('../../utils/jobQueue')
-
-    const csvFile =
-      req.files.file[0]
-
-    const zipFile =
-      req.files?.zip?.[0] || null
-
-    const tempDir =
-      path.join(
-        process.cwd(),
-        'uploads',
-        'temp'
-      )
-
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(
-        tempDir,
-        { recursive:true }
-      )
-    }
-
-    const stamp =
-      Date.now() +
-      '-' +
-      Math.round(
-        Math.random() * 100000
-      )
-
-    const csvPath =
-      path.join(
-        tempDir,
-        `${stamp}-bulk.csv`
-      )
-
-    fs.writeFileSync(
-      csvPath,
-      csvFile.buffer
-    )
-
-    let zipPath = null
-
-    if (zipFile) {
-
-      zipPath =
+      const csvPath =
         path.join(
           tempDir,
-          `${stamp}-images.zip`
+          `${stamp}-price.csv`
         )
 
       fs.writeFileSync(
-        zipPath,
-        zipFile.buffer
+        csvPath,
+        csvFile.buffer
       )
-    }
 
-    const job =
-      await createJob({
-        jobType:
-          'bulk_images',
-        payload: {
-          csvPath,
-          zipPath
-        },
-        userId:
-          req.user?.id || null
+      const job =
+        await createJob({
+          jobType:
+            'bulk_price',
+          payload: {
+            csvPath
+          },
+          userId:
+            req.user?.id || null
+        })
+
+      return res.status(200).json({
+        success: true,
+        message:
+          'Bulk price queued successfully',
+        data: {
+          jobId:
+            job.id,
+          status:
+            job.status
+        }
       })
 
-    return res.status(200).json({
-      success: true,
-      message:
-        'Bulk images queued successfully',
-      data: {
-        jobId:
-          job.id,
-        status:
-          job.status,
-        hasZip:
-          !!zipPath
-      }
-    })
+    } catch (err) {
 
-  } catch (err) {
+      console.error(
+        'bulkPriceUpdate:',
+        err
+      )
 
-    console.error(
-      'bulkImagesUpdate:',
-      err
-    )
+      return res.status(500).json({
+        success: false,
+        message:
+          'Price update failed'
+      })
 
-    return res.status(500).json({
-      success: false,
-      message:
-        'Failed to queue bulk images'
-    })
-
+    }
   }
-}
+
+// bulk status update 
+exports.bulkStatusUpdate =
+  async (req, res) => {
+    try {
+
+      if (!req.files?.file?.[0]) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'CSV file required'
+        })
+      }
+
+      const fs =
+        require('fs')
+
+      const path =
+        require('path')
+
+      const {
+        createJob
+      } = require('../../utils/jobQueue')
+
+      const csvFile =
+        req.files.file[0]
+
+      const tempDir =
+        path.join(
+          process.cwd(),
+          'uploads',
+          'temp'
+        )
+
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(
+          tempDir,
+          { recursive: true }
+        )
+      }
+
+      const stamp =
+        Date.now() +
+        '-' +
+        Math.round(
+          Math.random() * 100000
+        )
+
+      const csvPath =
+        path.join(
+          tempDir,
+          `${stamp}-status.csv`
+        )
+
+      fs.writeFileSync(
+        csvPath,
+        csvFile.buffer
+      )
+
+      const job =
+        await createJob({
+          jobType:
+            'bulk_status',
+          payload: {
+            csvPath
+          },
+          userId:
+            req.user?.id || null
+        })
+
+      return res.status(200).json({
+        success: true,
+        message:
+          'Bulk status queued successfully',
+        data: {
+          jobId:
+            job.id,
+          status:
+            job.status
+        }
+      })
+
+    } catch (err) {
+
+      console.error(
+        'bulkStatusUpdate:',
+        err
+      )
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Status update failed'
+      })
+
+    }
+  }
+
+// bulk categories update
+exports.bulkCategoryUpdate =
+  async (req, res) => {
+    try {
+
+      if (!req.files?.file?.[0]) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'CSV file required'
+        })
+      }
+
+      const fs =
+        require('fs')
+
+      const path =
+        require('path')
+
+      const {
+        createJob
+      } = require('../../utils/jobQueue')
+
+      const csvFile =
+        req.files.file[0]
+
+      const tempDir =
+        path.join(
+          process.cwd(),
+          'uploads',
+          'temp'
+        )
+
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(
+          tempDir,
+          { recursive: true }
+        )
+      }
+
+      const stamp =
+        Date.now() +
+        '-' +
+        Math.round(
+          Math.random() * 100000
+        )
+
+      const csvPath =
+        path.join(
+          tempDir,
+          `${stamp}-category.csv`
+        )
+
+      fs.writeFileSync(
+        csvPath,
+        csvFile.buffer
+      )
+
+      const job =
+        await createJob({
+          jobType:
+            'bulk_category',
+          payload: {
+            csvPath
+          },
+          userId:
+            req.user?.id || null
+        })
+
+      return res.status(200).json({
+        success: true,
+        message:
+          'Bulk category queued successfully',
+        data: {
+          jobId:
+            job.id,
+          status:
+            job.status
+        }
+      })
+
+    } catch (err) {
+
+      console.error(
+        'bulkCategoryUpdate:',
+        err
+      )
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Category update failed'
+      })
+
+    }
+  }
+
+
+exports.bulkImagesUpdate =
+  async (req, res) => {
+    try {
+
+      if (!req.files?.file?.[0]) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'CSV file required'
+        })
+      }
+
+      const fs =
+        require('fs')
+
+      const path =
+        require('path')
+
+      const {
+        createJob
+      } = require('../../utils/jobQueue')
+
+      const csvFile =
+        req.files.file[0]
+
+      const zipFile =
+        req.files?.zip?.[0] || null
+
+      const tempDir =
+        path.join(
+          process.cwd(),
+          'uploads',
+          'temp'
+        )
+
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(
+          tempDir,
+          { recursive: true }
+        )
+      }
+
+      const stamp =
+        Date.now() +
+        '-' +
+        Math.round(
+          Math.random() * 100000
+        )
+
+      const csvPath =
+        path.join(
+          tempDir,
+          `${stamp}-bulk.csv`
+        )
+
+      fs.writeFileSync(
+        csvPath,
+        csvFile.buffer
+      )
+
+      let zipPath = null
+
+      if (zipFile) {
+
+        zipPath =
+          path.join(
+            tempDir,
+            `${stamp}-images.zip`
+          )
+
+        fs.writeFileSync(
+          zipPath,
+          zipFile.buffer
+        )
+      }
+
+      const job =
+        await createJob({
+          jobType:
+            'bulk_images',
+          payload: {
+            csvPath,
+            zipPath
+          },
+          userId:
+            req.user?.id || null
+        })
+
+      return res.status(200).json({
+        success: true,
+        message:
+          'Bulk images queued successfully',
+        data: {
+          jobId:
+            job.id,
+          status:
+            job.status,
+          hasZip:
+            !!zipPath
+        }
+      })
+
+    } catch (err) {
+
+      console.error(
+        'bulkImagesUpdate:',
+        err
+      )
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Failed to queue bulk images'
+      })
+
+    }
+  }
 
 // jobs 
 exports.getJobs = async (
@@ -1018,7 +1019,7 @@ exports.getJobs = async (
     console.error(err)
 
     return res.status(500).json({
-      success:false,
+      success: false,
       message:
         'Failed to load jobs'
     })
@@ -1050,14 +1051,14 @@ exports.getJobById = async (
       !result.rowCount
     ) {
       return res.status(404).json({
-        success:false,
+        success: false,
         message:
           'Job not found'
       })
     }
 
     return res.json({
-      success:true,
+      success: true,
       data:
         result.rows[0]
     })
@@ -1067,7 +1068,7 @@ exports.getJobById = async (
     console.error(err)
 
     return res.status(500).json({
-      success:false,
+      success: false,
       message:
         'Failed to load job'
     })
