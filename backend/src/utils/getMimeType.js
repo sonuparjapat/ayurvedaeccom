@@ -1,6 +1,6 @@
 
-const path =
-  require('path')
+import path from 'path'
+
 export const getMimeType = (fileName = '') => {
   const ext = path
     .extname(fileName)
