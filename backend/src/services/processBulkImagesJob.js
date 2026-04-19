@@ -1,4 +1,3 @@
-const fs = require('fs')
 const stream = require('stream')
 const csv = require('csv-parser')
 const AdmZip = require('adm-zip')
@@ -9,12 +8,15 @@ require('../config/db')
 const {
   uploadImageToAWS,
   uploadImageFromUrl,
-  deleteFromAWS
+  downloadFileFromUrl
 } = require('../utils/awsImageUpload')
 
 const {
   addAdminLog
 } = require('../utils/adminLogger')
+
+const safeDeleteAws =
+require('../utils/safeDeleteAws')
 
 module.exports =
 async function processBulkImagesJob(job) {
@@ -23,7 +25,7 @@ async function processBulkImagesJob(job) {
     job.payload || {}
 
   const csvBuffer =
-    fs.readFileSync(
+    await downloadFileFromUrl(
       payload.csvPath
     )
 
@@ -38,42 +40,48 @@ async function processBulkImagesJob(job) {
   await new Promise(
     (resolve, reject) => {
 
-    readable
-      .pipe(csv())
-      .on(
-        'data',
-        row => rows.push(row)
-      )
-      .on('end', resolve)
-      .on('error', reject)
+      readable
+        .pipe(csv())
+        .on(
+          'data',
+          row => rows.push(row)
+        )
+        .on('end', resolve)
+        .on('error', reject)
 
-  })
+    }
+  )
 
   let zipEntries = []
 
-  if (
-    payload.zipPath &&
-    fs.existsSync(
-      payload.zipPath
-    )
-  ) {
+  if (payload.zipPath) {
+
+    const zipBuffer =
+      await downloadFileFromUrl(
+        payload.zipPath
+      )
+
     const zip =
       new AdmZip(
-        payload.zipPath
+        zipBuffer
       )
 
     zipEntries =
       zip.getEntries()
+      .filter(
+        e => !e.isDirectory
+      )
   }
 
   let updated = 0
-  let failed = []
+  const failed = []
 
   for (
     let i = 0;
     i < rows.length;
     i++
   ) {
+
     const rowNo = i + 2
     const r = rows[i]
 
@@ -82,23 +90,17 @@ async function processBulkImagesJob(job) {
     try {
 
       const sku =
-        (
-          r.sku || ''
-        ).trim()
+        (r.sku || '')
+        .trim()
 
       const mode =
-        (
-          r.mode ||
-          'replace'
-        )
+        (r.mode || 'replace')
         .trim()
         .toLowerCase()
 
       const imageUrls =
-        (
-          r.image_urls ||
-          ''
-        ).trim()
+        (r.image_urls || '')
+        .trim()
 
       if (!sku) {
         throw new Error(
@@ -108,19 +110,29 @@ async function processBulkImagesJob(job) {
 
       let newImages = []
 
-      /* ZIP Images */
+      /* ZIP images */
       const skuFiles =
-        zipEntries.filter(
-          e =>
-            !e.isDirectory &&
-            e.entryName
-            .toLowerCase()
-            .startsWith(
-              sku.toLowerCase()
-            )
-        )
+        zipEntries.filter(f => {
 
-      for (const f of skuFiles) {
+          const name =
+            f.entryName
+            .toLowerCase()
+            .split('.')[0]
+
+          const key =
+            sku.toLowerCase()
+
+          return (
+            name === key ||
+            name.startsWith(
+              key + '-'
+            )
+          )
+        })
+
+      for (
+        const f of skuFiles
+      ) {
 
         const fakeFile = {
           buffer:
@@ -141,20 +153,21 @@ async function processBulkImagesJob(job) {
         uploadedUrls.push(url)
       }
 
-      /* URL Images */
+      /* URL images */
       if (
         newImages.length === 0 &&
         imageUrls
       ) {
+
         const links =
           imageUrls
           .split('|')
-          .map(x =>
-            x.trim()
-          )
+          .map(x => x.trim())
           .filter(Boolean)
 
-        for (const link of links) {
+        for (
+          const link of links
+        ) {
 
           const url =
             await uploadImageFromUrl(
@@ -162,8 +175,10 @@ async function processBulkImagesJob(job) {
               'products'
             )
 
-          newImages.push(url)
-          uploadedUrls.push(url)
+          if (url) {
+            newImages.push(url)
+            uploadedUrls.push(url)
+          }
         }
       }
 
@@ -176,14 +191,11 @@ async function processBulkImagesJob(job) {
       }
 
       const old =
-        await pool.query(
-          `
+        await pool.query(`
           SELECT images
           FROM products
           WHERE LOWER(sku)=LOWER($1)
-          `,
-          [sku]
-        )
+        `,[sku])
 
       if (!old.rowCount) {
         throw new Error(
@@ -196,6 +208,7 @@ async function processBulkImagesJob(job) {
       if (
         old.rows[0].images
       ) {
+
         if (
           Array.isArray(
             old.rows[0].images
@@ -203,7 +216,6 @@ async function processBulkImagesJob(job) {
         ) {
           oldImages =
             old.rows[0].images
-
         } else {
           try {
             oldImages =
@@ -228,45 +240,45 @@ async function processBulkImagesJob(job) {
         ]
       }
 
-      /* Remove duplicates */
       finalImages =
-        [...new Set(finalImages)]
+        [...new Set(
+          finalImages
+        )]
 
-      await pool.query(
-        `
+      await pool.query(`
         UPDATE products
         SET images=$1
         WHERE LOWER(sku)=LOWER($2)
-        `,
-        [
-          JSON.stringify(
-            finalImages
-          ),
-          sku
-        ]
-      )
+      `,[
+        JSON.stringify(
+          finalImages
+        ),
+        sku
+      ])
 
       updated++
 
     } catch (err) {
 
-      /* Cleanup AWS junk */
-      for (const url of uploadedUrls) {
-        try {
-          await deleteFromAWS(
-            url
-          )
-        } catch {}
+      for (
+        const url of uploadedUrls
+      ) {
+        await safeDeleteAws(
+          url,
+          {
+            source:'bulk_images',
+            refId:job.id
+          }
+        )
       }
 
       failed.push({
-        row: rowNo,
-        sku:
-          r.sku || '',
+        row:rowNo,
+        sku:r.sku || '',
         error:
-          err.message
+          err.message ||
+          'Failed'
       })
-
     }
   }
 
@@ -287,29 +299,26 @@ async function processBulkImagesJob(job) {
     ip:'QUEUE'
   })
 
-  /* Cleanup temp files */
   try {
-    if (
-      payload.csvPath &&
-      fs.existsSync(
-        payload.csvPath
-      )
-    ) {
-      fs.unlinkSync(
-        payload.csvPath
+
+    await safeDeleteAws(
+      payload.csvPath,
+      {
+        source:'bulk_temp',
+        refId:job.id
+      }
+    )
+
+    if (payload.zipPath) {
+      await safeDeleteAws(
+        payload.zipPath,
+        {
+          source:'bulk_temp',
+          refId:job.id
+        }
       )
     }
 
-    if (
-      payload.zipPath &&
-      fs.existsSync(
-        payload.zipPath
-      )
-    ) {
-      fs.unlinkSync(
-        payload.zipPath
-      )
-    }
   } catch {}
 
   return {
