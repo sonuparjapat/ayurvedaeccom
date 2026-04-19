@@ -1,4 +1,3 @@
-const fs = require('fs')
 const stream = require('stream')
 const csv = require('csv-parser')
 
@@ -9,6 +8,13 @@ const {
   addAdminLog
 } = require('../utils/adminLogger')
 
+const {
+  downloadFileFromUrl
+} = require('../utils/awsImageUpload')
+
+const safeDeleteAws =
+require('../utils/safeDeleteAws')
+
 module.exports =
 async function processBulkStockJob(job) {
 
@@ -16,7 +22,7 @@ async function processBulkStockJob(job) {
     job.payload || {}
 
   const csvBuffer =
-    fs.readFileSync(
+    await downloadFileFromUrl(
       payload.csvPath
     )
 
@@ -31,34 +37,35 @@ async function processBulkStockJob(job) {
   await new Promise(
     (resolve, reject) => {
 
-    readable
-      .pipe(csv())
-      .on(
-        'data',
-        row => rows.push(row)
-      )
-      .on('end', resolve)
-      .on('error', reject)
+      readable
+        .pipe(csv())
+        .on(
+          'data',
+          row => rows.push(row)
+        )
+        .on('end', resolve)
+        .on('error', reject)
 
-  })
+    }
+  )
 
   let updated = 0
-  let failed = []
+  const failed = []
 
   for (
     let i = 0;
     i < rows.length;
     i++
   ) {
+
     const rowNo = i + 2
     const r = rows[i]
 
     try {
 
       const sku =
-        (
-          r.sku || ''
-        ).trim()
+        (r.sku || '')
+        .trim()
 
       const inventory =
         Number(
@@ -83,18 +90,15 @@ async function processBulkStockJob(job) {
       }
 
       const result =
-        await pool.query(
-          `
+        await pool.query(`
           UPDATE products
           SET inventory=$1
           WHERE LOWER(sku)=LOWER($2)
           RETURNING id
-          `,
-          [
-            inventory,
-            sku
-          ]
-        )
+        `,[
+          inventory,
+          sku
+        ])
 
       if (
         !result.rowCount
@@ -109,14 +113,12 @@ async function processBulkStockJob(job) {
     } catch (err) {
 
       failed.push({
-        row: rowNo,
-        sku:
-          r.sku || '',
+        row:rowNo,
+        sku:r.sku || '',
         error:
           err.message ||
           'Failed'
       })
-
     }
   }
 
@@ -137,17 +139,17 @@ async function processBulkStockJob(job) {
     ip:'QUEUE'
   })
 
+  /* delete temp csv from AWS */
   try {
-    if (
-      payload.csvPath &&
-      fs.existsSync(
-        payload.csvPath
-      )
-    ) {
-      fs.unlinkSync(
-        payload.csvPath
-      )
-    }
+
+    await safeDeleteAws(
+      payload.csvPath,
+      {
+        source:'bulk_temp',
+        refId:job.id
+      }
+    )
+
   } catch {}
 
   return {
