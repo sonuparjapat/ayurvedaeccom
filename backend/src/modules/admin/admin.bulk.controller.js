@@ -23,10 +23,6 @@ const {
 
 const pool = require('../../config/db')
 
-
-const {
-  createJob
-} = require('../../utils/jobQueue')
 const getMimeType = (fileName = '') => {
   const ext = path
     .extname(fileName)
