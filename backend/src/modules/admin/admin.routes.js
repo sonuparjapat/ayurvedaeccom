@@ -38,6 +38,12 @@ router.get(
   admin,
   bulkController.downloadTemplate
 )
+router.get(
+  '/products/category-template',
+  auth,
+  admin,
+  bulkController.downloadCategoryTemplate
+)
 
 router.post(
   '/products/bulk-upload',

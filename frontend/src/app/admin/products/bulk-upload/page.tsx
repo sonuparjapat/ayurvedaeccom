@@ -131,11 +131,91 @@ const pollJob = async (
 
       if (!job) return
 
+      const currentProgress =
+        Number(
+          job.progress || 0
+        )
+
+      setProgress(
+        currentProgress
+      )
+
       if (
-        job.status === 'completed'
+        type === 'validate'
       ) {
 
-        clearInterval(timer)
+        if (
+          currentProgress < 20
+        ) {
+          setProgressText(
+            'Uploading files...'
+          )
+        }
+
+        else if (
+          currentProgress < 50
+        ) {
+          setProgressText(
+            'Reading CSV...'
+          )
+        }
+
+        else if (
+          currentProgress < 90
+        ) {
+          setProgressText(
+            'Validating rows...'
+          )
+        }
+
+        else {
+          setProgressText(
+            'Preparing report...'
+          )
+        }
+
+      } else {
+
+        if (
+          currentProgress < 20
+        ) {
+          setProgressText(
+            'Starting import...'
+          )
+        }
+
+        else if (
+          currentProgress < 50
+        ) {
+          setProgressText(
+            'Uploading images...'
+          )
+        }
+
+        else if (
+          currentProgress < 90
+        ) {
+          setProgressText(
+            'Saving products...'
+          )
+        }
+
+        else {
+          setProgressText(
+            'Finalizing import...'
+          )
+        }
+
+      }
+
+      if (
+        job.status ===
+        'completed'
+      ) {
+
+        clearInterval(
+          timer
+        )
 
         setProgress(100)
 
@@ -145,17 +225,22 @@ const pollJob = async (
           : 'Import completed'
         )
 
-        if (type === 'validate') {
+        if (
+          type === 'validate'
+        ) {
 
           setResult({
             summary:{
               totalRows:
                 job.result?.totalRows || 0,
+
               validRows:
                 job.result?.validRows || 0,
+
               failedRows:
                 job.result?.failedRows || 0
             },
+
             errors:
               job.result?.errors || []
           })
@@ -166,11 +251,14 @@ const pollJob = async (
             summary:{
               imported:
                 job.result?.imported || 0,
+
               failed:
                 job.result?.failed?.length || 0,
+
               total:
                 job.result?.total || 0
             },
+
             failed:
               job.result?.failed || []
           })
@@ -184,16 +272,21 @@ const pollJob = async (
         )
 
         setTimeout(() => {
+
           setProgress(0)
           setProgressText('')
-        }, 1200)
+
+        }, 1500)
       }
 
       if (
-        job.status === 'failed'
+        job.status ===
+        'failed'
       ) {
 
-        clearInterval(timer)
+        clearInterval(
+          timer
+        )
 
         toast.error(
           job.error_text ||
@@ -204,81 +297,44 @@ const pollJob = async (
         setProgressText('')
       }
 
-    } catch {}
+    } catch (err) {
 
-  }, 3000)
-}
-  const submit = async () => {
-    if (!csvFile) {
-      return toast.error('Please upload CSV file')
-    }
-
-    try {
-      setLoading(true)
-
-      const form = new FormData()
-
-      form.append('file', csvFile)
-
-      if (zipFile) {
-        form.append('imagesZip', zipFile)
-      }
-const timer =
-  runFakeProgress(
-    'validate'
-  )
-  const res = await axios.post(
-  '/admin/products/bulk-upload',
-  form
-)
-clearInterval(timer)
-setProgress(100)
-setProgressText(
-  'Validation completed'
-)
-const jobId =
-  res?.data?.data?.jobId
-
-setValidationJobId(jobId)
-
-toast.success(
-  res?.data?.message ||
-  'Validation started'
-)
-
-pollJob(
-  jobId,
-  'validate'
-)
-    } catch (err: any) {
-      clearInterval(timer)
-setProgress(0)
-setProgressText('')
-      toast.error(
-        err?.response?.data?.message ||
-        'Upload failed'
+      console.error(
+        err
       )
-    } finally {
-      setTimeout(() => {
-  setProgress(0)
-  setProgressText('')
-}, 1200)
-      setLoading(false)
+
     }
-  }
-  const confirmImport = async () => {
+
+  }, 2000)
+}
+const submit = async () => {
+
   if (!csvFile) {
     return toast.error(
-      'CSV file missing'
+      'Please upload CSV file'
     )
   }
 
   try {
-    setImporting(true)
 
-    const form = new FormData()
+    setLoading(true)
 
-    form.append('file', csvFile)
+    setResult(null)
+    setFinalReport(null)
+    setValidationJobId(null)
+
+    setProgress(5)
+    setProgressText(
+      'Uploading files...'
+    )
+
+    const form =
+      new FormData()
+
+    form.append(
+      'file',
+      csvFile
+    )
 
     if (zipFile) {
       form.append(
@@ -286,49 +342,128 @@ setProgressText('')
         zipFile
       )
     }
-    const timer =
-  runFakeProgress(
-    'import'
-  )
 
-    const res = await axios.post(
-      '/admin/products/bulk-import',
-      form
+    const res =
+      await axios.post(
+        '/admin/products/bulk-upload',
+        form
+      )
+
+    const jobId =
+      res?.data?.data?.jobId
+
+    setValidationJobId(
+      jobId
     )
-clearInterval(timer)
-setProgress(100)
-setProgressText(
-  'Import completed'
-)
-const jobId =
-  res?.data?.data?.jobId
 
-setImportJobId(jobId)
+    toast.success(
+      res?.data?.message ||
+      'Validation started'
+    )
 
-toast.success(
-  res?.data?.message ||
-  'Import started'
-)
-
-pollJob(
-  jobId,
-  'import'
-)
+    pollJob(
+      jobId,
+      'validate'
+    )
 
   } catch (err:any) {
-    clearInterval(timer)
-setProgress(0)
-setProgressText('')
+
+    setProgress(0)
+    setProgressText('')
+
+    toast.error(
+      err?.response?.data?.message ||
+      'Upload failed'
+    )
+
+  } finally {
+
+    setLoading(false)
+
+  }
+}
+  const downloadCategoryList = async () => {
+  try {
+    const res = await axios.get(
+      '/admin/products/category-template',
+      { responseType:'blob' }
+    )
+
+    const url =
+      window.URL.createObjectURL(
+        new Blob([res.data])
+      )
+
+    const a =
+      document.createElement('a')
+
+    a.href = url
+    a.download = 'categories-master.csv'
+    a.click()
+
+    toast.success('Categories downloaded')
+
+  } catch {
+    toast.error('Download failed')
+  }
+}
+const confirmImport = async () => {
+
+  if (!validationJobId) {
+    return toast.error(
+      'Please validate first'
+    )
+  }
+
+  try {
+
+    setImporting(true)
+
+    setProgress(5)
+
+    setProgressText(
+      'Starting import...'
+    )
+
+    const res =
+      await axios.post(
+        '/admin/products/bulk-import',
+        {
+          validationJobId
+        }
+      )
+
+    const jobId =
+      res?.data?.data?.jobId
+
+    setImportJobId(
+      jobId
+    )
+
+    toast.success(
+      res?.data?.message ||
+      'Import started'
+    )
+
+    pollJob(
+      jobId,
+      'import'
+    )
+
+  } catch (err:any) {
+
+    setProgress(0)
+    setProgressText('')
+
     toast.error(
       err?.response?.data?.message ||
       'Import failed'
     )
+
   } finally {
-    setTimeout(() => {
-  setProgress(0)
-  setProgressText('')
-}, 1200)
+
     setImporting(false)
+
   }
 }
 const downloadFailedCsv = (
@@ -440,7 +575,13 @@ function StatCard({
           <Download size={18} />
           Download Template
         </button>
-
+<button
+  onClick={downloadCategoryList}
+  className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-gray-50"
+>
+  <Download size={18} />
+  Categories CSV
+</button>
       </div>
       {progress > 0 && (
 
@@ -597,7 +738,12 @@ function StatCard({
           icon={<FileSpreadsheet size={20} />}
           file={csvFile}
           accept=".csv"
-          onChange={(f: File) => setCsvFile(f)}
+onChange={(f: File) => {
+  setCsvFile(f)
+  setResult(null)
+  setFinalReport(null)
+  setValidationJobId(null)
+}}
           hint="Required • Use downloaded template"
         />
         
@@ -608,7 +754,12 @@ function StatCard({
           icon={<FileArchive size={20} />}
           file={zipFile}
           accept=".zip"
-          onChange={(f: File) => setZipFile(f)}
+         onChange={(f: File) => {
+  setZipFile(f)
+  setResult(null)
+  setFinalReport(null)
+  setValidationJobId(null)
+}}
           hint="Optional • Images named SKU-1.jpg"
         />
 
@@ -731,10 +882,13 @@ function StatCard({
 )}
 
 {result &&
- result?.summary?.validRows > 0 && (
+validationJobId &&
+result?.summary?.validRows > 0&& (
 
 <div className="pt-2">
-
+  <div className="text-sm text-emerald-700 mb-3">
+    Files already validated. Import will use same uploaded files.
+  </div>
   <button
     onClick={confirmImport}
     disabled={importing}
@@ -747,7 +901,7 @@ function StatCard({
       />
     )}
 
-    Confirm Import Valid Rows
+   Import Valid Rows
   </button>
 
 </div>

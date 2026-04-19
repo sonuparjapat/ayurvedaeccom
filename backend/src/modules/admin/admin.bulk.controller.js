@@ -58,8 +58,8 @@ exports.uploadBulkFiles = upload.fields([
 exports.downloadTemplate = async (req, res) => {
   try {
     const csvContent =
-`name,slug,price,compareprice,inventory,sku,category_name,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords,images
-iPhone 15,iphone-15,79999,89999,10,APL001,Mobiles,Apple,active,Short text,Long text,Meta title,Meta desc,iphone,mobile1.jpg|mobile2.jpg`
+`name,slug,price,compareprice,inventory,sku,category_id,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords
+Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,Himalaya,active,Short text,Long text,Meta title,Meta desc,keywords`
 
     res.setHeader(
       'Content-Type',
@@ -75,8 +75,44 @@ iPhone 15,iphone-15,79999,89999,10,APL001,Mobiles,Apple,active,Short text,Long t
 
   } catch {
     return res.status(500).json({
-      success: false,
-      message: 'Template failed',
+      success:false,
+      message:'Template failed'
+    })
+  }
+}
+exports.downloadCategoryTemplate = async (req,res)=>{
+  try{
+
+    const result = await pool.query(`
+      SELECT id,name,gst_percent
+      FROM categories
+      WHERE is_active = true
+      ORDER BY id ASC
+    `)
+
+    let csv =
+      'id,name,gst_percent\n'
+
+    result.rows.forEach(row=>{
+      csv += `${row.id},"${row.name}",${row.gst_percent}\n`
+    })
+
+    res.setHeader(
+      'Content-Type',
+      'text/csv'
+    )
+
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=categories-master.csv'
+    )
+
+    return res.send(csv)
+
+  }catch(err){
+    return res.status(500).json({
+      success:false,
+      message:'Failed to download categories'
     })
   }
 }
@@ -207,84 +243,58 @@ exports.bulkImport =
 async (req, res) => {
   try {
 
-    if (!req.files?.file?.[0]) {
+    const validationJobId =
+      Number(
+        req.body.validationJobId || 0
+      )
+
+    if (!validationJobId) {
       return res.status(400).json({
         success:false,
-        message:
-          'CSV file required'
+        message:'validationJobId required'
       })
     }
 
-    const fs =
-      require('fs')
-
-    const path =
-      require('path')
-
-    const {
-      createJob
-    } = require('../../utils/jobQueue')
-
-    const csvFile =
-      req.files.file[0]
-
-    const zipFile =
-      req.files?.imagesZip?.[0] || null
-
-    const tempDir =
-      path.join(
-        process.cwd(),
-        'uploads',
-        'temp'
+    const oldJob =
+      await pool.query(
+        `
+        SELECT *
+        FROM admin_jobs
+        WHERE id=$1
+        AND job_type='bulk_upload'
+        AND status='completed'
+        LIMIT 1
+        `,
+        [validationJobId]
       )
 
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(
-        tempDir,
-        { recursive:true }
-      )
+    if (!oldJob.rowCount) {
+      return res.status(404).json({
+        success:false,
+        message:'Validation job not found'
+      })
     }
 
-    const stamp =
-      Date.now() +
-      '-' +
-      Math.round(
-        Math.random() * 100000
-      )
+    const oldResult =
+      oldJob.rows[0].result || {}
 
-    const csvPath =
-      path.join(
-        tempDir,
-        `${stamp}-import.csv`
-      )
-
-    fs.writeFileSync(
-      csvPath,
-      csvFile.buffer
-    )
-
-    let zipPath = null
-
-    if (zipFile) {
-      zipPath =
-        path.join(
-          tempDir,
-          `${stamp}-images.zip`
-        )
-
-      fs.writeFileSync(
-        zipPath,
-        zipFile.buffer
-      )
+    if (
+      !oldResult.csvPath
+    ) {
+      return res.status(400).json({
+        success:false,
+        message:'Validated files missing'
+      })
     }
 
     const job =
       await createJob({
-        jobType:
-          'bulk_import',
+        jobType:'bulk_import',
         payload:{
-          csvPath,
-          zipPath
+          csvPath:
+            oldResult.csvPath,
+          zipPath:
+            oldResult.zipPath || null
         },
         userId:
           req.user?.id || null
@@ -292,29 +302,18 @@ async (req, res) => {
 
     return res.status(200).json({
       success:true,
-      message:
-        'Bulk import queued successfully',
+      message:'Import started',
       data:{
-        jobId:
-          job.id,
-        status:
-          job.status,
-        hasZip:
-          !!zipPath
+        jobId:job.id,
+        status:job.status
       }
     })
 
   } catch (err) {
 
-    console.error(
-      'bulkImport:',
-      err
-    )
-
     return res.status(500).json({
       success:false,
-      message:
-        'Import failed'
+      message:'Import failed'
     })
 
   }

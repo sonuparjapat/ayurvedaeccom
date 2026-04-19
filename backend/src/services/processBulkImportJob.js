@@ -19,6 +19,10 @@ const {
   getMimeType
 } = require('../utils/getMimeType')
 
+const {
+  updateJob
+} = require('../utils/jobQueue')
+
 module.exports =
 async function processBulkImportJob(job) {
 
@@ -52,6 +56,11 @@ async function processBulkImportJob(job) {
 
   })
 
+  await updateJob(
+    job.id,
+    { progress:20 }
+  )
+
   let zipEntries = []
 
   if (
@@ -60,6 +69,7 @@ async function processBulkImportJob(job) {
       payload.zipPath
     )
   ) {
+
     const zip =
       new AdmZip(
         payload.zipPath
@@ -67,8 +77,8 @@ async function processBulkImportJob(job) {
 
     zipEntries =
       zip.getEntries()
-      .filter(f =>
-        !f.isDirectory
+      .filter(
+        f => !f.isDirectory
       )
   }
 
@@ -80,22 +90,30 @@ async function processBulkImportJob(job) {
       `
     )
 
-  const categoryMap = {}
+  const categoryById = {}
 
   catRes.rows.forEach(c => {
-    categoryMap[
-      c.name.toLowerCase()
+
+    categoryById[
+      Number(c.id)
     ] = c
+
   })
 
   let successCount = 0
   let failed = []
+
+  await updateJob(
+    job.id,
+    { progress:35 }
+  )
 
   for (
     let i = 0;
     i < rows.length;
     i++
   ) {
+
     const rowNo = i + 2
     const r = rows[i]
 
@@ -135,10 +153,15 @@ async function processBulkImportJob(job) {
       const brand =
         (r.brand || '').trim()
 
-      const category_name =
-        (
-          r.category_name || ''
-        ).trim()
+      const category_id =
+        Number(
+          r.category_id || 0
+        )
+
+      const cat =
+        categoryById[
+          category_id
+        ]
 
       if (
         !name ||
@@ -150,15 +173,9 @@ async function processBulkImportJob(job) {
         )
       }
 
-      const cat =
-        categoryMap[
-          category_name
-          .toLowerCase()
-        ]
-
       if (!cat) {
         throw new Error(
-          'Category not found'
+          'Invalid category_id'
         )
       }
 
@@ -280,6 +297,28 @@ async function processBulkImportJob(job) {
       })
 
     }
+
+    if (
+      i % 5 === 0
+    ) {
+
+      const percent =
+        Math.min(
+          95,
+          35 +
+          Math.floor(
+            (i / rows.length) * 60
+          )
+        )
+
+      await updateJob(
+        job.id,
+        {
+          progress:percent
+        }
+      )
+    }
+
   }
 
   await addAdminLog({
@@ -300,24 +339,35 @@ async function processBulkImportJob(job) {
     ip:'QUEUE'
   })
 
+  await updateJob(
+    job.id,
+    { progress:100 }
+  )
+
   try {
+
     if (
       payload.csvPath &&
       fs.existsSync(
         payload.csvPath
       )
-    ) fs.unlinkSync(
-      payload.csvPath
-    )
+    ) {
+      fs.unlinkSync(
+        payload.csvPath
+      )
+    }
 
     if (
       payload.zipPath &&
       fs.existsSync(
         payload.zipPath
       )
-    ) fs.unlinkSync(
-      payload.zipPath
-    )
+    ) {
+      fs.unlinkSync(
+        payload.zipPath
+      )
+    }
+
   } catch {}
 
   return {

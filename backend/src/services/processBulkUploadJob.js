@@ -10,6 +10,10 @@ const {
   addAdminLog
 } = require('../utils/adminLogger')
 
+const {
+  updateJob
+} = require('../utils/jobQueue')
+
 module.exports =
 async function processBulkUploadJob(job) {
 
@@ -43,6 +47,11 @@ async function processBulkUploadJob(job) {
 
   })
 
+  await updateJob(
+    job.id,
+    { progress:20 }
+  )
+
   let zipEntries = []
 
   if (
@@ -51,6 +60,7 @@ async function processBulkUploadJob(job) {
       payload.zipPath
     )
   ) {
+
     const zip =
       new AdmZip(
         payload.zipPath
@@ -64,37 +74,25 @@ async function processBulkUploadJob(job) {
   }
 
   const catRes =
-    await pool.query(
-      `
+    await pool.query(`
       SELECT id,name,gst_percent
       FROM categories
-      `
-    )
+    `)
 
-  const categoryMap = {}
   const categoryById = {}
 
   catRes.rows.forEach(c => {
-
-    categoryMap[
-      String(c.name)
-      .trim()
-      .toLowerCase()
-    ] = c
-
     categoryById[
       Number(c.id)
     ] = c
   })
 
   const skuRes =
-    await pool.query(
-      `
+    await pool.query(`
       SELECT sku
       FROM products
       WHERE sku IS NOT NULL
-      `
-    )
+    `)
 
   const existingSku =
     new Set(
@@ -111,11 +109,17 @@ async function processBulkUploadJob(job) {
   const errors = []
   let validRows = 0
 
+  await updateJob(
+    job.id,
+    { progress:35 }
+  )
+
   for (
     let i = 0;
     i < rows.length;
     i++
   ) {
+
     const rowNo = i + 2
     const r = rows[i]
 
@@ -128,9 +132,7 @@ async function processBulkUploadJob(job) {
       (r.sku || '').trim()
 
     const price =
-      Number(
-        r.price || 0
-      )
+      Number(r.price || 0)
 
     const inventory =
       Number(
@@ -142,15 +144,15 @@ async function processBulkUploadJob(job) {
       .trim()
       .toLowerCase()
 
-    const category_name =
-      (
-        r.category_name || ''
-      ).trim()
-
     const category_id =
-      (
-        r.category_id || ''
-      ).trim()
+      Number(
+        r.category_id || 0
+      )
+
+    const cat =
+      categoryById[
+        category_id
+      ]
 
     if (!name)
       rowErrors.push(
@@ -184,31 +186,9 @@ async function processBulkUploadJob(job) {
       )
     }
 
-    let cat = null
-
-    if (category_id) {
-      cat =
-        categoryById[
-          Number(
-            category_id
-          )
-        ]
-    }
-
-    if (
-      !cat &&
-      category_name
-    ) {
-      cat =
-        categoryMap[
-          category_name
-          .toLowerCase()
-        ]
-    }
-
     if (!cat) {
       rowErrors.push(
-        'Category not found'
+        'Invalid category_id'
       )
     }
 
@@ -258,13 +238,38 @@ async function processBulkUploadJob(job) {
     if (
       rowErrors.length
     ) {
+
       errors.push({
         row: rowNo,
         sku,
         errors: rowErrors
       })
+
     } else {
+
       validRows++
+
+    }
+
+    if (
+      i % 10 === 0
+    ) {
+
+      const percent =
+        Math.min(
+          90,
+          35 +
+          Math.floor(
+            (i / rows.length) * 55
+          )
+        )
+
+      await updateJob(
+        job.id,
+        {
+          progress:percent
+        }
+      )
     }
   }
 
@@ -285,25 +290,10 @@ async function processBulkUploadJob(job) {
     ip:'QUEUE'
   })
 
-  try {
-    if (
-      payload.csvPath &&
-      fs.existsSync(
-        payload.csvPath
-      )
-    ) fs.unlinkSync(
-      payload.csvPath
-    )
-
-    if (
-      payload.zipPath &&
-      fs.existsSync(
-        payload.zipPath
-      )
-    ) fs.unlinkSync(
-      payload.zipPath
-    )
-  } catch {}
+  await updateJob(
+    job.id,
+    { progress:100 }
+  )
 
   return {
     totalRows:
@@ -311,6 +301,10 @@ async function processBulkUploadJob(job) {
     validRows,
     failedRows:
       errors.length,
-    errors
+    errors,
+    csvPath:
+      payload.csvPath,
+    zipPath:
+      payload.zipPath || null
   }
 }
