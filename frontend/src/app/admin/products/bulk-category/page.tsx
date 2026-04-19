@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
-import { FolderTree } from 'lucide-react'
+import { Download, FolderTree } from 'lucide-react'
 import downloadFailedCsv from '@/app/utils/downloadFailedCsv'
 import {
   BulkPageHeader,
@@ -65,10 +65,28 @@ export default function BulkCategoryPage() {
       setLoading(false)
     }
   }
-
+ const downloadCategoryList = async () => {
+    try {
+      const res = await axios.get('/admin/products/category-template', { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'categories-master.csv'
+      a.click()
+      toast.success('Categories downloaded')
+    } catch {
+      toast.error('Download failed')
+    }
+  }
   return (
     <div className="space-y-6">
-
+  <button
+          onClick={downloadCategoryList}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-gray-50"
+        >
+          <Download size={18} />
+          Download Category List
+        </button>
       <BulkPageHeader
         title="Bulk Category Update"
         subtitle="Update product category using CSV"
@@ -83,7 +101,7 @@ NK101,12
 
 OR
 
-sku,category_name
+sku,category_id
 APL001,Smartphones
 NK101,Running Shoes`}
       />
