@@ -404,32 +404,30 @@ const updateQuantity = async (
       </div>
 
       {/* <Link> */}
-      <Button
+ <Button
   onClick={() => {
-  setOpencart(false);
+    setOpencart(false)
 
- if (!loginuserdata?.id) {
+    if (!loginuserdata?.id) {
+      setPostLoginRedirect("/checkout")
 
-  toast.error(
-    "Please login to continue checkout"
-  )
+      toast.error(
+        "Please login to continue checkout"
+      )
 
- 
+      setAuthMode("login")
 
-  setAuthMode("login")
+      setTimeout(() => {
+        setOpenauth(true)
+      }, 150)
 
-  setTimeout(() => {
-    setOpenauth(true)
-  }, 150)
+      return
+    }
 
-  return
-}else{
-  setOpenauth(false)
-   setPostLoginRedirect(
-    "/checkout"
-  )
-}
-}}
+    setOpenauth(false)
+
+    router.push("/checkout")
+  }}
   className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md"
 >
   Checkout
