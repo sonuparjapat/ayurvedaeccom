@@ -1230,11 +1230,28 @@ try {
  await client.query("COMMIT");
     /* ================= LOG  ================= */
 
-    // await pool.query(`
-    //   INSERT INTO order_status_logs
-    //   (order_id, old_status, new_status)
-    //   VALUES ($1,$2,$3)
-    // `,[id,currentStatus,status])
+     // 2️⃣ Insert Log
+  await client.query(
+    `
+    INSERT INTO order_status_logs
+    (
+      order_id,
+      old_status,
+      new_status,
+      changed_by,
+      note
+    )
+    VALUES ($1,$2,$3,$4,$5)
+    `,
+    [
+      id,
+      currentStatus,
+      status,
+      req.user?.id || null,
+      null
+    ]
+  );
+
 
 
     /* ================= RESPONSE ================= */
