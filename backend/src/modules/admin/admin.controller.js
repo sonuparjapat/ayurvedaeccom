@@ -5,6 +5,9 @@ const { v4: uuid } = require('uuid')
 const { deleteFromCloud } = require('../../config/cloudinary')
 const orderstatus=require("../../utils/orderstatusmap")
 const {
+  sendOrderStatusMail
+} = require("../../utils/orderMail");
+const {
   uploadImageToAWS,
   deleteFromAWS
 } = require("../../utils/awsImageUpload");
@@ -1065,7 +1068,7 @@ status = Number(status);
       })
     }
 
-
+ await client.query("BEGIN");
     /* ================= GET ORDER ================= */
 
     const orderRes = await pool.query(
@@ -1184,8 +1187,47 @@ if (currentStatus == 3&&(!order.courier_name || !order.tracking_number)) {
       `,
       [status, id]
     )
+/* ================= SEND CUSTOMER MAIL ================= */
 
+try {
 
+  const userRes = await pool.query(
+    `
+    SELECT
+      u.email,
+      u.name
+    FROM orders o
+    JOIN users u
+      ON u.id = o.user_id
+    WHERE o.id = $1
+    LIMIT 1
+    `,
+    [id]
+  )
+
+  if (userRes.rows.length) {
+
+    const user =
+      userRes.rows[0]
+
+    await sendOrderStatusMail({
+      email: user.email,
+      name: user.name,
+      orderId: id,
+      status
+    })
+
+  }
+
+} catch (mailErr) {
+
+  console.log(
+    "Order mail failed:",
+    mailErr.message
+  )
+
+}
+ await client.query("COMMIT");
     /* ================= LOG  ================= */
 
     // await pool.query(`
@@ -1204,7 +1246,7 @@ if (currentStatus == 3&&(!order.courier_name || !order.tracking_number)) {
 
 
   } catch (err) {
-
+  await client.query("ROLLBACK");
     console.error(err)
 
     res.status(500).json({
@@ -1212,6 +1254,8 @@ if (currentStatus == 3&&(!order.courier_name || !order.tracking_number)) {
       message: 'Update failed'
     })
 
+  }finally{
+  client.release();
   }
 }
 
