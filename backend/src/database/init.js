@@ -459,6 +459,29 @@ await client.query(`
   CREATE INDEX IF NOT EXISTS idx_guest_cart_session
   ON guest_cart(guest_session_id)
 `);
+
+
+// logs
+
+await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
+    id SERIAL PRIMARY KEY,
+
+    order_id INTEGER NOT NULL,
+
+    old_status INTEGER NOT NULL,
+    new_status INTEGER NOT NULL,
+
+    changed_by INTEGER, -- admin/user id (optional)
+
+    note TEXT, -- optional message
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_order
+      FOREIGN KEY(order_id)
+      REFERENCES orders(id)
+      ON DELETE CASCADE
+)`)
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

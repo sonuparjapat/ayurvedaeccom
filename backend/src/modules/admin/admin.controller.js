@@ -1051,7 +1051,7 @@ exports.getOrderById = async (req, res) => {
 
 
 exports.updateOrderStatus = async (req, res) => {
-
+ const client = await pool.connect();
   try {
 
     const { id } = req.params
