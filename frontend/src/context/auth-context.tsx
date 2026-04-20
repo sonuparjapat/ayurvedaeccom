@@ -163,11 +163,12 @@ export const AuthProvider = ({
 
       const status = err?.response?.status
       const code = err?.response?.data?.code
-
+const message = err?.response?.data?.message
  const isGuestExpired =
   status === 410 ||
   code === "SESSION_EXPIRED" ||
-  code === "INVALID_SESSION"
+  code === "INVALID_SESSION" ||
+  message === "Guest session required"
 
       if (
         !loginuserdata?.id &&
