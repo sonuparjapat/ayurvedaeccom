@@ -1,18 +1,65 @@
 const pool = require("../../config/db");
 const crypto = require("crypto");
 const validateGuestSession = async (sessionId) => {
-  if (!sessionId) return false;
+  if (!sessionId) {
+    return {
+      valid: false,
+      expired: false
+    };
+  }
 
-  const check = await pool.query(`
-    SELECT session_id
+  const check = await pool.query(
+    `
+    SELECT session_id, expires_at, is_active
     FROM guest_sessions
     WHERE session_id = $1
-    AND is_active = true
-    AND expires_at > NOW()
     LIMIT 1
-  `, [sessionId]);
+  `,
+    [sessionId]
+  );
 
-  return check.rows.length > 0;
+  if (!check.rows.length) {
+    return {
+      valid: false,
+      expired: false
+    };
+  }
+
+  const row = check.rows[0];
+
+if (!row.is_active) {
+  return {
+    valid: false,
+    expired: false
+  };
+}
+
+  const expired =
+    new Date(row.expires_at) < new Date();
+
+  if (expired) {
+    return {
+      valid: false,
+      expired: true
+    };
+  }
+
+  // rolling expiry extend
+  await pool.query(
+    `
+    UPDATE guest_sessions
+    SET
+      expires_at = NOW() + INTERVAL '30 days',
+      updated_at = NOW()
+    WHERE session_id = $1
+  `,
+    [sessionId]
+  );
+
+  return {
+    valid: true,
+    expired: false
+  };
 };
 
 /* ================= ADD TO CART ================= */
@@ -60,15 +107,19 @@ exports.addToCart = async (req, res) => {
     if (!sessionId) {
       return res.status(400).json({ message: "Guest session required" });
     }
-const valid =
-  await validateGuestSession(
-    sessionId
-  );
+const sessionCheck =
+  await validateGuestSession(sessionId);
 
-if (!valid) {
-  return res.status(400).json({
-    message:
-      "Invalid guest session"
+if (!sessionCheck.valid) {
+  return res.status(
+    sessionCheck.expired ? 410 : 400
+  ).json({
+    code: sessionCheck.expired
+      ? "SESSION_EXPIRED"
+      : "INVALID_SESSION",
+    message: sessionCheck.expired
+      ? "Guest session expired"
+      : "Invalid guest session"
   });
 }
     await pool.query(`
@@ -141,31 +192,51 @@ exports.getCart = async (req, res) => {
         WHERE c.user_id=$1
       `, [userId]);
 
-    } else {
-      if (!sessionId) {
-        return res.json({
-          success: true,
-          items: [],
-          subtotal: 0
-        });
-      }
+    } 
+  else {
 
-      data = await pool.query(`
-        SELECT
-          c.product_id,
-          c.quantity,
-          p.name,
-          p.price,
-          p.images,
-          p.inventory,
-          p.gst_percent,
-          p.category_name,
-          p.category_id
-        FROM guest_cart c
-        JOIN products p ON p.id = c.product_id
-        WHERE c.guest_session_id=$1
-      `, [sessionId]);
-    }
+  // first-time guest user
+  if (!sessionId) {
+    return res.json({
+      success: true,
+      items: [],
+      subtotal: 0
+    });
+  }
+
+  const sessionCheck =
+    await validateGuestSession(sessionId);
+
+  if (!sessionCheck.valid) {
+    return res.status(
+      sessionCheck.expired ? 410 : 400
+    ).json({
+      code: sessionCheck.expired
+        ? "SESSION_EXPIRED"
+        : "INVALID_SESSION",
+      message: sessionCheck.expired
+        ? "Guest session expired"
+        : "Invalid guest session"
+    });
+  }
+
+  data = await pool.query(`
+    SELECT
+      c.product_id,
+      c.quantity,
+      p.name,
+      p.price,
+      p.images,
+      p.inventory,
+      p.gst_percent,
+      p.category_name,
+      p.category_id
+    FROM guest_cart c
+    JOIN products p
+      ON p.id = c.product_id
+    WHERE c.guest_session_id = $1
+  `, [sessionId]);
+}
 
     const subtotal = data.rows.reduce(
       (a, b) => a + Number(b.price) * Number(b.quantity),
@@ -225,16 +296,20 @@ if (
       `, [quantity, userId, productId]);
 
     } else {
-      const valid =
- await validateGuestSession(
-   sessionId
- );
+      const sessionCheck =
+  await validateGuestSession(sessionId);
 
-if (!valid) {
- return res.status(400).json({
-   message:
-   "Invalid guest session"
- });
+if (!sessionCheck.valid) {
+  return res.status(
+    sessionCheck.expired ? 410 : 400
+  ).json({
+    code: sessionCheck.expired
+      ? "SESSION_EXPIRED"
+      : "INVALID_SESSION",
+    message: sessionCheck.expired
+      ? "Guest session expired"
+      : "Invalid guest session"
+  });
 }
       await pool.query(`
         UPDATE guest_cart
@@ -267,16 +342,20 @@ exports.removeFromCart = async (req, res) => {
       `, [userId, productId]);
 
     } else {
-      const valid =
- await validateGuestSession(
-   sessionId
- );
+   const sessionCheck =
+  await validateGuestSession(sessionId);
 
-if (!valid) {
- return res.status(400).json({
-   message:
-   "Invalid guest session"
- });
+if (!sessionCheck.valid) {
+  return res.status(
+    sessionCheck.expired ? 410 : 400
+  ).json({
+    code: sessionCheck.expired
+      ? "SESSION_EXPIRED"
+      : "INVALID_SESSION",
+    message: sessionCheck.expired
+      ? "Guest session expired"
+      : "Invalid guest session"
+  });
 }
       await pool.query(`
         DELETE FROM guest_cart
@@ -307,16 +386,20 @@ exports.clearCart = async (req, res) => {
       );
 
     } else {
-      const valid =
- await validateGuestSession(
-   sessionId
- );
+     const sessionCheck =
+  await validateGuestSession(sessionId);
 
-if (!valid) {
- return res.status(400).json({
-   message:
-   "Invalid guest session"
- });
+if (!sessionCheck.valid) {
+  return res.status(
+    sessionCheck.expired ? 410 : 400
+  ).json({
+    code: sessionCheck.expired
+      ? "SESSION_EXPIRED"
+      : "INVALID_SESSION",
+    message: sessionCheck.expired
+      ? "Guest session expired"
+      : "Invalid guest session"
+  });
 }
       await pool.query(
         "DELETE FROM guest_cart WHERE guest_session_id=$1",
@@ -354,22 +437,25 @@ exports.mergeGuestCart = async (req, res) => {
       });
     }
 
-    /* validate active guest session */
-    const sessionCheck = await client.query(`
-      SELECT session_id
-      FROM guest_sessions
-      WHERE session_id = $1
-      AND is_active = true
-      AND expires_at > NOW()
-      LIMIT 1
-    `, [sessionId]);
+  
 
-    if (!sessionCheck.rows.length) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({
-        message: "Invalid or expired guest session"
-      });
-    }
+const guestCheck =
+  await validateGuestSession(sessionId);
+
+if (!guestCheck.valid) {
+  await client.query("ROLLBACK");
+
+  return res.status(
+    guestCheck.expired ? 410 : 400
+  ).json({
+    code: guestCheck.expired
+      ? "SESSION_EXPIRED"
+      : "INVALID_SESSION",
+    message: guestCheck.expired
+      ? "Guest session expired"
+      : "Invalid guest session"
+  });
+}
 
     /* get guest cart items */
     const items = await client.query(`
