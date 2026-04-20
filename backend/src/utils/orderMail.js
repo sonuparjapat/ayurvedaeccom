@@ -138,7 +138,7 @@ exports.sendOrderStatusMail = async ({
 
             <div style="text-align:center;">
               <a
-                href="${process.env.FRONTEND_URL}/orders"
+                href="${process.env.FRONTEND_URL}"
                 style="
                   display:inline-block;
                   padding:12px 22px;
