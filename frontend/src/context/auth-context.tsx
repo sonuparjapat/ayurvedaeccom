@@ -9,14 +9,10 @@ import {
   ReactNode,
   useCallback,
 } from "react"
-import { usePathname } from 'next/navigation'
+import { usePathname } from "next/navigation"
 import axios from "@/lib/axios"
 import { notify } from "@/app/utils/notify"
 import { getCategories } from "@/lib/service"
-
-/* ======================
-   Types
-====================== */
 
 export interface User {
   id: number
@@ -54,8 +50,9 @@ export const AuthProvider = ({
 }: {
   children: ReactNode
 }) => {
+  const [loginuserdata, setLoginUserdata] =
+    useState<User | null>(null)
 
-  const [loginuserdata, setLoginUserdata] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   const [opencart, setOpencart] = useState(false)
@@ -65,44 +62,86 @@ export const AuthProvider = ({
     "login" | "register" | "otp"
   >("login")
 
-  const [totalCartProducts, setTotalCartProducts] = useState(0)
+  const [totalCartProducts, setTotalCartProducts] =
+    useState(0)
+
   const [cartdata, setCartData] = useState<any>({})
-  const [cartloading, setCartLoading] = useState(false)
+  const [cartloading, setCartLoading] =
+    useState(false)
 
-  const [statusList, setStatusList] = useState<any>([])
-  const [settings, setSettings] = useState<any>([])
-  const [wishlistdata, setWishlistdata] = useState<any>({ loading: false })
+  const [statusList, setStatusList] =
+    useState<any>([])
 
-  const [postLoginRedirect, setPostLoginRedirect] = useState("")
-  const [categoriesdata, setCategoriesdata] = useState<any>([])
-  const [orders, setOrders] = useState<any>([])
+  const [settings, setSettings] =
+    useState<any>([])
+
+  const [wishlistdata, setWishlistdata] =
+    useState<any>({ loading: false })
+
+  const [postLoginRedirect,
+    setPostLoginRedirect] = useState("")
+
+  const [categoriesdata, setCategoriesdata] =
+    useState<any>([])
+
+  const [orders, setOrders] =
+    useState<any>([])
 
   const router = useRouter()
   const pathname = usePathname()
 
   /* ======================
-     Guest Session
+     Guest Session Safe Layer
   ====================== */
 
   const getGuestSessionId = useCallback(() => {
     if (typeof window === "undefined") return null
-    return localStorage.getItem("guest_session_id")
+
+    const value =
+      localStorage.getItem("guest_session_id")
+
+    if (
+      !value ||
+      value === "null" ||
+      value === "undefined" ||
+      value.trim() === ""
+    ) {
+      localStorage.removeItem(
+        "guest_session_id"
+      )
+      return null
+    }
+
+    return value
   }, [])
 
   const clearGuestSession = () => {
     if (typeof window === "undefined") return
-    localStorage.removeItem("guest_session_id")
+
+    localStorage.removeItem(
+      "guest_session_id"
+    )
   }
 
-  const createGuestSession = async () => {
+  const createGuestSession = async (
+    forceFresh = false
+  ) => {
     try {
-      const oldId = getGuestSessionId()
+      if (!forceFresh) {
+        const oldId =
+          getGuestSessionId()
 
-      if (oldId) return oldId
+        if (oldId) return oldId
+      }
 
-      const res = await axios.post("/cart/guest-session")
+      const res = await axios.post(
+        "/cart/guest-session"
+      )
 
-      if (res.status === 200 && res.data?.sessionId) {
+      if (
+        res?.status === 200 &&
+        res?.data?.sessionId
+      ) {
         localStorage.setItem(
           "guest_session_id",
           res.data.sessionId
@@ -112,10 +151,37 @@ export const AuthProvider = ({
       }
 
       return null
+
     } catch (err) {
       console.log(err)
       return null
     }
+  }
+
+  const isSessionFailure = (
+    err: any
+  ) => {
+    const status =
+      err?.response?.status
+
+    const code =
+      err?.response?.data?.code
+
+    const message =
+      err?.response?.data?.message
+
+    return (
+      status === 410 ||
+      code === "SESSION_EXPIRED" ||
+      code === "INVALID_SESSION" ||
+      code === "SESSION_REQUIRED" ||
+      message ===
+        "Guest session required" ||
+      message ===
+        "Invalid guest session" ||
+      message ===
+        "Guest session expired"
+    )
   }
 
   /* ======================
@@ -132,61 +198,103 @@ export const AuthProvider = ({
 
       let url = "/cart"
 
-      const currentUserId = id || loginuserdata?.id
+      const currentUserId =
+        id || loginuserdata?.id
 
       if (!currentUserId) {
-        const sessionId = await createGuestSession()
+        const sessionId =
+          await createGuestSession()
 
-        if (sessionId) {
-          url = `/cart?sessionId=${sessionId}`
+        if (!sessionId) {
+          setCartData({
+            items: [],
+            subtotal: 0,
+            totalItems: 0,
+          })
+
+          setTotalCartProducts(0)
+
+          if (
+            value !== undefined
+          ) {
+            setOpencart(value)
+          }
+
+          return
         }
+
+        url =
+          `/cart?sessionId=${sessionId}`
       }
 
-      const res = await axios.get(url)
+      const res =
+        await axios.get(url)
 
-      const items = res?.data?.items || []
+      const items =
+        res?.data?.items || []
 
       setCartData({
         items,
-        subtotal: res?.data?.subtotal || 0,
-        totalItems: items.length,
+        subtotal:
+          res?.data?.subtotal || 0,
+        totalItems:
+          items.length,
       })
 
-      setTotalCartProducts(items.length)
+      setTotalCartProducts(
+        items.length
+      )
 
-      if (value !== undefined) {
+      if (
+        value !== undefined
+      ) {
         setOpencart(value)
       }
 
     } catch (err: any) {
       console.log(err)
 
-      const status = err?.response?.status
-      const code = err?.response?.data?.code
-const message = err?.response?.data?.message
- const isGuestExpired =
-  status === 410 ||
-  code === "SESSION_EXPIRED" ||
-  code === "INVALID_SESSION" ||
-  message === "Guest session required"
+      const guestUser =
+        !loginuserdata?.id
 
       if (
-        !loginuserdata?.id &&
-        isGuestExpired &&
+        guestUser &&
+        isSessionFailure(err) &&
         !retried
       ) {
         clearGuestSession()
 
         const newSession =
-          await createGuestSession()
+          await createGuestSession(
+            true
+          )
 
         if (newSession) {
-          return fetchCart(id, value, true)
+          return fetchCart(
+            id,
+            value,
+            true
+          )
         }
+
+        setCartData({
+          items: [],
+          subtotal: 0,
+          totalItems: 0,
+        })
+
+        setTotalCartProducts(0)
+
+        return
       }
 
-      if (status === 500) {
-        notify.error("Oops! Unable to load cart")
+      if (
+        err?.response?.status ===
+        500
+      ) {
+        notify.error(
+          "Oops! Unable to load cart"
+        )
       }
 
     } finally {
@@ -198,73 +306,108 @@ const message = err?.response?.data?.message
      Categories
   ====================== */
 
-  const fetchcat = useCallback(async () => {
-    try {
-      const res = await getCategories()
-      setCategoriesdata(res?.data?.data || [])
-    } catch (err) {
-      console.log(err)
+  const fetchcat =
+    useCallback(async () => {
+      try {
+        const res =
+          await getCategories()
+
+        setCategoriesdata(
+          res?.data?.data || []
+        )
+      } catch (err) {
+        console.log(err)
+      }
+    }, [])
+
+  /* ======================
+     Settings
+  ====================== */
+
+  const getsettings =
+    async () => {
+      try {
+        const res =
+          await axios.get(
+            "/admin/settings"
+          )
+
+        setSettings(
+          res?.data?.data || []
+        )
+      } catch (err) {
+        console.log(err)
+      }
     }
-  }, [])
 
   /* ======================
      User Load
   ====================== */
 
-  const getsettings = async () => {
-    try {
-      const res = await axios.get("/admin/settings")
-      setSettings(res?.data?.data || [])
-    } catch (err) {
-      console.log(err)
-    }
-  }
+  const fetchUser =
+    async () => {
+      if (
+        pathname ===
+          "/adminauth" ||
+        pathname === "/auth"
+      ) {
+        setLoading(false)
+        return
+      }
 
-  const fetchUser = async () => {
-    if (
-      pathname === "/adminauth" ||
-      pathname === "/auth"
-    ) {
-      setLoading(false)
-      return
-    }
+      try {
+        await getsettings()
 
-    try {
-      await getsettings()
+        const res: any =
+          await axios.get(
+            "/users/me"
+          )
 
-      const res: any =
-        await axios.get("/users/me")
+        if (
+          res.status === 200
+        ) {
+          setLoginUserdata(
+            res.data.user
+          )
 
-      if (res.status === 200) {
-        setLoginUserdata(res.data.user)
+          if (
+            res?.data?.user
+              ?.role == 3
+          ) {
+            fetchCart(
+              res.data.user.id
+            )
+          }
 
-        if (res?.data?.user?.role == 3) {
-          fetchCart(res.data.user.id)
+          await fetchcat()
         }
 
-        await fetchcat()
-      }
+      } catch (err) {
+        setLoginUserdata(
+          null
+        )
 
-    } catch (err) {
-      setLoginUserdata(null)
-    } finally {
-      setLoading(false)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
   useEffect(() => {
-    const init = async () => {
-      await fetchUser()
-      await fetchcat()
+    const init =
+      async () => {
+        await fetchUser()
+        await fetchcat()
 
-      if (
-        pathname !== "/adminauth" &&
-        pathname !== "/auth" &&
-        !loginuserdata?.id
-      ) {
-        fetchCart()
+        if (
+          pathname !==
+            "/adminauth" &&
+          pathname !==
+            "/auth" &&
+          !loginuserdata?.id
+        ) {
+          fetchCart()
+        }
       }
-    }
 
     init()
   }, [])
@@ -273,70 +416,102 @@ const message = err?.response?.data?.message
      Login
   ====================== */
 
-  const login = async (data: User) => {
-    setLoginUserdata(data)
+  const login =
+    async (data: User) => {
+      setLoginUserdata(
+        data
+      )
 
-    try {
-      const sessionId =
-        getGuestSessionId()
+      try {
+        const sessionId =
+          getGuestSessionId()
+
+        if (
+          sessionId &&
+          data?.role == 3
+        ) {
+          await axios.post(
+            "/cart/merge",
+            { sessionId }
+          )
+
+          clearGuestSession()
+        }
+
+      } catch (err) {
+        console.log(err)
+      }
 
       if (
-        sessionId &&
         data?.role == 3
       ) {
-        await axios.post(
-          "/cart/merge",
-          { sessionId }
+        await fetchCart(
+          data.id
         )
-
-        clearGuestSession()
       }
-    } catch (err) {
-      console.log(err)
-    }
 
-    if (data?.role == 3) {
-      await fetchCart(data.id)
+      await fetchcat()
     }
-
-    await fetchcat()
-  }
 
   /* ======================
      Logout
   ====================== */
 
-  const logout = async (type: any) => {
-    try {
-      const res = await axios.post(
-        `/${type}/logout`
-      )
+  const logout =
+    async (type: any) => {
+      try {
+        const res =
+          await axios.post(
+            `/${type}/logout`
+          )
 
-      if (res.status === 200) {
-        if (type == "users") {
-          setCartData({
-            items: [],
-            subtotal: 0,
-            totalItems: 0,
-          })
+        if (
+          res.status === 200
+        ) {
+          if (
+            type ==
+            "users"
+          ) {
+            setCartData({
+              items: [],
+              subtotal: 0,
+              totalItems: 0,
+            })
 
-          setTotalCartProducts(0)
-          router.push("/auth")
+            setTotalCartProducts(
+              0
+            )
 
-        } else {
-          router.push("/adminauth")
+            router.push(
+              "/auth"
+            )
+
+          } else {
+            router.push(
+              "/adminauth"
+            )
+          }
+
+          setLoginUserdata(
+            null
+          )
         }
 
-        setLoginUserdata(null)
+      } catch (err) {
+        console.error(
+          "Logout error",
+          err
+        )
       }
-
-    } catch (err) {
-      console.error("Logout error", err)
     }
-  }
 
-  const handleCart = (value: boolean) => {
-    fetchCart(undefined, value)
+  const handleCart = (
+    value: boolean
+  ) => {
+    fetchCart(
+      undefined,
+      value
+    )
   }
 
   return (
@@ -379,7 +554,8 @@ const message = err?.response?.data?.message
 }
 
 export const useAuth = () => {
-  const ctx = useContext(AuthContext)
+  const ctx =
+    useContext(AuthContext)
 
   if (!ctx) {
     throw new Error(
