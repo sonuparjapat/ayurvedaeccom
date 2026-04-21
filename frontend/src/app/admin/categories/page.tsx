@@ -582,7 +582,7 @@ const columns = [
   />
 </div>
 
-<div>
+{/* <div>
   <label className="text-xs uppercase text-slate-400 font-semibold">
     Tax Name
   </label>
@@ -593,7 +593,7 @@ const columns = [
     maxLength={120}
     className="input"
   />
-</div>
+</div> */}
 
 <div>
   <label className="text-xs uppercase text-slate-400 font-semibold">
