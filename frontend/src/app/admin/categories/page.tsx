@@ -16,6 +16,9 @@ interface Category {
   id: number
   name: string
   gst_percent: number
+  hsn_code?: string
+  tax_name?: string
+  cess_percent?: number
   color_class?: string
   image_url?: string
   description?: string
@@ -49,7 +52,9 @@ export default function AdminCategories() {
 
   const [name, setName] = useState('')
   const [gstpercent, setGstPercent] = useState<any>(0)
-
+const [hsnCode, setHsnCode] = useState('')
+const [taxName, setTaxName] = useState('')
+const [cessPercent, setCessPercent] = useState<any>(0)
   const [color, setColor] = useState('')
   const [desc, setDesc] = useState('')
 
@@ -100,7 +105,9 @@ export default function AdminCategories() {
   const openCreate = () => {
 
     setEditData(null)
-
+setHsnCode('')
+setTaxName('')
+setCessPercent(0)
     setName('')
     setGstPercent(0)
 
@@ -122,7 +129,9 @@ export default function AdminCategories() {
 
     setName(row.name)
     setGstPercent(row.gst_percent || 0)
-
+setHsnCode(row.hsn_code || '')
+setTaxName(row.tax_name || '')
+setCessPercent(row.cess_percent || 0)
     setColor(row.color_class || '')
     setDesc(row.description || '')
 
@@ -145,7 +154,9 @@ export default function AdminCategories() {
 
     setName('')
     setGstPercent(0)
-
+setHsnCode('')
+setTaxName('')
+setCessPercent(0)
     setColor('')
     setDesc('')
 
@@ -169,6 +180,9 @@ export default function AdminCategories() {
     if (Number(gstpercent) < 0 || Number(gstpercent) > 100) {
       return 'GST must be between 0–100'
     }
+    if (Number(cessPercent) < 0 || Number(cessPercent) > 100) {
+  return 'CESS must be between 0–100'
+}
 
     return null
 
@@ -217,7 +231,9 @@ export default function AdminCategories() {
       form.append('gst_percent', String(gstpercent))
       form.append('color_class', color)
       form.append('description', desc)
-
+form.append('hsn_code', hsnCode)
+form.append('tax_name', taxName)
+form.append('cess_percent', String(cessPercent))
       if (image) {
         form.append('image', image)
       }
@@ -303,12 +319,14 @@ export default function AdminCategories() {
 
   const totalPages = Math.ceil(total / limit)
 
-  const columns = [
-    { key: 'id', label: 'ID', align: 'center' },
-    { key: 'name', label: 'Category Name' },
-    { key: 'gst_percent', label: 'GST %', align: 'center' },
-    { key: 'actions', label: 'Actions', align: 'center' },
-  ]
+const columns = [
+  { key: 'id', label: 'ID', align: 'center' },
+  { key: 'name', label: 'Category Name' },
+  { key: 'hsn_code', label: 'HSN', align: 'center' },
+  { key: 'gst_percent', label: 'GST %', align: 'center' },
+  { key: 'cess_percent', label: 'CESS %', align: 'center' },
+  { key: 'actions', label: 'Actions', align: 'center' },
+]
 
 
   const rows = categories.map(cat => ({
@@ -551,6 +569,46 @@ export default function AdminCategories() {
                 className="input"
               />
             </div>
+            <div>
+  <label className="text-xs uppercase text-slate-400 font-semibold">
+    Default HSN Code
+  </label>
+
+  <input
+    value={hsnCode}
+    onChange={e => setHsnCode(e.target.value)}
+    maxLength={30}
+    className="input"
+  />
+</div>
+
+<div>
+  <label className="text-xs uppercase text-slate-400 font-semibold">
+    Tax Name
+  </label>
+
+  <input
+    value={taxName}
+    onChange={e => setTaxName(e.target.value)}
+    maxLength={120}
+    className="input"
+  />
+</div>
+
+<div>
+  <label className="text-xs uppercase text-slate-400 font-semibold">
+    Default CESS %
+  </label>
+
+  <input
+    type="number"
+    min={0}
+    max={100}
+    value={cessPercent}
+    onChange={e => setCessPercent(e.target.value)}
+    className="input"
+  />
+</div>
 
 
             {/* COLOR */}

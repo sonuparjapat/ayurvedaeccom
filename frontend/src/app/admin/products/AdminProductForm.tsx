@@ -43,6 +43,9 @@ export default function AdminProductForm({
     meta_description: '',
 
     images: [],
+    hsn_code: '',
+// tax_name: '',
+cess_percent: 0,
   })
 
 
@@ -140,7 +143,11 @@ export default function AdminProductForm({
 
     if (!form.category_id)
       return 'Category required'
+if (Number(form.gst_percent) < 0 || Number(form.gst_percent) > 100)
+  return 'Valid GST required'
 
+if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
+  return 'Valid CESS required'
     if (!form.images.length)
       return 'Image required'
 
@@ -300,14 +307,21 @@ export default function AdminProductForm({
             <select
               value={form.category_id || ''}
               disabled={isView}
-              onChange={e =>
-                setForm({
-                  ...form,
-                  category_id: e.target.value,
-                  category_name: categories?.find((item: any) => item?.id == e.target.value)?.name,
-                  gst_percent: categories?.find((item: any) => item?.id == e.target.value)?.gst_percent,
-                })
-              }
+            onChange={e => {
+  const selected = categories?.find(
+    (item:any) => item?.id == e.target.value
+  )
+
+  setForm({
+    ...form,
+    category_id: e.target.value,
+    category_name: selected?.name || '',
+    gst_percent: selected?.gst_percent || 0,
+    hsn_code: selected?.hsn_code || '',
+    // tax_name: selected?.tax_name || '',
+    cess_percent: selected?.cess_percent || 0,
+  })
+}}
               className="
                 w-full border rounded px-3 py-2
                 focus:ring-2 focus:ring-emerald-500
@@ -333,23 +347,46 @@ export default function AdminProductForm({
             </select>
 
           </div>
-          <div className="space-y-1">
+       <div className="space-y-1">
+  <label className="text-sm font-medium">
+    GST Percent (%)
+  </label>
 
-            <label className="text-sm font-medium">
-              GST Percent (%)
-            </label>
-            <Input
-              // label="Brand"
-              value={form.gst_percent}
-              readOnly={true}
+  <Input
+    value={form.gst_percent}
+    onChange={(v:string)=>
+      setForm({...form,gst_percent:v})
+    }
+    readOnly={isView}
+    type="number"
+  />
+</div>
 
-            />
-
-
-
-          </div>
-
-
+<Input
+  label="HSN Code"
+  value={form.hsn_code}
+  readOnly={isView}
+  onChange={(v:string)=>
+    setForm({...form,hsn_code:v})
+  }
+/>
+<Input
+  label="CESS %"
+  type="number"
+  value={form.cess_percent}
+  readOnly={isView}
+  onChange={(v:string)=>
+    setForm({...form,cess_percent:v})
+  }
+/>
+{/* <Input
+  label="Tax Name"
+  value={form.tax_name}
+  readOnly={isView}
+  onChange={(v:string)=>
+    setForm({...form,tax_name:v})
+  }
+/> */}
           <Input
             label="Brand"
             value={form.brand}

@@ -120,21 +120,30 @@ await client.query(`CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_acti
     `);
 
     /* ================= CATEGORIES ================= */
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS categories (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL UNIQUE,
-        gst_percent NUMERIC(5,2) DEFAULT 18 CHECK (gst_percent >= 0),
-        color_class VARCHAR(100) DEFAULT NULL,
-        image_url TEXT DEFAULT NULL,
-        description TEXT DEFAULT NULL,
-        meta_title VARCHAR(150) DEFAULT NULL,
-        meta_description TEXT DEFAULT NULL,
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+await client.query(`
+  CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+
+    gst_percent NUMERIC(5,2) DEFAULT 18
+      CHECK (gst_percent >= 0),
+
+    hsn_code VARCHAR(20),
+    cess_percent NUMERIC(5,2) DEFAULT 0,
+
+    color_class VARCHAR(100) DEFAULT NULL,
+    image_url TEXT DEFAULT NULL,
+    description TEXT DEFAULT NULL,
+
+    meta_title VARCHAR(150) DEFAULT NULL,
+    meta_description TEXT DEFAULT NULL,
+
+    is_active BOOLEAN DEFAULT TRUE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
     /* ================= PRODUCTS ================= */
     await client.query(`
@@ -159,7 +168,9 @@ await client.query(`CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_acti
         meta_description TEXT,
         meta_keywords TEXT,
         gst_percent NUMERIC(5,2) DEFAULT 18 CHECK (gst_percent >= 0),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        hsn_code VARCHAR(30),
+        cess_percent NUMERIC(5,2) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -426,15 +437,38 @@ ON admin_logs(admin_id)`);
 // clenaup queue
 await pool.query(`CREATE TABLE IF NOT EXISTS file_cleanup_queue (
   id SERIAL PRIMARY KEY,
+
   file_url TEXT NOT NULL,
+
   source VARCHAR(50) DEFAULT 'bulk_import',
+
   ref_id INTEGER,
-  status VARCHAR(20) DEFAULT 'pending',
+
+  status VARCHAR(20) DEFAULT 'pending'
+    CHECK (status IN ('pending','processing','completed','failed')),
+
   retry_count INTEGER DEFAULT 0,
+
   last_error TEXT,
+
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`)
+await client.query(`
+CREATE INDEX IF NOT EXISTS idx_file_cleanup_status
+ON file_cleanup_queue(status)
+`);
+
+await client.query(`
+CREATE INDEX IF NOT EXISTS idx_file_cleanup_created
+ON file_cleanup_queue(created_at)
+`);
+
+await client.query(`
+CREATE INDEX IF NOT EXISTS idx_file_cleanup_source
+ON file_cleanup_queue(source)
+`)
 ///////////////////guest cart///////////////////
 await client.query(`CREATE TABLE IF NOT EXISTS guest_cart (
  id SERIAL PRIMARY KEY,

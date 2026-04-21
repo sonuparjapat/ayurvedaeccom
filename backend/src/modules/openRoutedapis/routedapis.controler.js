@@ -60,6 +60,9 @@ exports.getCategories = async (req, res) => {
     c.color_class,
     c.image_url,
     c.description,
+    c.hsn_code,
+c.tax_name,
+c.cess_percent,
 
     COUNT(p.id) AS product_count
 
@@ -76,6 +79,9 @@ exports.getCategories = async (req, res) => {
     c.gst_percent,
     c.color_class,
     c.image_url,
+    c.hsn_code,
+c.tax_name,
+c.cess_percent,
     c.description
 
   ORDER BY c.id DESC
@@ -128,7 +134,9 @@ exports.getCategoryById = async (req, res) => {
         gst_percent,
         color_class,
         image_url,
-        description
+        description,hsn_code,
+tax_name,
+cess_percent
       FROM categories
       WHERE id = $1
       `,
@@ -164,12 +172,15 @@ exports.createCategory = async (req, res) => {
 
   try {
 
-    const {
-      name,
-      gst_percent,
-      color_class,
-      description,
-    } = req.body;
+   const {
+  name,
+  gst_percent,
+  color_class,
+  description,
+  hsn_code,
+
+  cess_percent,
+} = req.body;
 
 
     /* ================= VALIDATION ================= */
@@ -189,6 +200,11 @@ exports.createCategory = async (req, res) => {
     if (gst < 0 || gst > 100) {
       return sendError(res, 400, "GST must be between 0–100");
     }
+    const cess = Number(cess_percent) || 0;
+
+if (cess < 0 || cess > 100) {
+  return sendError(res, 400, "CESS must be between 0–100");
+}
 
 
     /* ================= DUPLICATE CHECK ================= */
@@ -241,28 +257,34 @@ exports.createCategory = async (req, res) => {
       `
       INSERT INTO categories
       (
-        name,
-        gst_percent,
-        color_class,
-        image_url,
-        description
+  name,
+gst_percent,
+hsn_code,
+cess_percent,
+color_class,
+image_url,
+description
       )
-      VALUES ($1,$2,$3,$4,$5)
+  VALUES ($1,$2,$3,$4,$5,$6,$7)
       RETURNING
         id,
         name,
         gst_percent,
         color_class,
         image_url,
-        description
+        description,hsn_code,
+cess_percent,
+hsn_code
       `,
-      [
-        cleanName,
-        gst,
-        color_class || null,
-        imageUrl,
-        description || null,
-      ]
+   [
+  cleanName,
+  gst,
+  hsn_code?.trim() || null,
+  cess,
+  color_class || null,
+  imageUrl,
+  description || null,
+]
     );
 
 
@@ -295,13 +317,16 @@ exports.updateCategory = async (req, res) => {
 
     const { id } = req.params;
 
-    const {
-      name,
-      gst_percent,
-      color_class,
-      description,
-      remove_image,
-    } = req.body;
+ const {
+  name,
+  gst_percent,
+  color_class,
+  description,
+  remove_image,
+  hsn_code,
+
+  cess_percent,
+} = req.body;
 
 
     /* ================= VALIDATION ================= */
@@ -325,7 +350,11 @@ exports.updateCategory = async (req, res) => {
     if (gst < 0 || gst > 100) {
       return sendError(res, 400, "GST must be between 0–100");
     }
+const cess = Number(cess_percent) || 0;
 
+if (cess < 0 || cess > 100) {
+  return sendError(res, 400, "CESS must be between 0–100");
+}
 
     /* ================= EXISTS ================= */
 
@@ -392,28 +421,35 @@ exports.updateCategory = async (req, res) => {
       `
       UPDATE categories
       SET
-        name=$1,
-        gst_percent=$2,
-        color_class=$3,
-        image_url=$4,
-        description=$5
-      WHERE id=$6
+    name=$1,
+gst_percent=$2,
+hsn_code=$3,
+cess_percent=$4,
+color_class=$5,
+image_url=$6,
+description=$7
+WHERE id=$8
       RETURNING
         id,
         name,
         gst_percent,
         color_class,
         image_url,
-        description
+        description,hsn_code,
+
+cess_percent,
       `,
-      [
-        cleanName,
-        gst,
-        color_class || null,
-        imageUrl,
-        description || null,
-        id,
-      ]
+     [
+  cleanName,
+  gst,
+  hsn_code?.trim() || null,
+
+  cess,
+  color_class || null,
+  imageUrl,
+  description || null,
+  id,
+]
     );
 
 

@@ -433,7 +433,10 @@ exports.create = async (req, res) => {
 
       meta_title,
       meta_description,
-      meta_keywords
+      meta_keywords,
+      gst_percent,
+hsn_code,
+cess_percent,
     } = req.body
 
     // Validation
@@ -480,7 +483,10 @@ if (req.files?.length) {
 
         meta_title,
         meta_description,
-        meta_keywords
+        meta_keywords,
+        gst_percent,
+hsn_code,
+cess_percent,
 
       )
 
@@ -491,7 +497,7 @@ if (req.files?.length) {
         $8,$9,
         $10,$11,$12,
         $13,
-        $14,$15,$16
+        $14,$15,$16,$17,$18,$19
       )
     `, [
       name,
@@ -515,7 +521,9 @@ if (req.files?.length) {
 
       meta_title || '',
       meta_description || '',
-      meta_keywords || ''
+      meta_keywords || '',Number(gst_percent || 0),
+hsn_code || '',
+Number(cess_percent || 0),
 
     ])
 
@@ -726,9 +734,11 @@ const finalImages = [
         meta_title=$13,
         meta_description=$14,
         meta_keywords=$15,
-        category_id=$16
-
-      WHERE id=$17
+  category_id=$16,
+gst_percent=$17,
+hsn_code=$18,
+cess_percent=$19
+WHERE id=$20
       RETURNING *
 
     `, [
@@ -754,6 +764,9 @@ const finalImages = [
       body.meta_title,
       body.meta_description,
       body.meta_keywords,body.category_id,
+      Number(body.gst_percent || 0),
+body.hsn_code || '',
+Number(body.cess_percent || 0),
       id
 
     ])
