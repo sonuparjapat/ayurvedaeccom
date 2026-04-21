@@ -115,7 +115,8 @@ SET
   category_name=$2,
   gst_percent=$3,
   hsn_code=$4,
-  cess_percent=$5
+  cess_percent=$5,
+  updated_at=NOW()
 WHERE LOWER(sku)=LOWER($6)
 RETURNING id
         `,[

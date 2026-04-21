@@ -53,7 +53,7 @@ export default function BulkCategoryPage() {
 
       toast.success(
         res?.data?.message ||
-        'Category updated'
+       'Category updated with tax sync'
       )
 
     } catch (err:any) {
@@ -85,25 +85,25 @@ export default function BulkCategoryPage() {
           className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-gray-50"
         >
           <Download size={18} />
-          Download Category List
+    Download Category Master (IDs + GST + HSN)
         </button>
       <BulkPageHeader
         title="Bulk Category Update"
-        subtitle="Update product category using CSV"
+      subtitle="Update product category using CSV (GST / HSN auto updates from selected category)"
         icon={<FolderTree size={24} />}
       />
 
       <BulkExampleCard
         title="CSV Example"
-        lines={`sku,category_id
+lines={`sku,category_id
 APL001,5
 NK101,12
 
-OR
+Only category_id allowed.
 
-sku,category_id
-APL001,Smartphones
-NK101,Running Shoes`}
+Download Category List to get valid ids.
+
+Changing category also updates GST%, HSN Code and CESS automatically.`}
       />
 
       <BulkUploadBox
