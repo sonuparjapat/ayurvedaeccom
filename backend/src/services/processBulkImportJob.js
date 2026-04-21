@@ -102,9 +102,14 @@ async function processBulkImportJob(job) {
     zipMap[key].push(f)
   })
 
-  const catRes =
-    await pool.query(`
-      SELECT id,name,gst_percent
+const catRes =
+  await pool.query(`
+      SELECT
+        id,
+        name,
+        gst_percent,
+        hsn_code,
+        cess_percent
       FROM categories
     `)
 
@@ -176,6 +181,27 @@ async function processBulkImportJob(job) {
         categoryById[
           category_id
         ]
+        const csvGst =
+  String(r.gst_percent || '').trim()
+
+const csvHsn =
+  String(r.hsn_code || '').trim()
+
+const csvCess =
+  String(r.cess_percent || '').trim()
+
+const finalGst =
+  csvGst !== ''
+    ? Number(csvGst)
+    : Number(cat?.gst_percent || 0)
+
+const finalHsn =
+  csvHsn || cat?.hsn_code || ''
+
+const finalCess =
+  csvCess !== ''
+    ? Number(csvCess)
+    : Number(cat?.cess_percent || 0)
 
       if (
         !name ||
@@ -285,13 +311,15 @@ async function processBulkImportJob(job) {
           images,
           meta_title,
           meta_description,
-          meta_keywords,
-          gst_percent
+     meta_keywords,
+gst_percent,
+hsn_code,
+cess_percent
         )
         VALUES (
           $1,$2,$3,$4,$5,$6,$7,$8,
           $9,$10,$11,$12,$13,$14,
-          $15,$16,$17
+      $15,$16,$17,$18,$19
         )
       `,[
         name,
@@ -312,8 +340,10 @@ async function processBulkImportJob(job) {
         ),
         r.meta_title || '',
         r.meta_description || '',
-        r.meta_keywords || '',
-        cat.gst_percent || 0
+       r.meta_keywords || '',
+finalGst,
+finalHsn,
+finalCess
       ])
 
       successCount++

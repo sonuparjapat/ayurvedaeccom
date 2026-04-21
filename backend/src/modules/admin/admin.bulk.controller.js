@@ -63,9 +63,9 @@ exports.uploadBulkFiles = upload.fields([
 exports.downloadTemplate = async (req, res) => {
   try {
 
-    const csvContent =
-      `name,slug,price,compareprice,inventory,sku,category_id,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords,images
-Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,Himalaya,active,Short text,Long text,Meta title,Meta desc,keywords,https://site.com/a.jpg|https://site.com/b.jpg`
+   const csvContent =
+`name,slug,price,compareprice,inventory,sku,category_id,gst_percent,hsn_code,cess_percent,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords,images
+Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,,,0,Himalaya,active,Short text,Long text,Meta title,Meta desc,keywords,https://site.com/a.jpg|https://site.com/b.jpg`
 
     res.setHeader(
       'Content-Type',
@@ -92,17 +92,20 @@ exports.downloadCategoryTemplate = async (req, res) => {
   try {
 
     const result = await pool.query(`
-      SELECT id,name,gst_percent
-      FROM categories
+     SELECT
+  id,
+  name,
+  gst_percent,
+  hsn_code,
+  cess_percent
+FROM categories
       WHERE is_active = true
       ORDER BY id ASC
     `)
 
-    let csv =
-      'id,name,gst_percent\n'
-
+    let csv = 'id,name,gst_percent,hsn_code,cess_percent\n'
     result.rows.forEach(row => {
-      csv += `${row.id},"${row.name}",${row.gst_percent}\n`
+csv += `${row.id},"${row.name}",${row.gst_percent},"${row.hsn_code || ''}",${row.cess_percent || 0}\n`
     })
 
     res.setHeader(

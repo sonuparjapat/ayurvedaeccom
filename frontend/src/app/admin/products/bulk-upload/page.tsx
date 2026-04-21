@@ -339,7 +339,7 @@ function StatCard({
           </h1>
 
           <p className="text-sm text-gray-500">
-            Import hundreds of products in one go
+           Import hundreds of products in one go with category-based GST auto fill
           </p>
         </div>
 
@@ -411,7 +411,7 @@ function StatCard({
 
     <GuideCard
       title="1. Prepare CSV"
-      desc="Download template and fill product details."
+    desc="Download template and fill product details. GST / HSN optional."
     />
 
     <GuideCard
@@ -445,7 +445,10 @@ function StatCard({
               <th className="p-2 text-left">sku</th>
               <th className="p-2 text-left">price</th>
               <th className="p-2 text-left">inventory</th>
-              <th className="p-2 text-left">category</th>
+     
+              <th className="p-2 text-left">category_id</th>
+<th className="p-2 text-left">gst%</th>
+<th className="p-2 text-left">hsn</th>
             </tr>
           </thead>
 
@@ -454,16 +457,20 @@ function StatCard({
               <td className="p-2">iPhone 15</td>
               <td className="p-2">APL001</td>
               <td className="p-2">79999</td>
-              <td className="p-2">10</td>
-              <td className="p-2">Mobiles</td>
+            <td className="p-2">10</td>
+<td className="p-2">1</td>
+<td className="p-2">18</td>
+<td className="p-2">8517</td>
             </tr>
 
             <tr className="border-t">
               <td className="p-2">Nike Shoes</td>
               <td className="p-2">NK101</td>
               <td className="p-2">2999</td>
-              <td className="p-2">25</td>
-              <td className="p-2">Shoes</td>
+             <td className="p-2">25</td>
+<td className="p-2">2</td>
+<td className="p-2"></td>
+<td className="p-2"></td>
             </tr>
           </tbody>
 
@@ -500,7 +507,8 @@ function StatCard({
     <div>• ZIP file is optional.</div>
     <div>• Best image naming: SKU-1.jpg, SKU-2.jpg</div>
     <div>• Invalid rows will be skipped with detailed errors.</div>
-
+<div>• If GST / HSN is blank, system uses category defaults.</div>
+<div>• Download Categories CSV for category_id reference.</div>
   </div>
 
 </div>
@@ -553,6 +561,8 @@ onChange={(f: File) => {
           <li>ZIP file is optional for images.</li>
           <li>Recommended image naming: SKU-1.jpg, SKU-2.jpg</li>
           <li>Invalid rows will be skipped with detailed errors.</li>
+          <li>GST / HSN columns are optional in CSV.</li>
+<li>Blank tax fields auto-fill from selected category_id.</li>
           <li>Existing product flow remains unchanged.</li>
         </ul>
 

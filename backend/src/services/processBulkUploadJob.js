@@ -93,9 +93,14 @@ async function processBulkUploadJob(job) {
     zipMap[key].push(f)
   })
 
-  const catRes =
-    await pool.query(`
-      SELECT id,name,gst_percent
+ const catRes =
+  await pool.query(`
+      SELECT
+        id,
+        name,
+        gst_percent,
+        hsn_code,
+        cess_percent
       FROM categories
     `)
 
@@ -167,6 +172,14 @@ async function processBulkUploadJob(job) {
       Number(
         r.category_id || 0
       )
+      const gst_percent =
+  String(r.gst_percent || '').trim()
+
+const hsn_code =
+  String(r.hsn_code || '').trim()
+
+const cess_percent =
+  String(r.cess_percent || '').trim()
 
     const cat =
       categoryById[
@@ -209,7 +222,25 @@ async function processBulkUploadJob(job) {
       rowErrors.push(
         'Invalid category_id'
       )
+if (gst_percent !== '') {
+  const gst = Number(gst_percent)
 
+  if (isNaN(gst) || gst < 0 || gst > 100) {
+    rowErrors.push('Invalid gst_percent')
+  }
+}
+
+if (cess_percent !== '') {
+  const cess = Number(cess_percent)
+
+  if (isNaN(cess) || cess < 0 || cess > 100) {
+    rowErrors.push('Invalid cess_percent')
+  }
+}
+
+if (hsn_code && hsn_code.length > 30) {
+  rowErrors.push('Invalid hsn_code')
+}
     if (
       sku &&
       csvSku.has(
