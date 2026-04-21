@@ -61,7 +61,6 @@ exports.getCategories = async (req, res) => {
     c.image_url,
     c.description,
     c.hsn_code,
-c.tax_name,
 c.cess_percent,
 
     COUNT(p.id) AS product_count
