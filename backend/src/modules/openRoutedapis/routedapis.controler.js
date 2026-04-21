@@ -416,40 +416,41 @@ if (cess < 0 || cess > 100) {
 
     /* ================= UPDATE ================= */
 
-    const result = await pool.query(
-      `
-      UPDATE categories
-      SET
+   const result = await pool.query(
+  `
+  UPDATE categories
+  SET
     name=$1,
-gst_percent=$2,
-hsn_code=$3,
-cess_percent=$4,
-color_class=$5,
-image_url=$6,
-description=$7
-WHERE id=$8
-      RETURNING
-        id,
-        name,
-        gst_percent,
-        color_class,
-        image_url,
-        description,hsn_code,
+    gst_percent=$2,
+    hsn_code=$3,
+    cess_percent=$4,
+    color_class=$5,
+    image_url=$6,
+    description=$7,
+    updated_at=NOW()
+  WHERE id=$8
 
-cess_percent,
-      `,
-     [
-  cleanName,
-  gst,
-  hsn_code?.trim() || null,
-
-  cess,
-  color_class || null,
-  imageUrl,
-  description || null,
-  id,
-]
-    );
+  RETURNING
+    id,
+    name,
+    gst_percent,
+    hsn_code,
+    cess_percent,
+    color_class,
+    image_url,
+    description
+  `,
+  [
+    cleanName,
+    gst,
+    hsn_code?.trim() || null,
+    cess || 0,
+    color_class || null,
+    imageUrl,
+    description || null,
+    id,
+  ]
+);
 
 
     return sendSuccess(
