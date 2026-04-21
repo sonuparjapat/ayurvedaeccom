@@ -79,7 +79,7 @@ c.cess_percent,
     c.color_class,
     c.image_url,
     c.hsn_code,
-c.tax_name,
+
 c.cess_percent,
     c.description
 
@@ -134,7 +134,7 @@ exports.getCategoryById = async (req, res) => {
         color_class,
         image_url,
         description,hsn_code,
-tax_name,
+
 cess_percent
       FROM categories
       WHERE id = $1

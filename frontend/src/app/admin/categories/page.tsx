@@ -17,7 +17,7 @@ interface Category {
   name: string
   gst_percent: number
   hsn_code?: string
-  tax_name?: string
+
   cess_percent?: number
   color_class?: string
   image_url?: string
@@ -130,7 +130,7 @@ setCessPercent(0)
     setName(row.name)
     setGstPercent(row.gst_percent || 0)
 setHsnCode(row.hsn_code || '')
-setTaxName(row.tax_name || '')
+
 setCessPercent(row.cess_percent || 0)
     setColor(row.color_class || '')
     setDesc(row.description || '')
@@ -232,7 +232,7 @@ setCessPercent(0)
       form.append('color_class', color)
       form.append('description', desc)
 form.append('hsn_code', hsnCode)
-form.append('tax_name', taxName)
+
 form.append('cess_percent', String(cessPercent))
       if (image) {
         form.append('image', image)
