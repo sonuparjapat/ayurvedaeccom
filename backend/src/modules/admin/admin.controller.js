@@ -486,7 +486,7 @@ if (req.files?.length) {
         meta_keywords,
         gst_percent,
 hsn_code,
-cess_percent,
+cess_percent
 
       )
 
