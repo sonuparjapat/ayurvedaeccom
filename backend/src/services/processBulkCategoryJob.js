@@ -48,13 +48,14 @@ async function processBulkCategoryJob(job) {
 
     }
   )
-
-  const catRes =
-    await pool.query(`
+const catRes =
+  await pool.query(`
       SELECT
         id,
         name,
-        gst_percent
+        gst_percent,
+        hsn_code,
+        cess_percent
       FROM categories
     `)
 
@@ -108,19 +109,23 @@ async function processBulkCategoryJob(job) {
 
       const result =
         await pool.query(`
-          UPDATE products
-          SET
-            category_id=$1,
-            category_name=$2,
-            gst_percent=$3
-          WHERE LOWER(sku)=LOWER($4)
-          RETURNING id
+UPDATE products
+SET
+  category_id=$1,
+  category_name=$2,
+  gst_percent=$3,
+  hsn_code=$4,
+  cess_percent=$5
+WHERE LOWER(sku)=LOWER($6)
+RETURNING id
         `,[
-          category.id,
-          category.name,
-          category.gst_percent || 0,
-          sku
-        ])
+  category.id,
+  category.name,
+  category.gst_percent || 0,
+  category.hsn_code || '',
+  category.cess_percent || 0,
+  sku
+])
 
       if (
         !result.rowCount
