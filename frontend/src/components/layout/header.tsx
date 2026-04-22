@@ -709,7 +709,7 @@ const {
   width: 40px;
   transform: scale(2.8);
   
-  margin-left: 4px;
+
 }
         }
 
