@@ -743,13 +743,13 @@ const {
         >
           <div className="top-bar-inner">
             <div className="top-bar-contact">
-              <a href="tel:+919876543210">
+              <a href={`tel:+${companydata[0]?.phone||""}`}>
                 <Phone size={13} />
-                <span>{companydata[0]?.phone||"N.A"}</span>
+                <span>{companydata[0]?.phone||"0000000000"}</span>
               </a>
-              <a href="mailto:info@ayurvedesifoods.com">
+              <a href={`mailto:${companydata[0]?.email||""}`}>
                 <Mail size={13} />
-                <span>{companydata[0]?.email||"info@ayurvedesifoods.com"}</span>
+                <span>{companydata[0]?.email||"-----"}</span>
               </a>
             </div>
             <div className="top-bar-badges">
