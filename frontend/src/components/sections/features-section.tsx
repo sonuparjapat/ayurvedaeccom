@@ -230,7 +230,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
 function Background() {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      <div className="absolute inset-0 bg-[#fafaf7]" />
+      <div className="absolute inset-0 bg-[#F5F1E8]" />
       <div className="absolute -top-20 -left-20 w-[400px] h-[400px] rounded-full bg-amber-100/20 blur-[80px]" />
       <div className="absolute -bottom-16 -right-16 w-[360px] h-[360px] rounded-full bg-emerald-100/20 blur-[70px]" />
       <div

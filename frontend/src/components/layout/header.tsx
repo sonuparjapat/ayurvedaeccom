@@ -177,7 +177,7 @@ const {
  
         /* ── Main Header ── */
         .main-header {
-          background: var(--brand-cream);
+          background: #EEF4E8;
           border-bottom: 1px solid rgba(26,58,42,0.1);
           position: sticky;
           top: 0;
