@@ -89,12 +89,25 @@ const [reviewsData, setReviewsData] = useState({
   },
   error: null,
 });
+const [companydata,setCompanyData]=useState<any>([])
 const [postLoginRedirect,
   setPostLoginRedirect] =
   useState("")
 const [categoriesdata,setCategoriesdata]=useState<any>([])
 const [orders,setOrders]=useState<any>([])
 const [topratedReviews,setTopRatedReviews]=useState<any>([])
+
+// ========================companydatafun======================
+const getcompanydata=useCallback(async()=>{
+try{
+const res=await axios.get('/company')
+if(res?.status==200){
+  setCompanyData(res?.data?.data)
+}
+}catch(error:any){
+console.log(error,"companydataerror")
+}
+},[])
 /* ================= LOAD REVIEWS ================= */
 
 const loadReviews = useCallback(
@@ -511,7 +524,7 @@ useEffect(() => {
   const init = async () => {
     await fetchUser();
     await fetchcat();
-
+await getcompanydata()
     if (
       pathname !== "/adminauth" &&
       pathname !== "/auth" &&
@@ -632,6 +645,7 @@ authMode,
 setAuthMode,
 postLoginRedirect,
 setPostLoginRedirect,
+companydata
       }}
     >
       {children}

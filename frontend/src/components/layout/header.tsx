@@ -30,7 +30,8 @@ const {
   logout,
   categoriesdata,
   setOpenauth,
-  setAuthMode
+  setAuthMode,
+  companydata
 } = useAuth()
  
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -748,7 +749,7 @@ const {
               </a>
               <a href="mailto:info@ayurvedesifoods.com">
                 <Mail size={13} />
-                <span>info@ayurvedesifoods.com</span>
+                <span>{companydata[0]?.email||"info@ayurvedesifoods.com"}</span>
               </a>
             </div>
             <div className="top-bar-badges">
