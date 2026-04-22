@@ -745,7 +745,7 @@ const {
             <div className="top-bar-contact">
               <a href="tel:+919876543210">
                 <Phone size={13} />
-                <span>+91 98765 43210</span>
+                <span>{companydata[0]?.phone||"N.A"}</span>
               </a>
               <a href="mailto:info@ayurvedesifoods.com">
                 <Mail size={13} />
