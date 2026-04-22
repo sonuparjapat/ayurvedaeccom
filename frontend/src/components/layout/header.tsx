@@ -24,6 +24,7 @@ import axios from '@/lib/axios'
 import useDebounce from '../debounce'
  
 export function Header() {
+   const logoUrl = process.env.NEXT_PUBLIC_LOGO_URL || ''
   const router = useRouter()
 const {
   loginuserdata,
@@ -177,8 +178,8 @@ const {
         }
  
         /* ── Main Header ── */
-        .main-header {
-          background: #EEF4E8;
+     .main-header {
+  background: #f7f4eb;
           border-bottom: 1px solid rgba(26,58,42,0.1);
           position: sticky;
           top: 0;
@@ -186,8 +187,8 @@ const {
           transition: box-shadow 0.3s, background 0.3s;
         }
  
-        .main-header.scrolled {
-          background: rgba(250,248,243,0.97);
+      .main-header.scrolled {
+  background: rgba(247,244,235,0.96);
           box-shadow: 0 4px 24px rgba(26,58,42,0.08);
           backdrop-filter: blur(12px);
         }
@@ -206,68 +207,31 @@ const {
           gap: 12px;
         }
  
-        /* ── Logo ── */
-        .logo-wrap {
-          display: flex;
-          align-items: center;
-          gap: 9px;
-          text-decoration: none;
-          flex-shrink: 0;
-          min-width: 0;
-        }
- 
-        .logo-icon {
-          width: 40px;
-          height: 40px;
-          min-width: 40px;
-          background: var(--brand-forest);
-          border-radius: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          overflow: hidden;
-        }
- 
-        .logo-icon::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(135deg, var(--brand-moss) 0%, var(--brand-forest) 100%);
-        }
- 
-        .logo-icon svg {
-          position: relative;
-          z-index: 1;
-          color: var(--brand-gold);
-        }
- 
-        .logo-text {
-          display: flex;
-          flex-direction: column;
-          line-height: 1;
-          min-width: 0;
-        }
- 
-        .logo-title {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 20px;
-          font-weight: 600;
-          color: var(--brand-forest);
-          letter-spacing: 0.01em;
-          white-space: nowrap;
-        }
- 
-        .logo-sub {
-          font-size: 9.5px;
-          font-weight: 500;
-          letter-spacing: 0.16em;
-          text-transform: uppercase;
-          color: var(--brand-sage);
-          margin-top: 1px;
-          white-space: nowrap;
-        }
- 
+    /* ── Logo ── */
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.logo-image {
+  height: 60px;
+  width: 60px;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  mix-blend-mode: multiply;
+  transform: scale(2.8);
+  transform-origin: center;
+  transition: filter 0.25s ease;
+}
+
+.logo-wrap:hover .logo-image {
+  filter: drop-shadow(0 6px 14px rgba(26,58,42,0.12));
+}
         /* ── Desktop Search ── */
         .search-desktop {
           flex: 1;
@@ -695,6 +659,14 @@ const {
         /* Tablet */
         @media (max-width: 1023px) and (min-width: 769px) {
           .search-desktop { max-width: 340px; margin: 0 12px; }
+          .logo-image {
+  height: 52px;
+  width: 52px;
+  transform: scale(2.8);
+  // transform-origin: center;
+    transform-origin: left center;
+  margin-left: 20px;
+}
         }
 
         /* Mobile hide/show rules */
@@ -713,6 +685,14 @@ const {
           .divider-v { display: none; }
           .top-bar { padding: 6px 0; }
           .top-badge { font-size: 10px; padding: 2px 7px; }
+.logo-image {
+  height: 52px;
+  width: 52px;
+  transform: scale(2.8);
+  // transform-origin: center;
+    transform-origin: left center;
+  margin-left: 40px;
+}
         }
 
         /* Very small phones */
@@ -724,6 +704,13 @@ const {
           .action-btn { width: 32px; height: 32px; }
           .top-badge:nth-child(n+2) { display: none; }
           .mobile-action-pill { font-size: 12px; padding: 0 8px; }
+.logo-image {
+  height: 40px;
+  width: 40px;
+  transform: scale(2.8);
+  transform-origin: left center;
+  margin-left: 8px;
+}
         }
 
         @media (min-width: 769px) {
@@ -780,15 +767,13 @@ const {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 style={{ flexShrink: 0 }}
               >
-                <Link href="/" className="logo-wrap">
-                  <div className="logo-icon">
-                    <Leaf size={20} />
-                  </div>
-                  <div className="logo-text">
-                    <span className="logo-title">AyurVeda</span>
-                    <span className="logo-sub">Desi Foods</span>
-                  </div>
-                </Link>
+             <Link href="/" className="logo-wrap">
+  <img
+    src={logoUrl}
+    alt="Oroganix"
+    className="logo-image"
+  />
+</Link>
               </motion.div>
  
               {/* Desktop Search */}
