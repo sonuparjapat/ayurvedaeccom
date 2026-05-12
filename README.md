@@ -57,7 +57,6 @@ The project combines modern web technologies with the growing demand for natural
 ## Frontend
 - Next.js
 - React.js
-- Redux Toolkit
 - Tailwind CSS
 - Axios
 
@@ -67,7 +66,7 @@ The project combines modern web technologies with the growing demand for natural
 - Express.js (Optional Scalable Backend)
 
 ## Database
-- MongoDB / PostgreSQL
+- PostgreSQL
 
 ## Authentication
 - JWT Authentication
@@ -75,7 +74,7 @@ The project combines modern web technologies with the growing demand for natural
 - Role-Based Access
 
 ## Additional Services
-- Cloudinary (Image Uploads)
+- AWS (Image Uploads)
 - Razorpay / Stripe
 - REST APIs
 
