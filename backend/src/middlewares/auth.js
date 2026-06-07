@@ -1,8 +1,10 @@
 const jwt = require("jsonwebtoken");
 
 exports.auth = (req, res, next) => {
-  const token = req.cookies.token;
-
+  let token = req.cookies.token;
+if (!token && req.headers.authorization) {
+  token = req.headers.authorization.replace('Bearer ', '');
+}
   if (!token) {
     return res.status(401).json({
       message: "Unauthorized"
@@ -27,8 +29,10 @@ exports.auth = (req, res, next) => {
 
 exports.optionalAuth = (req, res, next) => {
   try {
-    const token = req.cookies.token;
-
+    let token = req.cookies.token;
+if (!token && req.headers.authorization) {
+  token = req.headers.authorization.replace('Bearer ', '');
+}
     if (!token) {
       req.user = null;
       return next();
