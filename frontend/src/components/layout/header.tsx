@@ -708,8 +708,8 @@ const {
   height: 40px;
   width: 40px;
   transform: scale(2.8);
-  transform-origin: left center;
-  margin-left: 8px;
+  
+
 }
         }
 
