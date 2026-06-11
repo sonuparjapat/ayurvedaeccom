@@ -26,6 +26,8 @@ import {
   Wallet,
   MessageSquare,
   Download,
+  BookOpen,
+  Code2,
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
@@ -50,7 +52,7 @@ export default function AdminLayout({
 
   return (
 
-    <div className="min-h-screen w-full border border-red-400 flex bg-gray-100">
+    <div className="min-h-screen w-full flex bg-gray-100">
 
       <Toaster position="top-right" />
 
@@ -257,6 +259,18 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/support" icon={<MessageSquare size={18} />}>
             Tickets
+          </MenuItem>
+
+          <div className="pt-2 pb-1 px-3">
+            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Documentation</p>
+          </div>
+
+          <MenuItem href="/admin/docs/user-manual" icon={<BookOpen size={18} />}>
+            User Manual
+          </MenuItem>
+
+          <MenuItem href="/admin/docs/developer" icon={<Code2 size={18} />}>
+            Developer Docs
           </MenuItem>
 
         </nav>

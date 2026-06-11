@@ -1627,18 +1627,28 @@ exports.adminListReviews = async (req, res) => {
   try {
     const { status = 'all', page = 1, limit = 20 } = req.query
     const offset = (Number(page) - 1) * Number(limit)
-    const where = status !== 'all' ? `AND r.status = '${status}'` : ''
+    const allowed = ['pending', 'approved', 'rejected']
+    const vals = [Number(limit), offset]
+    let where = ''
+    if (status !== 'all' && allowed.includes(status)) {
+      where = 'AND r.status = $3'
+      vals.push(status)
+    }
     const r = await pool.query(
-      `SELECT r.*, u.name as user_name, p.name as product_name
+      `SELECT r.id, r.rating, r.comment, r.images, r.status, r.created_at,
+              u.name as user_name, p.name as product_name, p.id as product_id
        FROM reviews r
        LEFT JOIN users u ON u.id = r.user_id
        LEFT JOIN products p ON p.id = r.product_id
        WHERE 1=1 ${where} ORDER BY r.created_at DESC LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      vals
     )
-    const countRes = await pool.query(`SELECT COUNT(*) FROM reviews r WHERE 1=1 ${where}`)
+    const countVals = status !== 'all' && allowed.includes(status) ? [status] : []
+    const countWhere = countVals.length ? 'WHERE r.status = $1' : ''
+    const countRes = await pool.query(`SELECT COUNT(*) FROM reviews r ${countWhere}`, countVals)
     res.json({ reviews: r.rows, total: Number(countRes.rows[0].count) })
   } catch (err) {
+    console.error(err)
     res.status(500).json({ message: 'Server error' })
   }
 }
@@ -1647,7 +1657,19 @@ exports.adminUpdateReview = async (req, res) => {
   try {
     const { id } = req.params
     const { status } = req.body
-    await pool.query(`UPDATE reviews SET status=$1 WHERE id=$2`, [status, id])
+    const allowed = ['pending', 'approved', 'rejected']
+    if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid status' })
+    const rev = await pool.query(`UPDATE reviews SET status=$1 WHERE id=$2 RETURNING product_id`, [status, id])
+    if (rev.rows.length) {
+      const pid = rev.rows[0].product_id
+      await pool.query(
+        `UPDATE products SET
+           averagerating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM reviews WHERE product_id=$1 AND status='approved'), 0),
+           reviewcount   = (SELECT COUNT(*) FROM reviews WHERE product_id=$1 AND status='approved')
+         WHERE id=$1`,
+        [pid]
+      )
+    }
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ message: 'Update failed' })
@@ -1656,7 +1678,17 @@ exports.adminUpdateReview = async (req, res) => {
 
 exports.adminDeleteReview = async (req, res) => {
   try {
-    await pool.query('DELETE FROM reviews WHERE id=$1', [req.params.id])
+    const rev = await pool.query(`DELETE FROM reviews WHERE id=$1 RETURNING product_id`, [req.params.id])
+    if (rev.rows.length) {
+      const pid = rev.rows[0].product_id
+      await pool.query(
+        `UPDATE products SET
+           averagerating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM reviews WHERE product_id=$1 AND status='approved'), 0),
+           reviewcount   = (SELECT COUNT(*) FROM reviews WHERE product_id=$1 AND status='approved')
+         WHERE id=$1`,
+        [pid]
+      )
+    }
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ message: 'Delete failed' })

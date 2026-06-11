@@ -785,6 +785,10 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_otp VARCHAR(6)`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_otp_verified BOOLEAN DEFAULT FALSE`);
 
+    /* ================= REVIEW MODERATION STATUS ================= */
+    await client.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved' CHECK (status IN ('pending','approved','rejected'))`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
+
     /* ================= SUPPORT TICKETS ================= */
     await client.query(`
       CREATE TABLE IF NOT EXISTS support_tickets (

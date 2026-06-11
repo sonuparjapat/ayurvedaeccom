@@ -1073,13 +1073,20 @@ exports.getOrderTimeline = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
 
-    // verify the order belongs to this user
     const own = await pool.query(
-      `SELECT id FROM orders WHERE id=$1 AND user_id=$2`,
+      `SELECT o.id, o.status, o.courier_name, o.tracking_number, o.shipped_at,
+              o.created_at as order_placed_at,
+              sp.delivery_days
+       FROM orders o
+       LEFT JOIN user_addresses ua ON ua.id = o.address_id
+       LEFT JOIN serviceable_pincodes sp ON sp.pincode = ua.pincode
+       WHERE o.id=$1 AND o.user_id=$2`,
       [id, userId]
     );
     if (!own.rows.length)
       return res.status(404).json({ success: false, message: "Order not found" });
+
+    const orderInfo = own.rows[0];
 
     const logs = await pool.query(
       `SELECT
@@ -1098,7 +1105,26 @@ exports.getOrderTimeline = async (req, res) => {
       [id]
     );
 
-    res.json({ success: true, timeline: logs.rows });
+    // Calculate ETA: shipped_at + delivery_days (fallback 5 days)
+    let estimatedDelivery = null;
+    if (orderInfo.shipped_at) {
+      const days = orderInfo.delivery_days || 5;
+      const eta = new Date(orderInfo.shipped_at);
+      eta.setDate(eta.getDate() + days);
+      estimatedDelivery = eta.toISOString();
+    }
+
+    res.json({
+      success: true,
+      timeline: logs.rows,
+      tracking: {
+        courier_name: orderInfo.courier_name || null,
+        tracking_number: orderInfo.tracking_number || null,
+        shipped_at: orderInfo.shipped_at || null,
+        estimated_delivery: estimatedDelivery,
+        current_status: orderInfo.status,
+      }
+    });
   } catch (err) {
     console.error("[ORDER TIMELINE]", err);
     res.status(500).json({ success: false, message: "Server error" });

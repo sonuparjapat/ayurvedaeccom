@@ -7,31 +7,66 @@ import { motion } from 'framer-motion'
 import {
   ChevronLeft, Package, Truck, CheckCircle2, Clock, XCircle,
   RotateCcw, AlertCircle, MapPin, Phone, Download, RefreshCw,
+  ExternalLink, Calendar, Star,
 } from 'lucide-react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 
 /* ── Status meta ── */
-const STATUS_MAP: Record<number, { label: string; color: string; icon: any }> = {
-  0: { label: 'Pending', color: '#e07a2a', icon: Clock },
-  1: { label: 'Confirmed', color: '#4a7c5e', icon: CheckCircle2 },
-  2: { label: 'Processing', color: '#3b82f6', icon: RefreshCw },
-  3: { label: 'Shipped', color: '#6366f1', icon: Truck },
-  4: { label: 'Out for Delivery', color: '#8b5cf6', icon: Truck },
-  5: { label: 'Delivered', color: '#16a34a', icon: CheckCircle2 },
-  6: { label: 'Cancelled', color: '#e05252', icon: XCircle },
-  7: { label: 'Return Requested', color: '#e07a2a', icon: RotateCcw },
-  8: { label: 'Returned', color: '#888', icon: RotateCcw },
+const STATUS_MAP: Record<number, { label: string; color: string; bg: string; icon: any; emoji: string }> = {
+  0: { label: 'Order Placed',      color: '#d97706', bg: '#fffbeb', icon: Clock,        emoji: '🕐' },
+  1: { label: 'Confirmed',         color: '#2563eb', bg: '#eff6ff', icon: CheckCircle2, emoji: '✅' },
+  2: { label: 'Processing',        color: '#7c3aed', bg: '#f5f3ff', icon: RefreshCw,    emoji: '⚙️' },
+  3: { label: 'Shipped',           color: '#0891b2', bg: '#ecfeff', icon: Truck,        emoji: '📦' },
+  4: { label: 'Out for Delivery',  color: '#ea580c', bg: '#fff7ed', icon: Truck,        emoji: '🚚' },
+  5: { label: 'Delivered',         color: '#16a34a', bg: '#f0fdf4', icon: CheckCircle2, emoji: '🎉' },
+  6: { label: 'Cancelled',         color: '#dc2626', bg: '#fef2f2', icon: XCircle,      emoji: '❌' },
+  7: { label: 'Return Requested',  color: '#d97706', bg: '#fffbeb', icon: RotateCcw,    emoji: '↩️' },
+  8: { label: 'Returned',          color: '#6b7280', bg: '#f9fafb', icon: RotateCcw,    emoji: '💰' },
+  9: { label: 'Refunded',          color: '#16a34a', bg: '#f0fdf4', icon: CheckCircle2, emoji: '✔️' },
 }
 
-/* ── Timeline steps (all statuses in order for the visual progress bar) ── */
-const TIMELINE_STEPS = [0, 1, 2, 3, 4, 5]
+const ACTIVE_STEPS = [0, 1, 2, 3, 4, 5]
+
+/* ── Carrier tracking URLs ── */
+const CARRIER_URLS: Record<string, (n: string) => string> = {
+  'delhivery':   n => `https://www.delhivery.com/track/package/${n}`,
+  'bluedart':    n => `https://www.bluedart.com/tracking`,
+  'blue dart':   n => `https://www.bluedart.com/tracking`,
+  'ekart':       n => `https://ekartlogistics.com/track/${n}`,
+  'xpressbees':  n => `https://www.xpressbees.com/shipment/tracking/?awb=${n}`,
+  'xpressbee':   n => `https://www.xpressbees.com/shipment/tracking/?awb=${n}`,
+  'dtdc':        n => `https://www.dtdc.in/tracking/tracking_results.asp?track_type=consignment&strCnno=${n}`,
+  'shadowfax':   n => `https://www.shadowfax.in/`,
+  'ecom express':n => `https://ecomexpress.in/tracking/?awb_field=${n}`,
+  'india post':  n => `https://www.indiapost.gov.in/vas/pages/AnonymousTracking.aspx`,
+  'speed post':  n => `https://www.indiapost.gov.in/vas/pages/AnonymousTracking.aspx`,
+  'amazon':      n => `https://track.amazon.in/tracking/${n}`,
+  'fedex':       n => `https://www.fedex.com/en-in/tracking.html?trknbr=${n}`,
+  'dhl':         n => `https://www.dhl.com/in-en/home/tracking.html?tracking-id=${n}`,
+}
+
+function getCarrierUrl(courier: string, tracking: string): string | null {
+  const key = courier.toLowerCase().trim()
+  for (const [name, fn] of Object.entries(CARRIER_URLS)) {
+    if (key.includes(name)) return fn(tracking)
+  }
+  return null
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+}
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 
 export default function OrderDetailPage() {
   const { id } = useParams()
   const router = useRouter()
   const [order, setOrder] = useState<any>(null)
   const [timeline, setTimeline] = useState<any[]>([])
+  const [trackingInfo, setTrackingInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
   const [returnReason, setReturnReason] = useState('')
@@ -48,6 +83,7 @@ export default function OrderDetailPage() {
       .then(([orderRes, timelineRes]) => {
         setOrder(orderRes.data?.data)
         setTimeline(timelineRes.data?.timeline || [])
+        setTrackingInfo(timelineRes.data?.tracking || null)
       })
       .catch(() => toast.error('Order not found'))
       .finally(() => setLoading(false))
@@ -58,14 +94,11 @@ export default function OrderDetailPage() {
     setCancelling(true)
     try {
       await axios.post(`/orders/${id}/cancel`, { reason: 'Customer requested cancellation' })
-      toast.success('Order cancelled successfully')
-      router.refresh()
+      toast.success('Order cancelled')
       window.location.reload()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to cancel order')
-    } finally {
-      setCancelling(false)
-    }
+    } finally { setCancelling(false) }
   }
 
   const retryPayment = async () => {
@@ -73,36 +106,23 @@ export default function OrderDetailPage() {
     try {
       const res = await axios.post(`/orders/${id}/retry-payment`)
       const { razorpayOrderId, amount, orderId } = res.data
-      const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY
       const rzp = new (window as any).Razorpay({
-        key,
-        amount,
-        currency: 'INR',
-        order_id: razorpayOrderId,
-        name: 'AyurVeda',
-        description: `Order #${orderId}`,
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY,
+        amount, currency: 'INR', order_id: razorpayOrderId,
+        name: 'AyurVeda', description: `Order #${orderId}`,
         handler: async (response: any) => {
           try {
-            await axios.post('/orders/verify', {
-              orderId,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            })
+            await axios.post('/orders/verify', { orderId, ...response })
             toast.success('Payment successful!')
             window.location.reload()
-          } catch {
-            toast.error('Payment verification failed')
-          }
+          } catch { toast.error('Payment verification failed') }
         },
         theme: { color: '#2d5a3d' },
       })
       rzp.open()
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to initiate payment')
-    } finally {
-      setRetrying(false)
-    }
+      toast.error(err?.response?.data?.message || 'Failed')
+    } finally { setRetrying(false) }
   }
 
   const submitReturn = async () => {
@@ -114,85 +134,128 @@ export default function OrderDetailPage() {
       setShowReturnForm(false)
       window.location.reload()
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to submit return request')
-    } finally {
-      setReturning(false)
-    }
+      toast.error(err?.response?.data?.message || 'Failed')
+    } finally { setReturning(false) }
   }
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 48, height: 48, border: '3px solid #e8f5ee', borderTopColor: '#2d5a3d', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin" />
+    </div>
+  )
 
-  if (!order) {
-    return (
-      <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <AlertCircle size={56} style={{ color: '#e05252' }} />
-        <h2 style={{ fontSize: 22, fontWeight: 600, color: '#1a3a2a' }}>Order not found</h2>
-        <Link href="/account" style={{ color: '#4a7c5e', textDecoration: 'underline' }}>Back to My Account</Link>
-      </div>
-    )
-  }
+  if (!order) return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+      <AlertCircle size={52} className="text-red-400" />
+      <h2 className="text-xl font-semibold text-gray-700">Order not found</h2>
+      <Link href="/account" className="text-green-600 hover:underline text-sm">← My Orders</Link>
+    </div>
+  )
 
-  const statusMeta = STATUS_MAP[order.status] || STATUS_MAP[0]
+  const statusMeta = STATUS_MAP[order.status] ?? STATUS_MAP[0]
   const StatusIcon = statusMeta.icon
   const isCancellable = [0, 1].includes(order.status)
   const isReturnable = order.status === 5
   const canRetryPayment = order.payment_method === 'online' && order.payment_status === 'unpaid' && order.status !== 6
   const addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address
+  const isCancelledOrReturned = [6, 7, 8, 9].includes(order.status)
+  const currentStep = isCancelledOrReturned ? -1 : Math.min(order.status, 5)
 
-  /* Determine which steps are done */
-  const isCancelledOrReturned = [6, 7, 8].includes(order.status)
-  const currentStep = isCancelledOrReturned ? -1 : order.status
+  const courier = trackingInfo?.courier_name || order.courier_name
+  const trackingNum = trackingInfo?.tracking_number || order.tracking_number
+  const carrierUrl = courier && trackingNum ? getCarrierUrl(courier, trackingNum) : null
+  const eta = trackingInfo?.estimated_delivery
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 16px 80px', fontFamily: 'DM Sans, sans-serif' }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');`}</style>
+    <div className="max-w-3xl mx-auto px-4 py-8 pb-20">
       <script src="https://checkout.razorpay.com/v1/checkout.js" async />
 
-      {/* Back */}
-      <Link href="/account" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#4a7c5e', textDecoration: 'none', fontSize: 13, marginBottom: 20 }}>
+      <Link href="/account" className="inline-flex items-center gap-1.5 text-green-700 text-sm mb-6 hover:text-green-800">
         <ChevronLeft size={15} /> My Orders
       </Link>
 
-      {/* Header */}
-      <div style={{ background: 'white', borderRadius: 16, border: '1px solid rgba(26,58,42,0.1)', padding: '20px 24px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      {/* ── Header Card ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 flex flex-wrap justify-between items-start gap-4">
         <div>
-          <div style={{ fontSize: 13, color: '#888', marginBottom: 4 }}>Order #{order.invoice_no || order.id}</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#1a3a2a' }}>₹{Number(order.total_amount).toFixed(2)}</div>
-          <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>{new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+          <p className="text-xs text-gray-400 mb-1">Order #{order.invoice_no || order.id}</p>
+          <p className="text-2xl font-bold text-gray-900">₹{Number(order.total_amount).toFixed(2)}</p>
+          <p className="text-xs text-gray-400 mt-1">Placed on {formatDate(order.created_at)}</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: `${statusMeta.color}18`, border: `1.5px solid ${statusMeta.color}40`, borderRadius: 10, padding: '8px 16px' }}>
-          <StatusIcon size={16} style={{ color: statusMeta.color }} />
-          <span style={{ fontSize: 14, fontWeight: 600, color: statusMeta.color }}>{statusMeta.label}</span>
+        <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2" style={{ background: statusMeta.bg, borderColor: `${statusMeta.color}40` }}>
+          <span className="text-base">{statusMeta.emoji}</span>
+          <span className="text-sm font-semibold" style={{ color: statusMeta.color }}>{statusMeta.label}</span>
         </div>
       </div>
 
-      {/* Progress Timeline Visual (only for active orders) */}
+      {/* ── ETA + Tracking Banner ── */}
+      {(courier || eta) && (
+        <div className="bg-gradient-to-r from-green-700 to-green-600 rounded-2xl p-4 mb-4 text-white">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <Truck size={20} />
+              </div>
+              <div>
+                {courier && <p className="font-semibold text-sm">{courier}</p>}
+                {trackingNum && <p className="text-xs text-green-200 font-mono mt-0.5">{trackingNum}</p>}
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              {eta && (
+                <div className="text-right">
+                  <p className="text-xs text-green-200">Estimated Delivery</p>
+                  <p className="font-bold text-sm flex items-center gap-1">
+                    <Calendar size={12} /> {formatDate(eta)}
+                  </p>
+                </div>
+              )}
+              {carrierUrl && (
+                <a
+                  href={carrierUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 bg-white text-green-700 text-xs font-bold px-3 py-2 rounded-lg hover:bg-green-50 transition-colors"
+                >
+                  Track Shipment <ExternalLink size={11} />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Progress Steps ── */}
       {!isCancelledOrReturned && (
-        <div style={{ background: 'white', borderRadius: 16, border: '1px solid rgba(26,58,42,0.1)', padding: '24px', marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#1a3a2a', marginBottom: 20 }}>Order Progress</div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', position: 'relative' }}>
-            {TIMELINE_STEPS.map((step, idx) => {
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+          <p className="text-sm font-semibold text-gray-700 mb-5">Order Progress</p>
+          <div className="relative flex items-start">
+            {ACTIVE_STEPS.map((step, idx) => {
               const meta = STATUS_MAP[step]
               const done = currentStep >= step
+              const active = currentStep === step
               const Icon = meta.icon
               return (
-                <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                  {/* connector line */}
-                  {idx < TIMELINE_STEPS.length - 1 && (
-                    <div style={{ position: 'absolute', top: 20, left: '50%', width: '100%', height: 3, background: done && currentStep > step ? meta.color : '#f0f0f0', transition: 'background 0.4s', zIndex: 0 }} />
+                <div key={step} className="flex-1 flex flex-col items-center relative">
+                  {idx < ACTIVE_STEPS.length - 1 && (
+                    <div className="absolute top-5 left-1/2 w-full h-0.5 transition-all duration-500"
+                      style={{ background: done && currentStep > step ? meta.color : '#e5e7eb' }} />
                   )}
-                  {/* dot */}
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: done ? meta.color : '#f0f0f0', border: `3px solid ${done ? meta.color : '#e0e0e0'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, position: 'relative', transition: 'all 0.3s' }}>
-                    <Icon size={16} style={{ color: done ? 'white' : '#bbb' }} />
-                  </div>
-                  <div style={{ marginTop: 8, fontSize: 10, fontWeight: done ? 600 : 400, color: done ? meta.color : '#bbb', textAlign: 'center', lineHeight: 1.3, maxWidth: 70 }}>{meta.label}</div>
+                  <motion.div
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: active ? 1.15 : 1 }}
+                    transition={{ type: 'spring', stiffness: 300 }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center z-10 relative transition-all duration-300"
+                    style={{
+                      background: done ? meta.color : '#f3f4f6',
+                      border: `3px solid ${done ? meta.color : '#e5e7eb'}`,
+                      boxShadow: active ? `0 0 0 4px ${meta.color}25` : undefined,
+                    }}
+                  >
+                    <Icon size={15} color={done ? 'white' : '#9ca3af'} />
+                  </motion.div>
+                  <p className="text-center mt-2 leading-tight" style={{ fontSize: 10, fontWeight: done ? 600 : 400, color: done ? meta.color : '#9ca3af', maxWidth: 64 }}>
+                    {meta.label}
+                  </p>
                 </div>
               )
             })}
@@ -200,155 +263,153 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* Status History from DB */}
+      {/* ── Status Timeline ── */}
       {timeline.length > 0 && (
-        <div style={{ background: 'white', borderRadius: 16, border: '1px solid rgba(26,58,42,0.1)', padding: '24px', marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#1a3a2a', marginBottom: 16 }}>Status History</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {timeline.map((log, idx) => (
-              <motion.div
-                key={log.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                style={{ display: 'flex', gap: 16, position: 'relative', paddingBottom: idx < timeline.length - 1 ? 20 : 0 }}
-              >
-                {/* vertical line */}
-                {idx < timeline.length - 1 && (
-                  <div style={{ position: 'absolute', left: 15, top: 32, width: 2, height: '100%', background: 'rgba(26,58,42,0.08)' }} />
-                )}
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: log.status_color ? `${log.status_color}20` : '#e8f5ee', border: `2px solid ${log.status_color || '#4a7c5e'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <CheckCircle2 size={14} style={{ color: log.status_color || '#4a7c5e' }} />
-                </div>
-                <div style={{ flex: 1, paddingTop: 4 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1a3a2a' }}>{log.status_name || 'Status Updated'}</div>
-                  {log.note && <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{log.note}</div>}
-                  <div style={{ fontSize: 11, color: '#bbb', marginTop: 3 }}>
-                    {new Date(log.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+          <p className="text-sm font-semibold text-gray-700 mb-4">Tracking History</p>
+          <div className="space-y-0">
+            {[...timeline].reverse().map((log, idx) => {
+              const st = STATUS_MAP[log.new_status]
+              const Icon = st?.icon ?? CheckCircle2
+              return (
+                <motion.div
+                  key={log.id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.04 }}
+                  className="flex gap-4 relative pb-5 last:pb-0"
+                >
+                  {idx < timeline.length - 1 && (
+                    <div className="absolute left-[15px] top-8 w-0.5 h-full bg-gray-100" />
+                  )}
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10"
+                    style={{ background: st ? `${st.color}18` : '#e8f5ee', border: `2px solid ${st?.color || '#4a7c5e'}` }}>
+                    <Icon size={13} style={{ color: st?.color || '#4a7c5e' }} />
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                  <div className="pt-0.5">
+                    <p className="text-sm font-semibold text-gray-800">{log.new_label || st?.label || 'Status Updated'}</p>
+                    {log.note && <p className="text-xs text-gray-500 mt-0.5">{log.note}</p>}
+                    <p className="text-xs text-gray-400 mt-1">{formatDateTime(log.created_at)}</p>
+                  </div>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
       )}
 
-      {/* Items */}
-      <div style={{ background: 'white', borderRadius: 16, border: '1px solid rgba(26,58,42,0.1)', padding: '24px', marginBottom: 20 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#1a3a2a', marginBottom: 16 }}>Items Ordered</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* ── Items ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+        <p className="text-sm font-semibold text-gray-700 mb-4">Items Ordered ({order.items?.length})</p>
+        <div className="space-y-3">
           {order.items?.map((item: any, i: number) => (
-            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <img src={item.image || '/placeholder.png'} alt={item.name} style={{ width: 56, height: 56, borderRadius: 10, objectFit: 'cover', background: '#e8f5ee', flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 500, color: '#1a3a2a' }}>{item.name}</div>
-                {item.variant_label && <div style={{ fontSize: 11, color: '#10b981', marginTop: 2, fontWeight: 600 }}>{item.variant_label}</div>}
-                <div style={{ fontSize: 12, color: '#888' }}>Qty: {item.quantity}</div>
+            <div key={i} className="flex gap-3 items-center">
+              <img src={item.image || '/placeholder.png'} alt={item.name}
+                className="w-14 h-14 rounded-xl object-cover bg-green-50 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
+                {item.variant_label && <p className="text-xs text-green-600 font-medium mt-0.5">{item.variant_label}</p>}
+                <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
               </div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#1a3a2a' }}>₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}</div>
+              <p className="text-sm font-bold text-gray-800 flex-shrink-0">₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}</p>
             </div>
           ))}
         </div>
-        <div style={{ borderTop: '1px solid rgba(26,58,42,0.08)', marginTop: 16, paddingTop: 16, display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#1a3a2a' }}>Total</span>
-          <span style={{ fontSize: 18, fontWeight: 700, color: '#1a3a2a' }}>₹{Number(order.total_amount).toFixed(2)}</span>
+        <div className="border-t border-gray-100 mt-4 pt-4 flex justify-between">
+          <span className="text-sm font-semibold text-gray-700">Total Paid</span>
+          <span className="text-lg font-bold text-gray-900">₹{Number(order.total_amount).toFixed(2)}</span>
         </div>
+        {/* Write Review CTA for delivered orders */}
+        {order.status === 5 && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3 bg-amber-50 rounded-xl p-3">
+            <Star size={18} className="text-amber-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800">How was your experience?</p>
+              <p className="text-xs text-gray-500">Share your thoughts on the products</p>
+            </div>
+            <Link href={`/account?tab=orders`}
+              className="text-xs font-semibold text-amber-600 bg-amber-100 px-3 py-1.5 rounded-lg hover:bg-amber-200 flex-shrink-0">
+              Write Review
+            </Link>
+          </div>
+        )}
       </div>
 
-      {/* Delivery Address */}
+      {/* ── Delivery Address ── */}
       {addr && (
-        <div style={{ background: 'white', borderRadius: 16, border: '1px solid rgba(26,58,42,0.1)', padding: '20px 24px', marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <MapPin size={15} style={{ color: '#4a7c5e' }} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#1a3a2a' }}>Delivery Address</span>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <MapPin size={15} className="text-green-600" />
+            <p className="text-sm font-semibold text-gray-700">Delivery Address</p>
           </div>
-          <div style={{ fontSize: 14, color: '#555', lineHeight: 1.6 }}>
-            <div style={{ fontWeight: 500, color: '#1a3a2a' }}>{addr.name}</div>
-            <div>{addr.address}</div>
-            <div>{addr.city}, {addr.state} – {addr.pincode}</div>
-            {addr.phone && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
-                <Phone size={12} /> {addr.phone}
-              </div>
-            )}
-          </div>
+          <p className="text-sm font-medium text-gray-800">{addr.name}</p>
+          <p className="text-sm text-gray-500 leading-relaxed mt-1">
+            {addr.address}<br />
+            {addr.city}, {addr.state} – {addr.pincode}
+          </p>
+          {addr.phone && (
+            <p className="flex items-center gap-1.5 text-xs text-gray-400 mt-2"><Phone size={11} />{addr.phone}</p>
+          )}
         </div>
       )}
 
-      {/* Tracking */}
-      {order.tracking_number && (
-        <div style={{ background: '#f0f9f4', borderRadius: 12, padding: '14px 20px', marginBottom: 20, border: '1px solid rgba(45,90,61,0.2)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Truck size={16} style={{ color: '#2d5a3d' }} />
-          <span style={{ fontSize: 13, color: '#2d5a3d' }}>Tracking: <strong>{order.tracking_number}</strong></span>
+      {/* ── Payment Status ── */}
+      {canRetryPayment && (
+        <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Payment Pending</p>
+              <p className="text-xs text-amber-700 mt-0.5">Your order needs payment to be confirmed.</p>
+            </div>
+          </div>
+          <button onClick={retryPayment} disabled={retrying}
+            className="bg-amber-500 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-amber-600 disabled:opacity-50">
+            {retrying ? 'Loading...' : '💳 Pay Now'}
+          </button>
         </div>
       )}
 
-      {/* Invoice download */}
+      {/* ── Invoice ── */}
       {order.pdf_url && (
-        <div style={{ marginBottom: 20 }}>
-          <a href={order.pdf_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#1a3a2a', color: 'white', padding: '10px 20px', borderRadius: 10, textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
+        <div className="mb-4">
+          <a href={order.pdf_url} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-gray-800 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-700">
             <Download size={14} /> Download Invoice
           </a>
         </div>
       )}
 
-      {/* Payment Retry Banner */}
-      {canRetryPayment && (
-        <div style={{ background: '#fff8ed', border: '1.5px solid #f59e0b', borderRadius: 14, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertCircle size={20} style={{ color: '#d97706', flexShrink: 0 }} />
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#92400e' }}>Payment Pending</div>
-              <div style={{ fontSize: 12, color: '#a16207', marginTop: 2 }}>Your order was placed but payment was not completed. Complete payment to confirm your order.</div>
-            </div>
-          </div>
-          <button
-            onClick={retryPayment}
-            disabled={retrying}
-            style={{ padding: '10px 22px', background: '#d97706', color: 'white', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-          >
-            {retrying ? 'Loading...' : '💳 Complete Payment'}
-          </button>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      {/* ── Actions ── */}
+      <div className="flex flex-wrap gap-3">
         {isCancellable && (
-          <button
-            onClick={cancelOrder}
-            disabled={cancelling}
-            style={{ padding: '10px 20px', border: '1.5px solid #e05252', borderRadius: 10, background: 'white', color: '#e05252', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
+          <button onClick={cancelOrder} disabled={cancelling}
+            className="flex items-center gap-2 border-2 border-red-200 text-red-600 bg-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-50 disabled:opacity-50">
             <XCircle size={15} /> {cancelling ? 'Cancelling...' : 'Cancel Order'}
           </button>
         )}
         {isReturnable && !showReturnForm && (
-          <button
-            onClick={() => setShowReturnForm(true)}
-            style={{ padding: '10px 20px', border: '1.5px solid #e07a2a', borderRadius: 10, background: 'white', color: '#e07a2a', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
+          <button onClick={() => setShowReturnForm(true)}
+            className="flex items-center gap-2 border-2 border-orange-200 text-orange-600 bg-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-orange-50">
             <RotateCcw size={15} /> Request Return
           </button>
         )}
       </div>
 
-      {/* Return form */}
+      {/* ── Return Form ── */}
       {showReturnForm && (
-        <div style={{ marginTop: 16, background: 'white', borderRadius: 14, border: '1px solid rgba(224,122,42,0.3)', padding: '20px' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#1a3a2a', marginBottom: 10 }}>Return Reason</div>
-          <textarea
-            value={returnReason}
-            onChange={(e) => setReturnReason(e.target.value)}
-            placeholder="Please describe why you want to return this order..."
-            rows={3}
-            style={{ width: '100%', border: '1.5px solid rgba(26,58,42,0.2)', borderRadius: 8, padding: '10px 12px', fontSize: 13, fontFamily: 'DM Sans, sans-serif', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
-          />
-          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-            <button onClick={submitReturn} disabled={returning} style={{ padding: '9px 20px', background: '#1a3a2a', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+        <div className="mt-4 bg-white rounded-2xl border-2 border-orange-100 p-5">
+          <p className="text-sm font-semibold text-gray-800 mb-3">Return Reason</p>
+          <textarea value={returnReason} onChange={e => setReturnReason(e.target.value)}
+            placeholder="Please describe why you want to return..." rows={3}
+            className="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          <div className="flex gap-3 mt-3">
+            <button onClick={submitReturn} disabled={returning}
+              className="bg-gray-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-700 disabled:opacity-50">
               {returning ? 'Submitting...' : 'Submit Return'}
             </button>
-            <button onClick={() => setShowReturnForm(false)} style={{ padding: '9px 20px', background: 'transparent', border: '1.5px solid rgba(26,58,42,0.2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', color: '#888' }}>
+            <button onClick={() => setShowReturnForm(false)}
+              className="border border-gray-200 text-gray-500 px-5 py-2.5 rounded-xl text-sm hover:bg-gray-50">
               Cancel
             </button>
           </div>

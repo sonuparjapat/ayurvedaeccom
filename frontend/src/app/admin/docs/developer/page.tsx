@@ -1,0 +1,848 @@
+'use client'
+
+import { useState } from 'react'
+import {
+  Code2, Database, Globe, Lock, Zap, Bell, Package, ShoppingCart,
+  Users, Tag, BarChart3, MessageSquare, Settings, Cpu, GitBranch,
+  Server, Key, ArrowRight, CheckCircle, AlertCircle, Info, Printer,
+  Layers, Shield, FileCode, Terminal
+} from 'lucide-react'
+
+/* ═══════════════════════════════════════════════════
+   TOC SECTIONS
+═══════════════════════════════════════════════════ */
+
+const SECTIONS = [
+  { id: 'arch',       label: 'Architecture Overview',  icon: Layers },
+  { id: 'env',        label: 'Environment Variables',  icon: Key },
+  { id: 'db',         label: 'Database Tables',        icon: Database },
+  { id: 'auth',       label: 'Auth Flow',              icon: Lock },
+  { id: 'api',        label: 'API Reference',          icon: Globe },
+  { id: 'sockets',    label: 'Socket Events',          icon: Zap },
+  { id: 'order-fsm',  label: 'Order State Machine',    icon: GitBranch },
+  { id: 'email',      label: 'Email Triggers',         icon: Bell },
+  { id: 'jobs',       label: 'Background Jobs',        icon: Cpu },
+  { id: 'modules',    label: 'Backend Modules',        icon: FileCode },
+  { id: 'frontend',   label: 'Frontend Structure',     icon: Server },
+  { id: 'mobile',     label: 'Mobile App',             icon: Code2 },
+  { id: 'deploy',     label: 'Deployment Notes',       icon: Terminal },
+]
+
+/* ═══════════════════════════════════════════════════
+   REUSABLE COMPONENTS
+═══════════════════════════════════════════════════ */
+
+function Section({ id, title, icon: Icon, children }: any) {
+  return (
+    <section id={id} className="mb-14 scroll-mt-4">
+      <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-200">
+        <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center">
+          <Icon size={18} className="text-slate-700" />
+        </div>
+        <h2 className="text-lg font-bold text-gray-900 font-mono">{title}</h2>
+      </div>
+      <div className="space-y-5">{children}</div>
+    </section>
+  )
+}
+
+function Table({ headers, rows }: { headers: string[]; rows: (string | any)[][] }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-gray-200">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="bg-gray-50 border-b border-gray-200">
+            {headers.map(h => <th key={h} className="text-left px-4 py-2.5 font-semibold text-gray-700 whitespace-nowrap">{h}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+              {row.map((cell, j) => <td key={j} className="px-4 py-2.5 text-gray-600 align-top">{cell}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function Code({ children }: { children: string }) {
+  return (
+    <pre className="bg-gray-950 text-green-300 rounded-xl p-4 text-xs leading-relaxed overflow-x-auto whitespace-pre-wrap">
+      {children}
+    </pre>
+  )
+}
+
+function Chip({ label, color = '#2563eb' }: { label: string; color?: string }) {
+  return (
+    <span className="inline-block px-2 py-0.5 rounded text-xs font-bold mr-1"
+      style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}>
+      {label}
+    </span>
+  )
+}
+
+function InfoBox({ type = 'info', children }: { type?: 'info' | 'tip' | 'warning', children: any }) {
+  const map = {
+    info:    { bg: '#eff6ff', border: '#93c5fd', icon: Info,         color: '#1d4ed8' },
+    tip:     { bg: '#f0fdf4', border: '#86efac', icon: CheckCircle,  color: '#16a34a' },
+    warning: { bg: '#fffbeb', border: '#fcd34d', icon: AlertCircle,  color: '#d97706' },
+  }
+  const s = map[type]
+  const Icon = s.icon
+  return (
+    <div className="flex gap-3 rounded-xl p-3 border text-xs leading-relaxed" style={{ background: s.bg, borderColor: s.border, color: s.color }}>
+      <Icon size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+      <div>{children}</div>
+    </div>
+  )
+}
+
+function H3({ children }: { children: any }) {
+  return <p className="font-bold text-sm text-gray-800 mt-4 mb-2">{children}</p>
+}
+
+/* ═══════════════════════════════════════════════════
+   MAIN PAGE
+═══════════════════════════════════════════════════ */
+
+export default function DeveloperDocsPage() {
+  const [active, setActive] = useState('arch')
+  const scrollTo = (id: string) => { setActive(id); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+
+  return (
+    <div className="flex -m-6 min-h-screen bg-gray-50">
+
+      {/* ── TOC ── */}
+      <aside className="w-60 flex-shrink-0 bg-slate-950 sticky top-0 h-screen overflow-y-auto">
+        <div className="p-4 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <Code2 size={16} className="text-green-400" />
+            <div>
+              <p className="font-bold text-white text-sm">Developer Docs</p>
+              <p className="text-xs text-slate-500">AyurVeda Desi Foods</p>
+            </div>
+          </div>
+        </div>
+        <nav className="p-3 space-y-0.5">
+          {SECTIONS.map(s => {
+            const Icon = s.icon
+            return (
+              <button key={s.id} onClick={() => scrollTo(s.id)}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-left text-xs transition-colors ${active === s.id ? 'bg-green-900/40 text-green-300 font-semibold' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>
+                <Icon size={12} /> {s.label}
+              </button>
+            )
+          })}
+        </nav>
+        <div className="p-4 border-t border-slate-800">
+          <button onClick={() => window.print()} className="w-full flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 bg-slate-900 px-3 py-2 rounded-lg">
+            <Printer size={12} /> Print / Save PDF
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Content ── */}
+      <main className="flex-1 overflow-y-auto p-8 max-w-4xl">
+
+        {/* Cover */}
+        <div className="bg-gray-950 rounded-2xl p-8 mb-10 text-white">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-green-500/20 rounded-2xl flex items-center justify-center">
+              <Code2 size={24} className="text-green-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold font-mono">Developer Documentation</h1>
+              <p className="text-gray-400 text-sm">AyurVeda Desi Foods · Backend + Frontend + Mobile</p>
+            </div>
+          </div>
+          <p className="text-gray-400 text-sm leading-relaxed max-w-2xl">
+            Complete technical reference for the AyurVeda Desi Foods platform. Covers all database tables, API endpoints, authentication, WebSocket events, order state machine, background jobs, and frontend structure.
+          </p>
+          <div className="flex flex-wrap gap-2 mt-5">
+            {['Node.js + Express', 'PostgreSQL', 'Next.js 14', 'React Native Expo 56', 'Socket.io', 'Razorpay', 'Brevo Email', 'Bull + Redis'].map(t => (
+              <span key={t} className="bg-white/10 text-xs px-2.5 py-1 rounded-full text-gray-300">{t}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* ═══ ARCHITECTURE ═══ */}
+        <Section id="arch" title="Architecture Overview" icon={Layers}>
+          <Code>{`
+┌─────────────────────────────────────────────────────────┐
+│                    CLIENT LAYER                         │
+│  ┌──────────────────┐    ┌──────────────────────────┐   │
+│  │  Next.js 14 Web  │    │  React Native (Expo 56)  │   │
+│  │  (App Router)    │    │  Android + iOS           │   │
+│  └────────┬─────────┘    └───────────┬──────────────┘   │
+│           │ REST + Socket.io          │ REST + Push      │
+└───────────┼──────────────────────────┼──────────────────┘
+            │                          │
+┌───────────▼──────────────────────────▼──────────────────┐
+│                   BACKEND (Node.js + Express)           │
+│                                                         │
+│  ┌──────────────┐  ┌───────────┐  ┌────────────────┐   │
+│  │  REST API    │  │ Socket.io │  │  Bull Workers  │   │
+│  │  (18+ routes)│  │  Server   │  │  (background)  │   │
+│  └──────┬───────┘  └─────┬─────┘  └───────┬────────┘   │
+│         │                │                │             │
+│  ┌──────▼────────────────▼────────────────▼──────────┐  │
+│  │               PostgreSQL Database                 │  │
+│  └───────────────────────────────────────────────────┘  │
+│                                                         │
+│  External: Razorpay │ Brevo (Email) │ Expo Push         │
+└─────────────────────────────────────────────────────────┘
+`}</Code>
+          <Table
+            headers={['Layer', 'Technology', 'Location']}
+            rows={[
+              ['Backend API', 'Node.js 18+, Express 4, PostgreSQL (pg)', 'backend/'],
+              ['WebSockets', 'Socket.io v4.8.1', 'backend/src/socket.js'],
+              ['Web Frontend', 'Next.js 14, Tailwind CSS v4, TypeScript', 'frontend/'],
+              ['Mobile App', 'React Native, Expo 56, expo-router', 'ayurveda-app/'],
+              ['DB', 'PostgreSQL (any version ≥ 14)', 'docker / cloud provider'],
+              ['Background Jobs', 'Bull + Redis', 'backend/src/workers/'],
+              ['Email', 'Brevo (SibApiV3Sdk)', 'backend/src/utils/emailService.js'],
+              ['Payment', 'Razorpay Node SDK', 'backend/src/modules/payments/'],
+              ['Push Notifications', 'Expo Server SDK', 'backend/src/utils/pushNotification.js'],
+            ]}
+          />
+        </Section>
+
+        {/* ═══ ENV ═══ */}
+        <Section id="env" title="Environment Variables" icon={Key}>
+          <InfoBox type="warning">Never commit .env files. Copy .env.example and fill in real values locally and in your deployment platform.</InfoBox>
+          <H3>backend/.env</H3>
+          <Code>{`# Database
+DATABASE_URL=postgresql://user:password@host:5432/dbname
+
+# Server
+PORT=5000
+NODE_ENV=production
+
+# JWT
+JWT_SECRET=your_strong_random_secret_here
+
+# Razorpay (payment gateway)
+RAZORPAY_KEY_ID=rzp_live_xxxxx
+RAZORPAY_KEY_SECRET=your_secret_here
+
+# Brevo (email service — formerly Sendinblue)
+BREVO_API_KEY=xkeysib-xxxxxxxxxxxx
+BREVO_SENDER_EMAIL=noreply@yourstore.com
+BREVO_SENDER_NAME=AyurVeda Desi Foods
+
+# Redis (for Bull job queues)
+REDIS_URL=redis://localhost:6379
+
+# Expo Push (mobile notifications)
+EXPO_ACCESS_TOKEN=your_expo_access_token
+
+# Frontend URL (for CORS + email links)
+FRONTEND_URL=https://yourdomain.com
+
+# Google OAuth (optional)
+GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxx`}</Code>
+          <H3>frontend/.env.local</H3>
+          <Code>{`# Points to the backend API
+NEXT_PUBLIC_API_URL=http://localhost:5000
+
+# Razorpay public key (used on checkout page)
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
+          <H3>ayurveda-app/.env (Expo)</H3>
+          <Code>{`EXPO_PUBLIC_API_URL=http://localhost:5000`}</Code>
+        </Section>
+
+        {/* ═══ DATABASE ═══ */}
+        <Section id="db" title="Database Tables" icon={Database}>
+          <InfoBox type="info">All tables are created automatically on server start via <code>backend/src/database/init.js</code>. Run the backend once to initialise the schema.</InfoBox>
+
+          <H3>Core Commerce Tables</H3>
+          <Table
+            headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
+            rows={[
+              ['users', 'id (serial)', 'name, email, phone, password_hash, role (0-3), wallet_balance, loyalty_points, referral_code', 'role: 0=superadmin, 1=admin, 2=staff, 3=customer'],
+              ['products', 'id (serial)', 'name, description, price, compare_price, category_id, stock_quantity, is_active, average_rating, review_count, gst_rate, hsn_code, slug', 'is_active=false hides from storefront'],
+              ['product_images', 'id (serial)', 'product_id (FK), url, sort_order', 'Multiple images per product'],
+              ['categories', 'id (serial)', 'name, parent_id, gst_rate, is_active', 'Supports nested categories via parent_id'],
+              ['orders', 'id (serial)', 'user_id, status (0-9), total_amount, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, address_id, coupon_id, discount_amount, wallet_used, loyalty_points_used, cod_otp, shipped_at, courier_name, tracking_number', 'status enum: see Order State Machine'],
+              ['order_items', 'id (serial)', 'order_id, product_id, variant_id, quantity, unit_price, total_price, gst_amount', 'Snapshot prices at order time'],
+              ['user_addresses', 'id (serial)', 'user_id, name, phone, address_line1/2, city, state, pincode, is_default', ''],
+              ['reviews', 'id (serial)', 'user_id, product_id, order_id, rating, comment, status (pending/approved/rejected)', 'status column added for moderation'],
+              ['review_images', 'id (serial)', 'review_id (FK), url', 'Up to 5 images per review'],
+              ['wishlist', 'id (serial)', 'user_id, product_id', 'UNIQUE(user_id, product_id)'],
+              ['cart_items', 'id (serial)', 'user_id, product_id, variant_id, quantity', ''],
+              ['coupons', 'id (serial)', 'code, discount_type (flat/percent), discount_value, min_order_amount, max_discount, usage_limit, per_user_limit, used_count, valid_from, valid_to, is_active', ''],
+              ['coupon_usages', 'id (serial)', 'coupon_id, user_id, order_id, used_at', 'Tracks per-user usage'],
+            ]}
+          />
+
+          <H3>Marketing & Engagement Tables</H3>
+          <Table
+            headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
+            rows={[
+              ['banners', 'id (serial)', 'title, subtitle, image_url, link_url, cta_text, sort_order, is_active', 'Homepage carousel slides'],
+              ['flash_sales', 'id (serial)', 'title, start_time, end_time, discount_type, discount_value, is_active', ''],
+              ['flash_sale_products', 'id (serial)', 'flash_sale_id, product_id, special_price, stock_limit, sold_count', ''],
+              ['product_variants', 'id (serial)', 'product_id, name, value, price, stock_quantity, sku', 'e.g., name=Size value=500g'],
+              ['stock_notifications', 'id (serial)', 'product_id, email, notified_at', '"Notify Me" signups for out-of-stock'],
+              ['push_notification_tokens', 'id (serial)', 'user_id, token, platform (ios/android)', 'Expo push tokens'],
+              ['wallet_transactions', 'id (serial)', 'user_id, type (credit/debit), amount, description, order_id', ''],
+              ['loyalty_transactions', 'id (serial)', 'user_id, type (earn/redeem), points, order_id, description', ''],
+              ['referrals', 'id (serial)', 'referrer_id, referred_id, status, reward_amount', ''],
+            ]}
+          />
+
+          <H3>Content & UX Tables</H3>
+          <Table
+            headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
+            rows={[
+              ['qa', 'id (serial)', 'product_id, user_id, question, answer, is_approved', 'Product Q&A'],
+              ['recently_viewed', 'id (serial)', 'user_id, product_id, viewed_at', 'UNIQUE(user_id, product_id)'],
+              ['abandoned_carts', 'id (serial)', 'user_id, cart_snapshot (JSON), email_sent_at', ''],
+            ]}
+          />
+
+          <H3>Operations Tables</H3>
+          <Table
+            headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
+            rows={[
+              ['serviceable_pincodes', 'id (serial)', 'pincode, city, state, delivery_days, is_active', 'Used for pincode check + ETA calc'],
+              ['invoices', 'id (serial)', 'order_id, invoice_number, pdf_url, created_at', ''],
+              ['order_status_logs', 'id (serial)', 'order_id, old_status, new_status, new_label, old_label, note, changed_by, created_at', 'Full timeline history per order'],
+              ['admin_logs', 'id (serial)', 'admin_id, action, entity_type, entity_id, details (JSON), ip_address, created_at', 'Audit trail'],
+              ['settings', 'id (serial)', 'key, value', 'Key-value store for platform config'],
+              ['company', 'id (serial)', 'name, address, gst_number, logo_url, phone, email, website', 'Appears on invoices'],
+            ]}
+          />
+
+          <H3>Support System Tables</H3>
+          <Table
+            headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
+            rows={[
+              ['support_tickets', 'id (serial)', 'user_id, user_name, user_email, subject, category, status (open/in_progress/resolved/closed), priority (low/medium/high/urgent), assigned_to, order_id, closed_at', ''],
+              ['support_messages', 'id (serial)', 'ticket_id, sender_id, sender_type (user/admin), message, created_at', 'Chat messages within a ticket'],
+            ]}
+          />
+
+          <H3>Job Queue Tables</H3>
+          <Table
+            headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
+            rows={[
+              ['jobs', 'id (serial)', 'type, payload (JSON), status (pending/processing/completed/failed), created_at, processed_at, error', 'Fallback job log if Bull/Redis not available'],
+            ]}
+          />
+        </Section>
+
+        {/* ═══ AUTH ═══ */}
+        <Section id="auth" title="Authentication Flow" icon={Lock}>
+          <Code>{`
+POST /api/users/register        → Creates user, hashes password with bcrypt
+POST /api/users/login           → Returns JWT token (24h expiry by default)
+POST /api/users/login-otp       → Sends 6-digit OTP to email → verify OTP → JWT
+POST /api/users/google-login    → Accepts Google id_token → find or create user → JWT
+POST /api/users/refresh-token   → Issues new JWT from refresh token
+
+Token payload: { id, email, role }
+Token location: Authorization: Bearer <token>  (HTTP header)
+`}</Code>
+          <H3>Middleware Chain</H3>
+          <Table
+            headers={['Middleware', 'File', 'Behaviour']}
+            rows={[
+              ['auth', 'middlewares/auth.js', 'Validates JWT. Sets req.user. Returns 401 if invalid/missing.'],
+              ['optionalAuth', 'middlewares/auth.js', 'Validates JWT if present, sets req.user. Does NOT block if missing.'],
+              ['admin', 'middlewares/admin.js', 'Calls auth first, then checks req.user.role <= 2 (admin or staff). Returns 403 otherwise.'],
+            ]}
+          />
+          <InfoBox type="tip">
+            <strong>Role values:</strong> 0 = superadmin, 1 = admin, 2 = staff, 3 = customer.
+            Admin middleware allows roles 0, 1, and 2 (all staff). Adjust the threshold in middlewares/admin.js if you need finer control.
+          </InfoBox>
+        </Section>
+
+        {/* ═══ API ═══ */}
+        <Section id="api" title="API Reference (All Routes)" icon={Globe}>
+          <InfoBox type="info">Base URL: <code>http://localhost:5000/api</code>. All endpoints return JSON. Authentication is via <code>Authorization: Bearer &lt;token&gt;</code>.</InfoBox>
+
+          {[
+            {
+              prefix: '/users', label: 'Users & Auth',
+              routes: [
+                ['POST', '/register', 'public', 'Register new customer. Body: { name, email, password, phone }'],
+                ['POST', '/login', 'public', 'Login with email+password. Returns token.'],
+                ['POST', '/login-otp', 'public', 'Request OTP → { email } | Verify OTP → { email, otp }'],
+                ['POST', '/google-login', 'public', 'Google OAuth login. Body: { id_token }'],
+                ['GET', '/profile', 'auth', 'Get logged-in user profile.'],
+                ['PUT', '/profile', 'auth', 'Update profile (name, phone).'],
+                ['POST', '/change-password', 'auth', 'Change password. Body: { current_password, new_password }'],
+                ['GET', '/addresses', 'auth', 'List saved addresses.'],
+                ['POST', '/addresses', 'auth', 'Add new address.'],
+                ['PUT', '/addresses/:id', 'auth', 'Update address.'],
+                ['DELETE', '/addresses/:id', 'auth', 'Delete address.'],
+                ['GET', '/wallet', 'auth', 'Get wallet balance + transaction history.'],
+                ['GET', '/loyalty', 'auth', 'Get loyalty points balance + history.'],
+                ['GET', '/notifications', 'auth', 'List all notifications (order updates, ticket replies, etc.)'],
+                ['PUT', '/notifications/:id/read', 'auth', 'Mark notification as read.'],
+              ]
+            },
+            {
+              prefix: '/products', label: 'Products (Customer)',
+              routes: [
+                ['GET', '/public', 'public', 'List all active products. Supports ?category=&search=&page=&limit=&sort='],
+                ['GET', '/public/:id', 'public', 'Get single product details including images, variants, avg rating.'],
+                ['GET', '/categories', 'public', 'List all active categories.'],
+                ['GET', '/search/suggestions', 'public', 'Autocomplete suggestions. ?q=keyword'],
+                ['GET', '/related/:id', 'public', 'Related products by category.'],
+                ['GET', '/variants/:id', 'public', 'All variants for a product.'],
+                ['GET', '/rating/:id', 'public', 'Rating breakdown (star distribution).'],
+                ['GET', '/pincode-check', 'public', '?pincode=123456 → serviceable + delivery_days'],
+                ['POST', '/notify-me', 'optionalAuth', 'Subscribe to restock alert. Body: { product_id, email }'],
+                ['POST', '/recently-viewed', 'auth', 'Log a product view.'],
+                ['GET', '/recently-viewed', 'auth', 'Get recently viewed list.'],
+                ['POST', '/wishlist', 'auth', 'Toggle wishlist (add if not present, remove if present).'],
+                ['GET', '/', 'auth', 'Get wishlist items.'],
+                ['DELETE', '/:productId', 'auth', 'Remove specific product from wishlist.'],
+                ['POST', '/cart', 'auth', 'Add/update cart item. Body: { product_id, variant_id, quantity }'],
+                ['GET', '/cart', 'auth', 'Get cart items.'],
+                ['POST', '/reviews/order/:orderId/product/:productId', 'auth', 'Add/update review. Verifies purchase + delivered status.'],
+                ['GET', '/reviews/product/:productId', 'optionalAuth', 'Get reviews for a product. Approved only for public.'],
+                ['DELETE', '/review/:id', 'auth', 'Delete own review.'],
+              ]
+            },
+            {
+              prefix: '/orders', label: 'Orders',
+              routes: [
+                ['POST', '/', 'auth', 'Create new order. Body: { address_id, payment_method, coupon_code, wallet_amount, loyalty_points }'],
+                ['GET', '/', 'auth', 'List user\'s own orders.'],
+                ['GET', '/:id', 'auth', 'Get single order details.'],
+                ['GET', '/:id/timeline', 'auth', 'Order status history + tracking info.'],
+                ['GET', '/:id/invoice', 'auth', 'Download invoice PDF.'],
+                ['PUT', '/:id/cancel', 'auth', 'Cancel order (only Pending/Confirmed states).'],
+                ['POST', '/:id/return', 'auth', 'Request a return.'],
+              ]
+            },
+            {
+              prefix: '/payments', label: 'Payments (Razorpay)',
+              routes: [
+                ['POST', '/create-order', 'auth', 'Create Razorpay order. Body: { amount, order_id }'],
+                ['POST', '/verify', 'auth', 'Verify Razorpay signature + confirm payment.'],
+                ['POST', '/webhook', 'public', 'Razorpay webhook endpoint. Verifies HMAC signature.'],
+              ]
+            },
+            {
+              prefix: '/support', label: 'Support Tickets',
+              routes: [
+                ['POST', '/contact', 'optionalAuth', 'Contact form (no login required). Creates ticket + sends email.'],
+                ['GET', '/tickets', 'auth', 'Get user\'s own tickets.'],
+                ['POST', '/tickets', 'auth', 'Create new ticket.'],
+                ['GET', '/tickets/:id', 'auth', 'Get ticket + all messages.'],
+                ['POST', '/tickets/:id/reply', 'auth', 'Add message to ticket.'],
+                ['PUT', '/tickets/:id/close', 'auth', 'Close ticket.'],
+                ['GET', '/admin/tickets', 'admin', 'List all tickets with filters.'],
+                ['GET', '/admin/tickets/:id', 'admin', 'Get any ticket with messages.'],
+                ['PUT', '/admin/tickets/:id', 'admin', 'Update ticket status/priority.'],
+                ['POST', '/admin/tickets/:id/reply', 'admin', 'Admin reply to ticket.'],
+              ]
+            },
+            {
+              prefix: '/admin', label: 'Admin Routes',
+              routes: [
+                ['GET', '/products', 'admin', 'All products (incl. inactive). Supports filters.'],
+                ['POST', '/products', 'admin', 'Create product.'],
+                ['PUT', '/products/:id', 'admin', 'Update product.'],
+                ['DELETE', '/products/:id', 'admin', 'Delete product.'],
+                ['POST', '/products/bulk-upload', 'admin', 'CSV bulk product import.'],
+                ['POST', '/products/bulk-images', 'admin', 'ZIP bulk image upload.'],
+                ['POST', '/products/bulk-stock', 'admin', 'Bulk stock update.'],
+                ['POST', '/products/bulk-price', 'admin', 'Bulk price update.'],
+                ['POST', '/products/bulk-status', 'admin', 'Bulk active/inactive toggle.'],
+                ['POST', '/products/bulk-category', 'admin', 'Bulk category reassignment.'],
+                ['GET', '/orders', 'admin', 'All orders. ?status=&payment_method=&page='],
+                ['PUT', '/orders/:id/status', 'admin', 'Update order status (with state machine validation).'],
+                ['PUT', '/orders/:id/tracking', 'admin', 'Set courier_name + tracking_number.'],
+                ['POST', '/orders/:id/otp', 'admin', 'Generate COD delivery OTP.'],
+                ['POST', '/orders/:id/refund', 'admin', 'Process Razorpay refund.'],
+                ['GET', '/users', 'admin', 'List all users.'],
+                ['GET', '/users/:id', 'admin', 'Get single user + order summary.'],
+                ['PUT', '/users/:id/wallet', 'admin', 'Add/deduct wallet balance.'],
+                ['GET', '/analytics/summary', 'admin', 'Dashboard KPIs.'],
+                ['GET', '/analytics/revenue', 'admin', 'Revenue chart data. ?period=daily|weekly|monthly'],
+                ['GET', '/reviews', 'admin', 'All reviews with status filter.'],
+                ['PUT', '/reviews/:id', 'admin', 'Approve/reject review.'],
+                ['DELETE', '/reviews/:id', 'admin', 'Delete review.'],
+                ['GET', '/stock-notifications', 'admin', 'All notify-me signups.'],
+                ['DELETE', '/stock-notifications/:id', 'admin', 'Delete signup.'],
+                ['POST', '/notifications/push', 'admin', 'Send push to all users.'],
+                ['GET', '/export/orders', 'admin', 'Download orders CSV.'],
+                ['GET', '/export/users', 'admin', 'Download users CSV.'],
+              ]
+            },
+            {
+              prefix: '/banners /coupons /flash-sales /pincodes', label: 'Marketing & Config',
+              routes: [
+                ['GET', '/banners', 'public', 'Active banners for homepage carousel.'],
+                ['POST /PUT /DELETE', '/banners/*', 'admin', 'Manage banners.'],
+                ['GET', '/coupons/validate', 'auth', 'Validate coupon code at checkout.'],
+                ['POST /PUT /DELETE', '/coupons/*', 'admin', 'Manage coupons.'],
+                ['GET', '/flash-sales/active', 'public', 'Current active flash sale with products.'],
+                ['POST /PUT /DELETE', '/flash-sales/*', 'admin', 'Manage flash sales.'],
+                ['GET', '/pincodes/check', 'public', 'Pincode serviceability check.'],
+                ['POST /PUT /DELETE', '/pincodes/*', 'admin', 'Manage serviceable pincodes.'],
+              ]
+            },
+          ].map(group => (
+            <div key={group.prefix}>
+              <H3><code>{group.prefix}</code> — {group.label}</H3>
+              <Table
+                headers={['Method', 'Path', 'Auth', 'Description']}
+                rows={group.routes.map(([method, path, auth, desc]) => [
+                  <Chip key={method} label={method} color={method === 'GET' ? '#16a34a' : method === 'POST' ? '#2563eb' : method === 'PUT' ? '#d97706' : '#dc2626'} />,
+                  <code key={path} className="text-xs">{path}</code>,
+                  <Chip key={auth} label={auth} color={auth === 'public' ? '#6b7280' : auth === 'auth' ? '#7c3aed' : '#dc2626'} />,
+                  desc,
+                ])}
+              />
+            </div>
+          ))}
+        </Section>
+
+        {/* ═══ SOCKETS ═══ */}
+        <Section id="sockets" title="Socket.io Events" icon={Zap}>
+          <InfoBox type="info">Socket.io server is initialised in <code>backend/src/socket.js</code>. The singleton pattern allows any controller to call <code>emitToUser()</code>, <code>emitToAdmin()</code>, or <code>emitToTicket()</code>.</InfoBox>
+          <Code>{`// backend/src/socket.js — Singleton
+const { Server } = require('socket.io')
+let io = null
+
+function initSocket(httpServer) {
+  io = new Server(httpServer, { cors: { ... } })
+  io.on('connection', (socket) => {
+    socket.on('join_user',   (userId)   => socket.join(\`user_\${userId}\`))
+    socket.on('join_admin',  ()         => socket.join('admin_room'))
+    socket.on('join_ticket', (ticketId) => socket.join(\`ticket_\${ticketId}\`))
+    socket.on('leave_ticket',(ticketId) => socket.leave(\`ticket_\${ticketId}\`))
+  })
+}
+
+// helpers
+emitToUser(userId, event, data)     // sends to room user_{userId}
+emitToAdmin(event, data)            // sends to room admin_room
+emitToTicket(ticketId, event, data) // sends to room ticket_{id}`}</Code>
+
+          <H3>Events Reference</H3>
+          <Table
+            headers={['Event Name', 'Direction', 'Room', 'Payload', 'When emitted']}
+            rows={[
+              ['join_user', 'Client → Server', '—', '{ userId }', 'On connect, after login'],
+              ['join_admin', 'Client → Server', '—', '—', 'Admin panel on mount'],
+              ['join_ticket', 'Client → Server', '—', '{ ticketId }', 'Open ticket chat view'],
+              ['leave_ticket', 'Client → Server', '—', '{ ticketId }', 'Close ticket chat view'],
+              ['new_order', 'Server → admin_room', 'admin_room', '{ order_id, user_id }', 'After order placed'],
+              ['order_status_updated', 'Server → user_{id}', 'user_{userId}', '{ order_id, status, status_label }', 'When admin updates order status'],
+              ['new_ticket', 'Server → admin_room', 'admin_room', '{ ticket_id, subject, user_name }', 'Customer creates support ticket'],
+              ['new_message', 'Server → ticket_{id}', 'ticket_{id}', '{ id, sender_type, message, created_at }', 'Any reply to ticket'],
+              ['ticket_status_updated', 'Server → user_{id}', 'user_{userId}', '{ ticket_id, status }', 'Admin changes ticket status'],
+              ['admin_replied', 'Server → user_{id}', 'user_{userId}', '{ ticket_id, subject }', 'Admin sends message'],
+            ]}
+          />
+
+          <H3>Frontend Usage</H3>
+          <Code>{`// frontend/src/hooks/useOrderSocket.ts
+import { io } from 'socket.io-client'
+
+export function useOrderSocket(userId) {
+  useEffect(() => {
+    const socket = io(process.env.NEXT_PUBLIC_API_URL)
+    socket.emit('join_user', userId)
+    socket.on('order_status_updated', (data) => toast.success(...))
+    socket.on('admin_replied', (data) => toast.info(...))
+    return () => socket.disconnect()
+  }, [userId])
+}`}</Code>
+        </Section>
+
+        {/* ═══ ORDER FSM ═══ */}
+        <Section id="order-fsm" title="Order State Machine" icon={GitBranch}>
+          <p className="text-sm text-gray-600">The backend enforces valid state transitions. Invalid transitions return HTTP 400.</p>
+          <Code>{`
+Order Status Codes:
+  0 = Pending         (auto-set on create)
+  1 = Confirmed       (admin action)
+  2 = Processing      (admin action)
+  3 = Shipped         (admin action — requires tracking info)
+  4 = Out for Delivery(admin action)
+  5 = Delivered       (admin action or COD OTP verification)
+  6 = Cancelled       (admin or customer action — from 0 or 1 only)
+  7 = Return Requested(customer action — from 5 only, within 30 days)
+  8 = Returned        (admin action — from 7)
+  9 = Refunded        (admin action — triggers Razorpay refund)
+
+Valid transitions:
+  0 → 1 (confirm)
+  1 → 2 (start processing)
+  2 → 3 (ship — add tracking first)
+  3 → 4 (out for delivery)
+  4 → 5 (deliver)
+  0,1 → 6 (cancel)
+  5 → 7 (return request, customer only)
+  7 → 8 (mark returned, admin)
+  8 → 9 (refund, admin)
+
+Side effects on transition:
+  → 1: Send confirmation email
+  → 3: Send shipment email with tracking number
+  → 5: Credit loyalty points, generate final invoice, send delivered email
+  → 6: Restore stock quantities, refund online payments (if paid)
+  → 9: Call Razorpay refund API`}</Code>
+        </Section>
+
+        {/* ═══ EMAIL ═══ */}
+        <Section id="email" title="Email Triggers (Brevo)" icon={Bell}>
+          <InfoBox type="info">Email service is in <code>backend/src/utils/emailService.js</code> using <code>SibApiV3Sdk</code>. All emails are transactional (one-to-one) via Brevo SMTP API.</InfoBox>
+          <Table
+            headers={['Trigger', 'Template function', 'Recipient', 'Contents']}
+            rows={[
+              ['User registers', 'sendWelcomeEmail()', 'Customer', 'Welcome message, store intro'],
+              ['Order placed', 'sendOrderConfirmationEmail()', 'Customer', 'Order ID, items, total, address'],
+              ['Order confirmed (admin)', 'sendOrderStatusEmail() → Confirmed', 'Customer', 'Confirmation + expected dispatch'],
+              ['Order shipped', 'sendShipmentEmail()', 'Customer', 'Courier name, tracking number, tracking link'],
+              ['Order delivered', 'sendDeliveryEmail()', 'Customer', 'Delivery confirmation, loyalty points earned'],
+              ['Order cancelled', 'sendCancellationEmail()', 'Customer', 'Cancellation reason, refund details'],
+              ['Return approved', 'sendReturnEmail()', 'Customer', 'Return ID, instructions'],
+              ['OTP login', 'sendOTPEmail()', 'Customer', '6-digit OTP, 10-minute expiry'],
+              ['Password reset', 'sendPasswordResetEmail()', 'Customer', 'Reset link (60-min token)'],
+              ['Admin: new order', 'sendAdminNewOrderEmail()', 'Admin email', 'Order summary, customer details'],
+              ['Contact form / ticket', 'sendContactFormEmail()', 'Admin + Customer', 'Ticket ID, message, auto-reply to customer'],
+              ['Stock notification', 'sendStockNotificationEmail()', 'Interested users', 'Product back-in-stock alert'],
+              ['Abandoned cart', 'sendAbandonedCartEmail()', 'Customer', 'Cart items, checkout link, optional coupon'],
+              ['Invoice', 'sendInvoiceEmail()', 'Customer', 'PDF invoice attached'],
+            ]}
+          />
+        </Section>
+
+        {/* ═══ JOBS ═══ */}
+        <Section id="jobs" title="Background Jobs" icon={Cpu}>
+          <InfoBox type="info">Bull + Redis are used for job queues. Worker file: <code>backend/src/workers/jobWorker.js</code>. Service: <code>backend/src/services/expireUnpaidOrders.js</code>.</InfoBox>
+          <Table
+            headers={['Job Type', 'Trigger', 'Logic', 'File']}
+            rows={[
+              ['expire_unpaid_order', 'Scheduled 15 min after online order creation', 'If order still Pending + payment_status=pending → cancel order, restore stock', 'workers/jobWorker.js'],
+              ['send_email', 'Queued from any controller', 'Process email jobs async (non-blocking)', 'workers/jobWorker.js'],
+              ['stock_notification', 'When product stock updated to > 0', 'Send emails to all notify-me subscribers', 'workers/jobWorker.js'],
+              ['abandoned_cart_reminder', 'Scheduled 24h after last cart update', 'Send recovery email if cart not checked out', 'workers/jobWorker.js'],
+              ['generate_invoice', 'After order delivered', 'Generate PDF invoice + store URL', 'workers/jobWorker.js'],
+            ]}
+          />
+          <H3>Adding a new job type</H3>
+          <Code>{`// In any controller — add to queue:
+const { addJob } = require('../../workers/jobWorker')
+await addJob('my_job_type', { key: 'value' })
+
+// In workers/jobWorker.js — handle it:
+case 'my_job_type':
+  await handleMyJob(job.data)
+  break`}</Code>
+        </Section>
+
+        {/* ═══ MODULES ═══ */}
+        <Section id="modules" title="Backend Module Structure" icon={FileCode}>
+          <Code>{`backend/src/
+├── app.js                    # Express app setup, all route registrations
+├── server.js                 # http.createServer + socket init + listen
+├── socket.js                 # Socket.io singleton
+├── database/
+│   ├── pool.js               # pg Pool singleton
+│   └── init.js               # CREATE TABLE IF NOT EXISTS for all tables
+├── middlewares/
+│   ├── auth.js               # auth + optionalAuth middleware
+│   └── admin.js              # admin role check middleware
+├── config/
+│   └── multer.js             # File upload config (images)
+├── utils/
+│   ├── emailService.js       # All email sending functions (Brevo)
+│   ├── pushNotification.js   # Expo push notification helper
+│   └── orderstatusmap.js     # Maps status codes to labels
+├── services/
+│   └── expireUnpaidOrders.js # Scheduled cancellation service
+├── workers/
+│   └── jobWorker.js          # Bull queue + job handlers
+└── modules/
+    ├── users/                # Auth, profile, addresses, wallet, loyalty
+    ├── products/             # Products, reviews, cart, wishlist, Q&A
+    ├── orders/               # Order creation, tracking, timeline
+    ├── payments/             # Razorpay create + verify + webhook
+    ├── admin/                # Admin: products, orders, users, analytics
+    ├── support/              # Support tickets + messages
+    ├── banners/              # Homepage banners
+    ├── coupons/              # Coupon management
+    ├── flash-sales/          # Flash sale management
+    ├── pincodes/             # Serviceable pincode management
+    └── push-notifications/   # Admin push broadcast`}</Code>
+          <H3>Each module follows this pattern:</H3>
+          <Code>{`modules/example/
+├── example.controller.js    # All request handlers (no business logic in routes)
+└── example.routes.js        # Express Router with middleware assignments`}</Code>
+        </Section>
+
+        {/* ═══ FRONTEND ═══ */}
+        <Section id="frontend" title="Frontend Structure (Next.js 14)" icon={Server}>
+          <Code>{`frontend/src/
+├── app/                         # App Router pages
+│   ├── page.tsx                 # Homepage (banners, featured, flash sale)
+│   ├── product/[id]/page.tsx    # Product detail
+│   ├── cart/page.tsx            # Cart page
+│   ├── checkout/page.tsx        # Checkout flow
+│   ├── orders/
+│   │   ├── page.tsx             # Order list
+│   │   └── [id]/page.tsx        # Order detail + tracking (Amazon-style)
+│   ├── account/
+│   │   └── page.tsx             # Account hub (profile, wishlist, addresses)
+│   ├── support/
+│   │   ├── page.tsx             # Ticket list + create form
+│   │   └── [id]/page.tsx        # Ticket chat view (real-time)
+│   ├── contact/page.tsx         # Contact form → creates ticket
+│   └── admin/
+│       ├── layout.tsx           # Sidebar + topbar for admin panel
+│       ├── dashboard/page.tsx   # KPI cards + charts
+│       ├── products/page.tsx    # Product management
+│       ├── orders/page.tsx      # Order management
+│       ├── users/page.tsx       # User list
+│       ├── support/page.tsx     # Two-panel ticket management
+│       ├── reviews/page.tsx     # Review moderation
+│       ├── analytics/page.tsx   # Revenue charts
+│       ├── banners/             # Banner management
+│       ├── coupons/             # Coupon management
+│       ├── flash-sales/         # Flash sale management
+│       ├── pincodes/            # Pincode management
+│       ├── stock-notifications/ # Notify-me list
+│       └── docs/
+│           ├── user-manual/     # This user manual
+│           └── developer/       # This developer doc
+├── components/
+│   ├── layout/
+│   │   └── header.tsx           # Navbar + cart count + user menu
+│   └── sections/
+│       ├── hero-section.tsx     # Homepage hero
+│       ├── banner-carousel.tsx  # Homepage banners
+│       ├── offer-strip.tsx      # Offer announcement bar
+│       ├── features-section.tsx # Feature highlights
+│       └── testimonials-section.tsx
+├── context/
+│   └── auth-context.tsx         # Login state, user data, JWT management
+├── hooks/
+│   └── useOrderSocket.ts        # Real-time order update + ticket notifications
+└── lib/
+    └── api.ts                   # Axios instance with baseURL + auth interceptor`}</Code>
+          <H3>API Client Pattern</H3>
+          <Code>{`// src/lib/api.ts
+import axios from 'axios'
+
+const api = axios.create({ baseURL: process.env.NEXT_PUBLIC_API_URL + '/api' })
+
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) config.headers.Authorization = \`Bearer \${token}\`
+  return config
+})
+
+export default api
+
+// Usage in any component:
+const { data } = await api.get('/products/public')
+await api.post('/orders', { address_id, payment_method })`}</Code>
+        </Section>
+
+        {/* ═══ MOBILE ═══ */}
+        <Section id="mobile" title="Mobile App (React Native / Expo 56)" icon={Code2}>
+          <Code>{`ayurveda-app/src/app/
+├── _layout.tsx              # Root layout + Stack navigator
+├── index.tsx                # Home screen (products, banners)
+├── product/[id].tsx         # Product detail + variants + reviews
+├── cart/index.tsx           # Cart screen
+├── checkout/index.tsx       # Checkout (address, payment)
+├── orders/
+│   ├── index.tsx            # Order list
+│   └── [id].tsx             # Order detail + tracking
+├── account/
+│   └── index.tsx            # Account screen + navigation
+├── wishlist/index.tsx       # Wishlist
+├── search/index.tsx         # Search
+├── support/index.tsx        # Tickets (list + create + chat in one screen)
+├── auth/
+│   ├── login.tsx            # Email/password login
+│   └── register.tsx         # Registration
+└── (tabs)/                  # Bottom tab navigator`}</Code>
+          <H3>Key mobile dependencies</H3>
+          <Table
+            headers={['Package', 'Purpose']}
+            rows={[
+              ['expo-router', 'File-based routing (same pattern as Next.js App Router)'],
+              ['expo-notifications', 'Push notification registration + handling'],
+              ['expo-linear-gradient', 'Gradient backgrounds in UI'],
+              ['@react-native-async-storage/async-storage', 'Persists JWT token + user data locally'],
+              ['axios', 'HTTP client (same api.ts pattern as web)'],
+              ['socket.io-client', 'WebSocket connection for real-time updates'],
+              ['react-native-safe-area-context', 'Safe area (notch/status bar) handling'],
+            ]}
+          />
+          <H3>Push notification registration flow</H3>
+          <Code>{`// 1. On app launch, request permission
+const { status } = await Notifications.requestPermissionsAsync()
+
+// 2. Get Expo push token
+const token = await Notifications.getExpoPushTokenAsync()
+
+// 3. Send to backend
+await api.post('/users/push-token', { token, platform: 'android' | 'ios' })
+
+// 4. Backend stores in push_notification_tokens table
+// 5. Admin sends broadcast → backend loops through all tokens → Expo API`}</Code>
+        </Section>
+
+        {/* ═══ DEPLOY ═══ */}
+        <Section id="deploy" title="Deployment Notes" icon={Terminal}>
+          <Table
+            headers={['Service', 'Recommended Platform', 'Notes']}
+            rows={[
+              ['Backend API', 'Railway / Render / DigitalOcean App Platform', 'Set all env vars in platform dashboard. PORT is auto-set.'],
+              ['PostgreSQL', 'Supabase / Railway PostgreSQL / DigitalOcean Managed DB', 'Use SSL connection string. Set DATABASE_URL env var.'],
+              ['Redis (Bull)', 'Railway Redis / Upstash Redis', 'Set REDIS_URL env var.'],
+              ['Frontend (Next.js)', 'Vercel (recommended)', 'Set NEXT_PUBLIC_API_URL + NEXT_PUBLIC_RAZORPAY_KEY_ID in Vercel dashboard.'],
+              ['Mobile App', 'Expo EAS Build', 'Run: eas build --platform android (or ios). Submit to Play Store / App Store.'],
+              ['File Uploads', 'Cloudinary / AWS S3', 'Update multer.js to use cloud storage instead of local disk in production.'],
+            ]}
+          />
+          <H3>First-run database initialisation</H3>
+          <Code>{`# Backend auto-creates all tables on first start
+# Just run:
+cd backend && npm start
+
+# If you need to reset:
+# Connect to your PostgreSQL DB and run:
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+# Then restart the backend — all tables recreate automatically`}</Code>
+          <H3>Razorpay webhook setup</H3>
+          <Code>{`# In Razorpay Dashboard → Settings → Webhooks:
+# URL: https://your-api-domain.com/api/payments/webhook
+# Events to enable:
+#   payment.captured
+#   payment.failed
+#   refund.processed`}</Code>
+          <InfoBox type="warning">
+            <strong>File uploads in production:</strong> The default multer config stores images on local disk. In production (where dynos restart), switch to Cloudinary or S3. Update <code>backend/src/config/multer.js</code> to use <code>multer-storage-cloudinary</code> or <code>multer-s3</code>.
+          </InfoBox>
+        </Section>
+
+        {/* Footer */}
+        <div className="mt-12 border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
+          <p>AyurVeda Desi Foods — Developer Documentation · Last updated 2026 · For end-user help see User Manual</p>
+        </div>
+
+      </main>
+    </div>
+  )
+}

@@ -29,10 +29,7 @@ router.get("/recently-viewed", auth, controller.getRecentlyViewed)
 router.post("/wishlist", auth, controller.toggleWishlist);
 
 router.get("/", auth, controller.getWishlist);
-// ''''''''''''''''''''''''=====review routes=======================
-
-
-router.post('/review',auth,controller.addReview)
+// ''''''''''''''''''''''''=====cart routes=======================
 
 router.post('/cart',auth,controller.addToCart)
 

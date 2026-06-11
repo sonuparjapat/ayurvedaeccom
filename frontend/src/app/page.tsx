@@ -7,6 +7,7 @@ import { FeaturesSection } from '@/components/sections/features-section'
 import { CategoriesSection } from '@/components/sections/categories-section'
 import { TestimonialsSection } from '@/components/sections/testimonials-section'
 import { FlashSaleBanner } from '@/components/sections/flash-sale-banner'
+import { FeaturedProductsSection } from '@/components/sections/featured-products-section'
 
 export default function Home() {
   return (
@@ -18,6 +19,7 @@ export default function Home() {
         <FlashSaleBanner />
         <BannerCarousel />
         <CategoriesSection />
+        <FeaturedProductsSection />
         <FeaturesSection />
         <TestimonialsSection />
       </main>

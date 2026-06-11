@@ -120,7 +120,6 @@ export default function ProductDetailPage() {
   const [flashSaleInfo, setFlashSaleInfo] = useState<{ flash_price: number; ends_at: string; title: string; discount_percent: number } | null>(null)
  const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
   } = useAuth()
-console.log(cartdata,"carrrrrrrrrrtdata")
 const handlepagechage=(page:number)=>{
   setPage(page)
 }
@@ -132,15 +131,17 @@ const handlepagechage=(page:number)=>{
   
     }
   }, [id])
-  useEffect(()=>{
-    loadReviews(id,page)
-  },[page])
+  useEffect(() => {
+    loadReviews(id, page)
+  }, [page])
 
   useEffect(() => {
     if (wishlistdata?.items) {
       setLiked(!!(wishlistdata.items.find((item: any) => item?.id == id)?.id))
     }
   }, [wishlistdata, id])
+
+  // no console.logs in production
 
   useEffect(() => {
     if (!id) return
@@ -164,10 +165,7 @@ const handlepagechage=(page:number)=>{
     }
   }, [id])
 
-  console.log(reviewsData,"reviewdata")
-
-
-  const fetchProduct = async () => {
+    const fetchProduct = async () => {
 
     try {
 
@@ -185,8 +183,6 @@ const handlepagechage=(page:number)=>{
 
     }
   }
-
-console.log(product, "cccccccccccccccccccccccccccccccccc")
 
   /* ================= HELPERS ================= */
 
@@ -980,66 +976,91 @@ const addToCart = async () => {
       </div>
 
 {/* <ReviewSection productId={product.id} fetchProduct={fetchProduct} product={product} loginuserdata={loginuserdata}/> */}
-     <div className="space-y-6 overflow-auto" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 16px' }}>
+      {/* ================= REVIEWS ================= */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 16px 32px' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a3a2a', marginBottom: 16 }}>
+          Customer Reviews
+          {reviewsData?.pagination?.total > 0 && (
+            <span style={{ fontSize: 14, fontWeight: 400, color: '#888', marginLeft: 8 }}>
+              ({reviewsData.pagination.total})
+            </span>
+          )}
+        </h2>
 
-        {reviewsData?.data?.map(r=>(
-          <div
-            key={r.id}
-            className="bg-white p-5 rounded-xl shadow"
-          >
+        <div className="space-y-4">
+          {reviewsData?.data?.map((r: any) => {
+            const initials = (r.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+            const colors = ['#2d5a3d', '#1e40af', '#7c3aed', '#b45309', '#0e7490']
+            const avatarColor = colors[r.id % colors.length]
+            return (
+              <div key={r.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                <div className="flex items-start gap-3 mb-3">
+                  {/* Avatar */}
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                    style={{ background: avatarColor }}
+                  >
+                    {initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-900 text-sm">{r.name || 'Customer'}</span>
+                        <span
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                          style={{ background: '#e8f5ee', color: '#2d5a3d' }}
+                        >
+                          ✓ Verified Purchase
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                      </span>
+                    </div>
+                    <div className="flex gap-0.5 mt-1">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} size={13}
+                          fill={s <= r.rating ? '#f59e0b' : 'none'}
+                          color={s <= r.rating ? '#f59e0b' : '#e5e7eb'}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
-            <div className="flex justify-between mb-2">
+                <p className="text-gray-700 text-sm leading-relaxed">{r.comment}</p>
 
-              <p className="font-semibold">
-                {r.name}
-              </p>
-
-              <div className="flex gap-1">
-                {[...Array(r.rating)].map((_,i)=>(
-                  <Star
-                    key={i}
-                    className="w-4 h-4 fill-amber-400 text-amber-400"
-                  />
-                ))}
+                {r.images?.length > 0 && (
+                  <div className="flex gap-2 flex-wrap mt-3">
+                    {r.images.map((img: any) => (
+                      <a key={img} href={img} target="_blank" rel="noreferrer">
+                        <img src={img} alt="review" className="w-20 h-20 rounded-xl object-cover border border-gray-100" />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
+            )
+          })}
 
+          {reviewsData?.data?.length === 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+              <Star size={32} className="mx-auto mb-3 text-gray-200" />
+              <p className="font-medium text-gray-500">No reviews yet</p>
+              <p className="text-sm text-gray-400 mt-1">Be the first to review this product after your purchase.</p>
             </div>
+          )}
 
-            <p className="text-gray-700 mb-3">
-              {r.comment}
-            </p>
-
-            {r.images?.length > 0 && (
-              <div className="flex gap-3 flex-wrap">
-                {r.images.map((img:any)=>(
-                  <a href={img} target='_blank'>
-                  <img
-                    key={img}
-                    src={img}
-                    alt={img}
-                    className="w-24 h-24 rounded"
-                  /></a>
-                ))}
-              </div>
-            )}
-
-          </div>
-        ))}
-        {reviewsData?.data?.length == 0 && (
-          <div className="bg-white p-5 rounded-xl shadow">
-            <p className="text-gray-700">
-              No reviews yet
-            </p>
-          </div>
-        )}
-        {reviewsData?.pagination?.totalPages>0&& (
-          <div className='mb-2'>
-         <Pagination currentPage={page}
-  totalPages={reviewsData?.pagination?.totalPages}
-  onPageChange={handlepagechage}/>  </div>
-        )}
-      
-
+          {reviewsData?.pagination?.totalPages > 0 && (
+            <div className="mt-2">
+              <Pagination
+                currentPage={page}
+                totalPages={reviewsData.pagination.totalPages}
+                onPageChange={handlepagechage}
+              />
+            </div>
+          )}
+        </div>
       </div>
       {/* Q&A SECTION */}
       <QASection productId={id as string} loginuserdata={loginuserdata} />
@@ -1060,11 +1081,11 @@ function QASection({ productId, loginuserdata }: { productId: string; loginuserd
   const [submitting, setSubmitting] = useState(false)
   const [answerMap, setAnswerMap] = useState<Record<number, string>>({})
   const [answeringId, setAnsweringId] = useState<number | null>(null)
-  const axios = require('@/lib/axios').default
+  const axiosClient = require('@/lib/axios').default
 
   const loadQA = async () => {
     try {
-      const r = await axios.get(`/qa/product/${productId}`, { params: { page, limit: 5 } })
+      const r = await axiosClient.get(`/qa/product/${productId}`, { params: { page, limit: 5 } })
       setQuestions(r.data.questions || [])
       setTotal(r.data.total || 0)
     } catch {}
@@ -1076,10 +1097,10 @@ function QASection({ productId, loginuserdata }: { productId: string; loginuserd
     if (!question.trim()) return
     try {
       setSubmitting(true)
-      await axios.post(`/qa/product/${productId}/ask`, { question })
+      await axiosClient.post(`/qa/product/${productId}/ask`, { question })
       setQuestion('')
-      alert('Your question has been submitted for review!')
-    } catch { alert('Failed to submit question') }
+      toast.success('Question submitted for review!')
+    } catch { toast.error('Failed to submit question') }
     finally { setSubmitting(false) }
   }
 
@@ -1087,11 +1108,12 @@ function QASection({ productId, loginuserdata }: { productId: string; loginuserd
     const ans = answerMap[qId]
     if (!ans?.trim()) return
     try {
-      await axios.post(`/qa/question/${qId}/answer`, { answer: ans })
+      await axiosClient.post(`/qa/question/${qId}/answer`, { answer: ans })
       setAnswerMap(m => ({ ...m, [qId]: '' }))
       setAnsweringId(null)
       loadQA()
-    } catch { alert('Failed to submit answer') }
+      toast.success('Answer posted!')
+    } catch { toast.error('Failed to submit answer') }
   }
 
   return (
