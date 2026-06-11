@@ -23,7 +23,10 @@ import {
   Shield,
   ChevronRight,
   AlertCircle,
-  Package
+  Package,
+  MapPin,
+  Bell,
+  Tag,
 } from 'lucide-react'
 
 import { Header } from '@/components/layout/header'
@@ -56,6 +59,26 @@ interface Product {
 }
 
 
+function FlashCountdown({ endsAt }: { endsAt: string }) {
+  const [secs, setSecs] = useState(() => Math.max(0, Math.floor((new Date(endsAt).getTime() - Date.now()) / 1000)))
+  useEffect(() => {
+    if (secs <= 0) return
+    const id = setInterval(() => setSecs(s => s > 0 ? s - 1 : 0), 1000)
+    return () => clearInterval(id)
+  }, [endsAt])
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60
+  const p = (n: number) => String(n).padStart(2, '0')
+  return (
+    <div style={{ display: 'flex', gap: 4, color: 'white', fontFamily: 'monospace', fontWeight: 800, fontSize: 16 }}>
+      <span style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 6, padding: '2px 6px' }}>{p(h)}</span>
+      <span>:</span>
+      <span style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 6, padding: '2px 6px' }}>{p(m)}</span>
+      <span>:</span>
+      <span style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 6, padding: '2px 6px' }}>{p(s)}</span>
+    </div>
+  )
+}
+
 /* ================= PAGE ================= */
 
 export default function ProductDetailPage() {
@@ -71,7 +94,30 @@ export default function ProductDetailPage() {
 
   const [cartLoading, setCartLoading] = useState(false)
   const [liked, setLiked] = useState(false)
-  const [page,setPage]=useState<any>(1)
+  const [page, setPage] = useState<any>(1)
+
+  // Variants
+  const [variants, setVariants] = useState<any[]>([])
+  const [selectedVariant, setSelectedVariant] = useState<any>(null)
+
+  // Pincode check
+  const [pincode, setPincode] = useState('')
+  const [pincodeResult, setPincodeResult] = useState<any>(null)
+  const [pincodeLoading, setPincodeLoading] = useState(false)
+
+  // Notify me (OOS)
+  const [notifyEmail, setNotifyEmail] = useState('')
+  const [notifyLoading, setNotifyLoading] = useState(false)
+  const [notifyDone, setNotifyDone] = useState(false)
+
+  // Rating breakdown
+  const [ratingBreakdown, setRatingBreakdown] = useState<any>(null)
+
+  // Related products
+  const [relatedProducts, setRelatedProducts] = useState<any[]>([])
+
+  // Flash sale
+  const [flashSaleInfo, setFlashSaleInfo] = useState<{ flash_price: number; ends_at: string; title: string; discount_percent: number } | null>(null)
  const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
   } = useAuth()
 console.log(cartdata,"carrrrrrrrrrtdata")
@@ -89,6 +135,35 @@ const handlepagechage=(page:number)=>{
   useEffect(()=>{
     loadReviews(id,page)
   },[page])
+
+  useEffect(() => {
+    if (wishlistdata?.items) {
+      setLiked(!!(wishlistdata.items.find((item: any) => item?.id == id)?.id))
+    }
+  }, [wishlistdata, id])
+
+  useEffect(() => {
+    if (!id) return
+    axios.get(`/shop/variants/${id}`).then((r) => setVariants(r.data?.variants || [])).catch(() => {})
+    axios.get(`/shop/rating/${id}`).then((r) => setRatingBreakdown(r.data || null)).catch(() => {})
+    axios.get(`/shop/related/${id}`).then((r) => setRelatedProducts(r.data?.products || [])).catch(() => {})
+    // Check flash sale
+    axios.get('/flash-sales/active').then((r) => {
+      const sales = r.data?.sales || []
+      for (const sale of sales) {
+        const sp = (sale.products || []).find((p: any) => String(p.product_id) === String(id))
+        if (sp) {
+          setFlashSaleInfo({ flash_price: sp.flash_price, ends_at: sale.ends_at, title: sale.title, discount_percent: sp.discount_percent })
+          break
+        }
+      }
+    }).catch(() => {})
+    // log recently viewed for logged-in users
+    if (loginuserdata?.id) {
+      axios.post('/shop/recently-viewed', { productId: id }).catch(() => {})
+    }
+  }, [id])
+
   console.log(reviewsData,"reviewdata")
 
 
@@ -137,13 +212,50 @@ console.log(product, "cccccccccccccccccccccccccccccccccc")
 
 
 
+  /* ================= PINCODE / NOTIFY / VARIANT HELPERS ================= */
+
+  const checkPincode = async () => {
+    if (!/^\d{6}$/.test(pincode)) { toast.error('Enter a valid 6-digit pincode'); return }
+    setPincodeLoading(true)
+    try {
+      const r = await axios.get(`/shop/pincode-check?pincode=${pincode}`)
+      setPincodeResult(r.data)
+    } catch {
+      setPincodeResult({ serviceable: false, message: 'Unable to check. Please try again.' })
+    } finally {
+      setPincodeLoading(false)
+    }
+  }
+
+  const submitNotifyMe = async () => {
+    if (!notifyEmail.includes('@')) { toast.error('Enter a valid email'); return }
+    setNotifyLoading(true)
+    try {
+      await axios.post('/shop/notify-me', { productId: product?.id, email: notifyEmail, variantId: selectedVariant?.id })
+      setNotifyDone(true)
+      toast.success('We\'ll notify you when this is back in stock!')
+    } catch {
+      toast.error('Could not register. Try again.')
+    } finally {
+      setNotifyLoading(false)
+    }
+  }
+
+  const effectiveInventory = selectedVariant ? selectedVariant.inventory : product?.inventory ?? 0
+  const effectivePrice = selectedVariant ? Number(selectedVariant.price) : Number(product?.price ?? 0)
+
   /* ================= CART ================= */
 
 const addToCart = async () => {
   if (!product) return;
 
-  if (product.inventory === 0) {
+  if (effectiveInventory === 0) {
     notify.error("Opps...Product is Out of stock");
+    return;
+  }
+
+  if (variants.length > 0 && !selectedVariant) {
+    toast.error("Please select a variant");
     return;
   }
 
@@ -152,14 +264,12 @@ const addToCart = async () => {
 
     setCartLoading(true);
 
-    const finalQty = Math.min(
-      qty,
-      product.inventory
-    );
+    const finalQty = Math.min(qty, effectiveInventory);
 
     const payload: any = {
       productId: product.id,
-      quantity: finalQty
+      quantity: finalQty,
+      ...(selectedVariant ? { variantId: selectedVariant.id } : {}),
     };
 
     /* guest user support */
@@ -304,6 +414,53 @@ const addToCart = async () => {
             product.meta_description ||
             product.shortdescription
           }
+        />
+
+        {/* Schema.org JSON-LD for Google Rich Snippets */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org/',
+              '@type': 'Product',
+              name: product.name,
+              image: product.images,
+              description: product.meta_description || product.shortdescription,
+              sku: product.sku,
+              brand: { '@type': 'Brand', name: process.env.NEXT_PUBLIC_APP_NAME || 'AyurVeda Desi Foods' },
+              offers: {
+                '@type': 'Offer',
+                url: typeof window !== 'undefined' ? window.location.href : '',
+                priceCurrency: 'INR',
+                price: product.sale_price || product.price,
+                availability: product.inventory > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                seller: { '@type': 'Organization', name: process.env.NEXT_PUBLIC_APP_NAME || 'AyurVeda Desi Foods' }
+              },
+              aggregateRating: Number(product.averagerating) > 0 ? {
+                '@type': 'AggregateRating',
+                ratingValue: Number(product.averagerating).toFixed(1),
+                reviewCount: product.reviewcount || 1,
+                bestRating: '5',
+                worstRating: '1'
+              } : undefined
+            })
+          }}
+        />
+
+        {/* Breadcrumb Schema */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'BreadcrumbList',
+              itemListElement: [
+                { '@type': 'ListItem', position: 1, name: 'Home', item: process.env.NEXT_PUBLIC_SITE_URL || '' },
+                { '@type': 'ListItem', position: 2, name: 'Products', item: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/products` },
+                { '@type': 'ListItem', position: 3, name: product.name }
+              ]
+            })
+          }}
         />
 
       </Head>
@@ -465,35 +622,87 @@ const addToCart = async () => {
 
 
 
+              {/* FLASH SALE BADGE */}
+              {flashSaleInfo && (
+                <div style={{ background: 'linear-gradient(135deg,#ef4444,#f97316)', borderRadius: 16, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div>
+                    <p style={{ color: 'white', fontWeight: 800, fontSize: 14, letterSpacing: '0.05em' }}>⚡ {flashSaleInfo.title}</p>
+                    <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 }}>Flash price: ₹{Number(flashSaleInfo.flash_price).toFixed(0)} — Save {flashSaleInfo.discount_percent}%</p>
+                  </div>
+                  <FlashCountdown endsAt={flashSaleInfo.ends_at} />
+                </div>
+              )}
+
               {/* PRICE */}
 
               <div className="flex items-end gap-4">
 
                 <span className="text-4xl font-bold text-emerald-600">
-
-                  {formatPrice(product.price)}
-
+                  {flashSaleInfo ? `₹${Number(flashSaleInfo.flash_price).toFixed(0)}` : formatPrice(String(effectivePrice))}
                 </span>
 
-                {product.compareprice && (
-
+                {flashSaleInfo ? (
+                  <span className="text-lg text-gray-400 line-through">{formatPrice(String(effectivePrice))}</span>
+                ) : (selectedVariant?.compareprice || product.compareprice) && (
                   <span className="text-lg text-gray-400 line-through">
-
-                    {formatPrice(product.compareprice)}
-
+                    {formatPrice(String(selectedVariant?.compareprice || product.compareprice))}
                   </span>
+                )}
 
+                {selectedVariant && Number(selectedVariant.price) < Number(product.price) && !flashSaleInfo && (
+                  <span style={{ fontSize: 13, color: '#2d5a3d', background: '#e8f5ee', padding: '2px 8px', borderRadius: 6 }}>
+                    Variant price
+                  </span>
                 )}
 
               </div>
 
 
 
+              {/* VARIANTS */}
+              {variants.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold uppercase text-gray-700 mb-3">Select Variant</p>
+                  <div className="flex flex-wrap gap-2">
+                    {variants.map((v: any) => (
+                      <button
+                        key={v.id}
+                        onClick={() => setSelectedVariant(selectedVariant?.id === v.id ? null : v)}
+                        style={{
+                          padding: '7px 16px',
+                          borderRadius: 10,
+                          border: `2px solid ${selectedVariant?.id === v.id ? '#2d5a3d' : 'rgba(26,58,42,0.18)'}`,
+                          background: selectedVariant?.id === v.id ? '#e8f5ee' : 'white',
+                          color: selectedVariant?.id === v.id ? '#1a3a2a' : '#555',
+                          fontWeight: selectedVariant?.id === v.id ? 600 : 400,
+                          fontSize: 13,
+                          cursor: v.inventory > 0 ? 'pointer' : 'not-allowed',
+                          opacity: v.inventory > 0 ? 1 : 0.45,
+                          position: 'relative',
+                        }}
+                        disabled={v.inventory <= 0}
+                      >
+                        {v.label}
+                        {Number(v.price) !== Number(product.price) && (
+                          <span style={{ marginLeft: 6, fontSize: 11, color: '#4a7c5e' }}>₹{v.price}</span>
+                        )}
+                        {v.inventory <= 5 && v.inventory > 0 && (
+                          <span style={{ marginLeft: 6, fontSize: 10, color: '#e07a2a' }}>Only {v.inventory} left</span>
+                        )}
+                        {v.inventory <= 0 && (
+                          <span style={{ marginLeft: 6, fontSize: 10, color: '#e05252' }}>OOS</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* STOCK */}
 
               <div className="flex items-center gap-3">
 
-                {product.inventory === 0 ? (
+                {effectiveInventory === 0 ? (
 
                   <div className="flex gap-2 text-red-600">
 
@@ -507,12 +716,77 @@ const addToCart = async () => {
                   <div className="flex gap-2 text-green-600">
 
                     <CheckCircle />
-                    {product.inventory} in stock
+                    {effectiveInventory} in stock
 
                   </div>
 
                 )}
 
+              </div>
+
+              {/* NOTIFY ME — when OOS */}
+              {effectiveInventory === 0 && (
+                <div style={{ background: '#fff8e6', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(201,168,76,0.3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <Bell size={15} style={{ color: '#c9a84c' }} />
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#6b4c00' }}>Notify me when back in stock</span>
+                  </div>
+                  {notifyDone ? (
+                    <div style={{ color: '#2d5a3d', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <CheckCircle size={14} /> You'll be notified at {notifyEmail}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="email"
+                        value={notifyEmail}
+                        onChange={(e) => setNotifyEmail(e.target.value)}
+                        placeholder="Enter your email"
+                        style={{ flex: 1, height: 38, border: '1.5px solid rgba(201,168,76,0.4)', borderRadius: 8, padding: '0 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                      />
+                      <button
+                        onClick={submitNotifyMe}
+                        disabled={notifyLoading}
+                        style={{ padding: '0 16px', height: 38, background: '#c9a84c', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        {notifyLoading ? '...' : 'Notify Me'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* PINCODE DELIVERY CHECK */}
+              <div style={{ background: 'white', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(26,58,42,0.12)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <MapPin size={15} style={{ color: '#4a7c5e' }} />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#1a3a2a' }}>Check Delivery</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={pincode}
+                    onChange={(e) => { setPincode(e.target.value.replace(/\D/g, '')); setPincodeResult(null) }}
+                    placeholder="Enter 6-digit pincode"
+                    style={{ flex: 1, height: 38, border: '1.5px solid rgba(26,58,42,0.2)', borderRadius: 8, padding: '0 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1a3a2a' }}
+                  />
+                  <button
+                    onClick={checkPincode}
+                    disabled={pincodeLoading || pincode.length < 6}
+                    style={{ padding: '0 16px', height: 38, background: '#1a3a2a', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: pincode.length < 6 ? 0.5 : 1 }}
+                  >
+                    {pincodeLoading ? '...' : 'Check'}
+                  </button>
+                </div>
+                {pincodeResult && (
+                  <div style={{ marginTop: 8, fontSize: 13, color: pincodeResult.serviceable ? '#2d5a3d' : '#e05252', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {pincodeResult.serviceable ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                    {pincodeResult.serviceable
+                      ? `Delivery available in ${pincodeResult.delivery_days} day${pincodeResult.delivery_days !== 1 ? 's' : ''} to ${pincodeResult.city || pincode}`
+                      : pincodeResult.message || 'Not serviceable to this pincode'}
+                  </div>
+                )}
               </div>
 
 
@@ -547,11 +821,7 @@ const addToCart = async () => {
 
                     <Button
                       variant="ghost"
-                      onClick={() =>
-                        setQty(q =>
-                          Math.min(product.inventory, q + 1)
-                        )
-                      }
+                      onClick={() => setQty(q => Math.min(effectiveInventory, q + 1))}
                     >
                       <Plus size={18} />
                     </Button>
@@ -560,28 +830,28 @@ const addToCart = async () => {
 
 
                   <Button
-                    disabled={
-                      product.inventory === 0 ||
-                      cartLoading
-                    }
+                    disabled={effectiveInventory === 0 || cartLoading || (variants.length > 0 && !selectedVariant)}
                     onClick={addToCart}
                     className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-lg py-6"
                   >
-
                     {cartLoading ? (
                       <span className="flex gap-2">
                         <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         Adding...
                       </span>
+                    ) : effectiveInventory === 0 ? (
+                      <>
+                        <Package className="mr-2" /> Out Of Stock
+                      </>
+                    ) : variants.length > 0 && !selectedVariant ? (
+                      <>
+                        <Tag className="mr-2" /> Select a Variant
+                      </>
                     ) : (
                       <>
-                        <ShoppingCart className="mr-2" />
-                          {product.inventory ==0?"Out Of Stock":"Add To Cart"}
+                        <ShoppingCart className="mr-2" /> Add To Cart
                       </>
                     )}
-
-                    
-
                   </Button>
 
                 </div>
@@ -653,8 +923,64 @@ const addToCart = async () => {
         </div>
 
       </div>
+      {/* ================= RELATED PRODUCTS ================= */}
+      {relatedProducts.length > 0 && (
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 16px 0' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a3a2a', marginBottom: 20 }}>You May Also Like</h2>
+          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 12, scrollbarWidth: 'none' }}>
+            {relatedProducts.map((p: any) => (
+              <a key={p.id} href={`/product/${p.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: 180 }}>
+                <div style={{ background: 'white', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(26,58,42,0.1)', transition: 'transform 0.2s' }}>
+                  <img src={p.images?.[0] || '/placeholder.png'} alt={p.name} style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
+                  <div style={{ padding: '10px 12px' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1a3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4 }}>{p.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#2d5a3d' }}>₹{p.price}</span>
+                      {p.compareprice && <span style={{ fontSize: 11, color: '#bbb', textDecoration: 'line-through' }}>₹{p.compareprice}</span>}
+                    </div>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ================= RATING BREAKDOWN + REVIEWS ================= */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 16px 0' }}>
+        {ratingBreakdown && (
+          <div style={{ background: 'white', borderRadius: 16, padding: '24px', marginBottom: 24, border: '1px solid rgba(26,58,42,0.1)', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ textAlign: 'center', minWidth: 100 }}>
+              <div style={{ fontSize: 52, fontWeight: 800, color: '#1a3a2a', lineHeight: 1 }}>{Number(ratingBreakdown.average).toFixed(1)}</div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 3, margin: '8px 0 4px' }}>
+                {[1,2,3,4,5].map((s) => (
+                  <Star key={s} size={14} fill={s <= Math.round(Number(ratingBreakdown.average)) ? '#f59e0b' : 'none'} stroke={s <= Math.round(Number(ratingBreakdown.average)) ? '#f59e0b' : '#ddd'} />
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: '#888' }}>{ratingBreakdown.total} reviews</div>
+            </div>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              {[5,4,3,2,1].map((star) => {
+                const count = ratingBreakdown.breakdown?.[star] || 0
+                const pct = ratingBreakdown.total > 0 ? (count / ratingBreakdown.total) * 100 : 0
+                return (
+                  <div key={star} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: '#888', width: 16, textAlign: 'right' }}>{star}</span>
+                    <Star size={11} fill="#f59e0b" stroke="#f59e0b" />
+                    <div style={{ flex: 1, height: 8, background: '#f0f0f0', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: pct > 0 ? '#f59e0b' : 'transparent', borderRadius: 4, transition: 'width 0.5s' }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: '#aaa', width: 24 }}>{count}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
 {/* <ReviewSection productId={product.id} fetchProduct={fetchProduct} product={product} loginuserdata={loginuserdata}/> */}
-     <div className="space-y-6 overflow-auto">
+     <div className="space-y-6 overflow-auto" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 16px' }}>
 
         {reviewsData?.data?.map(r=>(
           <div
@@ -715,9 +1041,146 @@ const addToCart = async () => {
       
 
       </div>
+      {/* Q&A SECTION */}
+      <QASection productId={id as string} loginuserdata={loginuserdata} />
+
       <Footer />
 
     </>
 
+  )
+}
+
+/* ─── Product Q&A Component ─── */
+function QASection({ productId, loginuserdata }: { productId: string; loginuserdata: any }) {
+  const [questions, setQuestions] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [question, setQuestion] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [answerMap, setAnswerMap] = useState<Record<number, string>>({})
+  const [answeringId, setAnsweringId] = useState<number | null>(null)
+  const axios = require('@/lib/axios').default
+
+  const loadQA = async () => {
+    try {
+      const r = await axios.get(`/qa/product/${productId}`, { params: { page, limit: 5 } })
+      setQuestions(r.data.questions || [])
+      setTotal(r.data.total || 0)
+    } catch {}
+  }
+
+  useEffect(() => { loadQA() }, [productId, page])
+
+  const submitQuestion = async () => {
+    if (!question.trim()) return
+    try {
+      setSubmitting(true)
+      await axios.post(`/qa/product/${productId}/ask`, { question })
+      setQuestion('')
+      alert('Your question has been submitted for review!')
+    } catch { alert('Failed to submit question') }
+    finally { setSubmitting(false) }
+  }
+
+  const submitAnswer = async (qId: number) => {
+    const ans = answerMap[qId]
+    if (!ans?.trim()) return
+    try {
+      await axios.post(`/qa/question/${qId}/answer`, { answer: ans })
+      setAnswerMap(m => ({ ...m, [qId]: '' }))
+      setAnsweringId(null)
+      loadQA()
+    } catch { alert('Failed to submit answer') }
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+        💬 Questions & Answers
+        <span className="text-sm font-normal text-gray-400 bg-gray-100 px-3 py-1 rounded-full">{total} questions</span>
+      </h2>
+
+      {/* ASK A QUESTION */}
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+        <p className="text-sm font-semibold text-amber-800 mb-2">Ask a question about this product</p>
+        <div className="flex gap-3">
+          <input
+            className="flex-1 border border-amber-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-300"
+            placeholder="e.g. Is this product safe for children?"
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && submitQuestion()}
+          />
+          <button onClick={submitQuestion} disabled={submitting || !question.trim()}
+            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+            {submitting ? 'Sending...' : 'Ask'}
+          </button>
+        </div>
+      </div>
+
+      {/* Q&A LIST */}
+      <div className="space-y-4">
+        {questions.map((q: any) => (
+          <div key={q.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-4 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-bold text-sm flex items-center justify-center shrink-0">Q</div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900">{q.question}</p>
+                <p className="text-xs text-gray-400 mt-1">{q.user_name || 'Customer'} · {new Date(q.created_at).toLocaleDateString('en-IN')}</p>
+              </div>
+            </div>
+
+            {/* ANSWERS */}
+            {Array.isArray(q.answers) && q.answers.map((a: any) => (
+              <div key={a.id} className={`px-4 py-3 flex items-start gap-3 border-t ${a.is_admin ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+                <div className={`w-8 h-8 rounded-full font-bold text-sm flex items-center justify-center shrink-0 ${a.is_admin ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                  {a.is_admin ? 'A' : 'A'}
+                </div>
+                <div className="flex-1">
+                  {a.is_admin && <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full mr-2">Official</span>}
+                  <span className="text-sm text-gray-800">{a.answer}</span>
+                  <p className="text-xs text-gray-400 mt-1">{a.user_name || 'User'} · {new Date(a.created_at).toLocaleDateString('en-IN')}</p>
+                </div>
+              </div>
+            ))}
+
+            {/* ADD ANSWER (logged in users) */}
+            {loginuserdata?.id && (
+              <div className="px-4 pb-4 pt-2 border-t border-gray-50">
+                {answeringId === q.id ? (
+                  <div className="flex gap-2">
+                    <input className="flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                      placeholder="Write your answer..."
+                      value={answerMap[q.id] || ''} onChange={e => setAnswerMap(m => ({ ...m, [q.id]: e.target.value }))}
+                    />
+                    <button onClick={() => submitAnswer(q.id)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold">Post</button>
+                    <button onClick={() => setAnsweringId(null)} className="px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs">Cancel</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setAnsweringId(q.id)} className="text-xs text-emerald-600 font-semibold hover:underline">
+                    + Write an answer
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+        {!questions.length && (
+          <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-gray-100">
+            <p className="text-4xl mb-3">💬</p>
+            <p className="font-medium">No questions yet. Be the first to ask!</p>
+          </div>
+        )}
+      </div>
+
+      {total > 5 && (
+        <div className="flex justify-center gap-3 mt-6">
+          <button disabled={page === 1} onClick={() => setPage(p => p-1)} className="px-4 py-2 border rounded-lg text-sm disabled:opacity-50">Previous</button>
+          <span className="px-4 py-2 text-sm">Page {page} of {Math.ceil(total/5)}</span>
+          <button disabled={page >= Math.ceil(total/5)} onClick={() => setPage(p => p+1)} className="px-4 py-2 border rounded-lg text-sm disabled:opacity-50">Next</button>
+        </div>
+      )}
+    </div>
   )
 }

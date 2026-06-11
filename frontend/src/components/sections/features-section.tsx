@@ -1,13 +1,14 @@
 'use client'
- 
+
 import { useRef, useState } from 'react'
 import { Truck, Shield, Leaf, Award, Users, RefreshCw } from 'lucide-react'
 import { useInView } from 'framer-motion'
- 
+import { useAuth } from '@/context/auth-context'
+
 /* ─────────────────────────────────────────────
-   FEATURES DATA
+   DEFAULT FEATURES DATA
 ───────────────────────────────────────────── */
-const features = [
+const DEFAULT_FEATURES = [
   {
     num: '01',
     Icon: Truck,
@@ -81,8 +82,8 @@ const features = [
     tag: '30-day policy',
   },
 ]
- 
-type Feature = typeof features[0]
+
+type Feature = typeof DEFAULT_FEATURES[0]
  
 /* ─────────────────────────────────────────────
    FEATURE CARD
@@ -314,14 +315,26 @@ function SectionHeader({ isInView }: { isInView: boolean }) {
 export function FeaturesSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const isInView = useInView(sectionRef, { once: true, margin: '-80px' })
- 
+  const { companydata } = useAuth()
+
+  const rawFeatures = companydata?.extra_data?.features
+  const features: Feature[] = rawFeatures?.length
+    ? rawFeatures.map((f: any, i: number) => ({
+        ...DEFAULT_FEATURES[i % DEFAULT_FEATURES.length],
+        title: f.title || DEFAULT_FEATURES[i % DEFAULT_FEATURES.length].title,
+        description: f.description || DEFAULT_FEATURES[i % DEFAULT_FEATURES.length].description,
+        tag: f.tag || DEFAULT_FEATURES[i % DEFAULT_FEATURES.length].tag,
+        num: String(i + 1).padStart(2, '0'),
+      }))
+    : DEFAULT_FEATURES
+
   return (
     <section ref={sectionRef} className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
       <Background />
- 
+
       <div className="relative max-w-7xl mx-auto">
         <SectionHeader isInView={isInView} />
- 
+
         {/* grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((feature, index) => (

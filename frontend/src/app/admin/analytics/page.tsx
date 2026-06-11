@@ -4,12 +4,59 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 
+/* ── SVG Bar Chart ── */
+function RevenueChart({ data: chartData, loading }: { data: any[]; loading: boolean }) {
+  if (loading) return <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Loading chart…</div>
+  if (!chartData.length) return <div className="h-48 flex items-center justify-center text-gray-400 text-sm">No data for selected period</div>
+
+  const maxRevenue = Math.max(...chartData.map(d => d.revenue), 1)
+  const W = 600, H = 180, PAD = 40, BAR_GAP = 4
+
+  const barW = Math.max(8, (W - PAD * 2 - BAR_GAP * (chartData.length - 1)) / chartData.length)
+  const step = W / chartData.length
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H + 30}`} className="w-full" style={{ overflow: 'visible' }}>
+      <defs>
+        <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#059669" stopOpacity="0.6" />
+        </linearGradient>
+      </defs>
+      {/* Grid lines */}
+      {[0, 0.25, 0.5, 0.75, 1].map((f, i) => (
+        <line key={i} x1={PAD} y1={PAD + (1 - f) * (H - PAD)} x2={W - PAD} y2={PAD + (1 - f) * (H - PAD)}
+          stroke="#e5e7eb" strokeWidth="1" />
+      ))}
+      {/* Bars */}
+      {chartData.map((d, i) => {
+        const barH = Math.max(2, ((d.revenue / maxRevenue) * (H - PAD)))
+        const x = PAD + i * step + (step - barW) / 2
+        const y = H - barH
+        return (
+          <g key={i}>
+            <rect x={x} y={y} width={barW} height={barH} rx="4" fill="url(#barGrad)" opacity="0.9" />
+            <text x={x + barW / 2} y={H + 16} textAnchor="middle" fontSize="9" fill="#6b7280">{d.label}</text>
+          </g>
+        )
+      })}
+      {/* Y-axis label */}
+      <text x={PAD - 4} y={PAD} textAnchor="end" fontSize="9" fill="#9ca3af">
+        ₹{(maxRevenue / 1000).toFixed(0)}k
+      </text>
+    </svg>
+  )
+}
+
 export default function AnalyticsPage() {
 
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [chartPeriod, setChartPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily')
+  const [chartData, setChartData] = useState<any[]>([])
+  const [chartLoading, setChartLoading] = useState(false)
 
   const fetchAnalytics = async () => {
     try {
@@ -30,9 +77,17 @@ export default function AnalyticsPage() {
     }
   }
 
-  useEffect(() => {
-    fetchAnalytics()
-  }, [])
+  const fetchChart = async (period: string) => {
+    setChartLoading(true)
+    try {
+      const r = await axios.get(`/admin/revenue-chart?period=${period}`)
+      setChartData(r.data.data || [])
+    } catch { }
+    finally { setChartLoading(false) }
+  }
+
+  useEffect(() => { fetchAnalytics() }, [])
+  useEffect(() => { fetchChart(chartPeriod) }, [chartPeriod])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -400,6 +455,34 @@ export default function AnalyticsPage() {
             />
 
           </div>
+        </div>
+
+        {/* ── Revenue Chart ── */}
+        <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <h2 className="font-bold text-gray-900 text-lg">Revenue Overview</h2>
+            <div className="flex gap-2">
+              {(['daily', 'weekly', 'monthly'] as const).map(p => (
+                <button key={p} onClick={() => setChartPeriod(p)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold capitalize transition-all ${chartPeriod === p ? 'bg-emerald-600 text-white shadow' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+          <RevenueChart data={chartData} loading={chartLoading} />
+          {chartData.length > 0 && (
+            <div className="flex justify-between mt-3 pt-3 border-t border-gray-100 text-sm">
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Total Revenue</p>
+                <p className="font-black text-emerald-700 text-lg">₹{chartData.reduce((s,d)=>s+d.revenue,0).toLocaleString('en-IN')}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Total Orders</p>
+                <p className="font-black text-gray-800 text-lg">{chartData.reduce((s,d)=>s+d.orders,0)}</p>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

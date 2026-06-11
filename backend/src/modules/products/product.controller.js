@@ -1069,3 +1069,265 @@ exports.getCart = async (req, res) => {
   })
 
 }
+
+/* ─────────────────────────────────────────────────────────
+   SEARCH AUTOCOMPLETE SUGGESTIONS
+───────────────────────────────────────────────────────── */
+exports.searchSuggestions = async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim()
+    if (!q || q.length < 2) return res.json({ suggestions: [] })
+
+    const [products, categories] = await Promise.all([
+      pool.query(`
+        SELECT id, name, price, images, category_name, averagerating
+        FROM products
+        WHERE status = 'active' AND name ILIKE $1
+        ORDER BY averagerating DESC, reviewcount DESC
+        LIMIT 6
+      `, [`%${q}%`]),
+      pool.query(`
+        SELECT id, name, image_url FROM categories
+        WHERE is_active = TRUE AND name ILIKE $1
+        LIMIT 3
+      `, [`%${q}%`]),
+    ])
+
+    res.json({
+      suggestions: {
+        products: products.rows.map(p => ({
+          id: p.id, name: p.name, price: p.price,
+          image: p.images?.[0] || null, category: p.category_name,
+          rating: p.averagerating,
+        })),
+        categories: categories.rows,
+      }
+    })
+  } catch (err) {
+    console.error('[SEARCH SUGGESTIONS]', err)
+    res.status(500).json({ suggestions: { products: [], categories: [] } })
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   RELATED PRODUCTS (same category, exclude self)
+───────────────────────────────────────────────────────── */
+exports.getRelatedProducts = async (req, res) => {
+  try {
+    const { id } = req.params
+    const product = await pool.query(
+      `SELECT category_id, price FROM products WHERE id=$1 AND status='active'`, [id]
+    )
+    if (!product.rows.length) return res.json({ products: [] })
+
+    const { category_id, price } = product.rows[0]
+    const related = await pool.query(`
+      SELECT id, name, price, compareprice, images, averagerating, reviewcount, inventory, category_name
+      FROM products
+      WHERE status = 'active'
+        AND id != $1
+        AND (category_id = $2 OR (price BETWEEN $3 AND $4))
+      ORDER BY
+        CASE WHEN category_id = $2 THEN 0 ELSE 1 END,
+        averagerating DESC
+      LIMIT 8
+    `, [id, category_id, Number(price) * 0.5, Number(price) * 2])
+
+    res.json({ products: related.rows })
+  } catch (err) {
+    console.error('[RELATED PRODUCTS]', err)
+    res.status(500).json({ products: [] })
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   PRODUCT VARIANTS
+───────────────────────────────────────────────────────── */
+exports.getProductVariants = async (req, res) => {
+  try {
+    const { id } = req.params
+    const result = await pool.query(`
+      SELECT * FROM product_variants
+      WHERE product_id = $1 AND is_active = TRUE
+      ORDER BY sort_order ASC, price ASC
+    `, [id])
+    res.json({ variants: result.rows })
+  } catch (err) {
+    res.status(500).json({ variants: [] })
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   NOTIFY ME WHEN BACK IN STOCK
+───────────────────────────────────────────────────────── */
+exports.notifyMe = async (req, res) => {
+  try {
+    const { productId, variantId, email } = req.body
+    const userId = req.user?.id || null
+
+    if (!productId || !email) {
+      return res.status(400).json({ success: false, message: 'productId and email required' })
+    }
+
+    // Check if product is actually OOS
+    const pRes = await pool.query(
+      `SELECT inventory FROM products WHERE id=$1`, [productId]
+    )
+    if (!pRes.rows.length) return res.status(404).json({ success: false, message: 'Product not found' })
+
+    if (pRes.rows[0].inventory > 0 && !variantId) {
+      return res.status(400).json({ success: false, message: 'Product is currently in stock' })
+    }
+
+    await pool.query(`
+      INSERT INTO stock_notifications (product_id, variant_id, email, user_id)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (product_id, COALESCE(variant_id, 0), email) DO NOTHING
+    `, [productId, variantId || null, email.toLowerCase(), userId])
+
+    res.json({ success: true, message: "We'll notify you when this is back in stock!" })
+  } catch (err) {
+    console.error('[NOTIFY ME]', err)
+    res.status(500).json({ success: false, message: 'Failed to save notification' })
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   PINCODE DELIVERY CHECK
+───────────────────────────────────────────────────────── */
+exports.checkPincode = async (req, res) => {
+  try {
+    const pincode = (req.query.pincode || '').trim()
+    if (!/^\d{6}$/.test(pincode)) {
+      return res.status(400).json({ success: false, message: 'Invalid pincode' })
+    }
+
+    // Check specific pincode
+    const result = await pool.query(
+      `SELECT city, state, delivery_days FROM serviceable_pincodes WHERE pincode=$1 AND is_active=TRUE`,
+      [pincode]
+    )
+
+    if (result.rows.length) {
+      const { city, state, delivery_days } = result.rows[0]
+      const deliveryDate = new Date()
+      deliveryDate.setDate(deliveryDate.getDate() + delivery_days)
+      const formatted = deliveryDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })
+      return res.json({
+        success: true, serviceable: true,
+        city, state, delivery_days,
+        delivery_by: formatted,
+        message: `Delivery by ${formatted}`,
+      })
+    }
+
+    // Generic estimate for all Indian pincodes (basic check)
+    const firstTwo = pincode.substring(0, 2)
+    const nonServiceable = ['00', '99']
+    if (nonServiceable.includes(firstTwo)) {
+      return res.json({ success: true, serviceable: false, message: 'Delivery not available to this pincode' })
+    }
+
+    // Default: all valid Indian pincodes get 5-7 day estimate
+    const deliveryDate = new Date()
+    deliveryDate.setDate(deliveryDate.getDate() + 6)
+    const formatted = deliveryDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })
+    res.json({
+      success: true, serviceable: true,
+      delivery_days: 6, delivery_by: formatted,
+      message: `Estimated delivery by ${formatted}`,
+    })
+  } catch (err) {
+    console.error('[PINCODE CHECK]', err)
+    res.status(500).json({ success: false, message: 'Check failed' })
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   RATING BREAKDOWN (per-star counts + average)
+───────────────────────────────────────────────────────── */
+exports.getRatingBreakdown = async (req, res) => {
+  try {
+    const { id } = req.params
+    const result = await pool.query(`
+      SELECT
+        rating,
+        COUNT(*) as count
+      FROM reviews
+      WHERE product_id = $1
+      GROUP BY rating
+      ORDER BY rating DESC
+    `, [id])
+
+    const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+    let total = 0
+    let weightedSum = 0
+
+    result.rows.forEach((r) => {
+      breakdown[r.rating] = Number(r.count)
+      total += Number(r.count)
+      weightedSum += r.rating * Number(r.count)
+    })
+
+    res.json({
+      breakdown,
+      total,
+      average: total > 0 ? +(weightedSum / total).toFixed(1) : 0,
+    })
+  } catch (err) {
+    res.status(500).json({ breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }, total: 0, average: 0 })
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   RECENTLY VIEWED (log + get for logged-in users)
+───────────────────────────────────────────────────────── */
+exports.logRecentlyViewed = async (req, res) => {
+  try {
+    const userId = req.user?.id
+    const { productId } = req.body
+    if (!userId || !productId) return res.json({ success: true })
+
+    await pool.query(`
+      INSERT INTO recently_viewed (user_id, product_id, viewed_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (user_id, product_id) DO UPDATE SET viewed_at = NOW()
+    `, [userId, productId])
+
+    // Keep only last 20
+    await pool.query(`
+      DELETE FROM recently_viewed
+      WHERE user_id = $1
+        AND product_id NOT IN (
+          SELECT product_id FROM recently_viewed
+          WHERE user_id = $1
+          ORDER BY viewed_at DESC
+          LIMIT 20
+        )
+    `, [userId])
+
+    res.json({ success: true })
+  } catch (err) {
+    res.json({ success: true })
+  }
+}
+
+exports.getRecentlyViewed = async (req, res) => {
+  try {
+    const userId = req.user?.id
+    if (!userId) return res.json({ products: [] })
+
+    const result = await pool.query(`
+      SELECT p.id, p.name, p.price, p.compareprice, p.images, p.averagerating, p.inventory, p.category_name
+      FROM recently_viewed rv
+      JOIN products p ON p.id = rv.product_id
+      WHERE rv.user_id = $1 AND p.status = 'active'
+      ORDER BY rv.viewed_at DESC
+      LIMIT 10
+    `, [userId])
+
+    res.json({ products: result.rows })
+  } catch (err) {
+    res.status(500).json({ products: [] })
+  }
+}

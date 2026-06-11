@@ -1,4 +1,5 @@
 const pool = require("../../config/db");
+const bcrypt = require("bcryptjs");
 
 // change password
 exports.changePassword = async (req, res) => {

@@ -1,6 +1,7 @@
 const pool = require("../../config/db");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const { emitToAdmin } = require('../../socket');
 
 /* ================= RAZORPAY ================= */
 
@@ -67,7 +68,7 @@ exports.createOrder = async (req, res) => {
 
     /* ================= INPUT ================= */
 
-    const { shipping, paymentMethod,addressId  } = req.body;
+    const { shipping, paymentMethod, addressId, couponCode, walletDiscount: requestedWalletDiscount, loyaltyDiscount: requestedLoyaltyDiscount, loyaltyPointsUsed } = req.body;
 if (!addressId) {
   return res.status(400).json({
     success: false,
@@ -107,8 +108,24 @@ if (!addrRes.rows.length) {
 }
 
 const addr = addrRes.rows[0];
-/* ================= ADDRESS SNAPSHOT ================= */
 
+/* ================= PINCODE SERVICEABILITY CHECK ================= */
+if (addr.pincode) {
+  const pincodeCheck = await client.query(
+    `SELECT delivery_days FROM serviceable_pincodes WHERE pincode=$1 AND is_active=TRUE LIMIT 1`,
+    [addr.pincode]
+  );
+  if (!pincodeCheck.rows.length) {
+    await client.query("ROLLBACK");
+    client.release();
+    return res.status(400).json({
+      success: false,
+      message: `Sorry, we don't deliver to pincode ${addr.pincode} yet. Please use a different delivery address.`
+    });
+  }
+}
+
+/* ================= ADDRESS SNAPSHOT ================= */
 
     if (!["cod", "online"].includes(paymentMethod)) {
       return res.status(400).json({
@@ -127,23 +144,25 @@ const addr = addrRes.rows[0];
     const PLATFORM = Number(settings.platform_fee || 0);
     const FREE_LIMIT = Number(settings.free_delivery_limit || 0);
 
-    /* ================= LOCK CART ================= */
+    /* ================= LOCK CART (with variant data) ================= */
 
     const cartRes = await client.query(`
       SELECT
         c.product_id,
+        c.variant_id,
         c.quantity,
-
-        p.price,
-        p.inventory,
         p.gst_percent,
-        p.status
+        p.status,
+        COALESCE(pv.price, p.price)           AS effective_price,
+        COALESCE(pv.inventory, p.inventory)   AS effective_inventory,
+        pv.label                              AS variant_label
 
       FROM cart c
       JOIN products p ON p.id = c.product_id
+      LEFT JOIN product_variants pv ON pv.id = c.variant_id
 
       WHERE c.user_id = $1
-      FOR UPDATE
+      FOR UPDATE OF c
     `, [userId]);
 
     const cart = cartRes.rows;
@@ -163,11 +182,11 @@ const addr = addrRes.rows[0];
         throw new Error("Some products are unavailable");
       }
 
-      if (item.inventory < item.quantity) {
+      if (Number(item.effective_inventory) < Number(item.quantity)) {
         throw new Error("Some items are out of stock");
       }
 
-      const price = Number(item.price);
+      const price = Number(item.effective_price);
       const qty = Number(item.quantity);
       const gst = Number(item.gst_percent || 0);
 
@@ -201,6 +220,76 @@ const addr = addrRes.rows[0];
       throw new Error("Invalid order amount");
     }
 
+    /* ================= COUPON ================= */
+
+    let discountAmount = 0;
+    let appliedCouponId = null;
+    let appliedCouponCode = null;
+
+    if (couponCode) {
+      const couponRes = await client.query(`
+        SELECT * FROM coupons
+        WHERE UPPER(code) = UPPER($1)
+          AND is_active = TRUE
+          AND (valid_from IS NULL OR valid_from <= NOW())
+          AND (valid_to IS NULL OR valid_to >= NOW())
+        FOR UPDATE
+      `, [couponCode]);
+
+      if (!couponRes.rows.length) {
+        await client.query("ROLLBACK");
+        client.release();
+        return res.status(400).json({ success: false, message: "Coupon is expired or no longer valid." });
+      }
+
+      const c = couponRes.rows[0];
+      const usageOk = Number(c.usage_limit) === 0 || c.used_count < Number(c.usage_limit);
+      const minOk = subtotal >= Number(c.min_order);
+
+      if (!usageOk) {
+        await client.query("ROLLBACK");
+        client.release();
+        return res.status(400).json({ success: false, message: "Coupon usage limit has been reached." });
+      }
+      if (!minOk) {
+        await client.query("ROLLBACK");
+        client.release();
+        return res.status(400).json({ success: false, message: `Minimum order value of ₹${c.min_order} required for this coupon.` });
+      }
+
+      discountAmount = c.type === 'percent'
+        ? (subtotal * Number(c.value)) / 100
+        : Number(c.value);
+      if (Number(c.max_discount) > 0) discountAmount = Math.min(discountAmount, Number(c.max_discount));
+      discountAmount = +Math.min(discountAmount, subtotal).toFixed(2);
+      total = +(total - discountAmount).toFixed(2);
+      if (total < 0) total = 0;
+      appliedCouponId = c.id;
+      appliedCouponCode = c.code;
+      await client.query('UPDATE coupons SET used_count = used_count + 1, updated_at = NOW() WHERE id = $1', [c.id]);
+    }
+
+    /* ================= WALLET DISCOUNT ================= */
+    let walletDiscountApplied = 0;
+    let loyaltyDiscountApplied = 0;
+    let loyaltyPointsDeducted = 0;
+
+    if (requestedWalletDiscount && Number(requestedWalletDiscount) > 0) {
+      const walletRes = await client.query(`SELECT wallet_balance FROM users WHERE id=$1 FOR UPDATE`, [userId]);
+      const currentBalance = Number(walletRes.rows[0]?.wallet_balance || 0);
+      walletDiscountApplied = Math.min(Number(requestedWalletDiscount), currentBalance, total);
+    }
+
+    if (requestedLoyaltyDiscount && Number(requestedLoyaltyDiscount) > 0) {
+      const loyaltyRes = await client.query(`SELECT loyalty_points_balance FROM users WHERE id=$1 FOR UPDATE`, [userId]);
+      const pts = Number(loyaltyRes.rows[0]?.loyalty_points_balance || 0);
+      const maxDiscount = +(pts * 0.1).toFixed(2);
+      loyaltyDiscountApplied = Math.min(Number(requestedLoyaltyDiscount), maxDiscount, total - walletDiscountApplied);
+      loyaltyPointsDeducted = Math.ceil(loyaltyDiscountApplied * 10);
+    }
+
+    const finalTotal = Math.max(0, total - walletDiscountApplied - loyaltyDiscountApplied);
+
     /* ================= CREATE ORDER ================= */
 
    const orderRes = await client.query(`
@@ -213,14 +302,17 @@ const addr = addrRes.rows[0];
     address_id,
     status,
     payment_status,
-    expires_at
+    expires_at,
+    coupon_code,
+    discount_amount,
+    wallet_discount
   )
   VALUES
-  ($1,$2,$3,$4,$5,$6,$7,NOW() + INTERVAL '15 minutes')
+  ($1,$2,$3,$4,$5,$6,$7,NOW() + INTERVAL '15 minutes',$8,$9,$10)
   RETURNING id
 `, [
   userId,
-  total,
+  finalTotal,
   paymentMethod,
 
   /* Address snapshot (safe copy) */
@@ -237,7 +329,10 @@ const addr = addrRes.rows[0];
       gst: totalTax,
       delivery,
       platform_fee: PLATFORM,
-      grand_total: total
+      discount: discountAmount,
+      wallet_discount: walletDiscountApplied,
+      coupon_code: appliedCouponCode,
+      grand_total: finalTotal
     }
   }),
 
@@ -246,49 +341,97 @@ const addr = addrRes.rows[0];
 
   STATUS_PENDING,
 
-  paymentMethod === "cod" ? "paid" : "unpaid"
+  paymentMethod === "cod" ? "paid" : "unpaid",
+
+  appliedCouponCode,
+  discountAmount,
+  walletDiscountApplied
 ]);
 
     const orderId = orderRes.rows[0].id;
+
+    /* ================= DEDUCT WALLET BALANCE ================= */
+    if (walletDiscountApplied > 0) {
+      await client.query(
+        `UPDATE users SET wallet_balance = wallet_balance - $1 WHERE id=$2`,
+        [walletDiscountApplied, userId]
+      );
+      await client.query(
+        `INSERT INTO wallet_transactions (user_id, amount, type, source, order_id, description)
+         VALUES ($1, $2, 'debit', 'order', $3, $4)`,
+        [userId, walletDiscountApplied, orderId, `Used on order #${orderId}`]
+      );
+    }
+
+    /* ================= DEDUCT LOYALTY POINTS ================= */
+    if (loyaltyPointsDeducted > 0) {
+      await client.query(
+        `UPDATE users SET loyalty_points_balance = loyalty_points_balance - $1 WHERE id=$2`,
+        [loyaltyPointsDeducted, userId]
+      );
+      await client.query(
+        `INSERT INTO loyalty_points (user_id, points, type, source, order_id, description)
+         VALUES ($1, $2, 'redeem', 'order', $3, $4)`,
+        [userId, loyaltyPointsDeducted, orderId, `Redeemed on order #${orderId}`]
+      );
+    }
+
+    /* ================= RECORD COUPON USE ================= */
+
+    if (appliedCouponId) {
+      await client.query(
+        'INSERT INTO coupon_uses (coupon_id, user_id, order_id) VALUES ($1,$2,$3)',
+        [appliedCouponId, userId, orderId]
+      );
+    }
 
     /* ================= CREATE ITEMS ================= */
 
     for (const item of cart) {
 
-      const price = Number(item.price);
+      const price = Number(item.effective_price);
       const qty = Number(item.quantity);
 
       await client.query(`
         INSERT INTO order_items
-        (order_id, product_id, quantity, price)
-        VALUES ($1,$2,$3,$4)
+        (order_id, product_id, variant_id, variant_label, quantity, price)
+        VALUES ($1,$2,$3,$4,$5,$6)
       `, [
         orderId,
         item.product_id,
+        item.variant_id || null,
+        item.variant_label || null,
         qty,
-        price
+        price,
       ]);
     }
 
-    /* ================= COD STOCK ================= */
+    /* ================= COD STOCK DEDUCTION ================= */
 
     if (paymentMethod === "cod") {
 
       for (const item of cart) {
 
-        const r = await client.query(`
-          UPDATE products
-          SET inventory = inventory - $1
-          WHERE id = $2
-            AND inventory >= $1
-          RETURNING id
-        `, [
-          item.quantity,
-          item.product_id
-        ]);
+        if (item.variant_id) {
+          /* deduct from variant */
+          const rv = await client.query(`
+            UPDATE product_variants
+            SET inventory = inventory - $1
+            WHERE id = $2 AND inventory >= $1
+            RETURNING id
+          `, [item.quantity, item.variant_id]);
 
-        if (!r.rows.length) {
-          throw new Error("Stock update failed");
+          if (!rv.rows.length) throw new Error("Variant stock update failed");
+        } else {
+          /* deduct from product */
+          const rp = await client.query(`
+            UPDATE products
+            SET inventory = inventory - $1
+            WHERE id = $2 AND inventory >= $1
+            RETURNING id
+          `, [item.quantity, item.product_id]);
+
+          if (!rp.rows.length) throw new Error("Stock update failed");
         }
       }
 
@@ -326,6 +469,11 @@ const addr = addrRes.rows[0];
     }
 
     await client.query("COMMIT");
+
+    /* ================= NOTIFY ADMIN (real-time) ================= */
+    try {
+      emitToAdmin('new_order', { order_id: orderId, user_id: userId });
+    } catch (_) {}
 
     /* ================= RESPONSE ================= */
 
@@ -449,25 +597,32 @@ exports.verifyPayment = async (req, res) => {
       throw new Error("Order expired");
     }
 
-    /* ================= REDUCE STOCK ================= */
+    /* ================= REDUCE STOCK (variant-aware) ================= */
 
     const items = await client.query(`
-      SELECT *
-      FROM order_items
-      WHERE order_id=$1
+      SELECT product_id, variant_id, quantity FROM order_items WHERE order_id=$1
     `, [orderId]);
 
     for (const item of items.rows) {
 
-      const r = await client.query(`
-        UPDATE products
-        SET inventory = inventory - $1
-        WHERE id=$2 AND inventory >= $1
-        RETURNING id
-      `, [item.quantity, item.product_id]);
+      if (item.variant_id) {
+        const rv = await client.query(`
+          UPDATE product_variants
+          SET inventory = inventory - $1
+          WHERE id=$2 AND inventory >= $1
+          RETURNING id
+        `, [item.quantity, item.variant_id]);
 
-      if (!r.rows.length) {
-        throw new Error("Stock mismatch");
+        if (!rv.rows.length) throw new Error("Variant stock mismatch");
+      } else {
+        const rp = await client.query(`
+          UPDATE products
+          SET inventory = inventory - $1
+          WHERE id=$2 AND inventory >= $1
+          RETURNING id
+        `, [item.quantity, item.product_id]);
+
+        if (!rp.rows.length) throw new Error("Stock mismatch");
       }
     }
 
@@ -512,6 +667,327 @@ exports.verifyPayment = async (req, res) => {
   } finally {
 
     client.release();
+  }
+};
+
+/* ================= GET SINGLE ORDER ================= */
+
+exports.getOrderById = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT
+        o.id,
+        o.invoice_no,
+        o.status,
+        o.payment_method,
+        o.payment_status,
+        o.total_amount,
+        o.created_at,
+        o.tracking_number,
+        o.shipped_at,
+        o.shipping_address,
+        o.razorpay_order_id,
+        o.razorpay_payment_id,
+        o.cancel_reason,
+        o.return_reason,
+
+        i.id           AS invoice_id,
+        i.invoice_no   AS invoice_number,
+        i.invoice_date,
+        i.pdf_url,
+
+        json_agg(
+          json_build_object(
+            'product_id', p.id,
+            'name',       p.name,
+            'quantity',   oi.quantity,
+            'price',      oi.price,
+            'image',      p.images->>0
+          )
+        ) AS items
+
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      JOIN products p     ON p.id = oi.product_id
+      LEFT JOIN invoices i ON i.order_id = o.id
+
+      WHERE o.id = $1 AND o.user_id = $2
+      GROUP BY o.id, i.id
+      `,
+      [id, userId]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error("[GET ORDER BY ID]", err);
+    res.status(500).json({ success: false, message: "Failed to fetch order" });
+  }
+};
+
+/* ================= CANCEL ORDER ================= */
+
+exports.cancelOrder = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    await client.query("BEGIN");
+
+    const orderRes = await client.query(
+      `SELECT * FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE`,
+      [id, userId]
+    );
+
+    if (!orderRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const order = orderRes.rows[0];
+
+    if (order.status === 6) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ success: false, message: "Order already cancelled" });
+    }
+
+    if (![0, 1].includes(order.status)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Order cannot be cancelled at this stage"
+      });
+    }
+
+    // Restore inventory (variant-aware)
+    const items = await client.query(
+      `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id=$1`,
+      [id]
+    );
+
+    if (order.payment_status === "paid") {
+      for (const item of items.rows) {
+        if (item.variant_id) {
+          await client.query(
+            `UPDATE product_variants SET inventory = inventory + $1 WHERE id = $2`,
+            [item.quantity, item.variant_id]
+          );
+        } else {
+          await client.query(
+            `UPDATE products SET inventory = inventory + $1 WHERE id = $2`,
+            [item.quantity, item.product_id]
+          );
+        }
+      }
+    }
+
+    await client.query(
+      `UPDATE orders SET status=6, cancel_reason=$1, updated_at=NOW() WHERE id=$2`,
+      [reason || "Cancelled by customer", id]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({ success: true, message: "Order cancelled successfully" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("[CANCEL ORDER]", err);
+    res.status(500).json({ success: false, message: "Cancellation failed" });
+  } finally {
+    client.release();
+  }
+};
+
+/* ================= REQUEST RETURN ================= */
+
+exports.returnOrder = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ success: false, message: "Return reason is required" });
+    }
+
+    await client.query("BEGIN");
+
+    const orderRes = await client.query(
+      `SELECT * FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE`,
+      [id, userId]
+    );
+
+    if (!orderRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const order = orderRes.rows[0];
+
+    if (order.status === 7) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ success: false, message: "Return already requested" });
+    }
+
+    if (order.status !== 5) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Return can only be requested for delivered orders"
+      });
+    }
+
+    // Enforce 7-day return window (updated_at = delivery timestamp when status was set to 5)
+    const deliveredAt = new Date(order.updated_at);
+    const daysSinceDelivery = (Date.now() - deliveredAt.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceDelivery > 7) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Return window expired. Returns must be requested within 7 days of delivery."
+      });
+    }
+
+    await client.query(
+      `UPDATE orders SET status=7, return_reason=$1, updated_at=NOW() WHERE id=$2`,
+      [reason, id]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({ success: true, message: "Return request submitted successfully" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("[RETURN ORDER]", err);
+    res.status(500).json({ success: false, message: "Return request failed" });
+  } finally {
+    client.release();
+  }
+};
+
+/* ================= RAZORPAY HTML PAYMENT PAGE ================= */
+
+exports.getPaymentPage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { returnUrl } = req.query;
+
+    const orderRes = await pool.query(
+      `SELECT id, total_amount, razorpay_order_id, payment_status FROM orders WHERE id=$1 AND user_id=$2`,
+      [id, userId]
+    );
+
+    if (!orderRes.rows.length) {
+      return res.status(404).send('<h2>Order not found</h2>');
+    }
+
+    const order = orderRes.rows[0];
+
+    if (order.payment_status === 'paid') {
+      return res.send('<h2>Payment already completed!</h2>');
+    }
+
+    if (!order.razorpay_order_id) {
+      return res.status(400).send('<h2>Invalid order for online payment</h2>');
+    }
+
+    // Only allow deep-link scheme to prevent open redirect
+    const callbackUrl = (returnUrl && returnUrl.startsWith('oroganix://'))
+      ? returnUrl
+      : `${process.env.FRONTEND_URL}/payment-callback`;
+    const keyId = process.env.RAZORPAY_KEY;
+    const amount = Math.round(Number(order.total_amount) * 100);
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oroganix Payment</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, sans-serif; background: #0d120d; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #1a2e1e; border-radius: 20px; padding: 36px; max-width: 380px; width: 90%; text-align: center; }
+    .logo { font-size: 48px; margin-bottom: 12px; }
+    h1 { color: #fff; font-size: 22px; margin-bottom: 6px; }
+    .sub { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 24px; }
+    .amount { font-size: 42px; font-weight: 900; color: #c9a84c; margin-bottom: 28px; }
+    button { background: linear-gradient(90deg, #1a2e1e, #2d5a3d); color: #fff; border: none; border-radius: 14px; padding: 16px 32px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%; }
+    button:active { opacity: 0.8; }
+    .secure { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 16px; }
+    #status { margin-top: 16px; padding: 12px; border-radius: 10px; display: none; font-weight: 600; }
+    #status.success { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+    #status.error { background: rgba(239,68,68,0.2); color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🌿</div>
+    <h1>Oroganix</h1>
+    <div class="sub">Pure · Natural · Ayurvedic</div>
+    <div class="amount">₹${(amount / 100).toFixed(2)}</div>
+    <button id="payBtn" onclick="startPayment()">Pay Now · ₹${(amount / 100).toFixed(2)}</button>
+    <div class="secure">🔒 256-bit SSL encrypted payment</div>
+    <div id="status"></div>
+  </div>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    function startPayment() {
+      document.getElementById('payBtn').disabled = true;
+      document.getElementById('payBtn').textContent = 'Opening payment...';
+      var options = {
+        key: '${keyId}',
+        amount: ${amount},
+        currency: 'INR',
+        name: 'Oroganix',
+        description: 'Order #${id}',
+        order_id: '${order.razorpay_order_id}',
+        theme: { color: '#1a2e1e' },
+        handler: function(response) {
+          var s = document.getElementById('status');
+          s.textContent = 'Payment successful! Verifying...';
+          s.style.display = 'block';
+          s.className = 'success';
+          var returnBase = '${callbackUrl}';
+          var redirectUrl = returnBase + '?orderId=${id}&razorpay_payment_id=' + response.razorpay_payment_id + '&razorpay_order_id=' + response.razorpay_order_id + '&razorpay_signature=' + response.razorpay_signature + '&status=success';
+          setTimeout(function(){ window.location.href = redirectUrl; }, 800);
+        },
+        modal: {
+          ondismiss: function() {
+            document.getElementById('payBtn').disabled = false;
+            document.getElementById('payBtn').textContent = 'Pay Now · ₹${(amount / 100).toFixed(2)}';
+            var s = document.getElementById('status');
+            s.textContent = 'Payment cancelled.';
+            s.style.display = 'block';
+            s.className = 'error';
+            var returnBase = '${callbackUrl}';
+            setTimeout(function(){ window.location.href = returnBase + '?orderId=${id}&status=cancelled'; }, 1200);
+          }
+        }
+      };
+      var rzp = new Razorpay(options);
+      rzp.open();
+    }
+  </script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (err) {
+    console.error('[PAYMENT PAGE]', err);
+    res.status(500).send('<h2>Server error</h2>');
   }
 };
 
@@ -587,5 +1063,97 @@ exports.getMyOrders = async (req, res) => {
       success: false,
       message: "Failed to fetch orders",
     });
+  }
+};
+
+/* ================= ORDER STATUS TIMELINE (user-facing) ================= */
+
+exports.getOrderTimeline = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    // verify the order belongs to this user
+    const own = await pool.query(
+      `SELECT id FROM orders WHERE id=$1 AND user_id=$2`,
+      [id, userId]
+    );
+    if (!own.rows.length)
+      return res.status(404).json({ success: false, message: "Order not found" });
+
+    const logs = await pool.query(
+      `SELECT
+         osl.id,
+         osl.old_status,
+         osl.new_status,
+         osl.note,
+         osl.created_at,
+         sm_old.label AS old_label,
+         sm_new.label AS new_label
+       FROM order_status_logs osl
+       LEFT JOIN order_status_master sm_old ON sm_old.code = osl.old_status
+       LEFT JOIN order_status_master sm_new ON sm_new.code = osl.new_status
+       WHERE osl.order_id = $1
+       ORDER BY osl.created_at ASC`,
+      [id]
+    );
+
+    res.json({ success: true, timeline: logs.rows });
+  } catch (err) {
+    console.error("[ORDER TIMELINE]", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/* ================= RETRY PAYMENT (for unpaid online orders) ================= */
+
+exports.retryPayment = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const orderRes = await pool.query(
+      `SELECT id, total_amount, payment_status, status, payment_method, razorpay_order_id
+       FROM orders WHERE id=$1 AND user_id=$2`,
+      [id, userId]
+    );
+
+    if (!orderRes.rows.length)
+      return res.status(404).json({ success: false, message: "Order not found" });
+
+    const order = orderRes.rows[0];
+
+    if (order.payment_method !== 'online')
+      return res.status(400).json({ success: false, message: "Not an online payment order" });
+
+    if (order.payment_status === 'paid')
+      return res.status(400).json({ success: false, message: "Order is already paid" });
+
+    if (order.status === 6)
+      return res.status(400).json({ success: false, message: "Order has been cancelled" });
+
+    // Extend expiry by 15 more minutes and create a fresh Razorpay order
+    const amount = Math.round(Number(order.total_amount) * 100);
+    const rzpOrder = await razorpay.orders.create({
+      amount,
+      currency: "INR",
+      receipt: `retry_${id}_${Date.now()}`,
+    });
+
+    await pool.query(
+      `UPDATE orders SET razorpay_order_id=$1, expires_at=NOW()+INTERVAL '15 minutes', status=0, updated_at=NOW() WHERE id=$2`,
+      [rzpOrder.id, id]
+    );
+
+    res.json({
+      success: true,
+      razorpayOrderId: rzpOrder.id,
+      amount: rzpOrder.amount,
+      currency: rzpOrder.currency,
+      orderId: order.id,
+    });
+  } catch (err) {
+    console.error("[RETRY PAYMENT]", err);
+    res.status(500).json({ success: false, message: "Failed to initiate payment retry" });
   }
 };

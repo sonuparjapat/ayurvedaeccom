@@ -100,11 +100,13 @@ exports.userRegister = async (req, res) => {
 
     const hash = await bcrypt.hash(password, 12);
 
-    /* ================= EMAIL TOKEN ================= */
+    /* ================= EMAIL TOKEN + REFERRAL CODE ================= */
 
     const token = crypto
       .randomBytes(32)
       .toString("hex");
+
+    const referralCode = crypto.randomBytes(4).toString('hex').toUpperCase();
 
     /* ================= INSERT USER ================= */
 
@@ -119,18 +121,20 @@ exports.userRegister = async (req, res) => {
         role,
         verification_token,
         is_verified,
+        referral_code,
         created_at,
         updated_at
       )
       VALUES
-      ($1,$2,$3,$4,3,$5,false,NOW(),NOW())
+      ($1,$2,$3,$4,3,$5,false,$6,NOW(),NOW())
       `,
       [
         cleanName,
         cleanEmail,
         cleanPhone,
         hash,
-        token
+        token,
+        referralCode
       ]
     );
 

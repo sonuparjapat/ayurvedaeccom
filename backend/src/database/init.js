@@ -214,6 +214,22 @@ await client.query(`
       )
     `);
 
+    /* ================= ORDER STATUS MASTER SEED ================= */
+    await client.query(`
+      INSERT INTO order_status_master (code, key, label, description) VALUES
+        (0, 'pending',           'Pending',           'Order placed, awaiting confirmation'),
+        (1, 'confirmed',         'Confirmed',          'Order confirmed by merchant'),
+        (2, 'processing',        'Processing',         'Order is being prepared'),
+        (3, 'shipped',           'Shipped',            'Order dispatched for delivery'),
+        (4, 'out_for_delivery',  'Out for Delivery',   'Order out with delivery agent'),
+        (5, 'delivered',         'Delivered',          'Order delivered successfully'),
+        (6, 'cancelled',         'Cancelled',          'Order cancelled'),
+        (7, 'return_requested',  'Return Requested',   'Customer requested a return'),
+        (8, 'returned',          'Returned',           'Product returned by customer'),
+        (9, 'refunded',          'Refunded',           'Refund issued to customer')
+      ON CONFLICT (code) DO UPDATE SET label = EXCLUDED.label, key = EXCLUDED.key
+    `);
+
     /* ================= ORDERS ================= */
     await client.query(`
       CREATE TABLE IF NOT EXISTS orders (
@@ -246,6 +262,8 @@ await client.query(`
       )
     `);
 
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_reason TEXT`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);`);
@@ -268,6 +286,17 @@ await client.query(`
         line_total NUMERIC(10,2)
       )
     `);
+
+    /* ================= ORDER ITEMS INDEXES ================= */
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id)`);
+
+    /* ================= REFUND / RETURN COLUMNS ================= */
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_amount NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_id VARCHAR(200)`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_status VARCHAR(30) DEFAULT NULL`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_approved_at TIMESTAMP`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_reject_reason TEXT`);
 
     /* ================= PAYMENTS ================= */
     await client.query(`
@@ -301,6 +330,8 @@ await client.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS unique_review_per_order_product
       ON reviews(order_id, product_id)
     `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id)`);
 
     /* ================= APP SETTINGS ================= */
     await client.query(`
@@ -516,6 +547,278 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
       REFERENCES orders(id)
       ON DELETE CASCADE
 )`)
+    /* ================= BANNERS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS banners (
+        id SERIAL PRIMARY KEY,
+        tag VARCHAR(60),
+        title VARCHAR(200) NOT NULL,
+        subtitle TEXT,
+        image_url TEXT,
+        bg_color1 VARCHAR(30) DEFAULT '#1a3a22',
+        bg_color2 VARCHAR(30) DEFAULT '#0d1f15',
+        cta_text VARCHAR(80) DEFAULT 'Explore Products',
+        cta_link VARCHAR(200) DEFAULT '/products',
+        sort_order INT DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_banners_active ON banners(is_active, sort_order)`);
+
+    /* ================= COUPONS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS coupons (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(30) UNIQUE NOT NULL,
+        type VARCHAR(10) NOT NULL CHECK (type IN ('flat','percent')),
+        value NUMERIC(10,2) NOT NULL CHECK (value > 0),
+        min_order NUMERIC(10,2) DEFAULT 0,
+        max_discount NUMERIC(10,2) DEFAULT 0,
+        usage_limit INT DEFAULT 0,
+        usage_per_user INT DEFAULT 1,
+        used_count INT DEFAULT 0,
+        valid_from TIMESTAMP,
+        valid_to TIMESTAMP,
+        description TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_coupons_code ON coupons(UPPER(code))`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_coupons_active ON coupons(is_active)`);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS coupon_uses (
+        id SERIAL PRIMARY KEY,
+        coupon_id INTEGER NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+        used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_coupon_uses_coupon ON coupon_uses(coupon_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_coupon_uses_user ON coupon_uses(user_id)`);
+
+    /* ================= ORDER COUPON COLUMNS ================= */
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS coupon_code TEXT`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10,2) DEFAULT 0`);
+
+    /* ================= PRODUCT VARIANTS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS product_variants (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        label VARCHAR(100) NOT NULL,
+        sku VARCHAR(100),
+        price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
+        compareprice NUMERIC(10,2),
+        inventory INT DEFAULT 0 CHECK (inventory >= 0),
+        attributes JSONB DEFAULT '{}',
+        sort_order INT DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_variants_product ON product_variants(product_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_variants_active ON product_variants(product_id, is_active)`);
+
+    /* ================= VARIANT COLUMNS ON CART / ORDER_ITEMS ================= */
+    await client.query(`ALTER TABLE cart ADD COLUMN IF NOT EXISTS variant_id INTEGER REFERENCES product_variants(id) ON DELETE SET NULL`);
+    await client.query(`ALTER TABLE guest_cart ADD COLUMN IF NOT EXISTS variant_id INTEGER REFERENCES product_variants(id) ON DELETE SET NULL`);
+    await client.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS variant_id INTEGER REFERENCES product_variants(id) ON DELETE SET NULL`);
+    await client.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS variant_label VARCHAR(100)`);
+
+    /* ================= STOCK NOTIFICATIONS (Notify Me When Back) ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS stock_notifications (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        variant_id INTEGER REFERENCES product_variants(id) ON DELETE CASCADE,
+        email VARCHAR(150) NOT NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        notified BOOLEAN DEFAULT FALSE,
+        notified_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`ALTER TABLE stock_notifications ADD COLUMN IF NOT EXISTS is_notified BOOLEAN DEFAULT FALSE`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_stock_notify_product ON stock_notifications(product_id, is_notified)`);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_notify_unique ON stock_notifications(product_id, COALESCE(variant_id, 0), email)`);
+
+    /* ================= RECENTLY VIEWED (server-side log) ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS recently_viewed (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, product_id)
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_recently_viewed_user ON recently_viewed(user_id, viewed_at DESC)`);
+
+    /* ================= PINCODE SERVICEABILITY ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS serviceable_pincodes (
+        id SERIAL PRIMARY KEY,
+        pincode VARCHAR(10) NOT NULL UNIQUE,
+        city VARCHAR(100),
+        state VARCHAR(100),
+        delivery_days INT DEFAULT 5,
+        is_active BOOLEAN DEFAULT TRUE
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_pincodes_active ON serviceable_pincodes(pincode, is_active)`);
+
+    /* ================= FLASH SALES ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS flash_sales (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        discount_type VARCHAR(20) DEFAULT 'percent' CHECK (discount_type IN ('percent','flat')),
+        discount_value NUMERIC(10,2) NOT NULL,
+        starts_at TIMESTAMP NOT NULL,
+        ends_at TIMESTAMP NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        max_uses INT,
+        uses_count INT DEFAULT 0,
+        banner_image TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS flash_sale_products (
+        id SERIAL PRIMARY KEY,
+        flash_sale_id INTEGER NOT NULL REFERENCES flash_sales(id) ON DELETE CASCADE,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        special_price NUMERIC(10,2),
+        stock_limit INT,
+        sold_count INT DEFAULT 0,
+        UNIQUE(flash_sale_id, product_id)
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_flash_sales_active ON flash_sales(is_active, starts_at, ends_at)`);
+
+    /* ================= WALLET / STORE CREDITS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS wallet_transactions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount NUMERIC(10,2) NOT NULL,
+        type VARCHAR(10) NOT NULL CHECK (type IN ('credit','debit')),
+        source VARCHAR(50),
+        order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_wallet_user ON wallet_transactions(user_id, created_at DESC)`);
+
+    /* ================= LOYALTY POINTS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS loyalty_points (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        points INT NOT NULL,
+        type VARCHAR(10) NOT NULL CHECK (type IN ('earn','redeem')),
+        source VARCHAR(50),
+        order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_loyalty_user ON loyalty_points(user_id, created_at DESC)`);
+
+    /* ================= PRODUCT Q&A ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS product_questions (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        user_name VARCHAR(100),
+        question TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS product_answers (
+        id SERIAL PRIMARY KEY,
+        question_id INTEGER NOT NULL REFERENCES product_questions(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        user_name VARCHAR(100),
+        is_admin BOOLEAN DEFAULT FALSE,
+        answer TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_questions_product ON product_questions(product_id, status)`);
+
+    /* ================= PUSH NOTIFICATION TOKENS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS push_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL,
+        device_type VARCHAR(20) DEFAULT 'mobile',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, token)
+      )
+    `);
+
+    /* ================= REFERRALS ================= */
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS loyalty_points_balance INT DEFAULT 0`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS wallet_discount NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS loyalty_discount NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS loyalty_points_earned INT DEFAULT 0`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS flash_sale_id INTEGER REFERENCES flash_sales(id) ON DELETE SET NULL`);
+
+    /* ================= COD DELIVERY OTP ================= */
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_otp VARCHAR(6)`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_otp_verified BOOLEAN DEFAULT FALSE`);
+
+    /* ================= SUPPORT TICKETS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        user_name VARCHAR(150),
+        user_email VARCHAR(150),
+        subject VARCHAR(300) NOT NULL,
+        category VARCHAR(50) DEFAULT 'general' CHECK (category IN ('general','order','payment','return','product','other')),
+        status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open','in_progress','resolved','closed')),
+        priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low','medium','high','urgent')),
+        assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+        closed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tickets_user ON support_tickets(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tickets_status ON support_tickets(status)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tickets_created ON support_tickets(created_at DESC)`);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS support_messages (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+        sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        sender_type VARCHAR(10) NOT NULL CHECK (sender_type IN ('user','admin')),
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_support_msgs_ticket ON support_messages(ticket_id, created_at)`);
+
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

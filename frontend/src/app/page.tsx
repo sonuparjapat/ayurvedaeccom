@@ -1,9 +1,12 @@
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { HeroSection } from '@/components/sections/hero-section'
+import { BannerCarousel } from '@/components/sections/banner-carousel'
+import { OfferStrip } from '@/components/sections/offer-strip'
 import { FeaturesSection } from '@/components/sections/features-section'
 import { CategoriesSection } from '@/components/sections/categories-section'
 import { TestimonialsSection } from '@/components/sections/testimonials-section'
+import { FlashSaleBanner } from '@/components/sections/flash-sale-banner'
 
 export default function Home() {
   return (
@@ -11,9 +14,11 @@ export default function Home() {
       <Header />
       <main className="flex-1">
         <HeroSection />
-            <CategoriesSection />
+        <OfferStrip />
+        <FlashSaleBanner />
+        <BannerCarousel />
+        <CategoriesSection />
         <FeaturesSection />
-    
         <TestimonialsSection />
       </main>
       <Footer />

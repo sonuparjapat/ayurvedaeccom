@@ -50,6 +50,7 @@ import Link from 'next/link'
 import axios from '@/lib/axios'
 
 import { useAuth } from '@/context/auth-context'
+import { useOrderSocket } from '@/hooks/useOrderSocket'
 import AppModal from '@/components/modal/AppModal'
 import { notify } from '../utils/notify'
 import { addAddress, deleteAccount, deleteAddress, exportData, getAddresses, getSettings, setDefaultAddress, updateAddress, updateProfile, updateSettings } from '@/lib/accountapi'
@@ -190,6 +191,94 @@ useEffect(() => {
   )
 }
 
+/* ================= WALLET TAB ================= */
+
+function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; onMount: () => void }) {
+  useEffect(() => { onMount() }, [])
+
+  if (loading) return (
+    <div className="flex justify-center py-20">
+      <div className="w-10 h-10 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin" />
+    </div>
+  )
+
+  const balance = Number(data?.balance || 0)
+  const loyaltyBalance = Number(data?.loyalty_balance || 0)
+  const transactions: any[] = data?.transactions || []
+  const loyalty: any[] = data?.loyalty || []
+
+  return (
+    <div className="space-y-5">
+      <h2 className="font-bold text-gray-900 text-lg">Wallet & Loyalty Points</h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-gradient-to-br from-violet-600 to-purple-500 rounded-2xl p-5 text-white relative overflow-hidden">
+          <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full" />
+          <p className="text-xs font-bold uppercase tracking-widest text-purple-200 mb-2">Store Wallet</p>
+          <p className="text-4xl font-black">₹{balance.toFixed(2)}</p>
+          <p className="text-xs text-purple-200 mt-1">Available balance</p>
+        </div>
+        <div className="bg-gradient-to-br from-amber-500 to-orange-400 rounded-2xl p-5 text-white relative overflow-hidden">
+          <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full" />
+          <p className="text-xs font-bold uppercase tracking-widest text-amber-100 mb-2">Loyalty Points</p>
+          <p className="text-4xl font-black">{loyaltyBalance}</p>
+          <p className="text-xs text-amber-100 mt-1">Redeemable points</p>
+        </div>
+      </div>
+
+      {transactions.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h3 className="font-bold text-gray-800">Wallet Transactions</h3>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {transactions.map((t: any, i: number) => (
+              <div key={i} className="flex items-center justify-between px-5 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 capitalize">{t.source || t.description}</p>
+                  <p className="text-xs text-gray-400">{new Date(t.created_at).toLocaleDateString('en-IN')}</p>
+                </div>
+                <span className={`text-sm font-bold ${t.type === 'credit' ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {t.type === 'credit' ? '+' : '-'}₹{Number(t.amount).toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {loyalty.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h3 className="font-bold text-gray-800">Points History</h3>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {loyalty.map((l: any, i: number) => (
+              <div key={i} className="flex items-center justify-between px-5 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 capitalize">{l.source || l.description}</p>
+                  <p className="text-xs text-gray-400">{new Date(l.created_at).toLocaleDateString('en-IN')}</p>
+                </div>
+                <span className={`text-sm font-bold ${l.type === 'earn' ? 'text-amber-600' : 'text-red-500'}`}>
+                  {l.type === 'earn' ? '+' : '-'}{l.points} pts
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!transactions.length && !loyalty.length && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center">
+          <Wallet size={40} className="text-gray-200 mx-auto mb-3" />
+          <p className="font-semibold text-gray-500">No transactions yet</p>
+          <p className="text-xs text-gray-400 mt-1">Wallet credits and loyalty points will appear here</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ================= COMPONENT ================= */
 
 export default function AccountContent() {
@@ -205,7 +294,8 @@ export default function AccountContent() {
     fetchUser
   } = useAuth()
 
-console.log(loginuserdata,"loginuserdata")
+  useOrderSocket(loginuserdata?.id)
+
   /* ================= STATES ================= */
 
   const [addresses, setAddresses] = useState<Address[]>([])
@@ -242,6 +332,10 @@ console.log(loginuserdata,"loginuserdata")
   const [oldImages, setOldImages] = useState([]);
   const [images, setImages] = useState<any[]>([])
   const { loadReviews, reviewsData } = useAuth()
+
+  /* ===== WALLET ===== */
+  const [walletData, setWalletData] = useState<{ balance: number; loyalty_balance: number; transactions: any[]; loyalty: any[] } | null>(null)
+  const [walletLoading, setWalletLoading] = useState(false)
 
   /* ================= LOAD ================= */
 
@@ -472,6 +566,21 @@ const handleSaveAddress = async (data: any) => {
 
   /* ================= LOADER ================= */
 
+  const loadWallet = async () => {
+    if (walletData || walletLoading) return
+    setWalletLoading(true)
+    try {
+      const r = await axios.get('/wallet/')
+      // Normalize response keys
+      setWalletData({
+        balance: r.data.wallet_balance || 0,
+        loyalty_balance: r.data.loyalty_points || 0,
+        transactions: r.data.transactions || [],
+        loyalty: r.data.loyalty_history || [],
+      })
+    } catch { } finally { setWalletLoading(false) }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -493,6 +602,7 @@ const handleSaveAddress = async (data: any) => {
     { href: '/account?tab=orders', tab: 'orders', icon: Package, label: 'My Orders' },
     { href: '/account?tab=addresses', tab: 'addresses', icon: MapPin, label: 'Addresses' },
     { href: '/wishlist', tab: 'wishlist', icon: Heart, label: 'Wishlist' },
+    { href: '/account?tab=wallet', tab: 'wallet', icon: Wallet, label: 'Wallet & Points' },
     { href: '/account?tab=payment', tab: 'payment', icon: CreditCard, label: 'Payment Methods' },
     { href: '/account?tab=settings', tab: 'settings', icon: Settings, label: 'Settings' },
   ]
@@ -598,6 +708,7 @@ const handleSaveAddress = async (data: any) => {
                   <TabsTrigger value="profile">Profile</TabsTrigger>
                   <TabsTrigger value="orders">Orders</TabsTrigger>
                   <TabsTrigger value="addresses">Addresses</TabsTrigger>
+                  <TabsTrigger value="wallet">Wallet</TabsTrigger>
                   <TabsTrigger value="payment">Payment</TabsTrigger>
                   <TabsTrigger value="settings">Settings</TabsTrigger>
                 </TabsList>
@@ -671,6 +782,7 @@ const handleSaveAddress = async (data: any) => {
                               { icon: Mail, label: 'Email Address', value: loginuserdata?.email },
                               { icon: Phone, label: 'Phone Number', value: loginuserdata?.phone || '—' },
                               { icon: Gift, label: 'Member Since', value:formatDate(loginuserdata?.created_at) },
+                              { icon: TrendingUp, label: 'Referral Code', value: loginuserdata?.referral_code || '—' },
                             ].map(({ icon: Icon, label, value }) => (
                               <div key={label} className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
                                 <div className="p-2 bg-emerald-100 rounded-lg">
@@ -771,6 +883,7 @@ const handleSaveAddress = async (data: any) => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="font-semibold text-gray-800 text-sm truncate">{item.name}</p>
+                                  {item.variant_label && <p className="text-xs text-emerald-600 font-medium mt-0.5">{item.variant_label}</p>}
                                   <p className="text-xs text-gray-400 mt-0.5">Qty: {item.quantity}</p>
                                 </div>
                                 <p className="font-bold text-gray-800 text-sm">{formatPrice(item.price * item.quantity)}</p>
@@ -792,26 +905,38 @@ const handleSaveAddress = async (data: any) => {
                             )}
                             {!['shipped', 'delivered'].includes(order.status) && <div />}
 
-                            <Button
-                              size="sm"
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1.5 text-xs ml-auto"
-                              onClick={async () => {
-                                const newdata = await loadReviews(order?.items?.map((item: any) => item?.product_id), 1, 10, 1)
-                                const data2 = orders?.flatMap((el: any) =>
-                                  el.items.map((item: any) => ({
-                                    ...item,
-                                    rating: newdata?.find((item2: any) => item2?.order_id == orders[orderIndex]?.id && item2?.product_id == item?.product_id)?.rating ?? null,
-                                    comment: newdata?.find((item2: any) => item2?.order_id == orders[orderIndex]?.id && item2?.product_id == item?.product_id)?.comment ?? "",
-                                    images: [],
-                                    oldImages: newdata?.find((item2: any) => item2?.order_id == el?.id && item2?.product_id == item?.product_id)?.images ?? [],
-                                  }))
-                                )
-                                setRealReviewData(data2)
-                                openOrderModal(order)
-                              }}
-                            >
-                              <Eye size={13} /> View Details
-                            </Button>
+                            <div className="flex items-center gap-2 ml-auto">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl gap-1.5 text-xs"
+                                asChild
+                              >
+                                <Link href={`/orders/${order.id}`}>
+                                  <Truck size={13} /> Track Order
+                                </Link>
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1.5 text-xs"
+                                onClick={async () => {
+                                  const newdata = await loadReviews(order?.items?.map((item: any) => item?.product_id), 1, 10, 1)
+                                  const data2 = orders?.flatMap((el: any) =>
+                                    el.items.map((item: any) => ({
+                                      ...item,
+                                      rating: newdata?.find((item2: any) => item2?.order_id == orders[orderIndex]?.id && item2?.product_id == item?.product_id)?.rating ?? null,
+                                      comment: newdata?.find((item2: any) => item2?.order_id == orders[orderIndex]?.id && item2?.product_id == item?.product_id)?.comment ?? "",
+                                      images: [],
+                                      oldImages: newdata?.find((item2: any) => item2?.order_id == el?.id && item2?.product_id == item?.product_id)?.images ?? [],
+                                    }))
+                                  )
+                                  setRealReviewData(data2)
+                                  openOrderModal(order)
+                                }}
+                              >
+                                <Eye size={13} /> Review
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))
@@ -890,6 +1015,11 @@ const handleSaveAddress = async (data: any) => {
                       ))}
                     </div>
                   </div>
+                </TabsContent>
+
+                {/* ===================== WALLET TAB ===================== */}
+                <TabsContent value="wallet">
+                  <WalletTab data={walletData} loading={walletLoading} onMount={loadWallet} />
                 </TabsContent>
 
                 {/* ===================== PAYMENT TAB ===================== */}

@@ -15,7 +15,10 @@ import {
   Download,
   RefreshCw,
   Edit,
-  Truck
+  Truck,
+  History,
+  CheckCircle2,
+  Clock,
 } from 'lucide-react'
 
 import { notify } from '@/app/utils/notify'
@@ -47,9 +50,15 @@ export default function AdminOrdersPage() {
   const limit = 10
 
   const [editStatus, setEditStatus] = useState('')
-const [mode, setMode] = useState<any>('view')
+  const [mode, setMode] = useState<any>('view')
+  const [timeline, setTimeline] = useState<any[]>([])
+  const [timelineLoading, setTimelineLoading] = useState(false)
+  const [orderItems, setOrderItems] = useState<any[]>([])
+  const [otpValue, setOtpValue] = useState('')
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [generatedOtp, setGeneratedOtp] = useState<string | null>(null)
 
-const {statusList}=useAuth()
+  const {statusList} = useAuth()
   /* ================= LOAD ================= */
 
   const load = async () => {
@@ -244,12 +253,31 @@ const styles = {
 
   }
 }
-const openModal = (m: Mode, order: any) => {
-
-  setMode(m)        // view | edit | tracking
+const openModal = async (m: string, order: any) => {
+  setMode(m)
   setCurrent(order)
   setOpen(true)
+  setOrderItems([])
 
+  if (m === 'view' || m === 'edit') {
+    try {
+      const res = await axios.get(`/admin/orders/${order.id}`)
+      setOrderItems(res.data?.items || [])
+    } catch {}
+  }
+
+  if (m === 'timeline') {
+    setTimeline([])
+    setTimelineLoading(true)
+    try {
+      const res = await axios.get(`/admin/orders/${order.id}/timeline`)
+      setTimeline(res.data?.timeline || [])
+    } catch {
+      setTimeline([])
+    } finally {
+      setTimelineLoading(false)
+    }
+  }
 }
 
   const getPaymentBadge = (status: string) => {
@@ -308,6 +336,33 @@ const openModal = (m: Mode, order: any) => {
 
     )
   }
+const generateOTP = async () => {
+  if (!current) return
+  setOtpLoading(true)
+  try {
+    const r = await axios.post(`/admin/orders/${current.id}/delivery-otp`)
+    setGeneratedOtp(r.data.otp)
+    notify.success(`OTP generated: ${r.data.otp}`)
+  } catch (err: any) {
+    notify.error(err?.response?.data?.message || 'Failed to generate OTP')
+  } finally { setOtpLoading(false) }
+}
+
+const verifyOTP = async () => {
+  if (!current || !otpValue) return
+  setOtpLoading(true)
+  try {
+    await axios.post(`/admin/orders/${current.id}/verify-otp`, { otp: otpValue })
+    notify.success('OTP verified — order marked as delivered')
+    setOtpValue('')
+    setGeneratedOtp(null)
+    closeModal()
+    load()
+  } catch (err: any) {
+    notify.error(err?.response?.data?.message || 'Invalid OTP')
+  } finally { setOtpLoading(false) }
+}
+
 const generateInvoice = async () => {
 
   if (!current) return
@@ -475,19 +530,31 @@ const generateInvoice = async () => {
       </button>
 
     )}
-  {(
-      ([1,2,3,4,5].includes(Number(o?.status))&& o?.payment_method == "online") ||
-      (o.status == 5 && o.payment_method == "cod")
-    )  && (
+    <button
+      onClick={() => openModal('timeline', o)}
+      className="text-indigo-600"
+      title="Order Timeline"
+    >
+      <History size={18} />
+    </button>
 
-      <button
-        onClick={() => openModal('invoice', o)}
-        className="text-green-600"
-        title="Generate Invoice"
-      >
-        <Download size={18} />
+    {(
+        ([1,2,3,4,5].includes(Number(o?.status))&& o?.payment_method == "online") ||
+        (o.status == 5 && o.payment_method == "cod")
+      ) && (
+        <button
+          onClick={() => openModal('invoice', o)}
+          className="text-green-600"
+          title="Generate Invoice"
+        >
+          <Download size={18} />
+        </button>
+      )}
+    {Number(o.status) === 4 && o.payment_method === 'cod' && (
+      <button onClick={() => { openModal('otp', o); setGeneratedOtp(null); setOtpValue('') }}
+        className="text-orange-600" title="COD Delivery OTP">
+        <CheckCircle2 size={18} />
       </button>
-
     )}
   </div>
 )
@@ -898,6 +965,36 @@ const generateInvoice = async () => {
 
 </div>
 
+      {/* ================= ORDER ITEMS ================= */}
+      {orderItems.length > 0 && (
+        <div className="bg-gray-50 rounded-xl p-6">
+          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Package className="w-5 h-5 text-blue-600" />
+            Items Ordered
+          </h3>
+          <div className="space-y-3">
+            {orderItems.map((item: any, i: number) => {
+              const img = Array.isArray(item.images) ? item.images[0] : null
+              return (
+                <div key={i} className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 border border-gray-100">
+                  {img ? (
+                    <img src={img} alt={item.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 text-lg">🌿</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm truncate">{item.name}</p>
+                    {item.variant_label && <p className="text-xs text-emerald-600 font-medium">{item.variant_label}</p>}
+                    <p className="text-xs text-gray-500">Qty: {item.quantity} × ₹{Number(item.price).toLocaleString('en-IN')}</p>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900 shrink-0">₹{(Number(item.price) * Number(item.quantity)).toLocaleString('en-IN')}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ================= ORDER DETAILS ================= */}
 
       <div className="bg-gray-50 rounded-xl p-6">
@@ -905,7 +1002,7 @@ const generateInvoice = async () => {
         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
 
           <Package className="w-5 h-5 text-blue-600" />
-          Order Details
+          Price Breakdown
 
         </h3>
 
@@ -1037,6 +1134,40 @@ const generateInvoice = async () => {
 )}
 
 
+      {/* ================= COD DELIVERY OTP ================= */}
+      {mode === 'otp' && current && Number(current.status) === 4 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 space-y-4">
+          <h3 className="font-bold text-orange-800 text-lg">COD Delivery OTP</h3>
+          <p className="text-sm text-orange-700">Generate a 6-digit OTP for the delivery agent. The customer must provide this to confirm receipt.</p>
+
+          {generatedOtp && (
+            <div className="bg-white border-2 border-orange-400 rounded-xl p-4 text-center">
+              <p className="text-xs text-gray-400 mb-1">Generated OTP</p>
+              <p className="text-4xl font-black tracking-[0.3em] text-orange-600">{generatedOtp}</p>
+              <p className="text-xs text-gray-400 mt-1">Share this with the delivery agent</p>
+            </div>
+          )}
+
+          <button onClick={generateOTP} disabled={otpLoading}
+            className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold disabled:opacity-50">
+            {otpLoading ? 'Generating…' : generatedOtp ? 'Regenerate OTP' : 'Generate OTP'}
+          </button>
+
+          <div className="pt-2 border-t border-orange-200">
+            <p className="text-sm font-semibold text-gray-700 mb-2">Verify OTP (entered by customer):</p>
+            <div className="flex gap-2">
+              <input type="text" maxLength={6} placeholder="Enter 6-digit OTP"
+                value={otpValue} onChange={e => setOtpValue(e.target.value)}
+                className="flex-1 border rounded-lg px-3 py-2 text-center tracking-widest font-mono text-lg focus:ring-2 focus:ring-orange-400 outline-none" />
+              <button onClick={verifyOTP} disabled={otpLoading || otpValue.length !== 6}
+                className="px-5 py-2 bg-emerald-600 text-white rounded-lg font-semibold disabled:opacity-50">
+                Verify
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ================= TRACKING ================= */}
 
      {mode == 'tracking' && current && (
@@ -1089,6 +1220,59 @@ const generateInvoice = async () => {
 
   </div>
 )}
+
+
+      {/* ================= TIMELINE ================= */}
+
+      {mode === 'timeline' && (
+        <div className="bg-gray-50 rounded-xl p-6">
+          <h3 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
+            <History className="w-5 h-5 text-indigo-600" />
+            Order Status History
+          </h3>
+
+          {timelineLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent" />
+            </div>
+          ) : timeline.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-6">No status history recorded yet.</p>
+          ) : (
+            <div className="relative">
+              <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
+              <div className="space-y-5">
+                {timeline.map((entry: any, i: number) => (
+                  <div key={i} className="flex gap-4 relative">
+                    <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0 z-10">
+                      <CheckCircle2 size={16} className="text-white" />
+                    </div>
+                    <div className="flex-1 bg-white rounded-xl border border-gray-100 px-4 py-3 shadow-sm">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {entry.old_label && (
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{entry.old_label}</span>
+                        )}
+                        {entry.old_label && <span className="text-gray-400 text-xs">→</span>}
+                        <span className="text-sm font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                          {entry.new_label || `Status ${entry.new_status}`}
+                        </span>
+                      </div>
+                      {entry.note && <p className="text-xs text-gray-500 mt-1.5">{entry.note}</p>}
+                      <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                        <Clock size={11} />
+                        {new Date(entry.created_at).toLocaleString('en-IN', {
+                          day: '2-digit', month: 'short', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                        })}
+                        {entry.changed_by_name && ` · by ${entry.changed_by_name}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
 
       {/* ================= ACTIONS ================= */}

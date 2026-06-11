@@ -12,6 +12,18 @@ router.get("/public", controller.getAllPublic)
 router.get("/public/:id",controller.getsingleproduct)
 router.get("/categories", controller.getCategories)
 
+// Discovery
+router.get("/search/suggestions", controller.searchSuggestions)
+router.get("/related/:id", controller.getRelatedProducts)
+router.get("/variants/:id", controller.getProductVariants)
+router.get("/rating/:id", controller.getRatingBreakdown)
+router.get("/pincode-check", controller.checkPincode)
+
+// User actions (auth)
+router.post("/notify-me", optionalAuth, controller.notifyMe)
+router.post("/recently-viewed", auth, controller.logRecentlyViewed)
+router.get("/recently-viewed", auth, controller.getRecentlyViewed)
+
 /* =================wishlist ROUTES ================= */
 
 router.post("/wishlist", auth, controller.toggleWishlist);

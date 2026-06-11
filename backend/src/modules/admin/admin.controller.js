@@ -7,10 +7,16 @@ const orderstatus=require("../../utils/orderstatusmap")
 const {
   sendOrderStatusMail
 } = require("../../utils/orderMail");
+const { emitToUser, emitToAdmin } = require('../../socket');
 const {
   uploadImageToAWS,
   deleteFromAWS
 } = require("../../utils/awsImageUpload");
+const Razorpay = require('razorpay');
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY,
+  key_secret: process.env.RAZORPAY_SECRET,
+});
 
 // create user 
 exports.createUser = async (req, res) => {
@@ -408,6 +414,23 @@ exports.topProducts = async (req, res) => {
 }
 
 
+
+/* LOW STOCK PRODUCTS */
+exports.getLowStockProducts = async (req, res) => {
+  try {
+    const threshold = Number(req.query.threshold) || 10;
+    const result = await pool.query(`
+      SELECT id, name, inventory, images, status
+      FROM products
+      WHERE inventory <= $1 AND status = TRUE
+      ORDER BY inventory ASC
+      LIMIT 50
+    `, [threshold]);
+    res.json({ success: true, products: result.rows });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch low stock products' });
+  }
+};
 
 /* CREATE */
 exports.create = async (req, res) => {
@@ -1029,7 +1052,8 @@ exports.getOrderById = async (req, res) => {
       SELECT
         oi.*,
         p.name,
-        p.images
+        p.images,
+        COALESCE(oi.variant_label, '') as variant_label
       FROM order_items oi
       JOIN products p ON p.id=oi.product_id
       WHERE oi.order_id=$1
@@ -1188,87 +1212,120 @@ if (currentStatus == 3&&(!order.courier_name || !order.tracking_number)) {
 
   }
 
-    /* ================= UPDATE ================= */
+    /* ================= UPDATE STATUS ================= */
 
-    await pool.query(
-      `
-      UPDATE orders
-      SET
-        status = $1,
-        updated_at = NOW()
-      WHERE id = $2
-      `,
+    await client.query(
+      `UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2`,
       [status, id]
-    )
-/* ================= SEND CUSTOMER MAIL ================= */
+    );
 
-try {
+    /* ================= LOYALTY POINTS ON DELIVERY (status→5) ================= */
+    if (status === 5) {
+      try {
+        const orderRow = await client.query(`SELECT user_id, total_amount FROM orders WHERE id=$1`, [id])
+        if (orderRow.rows.length) {
+          const { user_id, total_amount } = orderRow.rows[0]
+          const points = Math.floor(Number(total_amount) / 10)
+          if (points > 0) {
+            await client.query(
+              `INSERT INTO loyalty_points (user_id, points, type, source, order_id, description)
+               VALUES ($1, $2, 'earn', 'order', $3, $4)`,
+              [user_id, points, id, `Earned on order #${id}`]
+            )
+            await client.query(
+              `UPDATE users SET loyalty_points_balance = COALESCE(loyalty_points_balance,0) + $1 WHERE id=$2`,
+              [points, user_id]
+            )
+          }
+        }
+      } catch (lpErr) {
+        console.error('[LOYALTY POINTS ERROR]', lpErr.message)
+      }
+    }
 
-  const userRes = await pool.query(
-    `
-    SELECT
-      u.email,
-      u.name
-    FROM orders o
-    JOIN users u
-      ON u.id = o.user_id
-    WHERE o.id = $1
-    LIMIT 1
-    `,
-    [id]
-  )
+    /* ================= INVENTORY RESTORE ON RETURN (status→8) ================= */
+    if (status === 8) {
+      const items = await client.query(
+        `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id=$1`,
+        [id]
+      );
+      for (const item of items.rows) {
+        if (item.variant_id) {
+          await client.query(
+            `UPDATE product_variants SET inventory=inventory+$1, updated_at=NOW() WHERE id=$2`,
+            [item.quantity, item.variant_id]
+          );
+        } else {
+          await client.query(
+            `UPDATE products SET inventory=inventory+$1, updated_at=NOW() WHERE id=$2`,
+            [item.quantity, item.product_id]
+          );
+        }
+      }
+      await client.query(
+        `UPDATE orders SET return_approved_at=NOW() WHERE id=$1`,
+        [id]
+      );
+    }
 
-  if (userRes.rows.length) {
+    /* ================= RAZORPAY REFUND ON REFUND (status→9) ================= */
+    if (status === 9) {
+      try {
+        const paymentRow = await client.query(
+          `SELECT razorpay_payment_id, total_amount, payment_method FROM orders WHERE id=$1`,
+          [id]
+        );
+        const o = paymentRow.rows[0];
+        if (o?.razorpay_payment_id && o.payment_method === 'online') {
+          const refundAmount = Math.round(Number(o.total_amount) * 100);
+          const refund = await razorpay.payments.refund(o.razorpay_payment_id, {
+            amount: refundAmount,
+            speed: 'normal',
+            notes: { order_id: id },
+          });
+          await client.query(
+            `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status='processed', payment_status='refunded', updated_at=NOW() WHERE id=$3`,
+            [refund.id, Number(o.total_amount), id]
+          );
+        } else {
+          await client.query(
+            `UPDATE orders SET refund_status='cod_manual', updated_at=NOW() WHERE id=$1`,
+            [id]
+          );
+        }
+      } catch (refundErr) {
+        console.error('[REFUND ERROR]', refundErr.message);
+      }
+    }
 
-    const user =
-      userRes.rows[0]
+    /* ================= LOG (inside transaction) ================= */
+    await client.query(
+      `INSERT INTO order_status_logs (order_id, old_status, new_status, changed_by, note) VALUES ($1,$2,$3,$4,$5)`,
+      [id, currentStatus, status, req.user?.id || null, null]
+    );
 
-    await sendOrderStatusMail({
-      email: user.email,
-      name: user.name,
-      orderId: id,
-      status
-    })
+    await client.query("COMMIT");
 
-  }
-
-} catch (mailErr) {
-
-  console.log(
-    "Order mail failed:",
-    mailErr.message
-  )
-
-}
- await client.query("COMMIT");
-    /* ================= LOG  ================= */
-
-     // 2️⃣ Insert Log
-  await client.query(
-    `
-    INSERT INTO order_status_logs
-    (
-      order_id,
-      old_status,
-      new_status,
-      changed_by,
-      note
-    )
-    VALUES ($1,$2,$3,$4,$5)
-    `,
-    [
-      id,
-      currentStatus,
-      status,
-      req.user?.id || null,
-      null
-    ]
-  );
-
-
+    /* ================= SEND CUSTOMER MAIL + REAL-TIME SOCKET ================= */
+    try {
+      const userRes = await pool.query(
+        `SELECT u.id as user_id, u.email, u.name FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=$1 LIMIT 1`,
+        [id]
+      );
+      if (userRes.rows.length) {
+        const { user_id, email, name } = userRes.rows[0];
+        await sendOrderStatusMail({ email, name, orderId: id, status });
+        emitToUser(user_id, 'order_status_updated', {
+          order_id: id,
+          status,
+          status_label: orderstatus[status] || String(status),
+        });
+      }
+    } catch (mailErr) {
+      console.log("Order mail/socket failed:", mailErr.message);
+    }
 
     /* ================= RESPONSE ================= */
-
     res.status(200).json({
       success: true,
       message: 'Status updated successfully'
@@ -1342,4 +1399,338 @@ res?.status(200)?.json({data:resdata?.rows||[],status:true})
 }catch{
 res?.status(500).json({message:"Something went wrong",status:false})
 }
+}
+
+/* ═══════════════════════════════════════════════════════
+   PRODUCT VARIANTS — ADMIN CRUD
+═══════════════════════════════════════════════════════ */
+
+exports.adminGetVariants = async (req, res) => {
+  try {
+    const { productId } = req.params
+    const result = await pool.query(
+      `SELECT * FROM product_variants WHERE product_id=$1 ORDER BY sort_order ASC, price ASC`,
+      [productId]
+    )
+    res.json({ success: true, variants: result.rows })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch variants' })
+  }
+}
+
+exports.adminCreateVariant = async (req, res) => {
+  try {
+    const { productId } = req.params
+    const { label, sku, price, compareprice, inventory, attributes, sort_order } = req.body
+    if (!label || !price) return res.status(400).json({ success: false, message: 'label and price required' })
+    const result = await pool.query(`
+      INSERT INTO product_variants (product_id, label, sku, price, compareprice, inventory, attributes, sort_order)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
+    `, [productId, label, sku || null, price, compareprice || null, inventory || 0, attributes || {}, sort_order || 0])
+    res.status(201).json({ success: true, variant: result.rows[0] })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to create variant' })
+  }
+}
+
+exports.adminUpdateVariant = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { label, sku, price, compareprice, inventory, attributes, sort_order, is_active } = req.body
+    const result = await pool.query(`
+      UPDATE product_variants SET
+        label = COALESCE($1, label), sku = COALESCE($2, sku), price = COALESCE($3, price),
+        compareprice = $4, inventory = COALESCE($5, inventory), attributes = COALESCE($6, attributes),
+        sort_order = COALESCE($7, sort_order), is_active = COALESCE($8, is_active), updated_at = NOW()
+      WHERE id = $9 RETURNING *
+    `, [label, sku, price, compareprice || null, inventory, attributes, sort_order, is_active, id])
+    if (!result.rows.length) return res.status(404).json({ success: false, message: 'Variant not found' })
+    res.json({ success: true, variant: result.rows[0] })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update variant' })
+  }
+}
+
+exports.adminDeleteVariant = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM product_variants WHERE id=$1', [req.params.id])
+    res.json({ success: true, message: 'Variant deleted' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to delete variant' })
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   PINCODE SERVICEABILITY — ADMIN CRUD
+═══════════════════════════════════════════════════════ */
+
+exports.adminListPincodes = async (req, res) => {
+  try {
+    const { search = '', page = 1, limit = 50 } = req.query
+    const offset = (Number(page) - 1) * Number(limit)
+    const where = search ? `WHERE pincode ILIKE $3 OR city ILIKE $3 OR state ILIKE $3` : ''
+    const params = search ? [Number(limit), offset, `%${search}%`] : [Number(limit), offset]
+    const [rows, count] = await Promise.all([
+      pool.query(`SELECT * FROM serviceable_pincodes ${where} ORDER BY id DESC LIMIT $1 OFFSET $2`, params),
+      pool.query(`SELECT COUNT(*) FROM serviceable_pincodes ${where}`, search ? [`%${search}%`] : []),
+    ])
+    res.json({ success: true, pincodes: rows.rows, total: Number(count.rows[0].count) })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to list pincodes' })
+  }
+}
+
+exports.adminCreatePincode = async (req, res) => {
+  try {
+    const { pincode, city, state, delivery_days, is_active } = req.body
+    if (!pincode) return res.status(400).json({ success: false, message: 'pincode required' })
+    const result = await pool.query(
+      `INSERT INTO serviceable_pincodes (pincode, city, state, delivery_days, is_active) VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (pincode) DO UPDATE SET city=$2, state=$3, delivery_days=$4, is_active=$5 RETURNING *`,
+      [pincode, city || null, state || null, delivery_days || 5, is_active !== false]
+    )
+    res.status(201).json({ success: true, pincode: result.rows[0] })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to save pincode' })
+  }
+}
+
+exports.adminUpdatePincode = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { city, state, delivery_days, is_active } = req.body
+    const result = await pool.query(
+      `UPDATE serviceable_pincodes SET city=$1, state=$2, delivery_days=$3, is_active=$4 WHERE id=$5 RETURNING *`,
+      [city, state, delivery_days, is_active, id]
+    )
+    if (!result.rows.length) return res.status(404).json({ success: false, message: 'Not found' })
+    res.json({ success: true, pincode: result.rows[0] })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update' })
+  }
+}
+
+exports.adminDeletePincode = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM serviceable_pincodes WHERE id=$1', [req.params.id])
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to delete' })
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   STOCK NOTIFICATIONS — ADMIN VIEW
+═══════════════════════════════════════════════════════ */
+
+exports.adminListStockNotifications = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT sn.*, p.name as product_name, pv.label as variant_label
+      FROM stock_notifications sn
+      JOIN products p ON p.id = sn.product_id
+      LEFT JOIN product_variants pv ON pv.id = sn.variant_id
+      ORDER BY sn.created_at DESC LIMIT 200
+    `)
+    res.json({ success: true, notifications: result.rows })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch' })
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   ORDER TIMELINE
+═══════════════════════════════════════════════════════ */
+
+exports.getOrderTimeline = async (req, res) => {
+  try {
+    const { id } = req.params
+    const [timeline, order] = await Promise.all([
+      pool.query(`
+        SELECT osl.*, sm_old.label as old_label, sm_new.label as new_label, u.name as changed_by_name
+        FROM order_status_logs osl
+        LEFT JOIN order_status_master sm_old ON sm_old.code = osl.old_status
+        LEFT JOIN order_status_master sm_new ON sm_new.code = osl.new_status
+        LEFT JOIN users u ON u.id = osl.changed_by
+        WHERE osl.order_id = $1 ORDER BY osl.created_at ASC
+      `, [id]),
+      pool.query(`
+        SELECT o.*, u.name as user_name, u.email as user_email
+        FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = $1
+      `, [id]),
+    ])
+    if (!order.rows.length) return res.status(404).json({ success: false, message: 'Order not found' })
+    res.json({ success: true, timeline: timeline.rows, order: order.rows[0] })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch timeline' })
+  }
+}
+
+/* ─── CSV EXPORT ─── */
+exports.exportOrdersCSV = async (req, res) => {
+  try {
+    const { from, to, status } = req.query
+    let where = 'WHERE 1=1'
+    const params = []
+    if (from) { params.push(from); where += ` AND o.created_at >= $${params.length}` }
+    if (to) { params.push(to); where += ` AND o.created_at <= $${params.length}` }
+    if (status && status !== 'all') { params.push(status); where += ` AND o.status = $${params.length}` }
+
+    const r = await pool.query(
+      `SELECT o.id, o.order_number, u.name as customer, u.email, u.phone,
+        o.total_amount, o.payment_method, o.payment_status, o.status,
+        osm.label as status_label, o.created_at, o.courier_name, o.tracking_number
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       LEFT JOIN order_status_master osm ON osm.code = o.status
+       ${where} ORDER BY o.created_at DESC`, params
+    )
+
+    const headers = ['Order ID','Order Number','Customer','Email','Phone','Total','Payment Method','Payment Status','Status','Date','Courier','Tracking']
+    const rows = r.rows.map(o => [
+      o.id, o.order_number, o.customer, o.email, o.phone,
+      o.total_amount, o.payment_method, o.payment_status, o.status_label,
+      new Date(o.created_at).toISOString().slice(0,10), o.courier_name || '', o.tracking_number || ''
+    ])
+
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n')
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', `attachment; filename="orders_${Date.now()}.csv"`)
+    res.send(csv)
+  } catch (err) {
+    res.status(500).json({ message: 'Export failed' })
+  }
+}
+
+exports.exportUsersCSV = async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT u.id, u.name, u.email, u.phone, u.wallet_balance, u.loyalty_points_balance,
+        COUNT(DISTINCT o.id) AS total_orders, COALESCE(SUM(o.total_amount),0) AS total_spent,
+        u.created_at
+       FROM users u LEFT JOIN orders o ON o.user_id = u.id WHERE u.role = 3
+       GROUP BY u.id ORDER BY u.created_at DESC`
+    )
+    const headers = ['ID','Name','Email','Phone','Wallet Balance','Loyalty Points','Total Orders','Total Spent','Joined']
+    const rows = r.rows.map(u => [u.id, u.name, u.email, u.phone, u.wallet_balance, u.loyalty_points_balance, u.total_orders, u.total_spent, new Date(u.created_at).toISOString().slice(0,10)])
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n')
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', `attachment; filename="users_${Date.now()}.csv"`)
+    res.send(csv)
+  } catch (err) {
+    res.status(500).json({ message: 'Export failed' })
+  }
+}
+
+/* ─── REVIEWS MODERATION ─── */
+exports.adminListReviews = async (req, res) => {
+  try {
+    const { status = 'all', page = 1, limit = 20 } = req.query
+    const offset = (Number(page) - 1) * Number(limit)
+    const where = status !== 'all' ? `AND r.status = '${status}'` : ''
+    const r = await pool.query(
+      `SELECT r.*, u.name as user_name, p.name as product_name
+       FROM reviews r
+       LEFT JOIN users u ON u.id = r.user_id
+       LEFT JOIN products p ON p.id = r.product_id
+       WHERE 1=1 ${where} ORDER BY r.created_at DESC LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    )
+    const countRes = await pool.query(`SELECT COUNT(*) FROM reviews r WHERE 1=1 ${where}`)
+    res.json({ reviews: r.rows, total: Number(countRes.rows[0].count) })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+exports.adminUpdateReview = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+    await pool.query(`UPDATE reviews SET status=$1 WHERE id=$2`, [status, id])
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ message: 'Update failed' })
+  }
+}
+
+exports.adminDeleteReview = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM reviews WHERE id=$1', [req.params.id])
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ message: 'Delete failed' })
+  }
+}
+
+/* ─── ABANDONED CARTS ─── */
+exports.getAbandonedCarts = async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT c.user_id, u.name, u.email,
+        COUNT(c.id) AS item_count,
+        SUM(c.price * c.quantity) AS cart_value,
+        MAX(c.updated_at) AS last_updated
+       FROM cart c
+       JOIN users u ON u.id = c.user_id
+       WHERE c.updated_at < NOW() - INTERVAL '1 hour'
+         AND c.updated_at > NOW() - INTERVAL '48 hours'
+         AND c.user_id NOT IN (
+           SELECT DISTINCT user_id FROM orders WHERE created_at > NOW() - INTERVAL '2 hours'
+         )
+       GROUP BY c.user_id, u.name, u.email
+       ORDER BY last_updated DESC LIMIT 100`
+    )
+    res.json({ carts: r.rows })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+/* ─── LOYALTY POINTS ADMIN ─── */
+exports.adminCreditLoyalty = async (req, res) => {
+  const client = await pool.connect()
+  try {
+    const { user_id, points, description } = req.body
+    if (!user_id || !points) return res.status(400).json({ message: 'user_id and points required' })
+    await client.query('BEGIN')
+    await client.query(
+      `INSERT INTO loyalty_points (user_id, points, type, source, description) VALUES ($1,$2,'earn','admin',$3)`,
+      [user_id, points, description || 'Admin credit']
+    )
+    await client.query('UPDATE users SET loyalty_points_balance = loyalty_points_balance + $1 WHERE id=$2', [points, user_id])
+    await client.query('COMMIT')
+    res.json({ success: true })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    res.status(500).json({ message: 'Credit failed' })
+  } finally {
+    client.release()
+  }
+}
+
+/* ─── COD DELIVERY OTP ─── */
+exports.generateDeliveryOTP = async (req, res) => {
+  try {
+    const { id } = req.params
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    await pool.query(`UPDATE orders SET delivery_otp=$1 WHERE id=$2 AND status=4`, [otp, id])
+    res.json({ success: true, otp })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+exports.verifyDeliveryOTP = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { otp } = req.body
+    const r = await pool.query(`SELECT delivery_otp FROM orders WHERE id=$1`, [id])
+    if (!r.rows.length) return res.status(404).json({ message: 'Order not found' })
+    if (r.rows[0].delivery_otp !== otp) return res.status(400).json({ message: 'Invalid OTP' })
+    await pool.query(`UPDATE orders SET delivery_otp_verified=TRUE WHERE id=$1`, [id])
+    res.json({ success: true, message: 'OTP verified' })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' })
+  }
 }

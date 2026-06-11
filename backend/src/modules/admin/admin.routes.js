@@ -121,6 +121,7 @@ router.put('/products/:id', auth, admin, controller.update)
 
 router.delete('/products/:id', auth, admin, controller.remove)
 router.get('/top-products', auth, admin, controller.topProducts)
+router.get('/low-stock', auth, admin, controller.getLowStockProducts)
 
 router.get('/orders', controller.getOrders)
 router.get('/invoices', admin, invoicecontroller.getInvoices)
@@ -166,6 +167,45 @@ router.put('/orders/:id/status', controller.updateOrderStatus)
 // router.post('/orders/:id/invoice', invoicecontroller.generateInvoice)
 
 router.post('/orders/:id/tracking', shipingcontroller.addTracking)
-// bulk upload routes
-// router.post('')
+
+/* ─── PRODUCT VARIANTS ADMIN CRUD ─── */
+router.get('/variants/:productId', auth, admin, controller.adminGetVariants)
+router.post('/variants/:productId', auth, admin, controller.adminCreateVariant)
+router.put('/variants/:id', auth, admin, controller.adminUpdateVariant)
+router.delete('/variants/:id', auth, admin, controller.adminDeleteVariant)
+
+/* ─── PINCODE SERVICEABILITY ADMIN ─── */
+router.get('/pincodes', auth, admin, controller.adminListPincodes)
+router.post('/pincodes', auth, admin, controller.adminCreatePincode)
+router.put('/pincodes/:id', auth, admin, controller.adminUpdatePincode)
+router.delete('/pincodes/:id', auth, admin, controller.adminDeletePincode)
+
+/* ─── STOCK NOTIFICATIONS ADMIN ─── */
+router.get('/stock-notifications', auth, admin, controller.adminListStockNotifications)
+
+/* ─── ORDER TIMELINE ─── */
+router.get('/orders/:id/timeline', auth, admin, controller.getOrderTimeline)
+
+/* ─── CSV EXPORTS ─── */
+router.get('/export/orders', auth, admin, controller.exportOrdersCSV)
+router.get('/export/users', auth, admin, controller.exportUsersCSV)
+
+/* ─── REVIEWS MODERATION ─── */
+router.get('/reviews', auth, admin, controller.adminListReviews)
+router.put('/reviews/:id', auth, admin, controller.adminUpdateReview)
+router.delete('/reviews/:id', auth, admin, controller.adminDeleteReview)
+
+/* ─── ABANDONED CARTS ─── */
+router.get('/abandoned-carts', auth, admin, controller.getAbandonedCarts)
+
+/* ─── LOYALTY POINTS ─── */
+router.post('/loyalty/credit', auth, admin, controller.adminCreditLoyalty)
+
+/* ─── COD DELIVERY OTP ─── */
+router.post('/orders/:id/delivery-otp', auth, admin, controller.generateDeliveryOTP)
+router.post('/orders/:id/verify-otp', controller.verifyDeliveryOTP)
+
+/* ─── REVENUE CHART ─── */
+router.get('/revenue-chart', auth, admin, analyticscontroller.getRevenueChart)
+
 module.exports = router

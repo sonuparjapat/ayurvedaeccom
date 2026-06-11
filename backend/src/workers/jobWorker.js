@@ -4,6 +4,12 @@ require('../config/db')
 const processCleanupQueue =
 require('../services/processCleanupQueue')
 
+const expireUnpaidOrders =
+require('../services/expireUnpaidOrders')
+
+const abandonedCartRecovery =
+require('../services/abandonedCartRecovery')
+
 const {
   updateJob
 } = require('../utils/jobQueue')
@@ -52,6 +58,8 @@ async function runWorker() {
     if (!result.rowCount) {
 
       await processCleanupQueue()
+      await expireUnpaidOrders()
+      await abandonedCartRecovery()
 
       running = false
       return
@@ -164,6 +172,7 @@ async function runWorker() {
 
     /* ALWAYS RUN CLEANUP AFTER JOB */
     await processCleanupQueue()
+    await expireUnpaidOrders()
 
   } catch (err) {
 

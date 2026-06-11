@@ -29,6 +29,7 @@ import {
   Package,
   ShoppingCart,
   BarChart3,
+  AlertTriangle,
 } from 'lucide-react'
 
 import { motion } from 'framer-motion'
@@ -82,6 +83,7 @@ export default function AdminDashboard() {
 
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+  const [lowStockProducts, setLowStockProducts] = useState<any[]>([])
 const {statusList,logout}=useAuth()
 
   /* ---------------- LOAD ---------------- */
@@ -94,15 +96,17 @@ const {statusList,logout}=useAuth()
   const loadDashboard = async () => {
     try {
 
-      const [statsRes, ordersRes, productsRes] = await Promise.all([
+      const [statsRes, ordersRes, productsRes, lowStockRes] = await Promise.all([
         axios.get('/admin/stats'),
         axios.get('/admin/recent-orders'),
         axios.get('/admin/top-products'),
+        axios.get('/admin/low-stock'),
       ])
 
       setStats(statsRes.data)
       setRecentOrders(ordersRes.data)
       setTopProducts(productsRes.data)
+      setLowStockProducts(lowStockRes.data?.products || [])
 
     } catch (err) {
       console.error(err)
@@ -372,6 +376,34 @@ Stock: {p.stock}
 </CardContent>
 
 </Card>
+
+{/* Low Stock Alert */}
+{lowStockProducts.length > 0 && (
+  <Card className="border-amber-200 bg-amber-50">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-amber-700">
+        <AlertTriangle size={18} className="text-amber-500" />
+        Low Stock Alert ({lowStockProducts.length} products)
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-2 max-h-75 overflow-auto">
+      {lowStockProducts.map((p: any) => (
+        <div key={p.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-amber-100">
+          <div className="flex items-center gap-2">
+            {p.images?.[0] && <img src={p.images[0]} alt={p.name} className="w-8 h-8 rounded object-cover" />}
+            <p className="text-sm font-medium text-gray-800 truncate max-w-50">{p.name}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.inventory === 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+              {p.inventory === 0 ? 'Out of Stock' : `${p.inventory} left`}
+            </span>
+            <Link href={`/admin/products?edit=${p.id}`} className="text-xs text-blue-600 hover:underline">Update</Link>
+          </div>
+        </div>
+      ))}
+    </CardContent>
+  </Card>
+)}
 
 </div>
 

@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ShoppingBag,
   Sparkles,
+  MessageSquare,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
@@ -40,7 +41,7 @@ const {
   const [scrolled, setScrolled] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 400)
-  const [searchResults, setSearchResults] = useState([])
+  const [searchResults, setSearchResults] = useState<any[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
 
@@ -74,8 +75,14 @@ const {
     }
     try {
       setSearchLoading(true)
-      const res = await axios.get(`/shop/public?search=${query}`)
-      setSearchResults(res?.data?.products || [])
+      const res = await axios.get(`/shop/search/suggestions?q=${encodeURIComponent(query)}`)
+      const { products = [], categories = [] } = res?.data || {}
+      // merge: categories first (tagged), then products
+      const merged = [
+        ...categories.map((c: any) => ({ ...c, _type: 'category' })),
+        ...products.map((p: any) => ({ ...p, _type: 'product' })),
+      ]
+      setSearchResults(merged)
       setShowResults(true)
     } catch (err) {
       console.error('Search Error:', err)
@@ -835,30 +842,30 @@ const {
                       ) : (
                         searchResults.map((item: any) => (
                           <div
-                            key={item.id}
+                            key={`${item._type}-${item.id}`}
                             className="search-result-item"
                             onClick={() => {
-                              router.push(`/product/${item.id}`)
+                              router.push(item._type === 'category' ? `/category/${item.id}` : `/product/${item.id}`)
                               setSearchQuery('')
                               setSearchResults([])
                               setShowResults(false)
                             }}
                           >
-                            <img
-                              src={item?.images?.[0] || '/placeholder.png'}
-                              className="search-result-img"
-                              alt={item.name}
-                            />
+                            {item._type === 'category' ? (
+                              <div className="search-result-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e8f5ee', fontSize: 18 }}>🌿</div>
+                            ) : (
+                              <img src={item?.images?.[0] || '/placeholder.png'} className="search-result-img" alt={item.name} />
+                            )}
                             <div className="search-result-info">
                               <div className="search-result-name">{item.name}</div>
-                              <div className="search-result-cat">{item.category_name}</div>
+                              <div className="search-result-cat">{item._type === 'category' ? 'Browse category' : item.category_name}</div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'baseline', flexShrink: 0 }}>
-                              <span className="search-result-price">₹{item.price}</span>
-                              {item.compareprice && (
-                                <span className="search-result-compare">₹{item.compareprice}</span>
-                              )}
-                            </div>
+                            {item._type === 'product' && (
+                              <div style={{ display: 'flex', alignItems: 'baseline', flexShrink: 0 }}>
+                                <span className="search-result-price">₹{item.price}</span>
+                                {item.compareprice && <span className="search-result-compare">₹{item.compareprice}</span>}
+                              </div>
+                            )}
                           </div>
                         ))
                       )}
@@ -1045,6 +1052,10 @@ const {
                           <User size={15} />
                           My Account
                         </Link>
+                        <Link href="/support" onClick={() => setIsMenuOpen(false)} className="mobile-action-pill">
+                          <MessageSquare size={15} />
+                          Support
+                        </Link>
                         <button onClick={() => { handleLogout(); setIsMenuOpen(false) }} className="mobile-action-pill">
                           <LogOut size={15} />
                           Logout
@@ -1130,31 +1141,31 @@ const {
                       ) : (
                         searchResults.map((item: any) => (
                           <div
-                            key={item.id}
+                            key={`${item._type}-${item.id}`}
                             className="search-result-item"
                             onClick={() => {
-                              router.push(`/product/${item.id}`)
+                              router.push(item._type === 'category' ? `/category/${item.id}` : `/product/${item.id}`)
                               setIsSearchOpen(false)
                               setSearchQuery('')
                               setSearchResults([])
                               setShowResults(false)
                             }}
                           >
-                            <img
-                              src={item?.images?.[0] || '/placeholder.png'}
-                              className="search-result-img"
-                              alt={item.name}
-                            />
+                            {item._type === 'category' ? (
+                              <div className="search-result-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e8f5ee', fontSize: 18 }}>🌿</div>
+                            ) : (
+                              <img src={item?.images?.[0] || '/placeholder.png'} className="search-result-img" alt={item.name} />
+                            )}
                             <div className="search-result-info">
                               <div className="search-result-name">{item.name}</div>
-                              <div className="search-result-cat">{item.category_name}</div>
+                              <div className="search-result-cat">{item._type === 'category' ? 'Browse category' : item.category_name}</div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'baseline', flexShrink: 0 }}>
-                              <span className="search-result-price">₹{item.price}</span>
-                              {item.compareprice && (
-                                <span className="search-result-compare">₹{item.compareprice}</span>
-                              )}
-                            </div>
+                            {item._type === 'product' && (
+                              <div style={{ display: 'flex', alignItems: 'baseline', flexShrink: 0 }}>
+                                <span className="search-result-price">₹{item.price}</span>
+                                {item.compareprice && <span className="search-result-compare">₹{item.compareprice}</span>}
+                              </div>
+                            )}
                           </div>
                         ))
                       )}

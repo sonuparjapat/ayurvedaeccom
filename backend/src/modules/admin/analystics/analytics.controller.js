@@ -129,3 +129,35 @@ exports.getOverviewAnalytics = async (req, res) => {
     client.release();
   }
 };
+
+exports.getRevenueChart = async (req, res) => {
+  try {
+    const { period = 'daily' } = req.query;
+
+    let trunc, interval;
+    if (period === 'weekly') { trunc = 'week'; interval = '12 weeks'; }
+    else if (period === 'monthly') { trunc = 'month'; interval = '12 months'; }
+    else { trunc = 'day'; interval = '30 days'; }
+
+    const { rows } = await pool.query(`
+      SELECT
+        DATE_TRUNC($1, created_at) AS period,
+        SUM(total_amount) AS revenue,
+        COUNT(*) AS orders
+      FROM orders
+      WHERE status NOT IN (6,9)
+        AND created_at >= NOW() - INTERVAL '${interval}'
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `, [trunc]);
+
+    res.json({ success: true, data: rows.map(r => ({
+      label: new Date(r.period).toLocaleDateString('en-IN', period === 'monthly' ? { month: 'short', year: '2-digit' } : period === 'weekly' ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short' }),
+      revenue: Number(r.revenue),
+      orders: Number(r.orders)
+    })) });
+  } catch (err) {
+    console.error('[REVENUE CHART]', err);
+    res.status(500).json({ success: false, message: 'Chart fetch failed' });
+  }
+};

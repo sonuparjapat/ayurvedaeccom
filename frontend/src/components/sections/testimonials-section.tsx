@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 import axios from '@/lib/axios'
 import { notify } from '@/app/utils/notify'
+import { useAuth } from '@/context/auth-context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Testimonial {
@@ -19,7 +20,7 @@ interface Testimonial {
   avatar?: string
 }
 
-// ─── Static data ──────────────────────────────────────────────────────────────
+// ─── Static data (fallbacks) ──────────────────────────────────────────────────
 const WHY_US = [
   {
     icon: Leaf,
@@ -216,6 +217,21 @@ function StatPill({ value, label, delay }: { value: string; label: string; delay
 export function TestimonialsSection() {
   const [reviews, setReviews] = useState<Testimonial[]>([])
   const [loading, setLoading] = useState(false)
+  const { companydata } = useAuth()
+  const extra = companydata?.extra_data || {}
+
+  const whyUs = extra.why_us?.length
+    ? extra.why_us.map((w: any, i: number) => ({
+        ...WHY_US[i % WHY_US.length],
+        title: w.title || WHY_US[i % WHY_US.length].title,
+        body: w.body || WHY_US[i % WHY_US.length].body,
+        accent: w.accent || WHY_US[i % WHY_US.length].accent,
+      }))
+    : WHY_US
+
+  const stats = extra.stats?.length
+    ? extra.stats.map((s: any) => ({ value: s.value, label: s.label }))
+    : STATS
 
   // Carousel state
   const CARDS_PER_VIEW = 3
@@ -305,7 +321,7 @@ export function TestimonialsSection() {
 
         {/* ── Why-us grid ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-20">
-          {WHY_US.map((item, i) => (
+          {whyUs.map((item, i) => (
             <WhyCard key={item.title} item={item} index={i} />
           ))}
         </div>
@@ -321,7 +337,7 @@ export function TestimonialsSection() {
           {/* inner glow */}
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/40 via-transparent to-teal-950/20 pointer-events-none" />
           <div className="relative grid grid-cols-2 sm:grid-cols-4 gap-8">
-            {STATS.map((s, i) => (
+            {stats.map((s, i) => (
               <StatPill key={s.label} value={s.value} label={s.label} delay={i * 0.08} />
             ))}
           </div>

@@ -27,7 +27,8 @@ import {
   Package,
   ArrowRight,
   ChevronLeft,
-  Leaf
+  Leaf,
+  Wallet
 } from 'lucide-react'
 
 import { motion, AnimatePresence } from 'framer-motion'
@@ -470,14 +471,33 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false)
   const [orderNo, setOrderNo] = useState('')
   const [shipping, setShipping] = useState({ name: '', phone: '', address: '' })
-    const [addresses, setAddresses] = useState<any[]>([]);
-const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);   
-  const {fetchCart, loginuserdata, cartdata,cartloading,settings}=useAuth()
+  const [addresses, setAddresses] = useState<any[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
+  // Coupon state
+  const [couponInput, setCouponInput] = useState('')
+  const [couponApplying, setCouponApplying] = useState(false)
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
+  const [couponError, setCouponError] = useState('')
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([])
+  // Wallet state
+  const [walletBalance, setWalletBalance] = useState(0)
+  const [walletApplied, setWalletApplied] = useState(false)
+  const [walletDiscount, setWalletDiscount] = useState(0)
+  // Loyalty points state (1 point = ₹0.1)
+  const [loyaltyBalance, setLoyaltyBalance] = useState(0)
+  const [loyaltyApplied, setLoyaltyApplied] = useState(false)
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)   
+  const {fetchCart, loginuserdata, cartdata,cartloading,settings, loading: authLoading}=useAuth()
   const [paidAmount, setPaidAmount] = useState<number>(0)
 const [checkingAddress, setCheckingAddress] = useState(true);
 useEffect(() => {
 
-  if (!loginuserdata?.id) return;
+  if (authLoading) return;
+
+  if (!loginuserdata?.id) {
+    window.location.href = '/auth?redirect=/checkout';
+    return;
+  }
 
   const init = async () => {
 
@@ -536,7 +556,7 @@ useEffect(() => {
 
   init();
 
-}, [loginuserdata]);
+}, [loginuserdata, authLoading]);
 console.log(cartdata,"cartdata",settings,"settings")
 
 /* ================= SETTINGS → MAP ================= */
@@ -563,6 +583,7 @@ const {
   tax,
   delivery,
   platformFee,
+  discount,
   total
 } = useMemo(() => {
 
@@ -570,43 +591,60 @@ const {
   let cartTax = 0;
 
   (cartdata?.items || []).forEach((item: any) => {
-
     const price = Number(item.price) || 0;
     const qty = Number(item.quantity) || 1;
     const gstPercent = Number(item.gst_percent) || 0;
-
     const itemSubtotal = price * qty;
     const itemTax = (itemSubtotal * gstPercent) / 100;
-
     cartSubtotal += itemSubtotal;
     cartTax += itemTax;
-
   });
 
   const deliveryCharge = Number(chargesMap.delivery_charge || 0);
   const platformCharge = Number(chargesMap.platform_fee || 0);
-
-  // Optional: if later you add this in settings
   const freeLimit = Number(chargesMap.free_delivery_limit || 500);
-
-  const finalDelivery =
-    cartSubtotal >= freeLimit ? 0 : deliveryCharge;
-
-  const finalTotal =
-    cartSubtotal +
-    cartTax +
-    finalDelivery +
-    platformCharge;
+  const finalDelivery = cartSubtotal >= freeLimit ? 0 : deliveryCharge;
+  const couponDiscount = appliedCoupon?.discount || 0;
+  const finalTotal = Math.max(0, cartSubtotal + cartTax + finalDelivery + platformCharge - couponDiscount - walletDiscount - loyaltyDiscount);
 
   return {
     subtotal: +cartSubtotal.toFixed(2),
     tax: +cartTax.toFixed(2),
     delivery: +finalDelivery.toFixed(2),
     platformFee: +platformCharge.toFixed(2),
+    discount: +couponDiscount.toFixed(2),
     total: +finalTotal.toFixed(2)
   };
 
-}, [cartdata, chargesMap]);
+}, [cartdata, chargesMap, appliedCoupon, walletDiscount, loyaltyDiscount]);
+
+// Fetch available coupons and wallet balance
+useEffect(() => {
+  axios.get('/coupons/public').then(r => setAvailableCoupons(r.data.coupons || [])).catch(() => {})
+  if (loginuserdata?.id) {
+    axios.get('/wallet/').then(r => {
+      setWalletBalance(Number(r.data?.wallet_balance || 0))
+      setLoyaltyBalance(Number(r.data?.loyalty_points || 0))
+    }).catch(() => {})
+  }
+}, [loginuserdata?.id])
+
+const applyCoupon = async () => {
+  if (!couponInput.trim()) return
+  try {
+    setCouponApplying(true)
+    setCouponError('')
+    const res = await axios.post('/coupons/apply', { code: couponInput.trim(), cartTotal: subtotal + tax })
+    setAppliedCoupon({ code: res.data.coupon.code, discount: res.data.discount })
+    toast.success(`Coupon applied! You save ₹${res.data.discount.toFixed(2)}`)
+  } catch (err: any) {
+    setCouponError(err?.response?.data?.message || 'Invalid coupon code')
+  } finally {
+    setCouponApplying(false)
+  }
+}
+
+const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); setCouponError('') }
   
 
   const validateShipping = () => {
@@ -634,19 +672,14 @@ if (!validateShipping()) return;
     /* ================= CREATE ORDER ================= */
 
     const res = await axios.post("/orders/create", {
-     shipping,
-addressId: selectedAddressId,
-
+      shipping,
+      addressId: selectedAddressId,
       paymentMethod,
-
-      // Optional: frontend snapshot (for debugging only)
-      pricing: {
-        subtotal,
-        tax,
-        delivery,
-        platformFee,
-        total
-      }
+      couponCode: appliedCoupon?.code || undefined,
+      walletDiscount: walletDiscount > 0 ? walletDiscount : undefined,
+      loyaltyDiscount: loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
+      loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount * 10) : undefined,
+      pricing: { subtotal, tax, delivery, platformFee, discount, total }
     });
 
     if (!res?.data?.success) {
@@ -1164,6 +1197,127 @@ if (checkingAddress) {
 
                       </div>
 
+                      {/* ── COUPON SECTION ── */}
+                      <div style={{ marginBottom: 24, padding: '20px', background: 'var(--parchment)', border: '1px dashed var(--border)', borderRadius: 16 }}>
+                        <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gold-dark)', marginBottom: 14 }}>
+                          🎁 Apply Coupon / Offer
+                        </p>
+
+                        {availableCoupons.length > 0 && !appliedCoupon && (
+                          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 12 }}>
+                            {availableCoupons.map((c: any) => (
+                              <button
+                                key={c.id}
+                                onClick={() => { setCouponInput(c.code); setCouponError('') }}
+                                style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'white', cursor: 'pointer', textAlign: 'center' }}
+                              >
+                                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--sage)', letterSpacing: '0.08em' }}>{c.code}</p>
+                                <p style={{ fontSize: 10, color: '#999', marginTop: 2 }}>{c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`}</p>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {appliedCoupon ? (
+                          <div style={{ display: 'flex', alignItems: 'center', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '12px 14px', gap: 10 }}>
+                            <CheckCircle size={16} style={{ color: '#16a34a', flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>✓ {appliedCoupon.code} applied</p>
+                              <p style={{ fontSize: 11, color: '#15803d', marginTop: 2 }}>You save ₹{appliedCoupon.discount.toFixed(2)}</p>
+                            </div>
+                            <button onClick={removeCoupon} style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: '#fee2e2', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <input
+                              className="gold-input"
+                              value={couponInput}
+                              onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError('') }}
+                              placeholder="Enter coupon code"
+                              style={{ flex: 1, letterSpacing: '0.08em' }}
+                              onKeyDown={e => e.key === 'Enter' && applyCoupon()}
+                            />
+                            <button
+                              onClick={applyCoupon}
+                              disabled={couponApplying || !couponInput.trim()}
+                              style={{ padding: '12px 20px', background: 'var(--ink)', color: 'var(--gold-light)', border: 'none', borderRadius: 12, fontWeight: 600, fontSize: 13, cursor: 'pointer', opacity: !couponInput.trim() ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                            >
+                              {couponApplying ? '…' : 'Apply'}
+                            </button>
+                          </div>
+                        )}
+                        {couponError && <p style={{ fontSize: 11, color: '#dc2626', marginTop: 8 }}>⚠ {couponError}</p>}
+                      </div>
+
+                      {/* ── WALLET SECTION ── */}
+                      {walletBalance > 0 && (
+                        <div style={{ marginBottom: 24, padding: '16px 20px', background: 'linear-gradient(135deg,#f5f0ff,#ede9fe)', border: '1px solid #c4b5fd', borderRadius: 16 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Wallet size={16} color="white" />
+                              </div>
+                              <div>
+                                <p style={{ fontSize: 13, fontWeight: 700, color: '#4c1d95' }}>Wallet Balance: ₹{walletBalance.toFixed(2)}</p>
+                                {walletApplied
+                                  ? <p style={{ fontSize: 11, color: '#6d28d9' }}>₹{walletDiscount.toFixed(2)} applied to this order</p>
+                                  : <p style={{ fontSize: 11, color: '#7c3aed' }}>Use wallet credits to reduce your bill</p>}
+                              </div>
+                            </div>
+                            {walletApplied ? (
+                              <button onClick={() => { setWalletApplied(false); setWalletDiscount(0) }}
+                                style={{ padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                Remove
+                              </button>
+                            ) : (
+                              <button onClick={() => {
+                                const use = Math.min(walletBalance, total)
+                                setWalletDiscount(use)
+                                setWalletApplied(true)
+                              }}
+                                style={{ padding: '6px 14px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                Apply
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── LOYALTY POINTS SECTION ── */}
+                      {loyaltyBalance > 0 && (
+                        <div style={{ marginBottom: 24, padding: '16px 20px', background: 'linear-gradient(135deg,#fffbeb,#fef9c3)', border: '1px solid #fcd34d', borderRadius: 16 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⭐</div>
+                              <div>
+                                <p style={{ fontSize: 13, fontWeight: 700, color: '#78350f' }}>{loyaltyBalance} Loyalty Points = ₹{(loyaltyBalance * 0.1).toFixed(2)}</p>
+                                {loyaltyApplied
+                                  ? <p style={{ fontSize: 11, color: '#92400e' }}>₹{loyaltyDiscount.toFixed(2)} discount applied</p>
+                                  : <p style={{ fontSize: 11, color: '#b45309' }}>Use points for extra discount (1 pt = ₹0.10)</p>}
+                              </div>
+                            </div>
+                            {loyaltyApplied ? (
+                              <button onClick={() => { setLoyaltyApplied(false); setLoyaltyDiscount(0) }}
+                                style={{ padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                Remove
+                              </button>
+                            ) : (
+                              <button onClick={() => {
+                                const maxDiscount = loyaltyBalance * 0.1
+                                const use = Math.min(maxDiscount, total)
+                                setLoyaltyDiscount(+use.toFixed(2))
+                                setLoyaltyApplied(true)
+                              }}
+                                style={{ padding: '6px 14px', background: '#d97706', color: 'white', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                Redeem
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div style={{ height: 1, background: 'var(--border)', marginBottom: 24 }} />
 
                       <div style={{ display: 'flex', gap: 12 }}>
@@ -1221,6 +1375,7 @@ if (checkingAddress) {
                     <div className="item-dot" />
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.4 }}>{item.name || 'Product'}</p>
+                      {item?.variant_label && <p style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Variant: {item.variant_label}</p>}
                       {item?.quantity && <p style={{ fontSize: 11, color: '#999', marginTop: 2 }}>Qty: {item?.quantity}</p>}
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>₹{(Number(item?.price) || 0)?.toFixed(2)}</p>
@@ -1269,6 +1424,27 @@ if (checkingAddress) {
     Add ₹{((chargesMap.free_delivery_limit || 500) - subtotal).toFixed(2)} more for free delivery
   </p>
 )}
+
+                  {discount > 0 && (
+                    <div className="summary-row" style={{ color: '#16a34a' }}>
+                      <span>Coupon ({appliedCoupon?.code})</span>
+                      <span style={{ fontWeight: 600 }}>−₹{discount.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {walletDiscount > 0 && (
+                    <div className="summary-row" style={{ color: '#7c3aed' }}>
+                      <span>Wallet Credits</span>
+                      <span style={{ fontWeight: 600 }}>−₹{walletDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {loyaltyDiscount > 0 && (
+                    <div className="summary-row" style={{ color: '#d97706' }}>
+                      <span>Loyalty Points</span>
+                      <span style={{ fontWeight: 600 }}>−₹{loyaltyDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
 
                   <div className="summary-divider" />
 

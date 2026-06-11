@@ -18,6 +18,14 @@ import {
   X,
   Building,
   UploadCloud,
+  Tag,
+  Image,
+  Bell,
+  Zap,
+  Star,
+  Wallet,
+  MessageSquare,
+  Download,
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
@@ -181,6 +189,74 @@ export default function AdminLayout({
           </MenuItem>
           <MenuItem href="/admin/analytics" icon={<BarChart3 size={18} />}>
             Analytics
+          </MenuItem>
+
+          <div className="pt-2 pb-1 px-3">
+            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Marketing</p>
+          </div>
+
+          <MenuItem href="/admin/banners" icon={<Image size={18} />}>
+            Banners
+          </MenuItem>
+
+          <MenuItem href="/admin/coupons" icon={<Tag size={18} />}>
+            Coupons
+          </MenuItem>
+
+          <MenuItem href="/admin/variants" icon={<Package size={18} />}>
+            Variants
+          </MenuItem>
+
+          <MenuItem href="/admin/pincodes" icon={<List size={18} />}>
+            Pincodes
+          </MenuItem>
+
+          <MenuItem href="/admin/stock-notifications" icon={<Bell size={18} />}>
+            Stock Alerts
+          </MenuItem>
+
+          <div className="pt-2 pb-1 px-3">
+            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Engagement</p>
+          </div>
+
+          <MenuItem href="/admin/flash-sales" icon={<Zap size={18} />}>
+            Flash Sales
+          </MenuItem>
+
+          <MenuItem href="/admin/reviews" icon={<Star size={18} />}>
+            Reviews
+          </MenuItem>
+
+          <MenuItem href="/admin/push-notifications" icon={<Bell size={18} />}>
+            Push Notifications
+          </MenuItem>
+
+          <MenuItem href="/admin/abandoned-carts" icon={<ShoppingCart size={18} />}>
+            Abandoned Carts
+          </MenuItem>
+
+          <MenuItem href="/admin/wallet" icon={<Wallet size={18} />}>
+            Wallet & Credits
+          </MenuItem>
+
+          <MenuItem href="/admin/qa" icon={<MessageSquare size={18} />}>
+            Q&amp;A Moderation
+          </MenuItem>
+
+          <div className="pt-2 pb-1 px-3">
+            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Reports</p>
+          </div>
+
+          <MenuItem href="/admin/export" icon={<Download size={18} />}>
+            Export Data
+          </MenuItem>
+
+          <div className="pt-2 pb-1 px-3">
+            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Support</p>
+          </div>
+
+          <MenuItem href="/admin/support" icon={<MessageSquare size={18} />}>
+            Tickets
           </MenuItem>
 
         </nav>

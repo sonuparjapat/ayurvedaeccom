@@ -1008,29 +1008,36 @@
 import { ArrowRight, Play, Leaf, Heart, Shield, Sparkles, Star, TrendingUp, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/context/auth-context'
 
 /* ─────────────────────────────────────────────
-   STATIC DATA
+   STATIC FALLBACKS
 ───────────────────────────────────────────── */
-const benefits = [
+const DEFAULT_BENEFITS = [
   { text: "100% Natural & Organic",        icon: Leaf      },
   { text: "Traditional Ayurvedic Recipes", icon: Heart     },
   { text: "Sourced Directly from Farms",   icon: Shield    },
   { text: "No Preservatives or Additives", icon: Sparkles  },
 ]
 
-const stats = [
+const DEFAULT_STATS = [
   { value: "10,000+", label: "Happy Customers", icon: Heart    },
   { value: "50+",     label: "Premium Products", icon: Star    },
   { value: "4.8★",    label: "Customer Rating",  icon: TrendingUp },
 ]
 
-const trustItems = [
+const DEFAULT_TRUST = [
   { icon: "🌿", label: "USDA Organic Certified"  },
   { icon: "🧪", label: "Lab Tested & Verified"   },
   { icon: "🚚", label: "Free Delivery Over ₹999" },
   { icon: "↩️", label: "Easy 7-Day Returns"      },
   { icon: "🔒", label: "Secure Payments"         },
+]
+
+const DEFAULT_TICKER = [
+  "100% Certified Organic","Lab-Tested Purity","Farm to Doorstep",
+  "No Preservatives","Ayurvedic Heritage","10,000+ Happy Customers",
+  "Chemical-Free Promise","Direct from Indian Farms",
 ]
 
 const pills = [
@@ -1044,6 +1051,22 @@ const pills = [
    COMPONENT
 ───────────────────────────────────────────── */
 export function HeroSection() {
+  const { companydata } = useAuth()
+  const extra = companydata?.extra_data || {}
+
+  const benefits = DEFAULT_BENEFITS
+  const stats: { value: string; label: string; icon: any }[] =
+    extra.stats?.length ? extra.stats.map((s: any) => ({
+      value: s.value,
+      label: s.label,
+      icon: [Heart, Star, TrendingUp][extra.stats.indexOf(s) % 3],
+    })) : DEFAULT_STATS
+  const trustItems: { icon: string; label: string }[] =
+    extra.trust_items?.length ? extra.trust_items : DEFAULT_TRUST
+  const tickerItems: string[] =
+    extra.ticker?.length ? extra.ticker : DEFAULT_TICKER
+  const tickerDoubled = [...tickerItems, ...tickerItems]
+
   return (
     <>
       {/* ── Global styles injected once ── */}
@@ -1860,14 +1883,7 @@ export function HeroSection() {
         {/* ── Ticker ── */}
         <div className="ticker-wrap">
           <div className="ticker-track">
-            {[
-              "100% Certified Organic","Lab-Tested Purity","Farm to Doorstep",
-              "No Preservatives","Ayurvedic Heritage","10,000+ Happy Customers",
-              "Chemical-Free Promise","Direct from Indian Farms",
-              "100% Certified Organic","Lab-Tested Purity","Farm to Doorstep",
-              "No Preservatives","Ayurvedic Heritage","10,000+ Happy Customers",
-              "Chemical-Free Promise","Direct from Indian Farms",
-            ].map((item, i) => (
+            {tickerDoubled.map((item, i) => (
               <span key={i} className="ticker-item">
                 <span className="ticker-dot">✦</span>
                 {item}

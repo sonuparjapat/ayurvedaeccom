@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import api from '@/lib/axios'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { Button } from '@/components/ui/button'
@@ -42,19 +43,21 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    setIsSubmitted(true)
-    setIsSubmitting(false)
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      subject: '',
-      message: ''
-    })
+    try {
+      await api.post('/support/contact', {
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+        category: 'general',
+      })
+      setIsSubmitted(true)
+      setFormData({ name: '', email: '', phone: '', subject: '', message: '' })
+    } catch {
+      alert('Failed to send message. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const contactInfo = [
