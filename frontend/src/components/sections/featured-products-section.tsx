@@ -27,10 +27,11 @@ interface Product {
 function ProductCard({ product, index }: { product: Product; index: number }) {
   const [hovered, setHovered] = useState(false)
   const [cartLoading, setCartLoading] = useState(false)
-  const { loginuserdata, cartdata, fetchCart, getwishlist, wishlistdata } = useAuth()
+  const { loginuserdata, cartdata, fetchCart, getwishlist, wishlistdata, setOpencart } = useAuth()
 
   const isWishlisted = !!wishlistdata?.items?.find((i: any) => i?.id == product.id)
   const isOutOfStock = product.inventory <= 0
+  const isInCart = cartdata?.items?.some((i: any) => i?.product_id == product.id)
   const discount = product.compareprice
     ? Math.round(((Number(product.compareprice) - Number(product.flash_price || product.price)) / Number(product.compareprice)) * 100)
     : 0
@@ -38,7 +39,13 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
   const handleCart = async (e: React.MouseEvent) => {
     e.preventDefault()
     if (isOutOfStock || cartLoading) return
-    const alreadyIn = cartdata?.items?.some((i: any) => i?.product_id == product.id)
+
+    // Already in cart — open cart drawer
+    if (isInCart) {
+      setOpencart(true)
+      return
+    }
+
     setCartLoading(true)
     try {
       const payload: any = { productId: product.id, quantity: 1 }
@@ -46,11 +53,8 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
         const sid = localStorage.getItem('guest_session_id')
         if (sid) payload.sessionId = sid
       }
-      if (alreadyIn) {
-        await axios.put('/cart', payload)
-      } else {
-        await axios.post('/cart', payload)
-      }
+      // Always POST — backend upserts (inserts or increments, capped at stock)
+      await axios.post('/cart', payload)
       toast.success('Added to cart!')
       fetchCart(loginuserdata?.id)
     } catch {
@@ -96,14 +100,19 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
           />
 
           {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+            {isInCart && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+                ✓ In Cart
+              </span>
+            )}
             {discount > 0 && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500 text-white">
                 -{discount}%
               </span>
             )}
             {product.flash_price && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white flex items-center gap-0.5">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-linear-to-r from-orange-500 to-red-500 text-white flex items-center gap-0.5">
                 <Zap size={9} /> Flash
               </span>
             )}
@@ -141,7 +150,11 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
               disabled={isOutOfStock || cartLoading}
               className="flex items-center gap-2 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all"
               style={{
-                background: isOutOfStock ? 'rgba(100,100,100,0.8)' : 'rgba(45,90,61,0.95)',
+                background: isOutOfStock
+                  ? 'rgba(100,100,100,0.8)'
+                  : isInCart
+                  ? 'rgba(4,120,87,0.95)'
+                  : 'rgba(45,90,61,0.95)',
                 backdropFilter: 'blur(8px)',
                 cursor: isOutOfStock ? 'not-allowed' : 'pointer',
               }}
@@ -150,6 +163,8 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
                 <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : isOutOfStock ? (
                 <><Package size={13} /> Out of Stock</>
+              ) : isInCart ? (
+                <><ShoppingCart size={13} /> Go to Cart</>
               ) : (
                 <><ShoppingCart size={13} /> Add to Cart</>
               )}

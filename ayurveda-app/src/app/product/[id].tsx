@@ -244,6 +244,12 @@ export default function ProductDetailScreen() {
   const effectivePrice = selectedVariant ? selectedVariant.price : product?.price ?? '0'
 
   const handleAddCart = async () => {
+    // If already in cart, navigate there instead of re-adding
+    if (inCart) {
+      router.push('/cart')
+      return
+    }
+
     if (!product || effectiveInventory === 0) return
     if (variants.length > 0 && !selectedVariant) {
       Alert.alert('Select Variant', 'Please select a variant before adding to cart')
@@ -258,14 +264,14 @@ export default function ProductDetailScreen() {
         sessionId = await getGuestSession()
         if (sessionId) payload.sessionId = sessionId
       }
-      const alreadyIn = cartData.items.some(i => i.product_id === product.id && (!selectedVariant || i.variant_id === selectedVariant.id))
-      await (alreadyIn ? api.put('/cart', payload) : api.post('/cart', payload))
+      // Always POST — backend upserts (inserts or increments, capped at stock)
+      await api.post('/cart', payload)
       const cartUrl = !user?.id && sessionId ? `/cart?sessionId=${sessionId}` : '/cart'
       const res = await api.get(cartUrl)
       const items = res.data?.items || []
       setCartData({ items, subtotal: res.data?.subtotal || 0, totalItems: items.length })
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to add')
+      Alert.alert('Error', e?.response?.data?.message || 'Failed to add to cart')
     } finally { setCartLoading(false) }
   }
 

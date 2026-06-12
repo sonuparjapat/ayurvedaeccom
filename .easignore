@@ -1,0 +1,55 @@
+# ── Sibling directories (not part of the mobile app) ────────────────────────
+frontend/
+backend/
+
+# ── Tooling / IDE ────────────────────────────────────────────────────────────
+.vscode/
+.claude/
+.idea/
+
+# ── Version control ──────────────────────────────────────────────────────────
+.git/
+
+# ── Node modules (EAS installs fresh from package.json) ─────────────────────
+**/node_modules/
+
+# ── Expo local cache ─────────────────────────────────────────────────────────
+**/.expo/
+**/.expo-shared/
+
+# ── Next.js build artifacts ──────────────────────────────────────────────────
+**/.next/
+**/.next/**
+
+# ── Native / platform build artifacts ────────────────────────────────────────
+**/android/app/build/
+**/android/build/
+**/ios/build/
+**/ios/Pods/
+
+# ── General dist / build / test output ──────────────────────────────────────
+**/dist/
+**/build/
+**/coverage/
+**/web-build/
+**/.turbo/
+
+# ── Binary and media files ───────────────────────────────────────────────────
+**/*.apk
+**/*.aab
+**/*.ipa
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.mp4
+**/*.mov
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+**/*.log
+**/npm-debug.*
+**/yarn-debug.*
+**/yarn-error.*
+
+# ── OS artifacts ─────────────────────────────────────────────────────────────
+**/.DS_Store
+**/Thumbs.db

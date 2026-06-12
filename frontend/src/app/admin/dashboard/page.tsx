@@ -21,9 +21,6 @@ import {
 } from '@/components/ui/tabs'
 
 import {
-  Shield,
-  LogOut,
-  Settings,
   DollarSign,
   Users,
   Package,
@@ -34,7 +31,6 @@ import {
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/auth-context'
 
 
@@ -69,7 +65,6 @@ interface TopProduct {
 
 export default function AdminDashboard() {
 
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
 
   const [stats, setStats] = useState<DashboardStats>({
@@ -84,7 +79,7 @@ export default function AdminDashboard() {
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([])
-const {statusList,logout}=useAuth()
+const { statusList } = useAuth()
 
   /* ---------------- LOAD ---------------- */
 
@@ -108,8 +103,8 @@ const {statusList,logout}=useAuth()
       setTopProducts(productsRes.data)
       setLowStockProducts(lowStockRes.data?.products || [])
 
-    } catch (err) {
-      console.error(err)
+    } catch {
+      // silent — stats failure shouldn't crash the dashboard
     } finally {
       setLoading(false)
     }
@@ -130,17 +125,17 @@ const {statusList,logout}=useAuth()
   }
 
 
-  const getStatusColor = (status:number) => {
+  const getStatusColor = (status: number) => {
     switch (status) {
-      case 0: return 'bg-yellow-100 text-yellow-800'
-      case 1: return 'bg-blue-100 text-blue-800'
-      case 2: return 'bg-purple-100 text-purple-800'
-           case 3: return 'bg-yellow-100 text-yellow-800'
-      case 4: return 'bg-green-100 text-green-800'
-           case 5: return 'bg-red-100 text-red-800'
-             case 6: return 'bg-red-100 text-red-800'
-               case 7: return 'bg-red-100 text-red-800'
-                 case 8: return 'bg-red-100 text-red-800'
+      case 0: return 'bg-yellow-100 text-yellow-800'   // Pending
+      case 1: return 'bg-blue-100 text-blue-800'       // Confirmed
+      case 2: return 'bg-purple-100 text-purple-800'   // Processing
+      case 3: return 'bg-cyan-100 text-cyan-800'       // Shipped
+      case 4: return 'bg-teal-100 text-teal-800'       // Out for Delivery
+      case 5: return 'bg-green-100 text-green-800'     // Delivered
+      case 6: return 'bg-red-100 text-red-800'         // Cancelled
+      case 7: return 'bg-orange-100 text-orange-800'   // Return Requested
+      case 8: return 'bg-gray-100 text-gray-600'       // Returned
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -164,66 +159,7 @@ if (loading) {
 
 return (
 
-<div className="min-h-screen flex flex-col bg-gray-50">
-
-
-{/* HEADER */}
-
-<header className="bg-white border-b sticky top-0 z-40">
-
-  <div className="max-w-7xl mx-auto px-4 py-3">
-
-    <div className="flex flex-wrap gap-3 items-center justify-between">
-
-
-      {/* Logo */}
-
-      <div className="flex items-center gap-3">
-
-        <div className="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center">
-          <Shield className="text-white" size={16} />
-        </div>
-
-        <div>
-          <h1 className="font-bold text-base sm:text-lg">
-            Admin Dashboard
-          </h1>
-          <p className="text-xs text-gray-500">
-            AyurVeda Desi Foods
-          </p>
-        </div>
-
-      </div>
-
-
-      {/* Buttons */}
-
-      <div className="flex gap-2">
-
-        <Button size="sm" variant="outline" asChild>
-          <Link href="/admin/settings">
-            <Settings size={15} />
-          </Link>
-        </Button>
-
-        <Button size="sm" variant="outline" onClick={()=>(logout('auth'))}>
-          <LogOut size={15} />
-        </Button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</header>
-
-
-{/* CONTENT */}
-
-<main className="flex-1">
-
-<div className="max-w-7xl mx-auto px-4 py-6">
+<div className="max-w-7xl mx-auto space-y-6">
 
 
 {/* STATS */}
@@ -465,10 +401,6 @@ icon={<BarChart3 />}
 
 
 </Tabs>
-
-</div>
-
-</main>
 
 </div>
 

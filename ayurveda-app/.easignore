@@ -1,0 +1,43 @@
+# ── Node modules ─────────────────────────────────────────────────────────────
+**/node_modules/
+
+# ── Expo local cache ─────────────────────────────────────────────────────────
+.expo/
+.expo-shared/
+
+# ── Native build artifacts ────────────────────────────────────────────────────
+android/app/build/
+android/build/
+ios/build/
+ios/Pods/
+
+# ── General build output ─────────────────────────────────────────────────────
+dist/
+build/
+web-build/
+coverage/
+
+# ── Editor / IDE ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.claude/
+
+# ── Binary / media ───────────────────────────────────────────────────────────
+*.apk
+*.aab
+*.ipa
+*.zip
+*.tar
+*.tar.gz
+*.mp4
+*.mov
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# ── OS artifacts ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

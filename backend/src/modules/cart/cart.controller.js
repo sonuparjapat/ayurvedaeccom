@@ -29,43 +29,51 @@ const sessionErrorResponse = (res, check) =>
 
 /* ── upsert helpers (handle NULL variant_id correctly) ── */
 
-async function upsertUserCart(client, userId, productId, variantId, qty) {
+async function upsertUserCart(client, userId, productId, variantId, qty, maxStock) {
   const existing = await client.query(
-    `SELECT id FROM cart
+    `SELECT id, quantity FROM cart
      WHERE user_id=$1 AND product_id=$2
      AND (variant_id=$3 OR (variant_id IS NULL AND $3::int IS NULL))`,
     [userId, productId, variantId ?? null]
   );
   if (existing.rows.length) {
+    const currentQty = parseInt(existing.rows[0].quantity);
+    const newQty = Math.min(currentQty + qty, maxStock);
     await client.query(
-      `UPDATE cart SET quantity=quantity+$1, updated_at=NOW() WHERE id=$2`,
-      [qty, existing.rows[0].id]
+      `UPDATE cart SET quantity=$1, updated_at=NOW() WHERE id=$2`,
+      [newQty, existing.rows[0].id]
     );
+    return true;
   } else {
     await client.query(
       `INSERT INTO cart (user_id, product_id, variant_id, quantity) VALUES ($1,$2,$3,$4)`,
       [userId, productId, variantId ?? null, qty]
     );
+    return false;
   }
 }
 
-async function upsertGuestCart(client, sessionId, productId, variantId, qty) {
+async function upsertGuestCart(client, sessionId, productId, variantId, qty, maxStock) {
   const existing = await client.query(
-    `SELECT id FROM guest_cart
+    `SELECT id, quantity FROM guest_cart
      WHERE guest_session_id=$1 AND product_id=$2
      AND (variant_id=$3 OR (variant_id IS NULL AND $3::int IS NULL))`,
     [sessionId, productId, variantId ?? null]
   );
   if (existing.rows.length) {
+    const currentQty = parseInt(existing.rows[0].quantity);
+    const newQty = Math.min(currentQty + qty, maxStock);
     await client.query(
-      `UPDATE guest_cart SET quantity=quantity+$1 WHERE id=$2`,
-      [qty, existing.rows[0].id]
+      `UPDATE guest_cart SET quantity=$1 WHERE id=$2`,
+      [newQty, existing.rows[0].id]
     );
+    return true;
   } else {
     await client.query(
       `INSERT INTO guest_cart (guest_session_id, product_id, variant_id, quantity) VALUES ($1,$2,$3,$4)`,
       [sessionId, productId, variantId ?? null, qty]
     );
+    return false;
   }
 }
 
@@ -81,6 +89,7 @@ exports.addToCart = async (req, res) => {
     const vid = variantId ? parseInt(variantId) : null;
 
     /* stock check: variant overrides product */
+    let maxStock;
     if (vid) {
       const variant = await pool.query(
         `SELECT id, inventory FROM product_variants
@@ -89,7 +98,8 @@ exports.addToCart = async (req, res) => {
       );
       if (!variant.rows.length)
         return res.status(404).json({ message: "Variant not found" });
-      if (variant.rows[0].inventory < qty)
+      maxStock = parseInt(variant.rows[0].inventory);
+      if (maxStock < qty)
         return res.status(400).json({ message: "Not enough stock for this variant" });
     } else {
       const product = await pool.query(
@@ -98,21 +108,22 @@ exports.addToCart = async (req, res) => {
       );
       if (!product.rows.length)
         return res.status(404).json({ message: "Product not found" });
-      if (product.rows[0].inventory < qty)
+      maxStock = parseInt(product.rows[0].inventory);
+      if (maxStock < qty)
         return res.status(400).json({ message: "Not enough stock" });
     }
 
     if (userId) {
-      await upsertUserCart(pool, userId, productId, vid, qty);
-      return res.json({ message: "Product added to cart" });
+      const wasInCart = await upsertUserCart(pool, userId, productId, vid, qty, maxStock);
+      return res.json({ message: "Product added to cart", inCart: wasInCart });
     }
 
     if (!sessionId) return res.status(400).json({ message: "Guest session required" });
     const check = await validateGuestSession(sessionId);
     if (!check.valid) return sessionErrorResponse(res, check);
 
-    await upsertGuestCart(pool, sessionId, productId, vid, qty);
-    return res.json({ message: "Product added to guest cart" });
+    const wasInCart = await upsertGuestCart(pool, sessionId, productId, vid, qty, maxStock);
+    return res.json({ message: "Product added to guest cart", inCart: wasInCart });
 
   } catch (err) {
     console.error("Add to cart error:", err);
@@ -376,7 +387,7 @@ exports.mergeGuestCart = async (req, res) => {
 
       if (stock < 1) continue;
       const allowedQty = Math.min(parseInt(item.quantity), stock);
-      await upsertUserCart(client, userId, item.product_id, vid, allowedQty);
+      await upsertUserCart(client, userId, item.product_id, vid, allowedQty, stock);
     }
 
     await client.query(`DELETE FROM guest_cart WHERE guest_session_id=$1`, [sessionId]);

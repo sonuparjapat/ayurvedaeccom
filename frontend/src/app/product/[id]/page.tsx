@@ -242,11 +242,24 @@ const handlepagechage=(page:number)=>{
 
   /* ================= CART ================= */
 
+  const isInCart = product
+    ? cartdata?.items?.some((item: any) =>
+        item?.product_id == product?.id &&
+        (!selectedVariant ? !item?.variant_id : item?.variant_id == selectedVariant?.id)
+      )
+    : false
+
 const addToCart = async () => {
   if (!product) return;
 
+  // Already in cart — open cart drawer instead of re-adding
+  if (isInCart) {
+    setOpencart(true);
+    return;
+  }
+
   if (effectiveInventory === 0) {
-    notify.error("Opps...Product is Out of stock");
+    notify.error("Product is Out of stock");
     return;
   }
 
@@ -255,88 +268,31 @@ const addToCart = async () => {
     return;
   }
 
+  if (cartLoading) return;
+  setCartLoading(true);
+
   try {
-    if (cartLoading) return;
-
-    setCartLoading(true);
-
     const finalQty = Math.min(qty, effectiveInventory);
-
     const payload: any = {
       productId: product.id,
       quantity: finalQty,
       ...(selectedVariant ? { variantId: selectedVariant.id } : {}),
     };
 
-    /* guest user support */
     if (!loginuserdata?.id) {
-      const sessionId =
-        localStorage.getItem(
-          "guest_session_id"
-        );
-
-      if (sessionId) {
-        payload.sessionId = sessionId;
-      }
+      const sessionId = localStorage.getItem("guest_session_id");
+      if (sessionId) payload.sessionId = sessionId;
     }
 
-    const alreadyInCart =
-      cartdata?.items?.filter(
-        (item: any) =>
-          item?.product_id ==
-          product?.id
-      )?.length >= 1;
-
-    if (alreadyInCart) {
-      await axios.put(
-        "/cart",
-        payload
-      );
-    } else {
-      await axios.post(
-        "/cart",
-        payload
-      );
-    }
-
-    toast.success(
-      "Wooah..Product Added to cart"
-    );
-
-    fetchCart(
-      loginuserdata?.id
-    );
+    // Always POST — backend upserts (inserts or increments, capped at stock)
+    await axios.post("/cart", payload);
+    toast.success("Added to cart!");
+    fetchCart(loginuserdata?.id);
 
   } catch (err: any) {
-    if (
-      err?.response?.status === 400
-    ) {
-      toast.error(
-        err?.response?.data
-          ?.message ||
-        "Invalid request"
-      );
-
-    } else if (
-      err?.response?.status === 404
-    ) {
-      toast.error(
-        "Oops..Product not found"
-      );
-
-    } else if (
-      err?.response?.status === 500
-    ) {
-      toast.error(
-        "Something went wrong"
-      );
-
-    } else {
-      toast.error(
-        "Oops..Unable to add cart"
-      );
-    }
-
+    toast.error(
+      err?.response?.data?.message || "Could not add to cart"
+    );
   } finally {
     setCartLoading(false);
   }
@@ -350,7 +306,7 @@ const addToCart = async () => {
 
     return (
 
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-white">
+      <div className="h-screen flex items-center justify-center bg-linear-to-br from-emerald-50 to-white">
 
         <div className="animate-spin h-14 w-14 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
 
@@ -463,7 +419,7 @@ const addToCart = async () => {
 
 
 
-      <div className="min-h-screen bg-gradient-to-br from-stone-50 via-amber-50/20 to-emerald-50/30">
+      <div className="min-h-screen bg-linear-to-br from-stone-50 via-amber-50/20 to-emerald-50/30">
 
 
         <div className="max-w-7xl mx-auto px-4 py-10 lg:py-16">
@@ -826,9 +782,9 @@ const addToCart = async () => {
 
 
                   <Button
-                    disabled={effectiveInventory === 0 || cartLoading || (variants.length > 0 && !selectedVariant)}
+                    disabled={!isInCart && (effectiveInventory === 0 || cartLoading || (variants.length > 0 && !selectedVariant))}
                     onClick={addToCart}
-                    className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-lg py-6"
+                    className={`flex-1 text-lg py-6 ${isInCart ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-linear-to-r from-emerald-600 to-green-600'}`}
                   >
                     {cartLoading ? (
                       <span className="flex gap-2">
@@ -836,17 +792,13 @@ const addToCart = async () => {
                         Adding...
                       </span>
                     ) : effectiveInventory === 0 ? (
-                      <>
-                        <Package className="mr-2" /> Out Of Stock
-                      </>
+                      <><Package className="mr-2" /> Out Of Stock</>
                     ) : variants.length > 0 && !selectedVariant ? (
-                      <>
-                        <Tag className="mr-2" /> Select a Variant
-                      </>
+                      <><Tag className="mr-2" /> Select a Variant</>
+                    ) : isInCart ? (
+                      <><ShoppingCart className="mr-2" /> Go to Cart</>
                     ) : (
-                      <>
-                        <ShoppingCart className="mr-2" /> Add To Cart
-                      </>
+                      <><ShoppingCart className="mr-2" /> Add To Cart</>
                     )}
                   </Button>
 
