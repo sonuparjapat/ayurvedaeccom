@@ -898,6 +898,19 @@ Share.share({
           <Code>{`// order/[id].tsx — Chat button previously had no onPress handler (dead button)
 // Fixed: onPress={() => router.push('/support' as any)}
 // Now opens the Support screen so the customer can create/view their ticket`}</Code>
+          <H3>Cold-start retry for featured products (home screen)</H3>
+          <Code>{`// index.tsx — fetchFeatured(catId, attempt)
+// Problem: free-tier server (Railway/Render) takes 10-30s to wake up.
+//          First request returns empty or network error → blank section.
+// Fix: auto-retry up to MAX_RETRIES (3) with increasing delay:
+//   attempt 0 → fail → wait 3s  → attempt 1
+//   attempt 1 → fail → wait 6s  → attempt 2
+//   attempt 2 → fail → wait 9s  → attempt 3 (last)
+//   attempt 3 → fail → show error state + manual Retry button
+//
+// "Empty response" is also retried (server might respond 200 with [] during wake-up)
+// retryTimerRef clears timer on unmount / category change to avoid stale updates
+// During retry: skeleton cards remain visible + "Server warming up (N/3)" hint text`}</Code>
           <H3>expo-notifications Expo Go fix</H3>
           <Code>{`// src/utils/pushNotifications.ts
 // expo-notifications remote push removed from Expo Go at SDK 53+

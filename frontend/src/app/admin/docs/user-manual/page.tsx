@@ -684,6 +684,7 @@ export default function UserManualPage() {
           <InfoBox type="info">The mobile app receives <strong>real-time push notifications</strong> for order status updates. Tapping the notification takes you directly to that order's detail screen. Tapping a support reply notification opens the Support screen. Allow notifications when prompted on first launch.</InfoBox>
           <InfoBox type="tip">Your <strong>referral code</strong> is visible in the Account screen. Tap <strong>Copy</strong> to copy it to clipboard, or tap <strong>Share</strong> to send it via WhatsApp, email, or any app — friends who use your code get a discount and you earn wallet credits.</InfoBox>
           <InfoBox type="tip">The mobile app gives <strong>haptic feedback</strong> (vibration) on key actions — adding to cart, toggling wishlist, removing items — so you always feel confirmation without looking at the screen.</InfoBox>
+          <InfoBox type="info">If the Featured Products section shows a <strong>"Server is starting up"</strong> message, the backend server is on a free hosting plan and takes a moment to wake up. The app <strong>automatically retries up to 3 times</strong> — you will see "Server warming up (1/3)" below the skeleton cards. You can also tap <strong>Retry</strong> to reload manually at any time.</InfoBox>
         </Section>
 
         {/* ═══ 18. ORDER STATUS GUIDE ═══ */}

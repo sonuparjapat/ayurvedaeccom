@@ -626,9 +626,12 @@ export default function HomeScreen() {
   const [activeCoupon, setActiveCoupon] = useState<ActiveCoupon | null>(null)
   const [defaultAddr, setDefaultAddr] = useState<string | null>(null)
   const [prodLoading, setProdLoading] = useState(true)
+  const [prodError, setProdError] = useState(false)
+  const [prodRetryAttempt, setProdRetryAttempt] = useState(0)
   const [revLoading, setRevLoading] = useState(true)
   const [activeCatId, setActiveCatId] = useState<number | null>(null)
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([])
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const scrollHandler = useAnimatedScrollHandler(e => { scrollY.value = e.contentOffset.y })
   const headerStyle = useAnimatedStyle(() => ({
@@ -648,15 +651,44 @@ export default function HomeScreen() {
       .finally(() => setRevLoading(false))
   }, [])
 
-  // Refetch featured products when category filter changes
-  useEffect(() => {
+  // Featured products with auto-retry for cold-start servers
+  const MAX_RETRIES = 3
+  const fetchFeatured = (catId: number | null, attempt = 0) => {
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
     setProdLoading(true)
+    setProdError(false)
+    setProdRetryAttempt(attempt)
     const params: any = { limit: 8 }
-    if (activeCatId) params.category_id = activeCatId
+    if (catId) params.category_id = catId
     api.get('/shop/public', { params })
-      .then(r => setProducts(r.data?.products || []))
-      .catch(e => console.warn('[Home products]', e?.response?.status, e?.message))
-      .finally(() => setProdLoading(false))
+      .then(r => {
+        const prods = r.data?.products || []
+        if (prods.length > 0) {
+          setProducts(prods)
+          setProdLoading(false)
+        } else if (attempt < MAX_RETRIES) {
+          // Empty response during server cold-start — auto retry
+          retryTimerRef.current = setTimeout(() => fetchFeatured(catId, attempt + 1), 3000)
+        } else {
+          setProducts([])
+          setProdLoading(false)
+          setProdError(true)
+        }
+      })
+      .catch(() => {
+        if (attempt < MAX_RETRIES) {
+          // Network/timeout error — retry with increasing delay
+          retryTimerRef.current = setTimeout(() => fetchFeatured(catId, attempt + 1), (attempt + 1) * 3000)
+        } else {
+          setProdLoading(false)
+          setProdError(true)
+        }
+      })
+  }
+
+  useEffect(() => {
+    fetchFeatured(activeCatId)
+    return () => { if (retryTimerRef.current) clearTimeout(retryTimerRef.current) }
   }, [activeCatId])
 
   // On focus: refresh cart, default address, recently viewed
@@ -737,12 +769,41 @@ export default function HomeScreen() {
         {/* Featured Products */}
         <View style={{ backgroundColor: Colors.mint, paddingVertical: 20, marginBottom: 8 }}>
           <SectionHeader title="Featured Products" onSeeAll={() => router.push('/products')} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}>
-            {prodLoading
-              ? [1, 2, 3].map(k => <ProductCardSkeleton key={k} />)
-              : products.map((p, i) => <ProductCard key={p.id} item={p} index={i} />)
-            }
-          </ScrollView>
+          {prodLoading ? (
+            <View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}>
+                {[1, 2, 3].map(k => <ProductCardSkeleton key={k} />)}
+              </ScrollView>
+              {prodRetryAttempt > 0 && (
+                <View style={{ alignItems: 'center', marginTop: 10 }}>
+                  <Text style={{ fontSize: 11, color: Colors.textDim, fontFamily: Fonts.regular }}>
+                    🌿 Server warming up... ({prodRetryAttempt}/{MAX_RETRIES})
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : prodError || products.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24 }}>
+              <Text style={{ fontSize: 32, marginBottom: 10 }}>🌿</Text>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest, marginBottom: 6 }}>
+                Server is starting up
+              </Text>
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, textAlign: 'center', marginBottom: 18, lineHeight: 18 }}>
+                Our server wakes up on first request.{'\n'}Tap below to try again.
+              </Text>
+              <TouchableOpacity
+                onPress={() => fetchFeatured(activeCatId)}
+                style={{ backgroundColor: Colors.forest, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10 }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 13 }}>↻  Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}>
+              {products.map((p, i) => <ProductCard key={p.id} item={p} index={i} />)}
+            </ScrollView>
+          )}
         </View>
 
         {/* Recently Viewed */}
