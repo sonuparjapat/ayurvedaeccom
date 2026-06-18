@@ -1,0 +1,56 @@
+name: EAS Android Build
+
+on:
+  # Runs every night at 2:00 AM IST (8:30 PM UTC)
+  schedule:
+    - cron: '30 20 * * *'
+
+  # Also allows manual trigger from GitHub UI → Actions tab
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Build profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+
+jobs:
+  build:
+    name: EAS Build (Android)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ayurveda-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ayurveda-app
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android APK
+        working-directory: ayurveda-app
+        run: eas build --platform android --profile ${{ github.event.inputs.profile || 'preview' }} --non-interactive
+
+      - name: Notify on success
+        if: success()
+        run: echo "Build submitted successfully! Check https://expo.dev to download APK."
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "Build failed. Check logs above."
