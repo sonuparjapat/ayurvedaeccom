@@ -715,6 +715,9 @@ case 'my_job_type':
 │   ├── wallet/page.tsx          # Standalone wallet + loyalty tabs page
 │   ├── notifications/page.tsx   # User notification inbox (order updates, grouped by date)
 │   ├── search/page.tsx          # Search landing page with popular chips
+│   ├── product/
+│   │   ├── [id]/page.tsx        # Product detail (client component)
+│   │   └── [id]/layout.tsx      # Server component — generateMetadata() for SEO (title, desc, OG, Twitter)
 │   ├── support/
 │   │   ├── page.tsx             # Ticket list + create form
 │   │   └── [id]/page.tsx        # Ticket chat view (real-time)
@@ -725,6 +728,8 @@ case 'my_job_type':
 │       ├── products/page.tsx    # Product management
 │       ├── orders/page.tsx      # Order management
 │       ├── returns/page.tsx     # Returns management (approve/reject/refund)
+│   orders/
+│   │   └── [id]/page.tsx        # Order detail — Re-order button (status 5/6), cancel, return, retry payment
 │       ├── users/page.tsx       # User list
 │       ├── support/page.tsx     # Two-panel ticket management
 │       ├── reviews/page.tsx     # Review moderation
@@ -781,12 +786,11 @@ await api.post('/orders', { address_id, payment_method })`}</Code>
 └── app/
     ├── _layout.tsx              # Root layout + Stack navigator
     ├── index.tsx                # Home screen (products, banners)
-    ├── product/[id].tsx         # Product detail + variants + reviews + "Write Review" card
+    ├── product/[id].tsx         # Product detail + variants + reviews + Q&A tab + zoom modal + "Write Review" card
     ├── cart/index.tsx           # Cart screen
     ├── checkout/index.tsx       # Checkout (address, payment)
-    ├── orders/
-    │   ├── index.tsx            # Order list
-    │   └── [id].tsx             # Order detail + tracking + "Write a Review" card when status=5
+    ├── order/
+    │   └── [id].tsx             # Order detail + tracking + Re-order button (status 5/6) + "Write a Review" card
     ├── account/
     │   ├── index.tsx            # Account screen + quick links (Wallet, Notifications)
     │   ├── wallet.tsx           # Wallet balance card + Transactions/Loyalty tabs
@@ -807,7 +811,7 @@ await api.post('/orders', { address_id, payment_method })`}</Code>
               ['expo-linear-gradient', 'Gradient backgrounds in UI'],
               ['@react-native-async-storage/async-storage', 'Persists JWT token + user data locally'],
               ['axios', 'HTTP client (same api.ts pattern as web)'],
-              ['socket.io-client', 'WebSocket connection for real-time updates'],
+              ['socket.io-client', 'WebSocket connection for real-time order status updates and ticket reply alerts'],
               ['react-native-safe-area-context', 'Safe area (notch/status bar) handling'],
             ]}
           />
@@ -829,7 +833,27 @@ await api.post('/push/push-token', { token, platform: 'android' | 'ios' })
 // Renders absolute-positioned bar at bottom of screen
 // Uses BlurView + LinearGradient, Shadows.sm (NOT Shadows.card — doesn't exist)
 // Tabs: Home (/), Browse (/products), Wishlist (/wishlist), Account (/account)
-// Add to any main screen; set paddingBottom: 90 on FlatList to avoid overlap`}</Code>
+// Add to any main screen; set paddingBottom: 90 on FlatList to avoid overlap
+// All main screens (index, products, wishlist, account, search) use the SAME shared component
+// Previously index.tsx had an inline duplicate — removed; all screens now import the shared one`}</Code>
+          <H3>Real-time order updates (Socket.io on mobile)</H3>
+          <Code>{`// ayurveda-app/src/hooks/useOrderSocket.ts
+// Called from _layout.tsx Inner component — active for entire app session
+// Connects to socket.io server (EXPO_PUBLIC_API_URL minus /api)
+// socket.emit('join_user', user.id)  → joins user_{userId} room
+// Listens for: order_status_updated → Alert.alert with status label
+//              admin_replied → Alert.alert with ticket subject
+// Uses dynamic import('socket.io-client') — install: npm install socket.io-client`}</Code>
+          <H3>Image zoom on mobile product page</H3>
+          <Code>{`// product/[id].tsx — ImageZoomModal component
+// Tap any product image → opens fullscreen Modal (black background)
+// Uses ScrollView with maximumZoomScale={4} for native pinch-to-zoom (iOS)
+// Close button top-right, "Pinch to zoom" hint at bottom`}</Code>
+          <H3>Q&A tab on mobile product page</H3>
+          <Code>{`// product/[id].tsx — 3rd tab alongside Description and Reviews
+// GET /qa/product/:id  → load approved questions with answers
+// POST /qa/product/:id/ask → submit new question (pending admin approval)
+// Shows answer author: "🌿 Store Team" for admin answers`}</Code>
           <H3>In-app notification inbox</H3>
           <Code>{`// GET /push/notifications — handler: push.controller.js → userNotifications
 // Source: order_status_logs JOIN orders JOIN order_status_master

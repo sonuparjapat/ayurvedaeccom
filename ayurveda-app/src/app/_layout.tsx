@@ -10,6 +10,7 @@ import {
 } from '@expo-google-fonts/cormorant-garamond'
 import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans'
 import { useBootstrap } from '../hooks/useBootstrap'
+import { useOrderSocket } from '../hooks/useOrderSocket'
 import { useStore } from '../store'
 import { Colors } from '../constants/theme'
 
@@ -23,6 +24,7 @@ function Inner() {
   })
   const { loading } = useBootstrap()
   const bootstrapped = useStore((s) => s.bootstrapped)
+  useOrderSocket()
   const authOpen = useStore((s) => s.authOpen)
   const setAuthOpen = useStore((s) => s.setAuthOpen)
 

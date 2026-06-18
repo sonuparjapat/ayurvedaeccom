@@ -326,6 +326,19 @@ export default function OrderDetailScreen() {
     } finally { setActionLoading(false) }
   }
 
+  const handleReorder = async () => {
+    if (!order?.items?.length) return
+    setActionLoading(true)
+    try {
+      for (const item of order.items) {
+        await api.post('/cart', { productId: item.product_id, quantity: item.quantity })
+      }
+      router.push('/cart')
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.message || 'Could not add items to cart')
+    } finally { setActionLoading(false) }
+  }
+
   const handleReturn = async (reason: string) => {
     setActionLoading(true)
     try {
@@ -576,6 +589,22 @@ export default function OrderDetailScreen() {
                     <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, marginTop: 2 }}>Share your experience with this product</Text>
                   </View>
                   <Text style={{ color: Colors.textDim, fontSize: 18 }}>›</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+
+            {/* ── RE-ORDER ── */}
+            {[5, 6].includes(order.status) && (
+              <Animated.View entering={FadeInDown.delay(275)} style={{ paddingHorizontal: 16, marginTop: 8 }}>
+                <TouchableOpacity
+                  onPress={handleReorder}
+                  disabled={actionLoading}
+                  style={{ borderRadius: 16, overflow: 'hidden' }}
+                >
+                  <LinearGradient colors={[Colors.forest, Colors.moss]} style={{ padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                    <Text style={{ fontSize: 18 }}>🛒</Text>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: '#fff' }}>Re-order These Items</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
             )}

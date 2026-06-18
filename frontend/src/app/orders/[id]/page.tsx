@@ -73,6 +73,7 @@ export default function OrderDetailPage() {
   const [showReturnForm, setShowReturnForm] = useState(false)
   const [returning, setReturning] = useState(false)
   const [retrying, setRetrying] = useState(false)
+  const [reordering, setReordering] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -123,6 +124,20 @@ export default function OrderDetailPage() {
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed')
     } finally { setRetrying(false) }
+  }
+
+  const reorderItems = async () => {
+    if (!order?.items?.length) return
+    setReordering(true)
+    try {
+      for (const item of order.items) {
+        await axios.post('/cart', { productId: item.product_id, quantity: item.quantity, variantId: item.variant_id || undefined })
+      }
+      toast.success('Items added to cart!')
+      router.push('/cart')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to add items to cart')
+    } finally { setReordering(false) }
   }
 
   const submitReturn = async () => {
@@ -392,6 +407,12 @@ export default function OrderDetailPage() {
           <button onClick={() => setShowReturnForm(true)}
             className="flex items-center gap-2 border-2 border-orange-200 text-orange-600 bg-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-orange-50">
             <RotateCcw size={15} /> Request Return
+          </button>
+        )}
+        {[5, 6].includes(order.status) && (
+          <button onClick={reorderItems} disabled={reordering}
+            className="flex items-center gap-2 bg-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-800 disabled:opacity-50">
+            <RefreshCw size={15} /> {reordering ? 'Adding...' : '🛒 Re-order'}
           </button>
         )}
       </div>

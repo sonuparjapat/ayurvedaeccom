@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import BottomNav from '../components/BottomNav'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from 'expo-router'
 import {
@@ -601,48 +602,6 @@ function ProductCardSkeleton() {
       <View style={{ margin: 10, marginTop: 4 }}>
         <Skeleton w={'100%'} h={32} radius={9} />
       </View>
-    </View>
-  )
-}
-
-// ─── BOTTOM NAV ───────────────────────────────────────────────────────────────
-const NAV_ITEMS = [
-  { label: 'Home', icon: '🏠', route: '/' },
-  { label: 'Browse', icon: '🔍', route: '/products' },
-  { label: 'Wishlist', icon: '❤️', route: '/wishlist' },
-  { label: 'Account', icon: '👤', route: '/account' },
-]
-function BottomNav({ active }: { active: string }) {
-  const insets = useSafeAreaInsets()
-  const TAB_W = W / NAV_ITEMS.length
-  const activeIndex = NAV_ITEMS.findIndex(n => n.route === active)
-  const indicatorX = useSharedValue(activeIndex * TAB_W)
-
-  useEffect(() => {
-    indicatorX.value = withSpring(activeIndex * TAB_W + TAB_W / 2 - 16, { damping: 18, stiffness: 200 })
-  }, [activeIndex])
-
-  const indicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: indicatorX.value }] }))
-
-  return (
-    <View style={[ss.bottomNav, { paddingBottom: insets.bottom + 4 }]}>
-      <BlurView intensity={Platform.OS === 'ios' ? 60 : 0} tint="light" style={StyleSheet.absoluteFill} />
-      <View style={StyleSheet.absoluteFill}>
-        <LinearGradient colors={['rgba(255,255,255,0.96)', 'rgba(255,255,255,1)']} style={StyleSheet.absoluteFill} />
-      </View>
-
-      {/* Sliding active indicator */}
-      <Animated.View style={[ss.navIndicator, indicatorStyle]} />
-
-      {NAV_ITEMS.map((n) => {
-        const isActive = active === n.route
-        return (
-          <TouchableOpacity key={n.label} onPress={() => router.push(n.route as any)} style={ss.navItem} activeOpacity={0.7}>
-            <Text style={{ fontSize: 22, opacity: isActive ? 1 : 0.38 }}>{n.icon}</Text>
-            <Text style={[ss.navLabel, isActive ? ss.navLabelActive : ss.navLabelInactive]}>{n.label}</Text>
-          </TouchableOpacity>
-        )
-      })}
     </View>
   )
 }

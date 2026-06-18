@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getGuestSession } from '../../utils/guestSession'
 import {
-  Dimensions, FlatList, Image, Alert, KeyboardAvoidingView,
+  ActivityIndicator, Dimensions, FlatList, Image, Alert, KeyboardAvoidingView, Modal,
   Platform, ScrollView, StatusBar, StyleSheet, Text,
   TouchableOpacity, View, TextInput,
 } from 'react-native'
@@ -29,9 +29,41 @@ interface Product {
 }
 interface Review { id?: number; name: string; rating: number; comment: string; images?: string[] }
 
+// ─── IMAGE ZOOM MODAL ─────────────────────────────────────────────────────────
+function ImageZoomModal({ uri, onClose }: { uri: string; onClose: () => void }) {
+  return (
+    <Modal visible={!!uri} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: '#000' }}>
+        <TouchableOpacity
+          onPress={onClose}
+          style={{ position: 'absolute', top: 52, right: 18, zIndex: 10, padding: 10, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 22 }}
+        >
+          <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>✕</Text>
+        </TouchableOpacity>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          maximumZoomScale={4}
+          minimumZoomScale={1}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          centerContent
+          bouncesZoom
+        >
+          <Image source={{ uri }} style={{ width: W, height: W * 1.1 }} resizeMode="contain" />
+        </ScrollView>
+        <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, alignItems: 'center' }}>
+          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>Pinch to zoom</Text>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 // ─── IMAGE GALLERY ────────────────────────────────────────────────────────────
 function ImageGallery({ images, disc, outOfStock }: { images: string[]; disc: number | null; outOfStock: boolean }) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [zoomUri, setZoomUri] = useState('')
   const flatRef = useRef<FlatList>(null)
 
   const onMomentumEnd = (e: any) => {
@@ -50,7 +82,7 @@ function ImageGallery({ images, disc, outOfStock }: { images: string[]; disc: nu
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onMomentumEnd}
         renderItem={({ item: img }) => (
-          <View style={ig.imgSlide}>
+          <TouchableOpacity activeOpacity={0.95} onPress={() => img && img !== 'placeholder' && setZoomUri(img)} style={ig.imgSlide}>
             {img && img !== 'placeholder'
               ? <Image source={{ uri: img }} style={StyleSheet.absoluteFill} resizeMode="cover" />
               : <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' }]}>
@@ -58,7 +90,12 @@ function ImageGallery({ images, disc, outOfStock }: { images: string[]; disc: nu
               </View>
             }
             <LinearGradient colors={['transparent', 'rgba(26,46,30,0.35)']} style={StyleSheet.absoluteFill} />
-          </View>
+            {img && img !== 'placeholder' && (
+              <View style={{ position: 'absolute', top: 14, right: 14, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 }}>
+                <Text style={{ color: '#fff', fontSize: 10 }}>🔍 Tap to zoom</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         )}
       />
 
@@ -91,6 +128,8 @@ function ImageGallery({ images, disc, outOfStock }: { images: string[]; disc: nu
           <Text style={ig.imgCountText}>{activeIndex + 1}/{images.length}</Text>
         </View>
       )}
+
+      <ImageZoomModal uri={zoomUri} onClose={() => setZoomUri('')} />
     </View>
   )
 }
@@ -174,7 +213,12 @@ export default function ProductDetailScreen() {
   const [myRating, setMyRating] = useState(0)
   const [myComment, setMyComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [tab, setTab] = useState<'desc' | 'reviews'>('desc')
+  const [tab, setTab] = useState<'desc' | 'reviews' | 'qa'>('desc')
+
+  // Q&A
+  const [questions, setQuestions] = useState<any[]>([])
+  const [myQuestion, setMyQuestion] = useState('')
+  const [qaSubmitting, setQaSubmitting] = useState(false)
 
   // Variants
   const [variants, setVariants] = useState<any[]>([])
@@ -206,6 +250,7 @@ export default function ProductDetailScreen() {
     setWished(wishlistData.items.some(w => w.id === Number(id)))
     api.get(`/shop/variants/${id}`).then(r => setVariants(r.data?.variants || [])).catch(() => {})
     api.get(`/shop/related/${id}`).then(r => setRelatedProducts(r.data?.products || [])).catch(() => {})
+    api.get(`/qa/product/${id}`).then(r => setQuestions(r.data?.questions || [])).catch(() => {})
     if (user?.id) api.post('/shop/recently-viewed', { productId: id }).catch(() => {})
   }, [id])
 
@@ -323,6 +368,19 @@ export default function ProductDetailScreen() {
     } catch (e: any) {
       Alert.alert('Error', e?.response?.data?.message || 'Login required')
     } finally { setSubmitting(false) }
+  }
+
+  const submitQuestion = async () => {
+    if (!myQuestion.trim()) return
+    setQaSubmitting(true)
+    try {
+      await api.post(`/qa/product/${id}/ask`, { question: myQuestion.trim() })
+      setMyQuestion('')
+      Alert.alert('Question Submitted', 'Your question is pending review and will appear once approved.')
+      api.get(`/qa/product/${id}`).then(r => setQuestions(r.data?.questions || [])).catch(() => {})
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.message || 'Failed to submit question')
+    } finally { setQaSubmitting(false) }
   }
 
   const inCart = cartData.items.some(i => i.product_id === Number(id) && (!selectedVariant || i.variant_id === selectedVariant.id))
@@ -563,10 +621,10 @@ export default function ProductDetailScreen() {
 
           {/* Tabs */}
           <View style={ss.tabRow}>
-            {(['desc', 'reviews'] as const).map(t => (
+            {(['desc', 'reviews', 'qa'] as const).map(t => (
               <TouchableOpacity key={t} onPress={() => setTab(t)} style={[ss.tabBtn, tab === t && ss.tabBtnActive]}>
                 <Text style={[ss.tabText, tab === t && ss.tabTextActive]}>
-                  {t === 'desc' ? 'Description' : `Reviews (${product.reviewcount})`}
+                  {t === 'desc' ? 'Description' : t === 'reviews' ? `Reviews (${product.reviewcount})` : `Q&A (${questions.length})`}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -625,6 +683,53 @@ export default function ProductDetailScreen() {
                 <TouchableOpacity onPress={() => fetchReviews(reviewPage + 1)} style={ss.loadMoreBtn}>
                   <Text style={{ color: Colors.sage, fontFamily: Fonts.bold, fontSize: 13 }}>Load More Reviews ↓</Text>
                 </TouchableOpacity>
+              )}
+            </Animated.View>
+          )}
+
+          {tab === 'qa' && (
+            <Animated.View entering={FadeIn.duration(300)}>
+              <View style={ss.reviewWriteBox}>
+                <Text style={ss.reviewWriteTitle}>Ask a Question</Text>
+                <TextInput
+                  style={ss.reviewInput}
+                  placeholder="What would you like to know about this product?"
+                  placeholderTextColor={Colors.textDim}
+                  value={myQuestion}
+                  onChangeText={setMyQuestion}
+                  multiline
+                  numberOfLines={2}
+                />
+                <TouchableOpacity onPress={submitQuestion} disabled={qaSubmitting} style={{ borderRadius: 12, overflow: 'hidden' }}>
+                  <LinearGradient colors={[Colors.forest, Colors.moss]} style={{ padding: 13, borderRadius: 12, alignItems: 'center' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                    <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 13 }}>
+                      {qaSubmitting ? 'Submitting...' : '❓ Submit Question'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+              {questions.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 30 }}>
+                  <Text style={{ fontSize: 36, marginBottom: 10 }}>❓</Text>
+                  <Text style={{ fontFamily: Fonts.bold, color: Colors.forest, fontSize: 14 }}>No questions yet</Text>
+                  <Text style={{ fontFamily: Fonts.regular, color: Colors.textDim, fontSize: 12, marginTop: 4 }}>Be the first to ask!</Text>
+                </View>
+              ) : (
+                questions.map((q: any, i: number) => (
+                  <Animated.View key={q.id || i} entering={FadeInDown.delay(i * 50)} style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 0.5, borderColor: Colors.border, ...Shadows.sm }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, marginBottom: 6 }}>Q: {q.question}</Text>
+                    {q.answers?.length > 0 ? q.answers.map((a: any, j: number) => (
+                      <View key={j} style={{ backgroundColor: Colors.mint, borderRadius: 10, padding: 10, marginTop: 6 }}>
+                        <Text style={{ fontFamily: Fonts.medium, fontSize: 11, color: Colors.sage, marginBottom: 3 }}>
+                          {a.is_admin ? '🌿 Store Team' : `💬 ${a.user_name || 'User'}`}
+                        </Text>
+                        <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.forest, lineHeight: 18 }}>{a.answer}</Text>
+                      </View>
+                    )) : (
+                      <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, fontStyle: 'italic' }}>No answer yet. Our team will respond soon.</Text>
+                    )}
+                  </Animated.View>
+                ))
               )}
             </Animated.View>
           )}

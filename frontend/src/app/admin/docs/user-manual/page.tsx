@@ -218,8 +218,9 @@ export default function UserManualPage() {
               { num: 8, title: 'Checkout & Payment', body: 'Enter a delivery address, confirm the order summary, then pay via Razorpay (Credit/Debit card, UPI, Net Banking, Wallets) or choose Cash on Delivery (COD).' },
               { num: 9, title: 'Order Confirmation', body: 'After successful payment, the customer receives a confirmation email with order details and an invoice.' },
               { num: 10, title: 'Track the Order', body: 'Customers can view real-time order status, a visual timeline of status changes, courier name, tracking number, and estimated delivery date.' },
-              { num: 11, title: 'Receive & Review', body: 'After delivery, customers are invited to write a product review and star rating. Loyalty points are automatically credited to their account.' },
-              { num: 12, title: 'Return / Refund (if needed)', body: 'Customers can request a return within the return window. The admin processes the return and issues a refund.' },
+              { num: 11, title: 'Receive & Review', body: 'After delivery, customers are invited to write a product review and star rating. Loyalty points are automatically credited to their account. A "Write a Review" card appears on the order detail page on both web and mobile.' },
+              { num: 12, title: 'Re-order', body: 'On any delivered or cancelled order, a Re-order button lets customers add all items back to cart in one tap and go straight to checkout.' },
+              { num: 13, title: 'Return / Refund (if needed)', body: 'Customers can request a return within the return window. The admin processes the return and issues a refund to wallet or original payment method.' },
             ].map(s => <Step key={s.num} num={s.num} title={s.title}>{s.body}</Step>)}
           </div>
         </Section>
@@ -513,6 +514,7 @@ export default function UserManualPage() {
                 ['View Invoice', 'Open/download the PDF invoice for any order.'],
                 ['Cancel Order', 'Cancel a Pending or Confirmed order. Stock is automatically restored.'],
                 ['Process Refund', 'For returned online orders — initiates automatic Razorpay refund.'],
+              ['Re-order', 'On delivered or cancelled orders — adds all items to cart for the customer to re-purchase.'],
               ]}
             />
             <InfoBox type="warning">You cannot skip order statuses (e.g., you cannot jump from Processing directly to Delivered). The system enforces valid transitions to maintain accurate tracking history.</InfoBox>
@@ -665,7 +667,7 @@ export default function UserManualPage() {
             rows={[
               ['Home', 'Featured products, categories, banners, flash sale countdown.'],
               ['Products', 'Browse all products with search and category filter.'],
-              ['Product Detail', 'Full product info, variants, add to cart, wishlist, reviews, Q&A.'],
+              ['Product Detail', 'Full product info, variants, add to cart, wishlist, reviews, Q&A tab. Tap any product image to open a full-screen zoom viewer (pinch to zoom on iOS).'],
               ['Cart', 'View cart, adjust quantities, proceed to checkout.'],
               ['Checkout', 'Address, coupon, wallet/loyalty, payment.'],
               ['Orders', 'List of all orders with status. Tap to see full tracking details.'],
@@ -673,7 +675,7 @@ export default function UserManualPage() {
               ['Wallet', 'Wallet balance card, transaction history (credit/debit), and loyalty points earned/redeemed — all in one screen with tabs.'],
               ['Notifications', 'In-app notification inbox showing all order status updates, grouped by date and linked to the order detail screen.'],
               ['Support', 'Create and view support tickets. Chat with support team.'],
-              ['Search', 'Full-text product search with instant autocomplete suggestions and recent search history.'],
+              ['Search', 'Full-text product search with instant autocomplete suggestions and recent search history. Results tap through to product or category.'],
               ['Wishlist', 'All saved products with add-to-cart shortcut.'],
               ['Auth', 'Login with email/password or OTP.'],
             ]}
