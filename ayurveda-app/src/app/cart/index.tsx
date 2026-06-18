@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator, Alert, Dimensions, FlatList, Image,
+  ActivityIndicator, Alert, Dimensions, FlatList,
   StatusBar, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
+import { Image as ExpoImage } from 'expo-image'
 import Animated, {
   FadeIn, FadeInDown, FadeOutLeft, Layout,
   useAnimatedStyle, useSharedValue, withSpring, withTiming,
@@ -97,7 +98,7 @@ function CartItem({ item, onUpdate, onRemove, updating }: {
   return (
     <Animated.View style={ss.cartCard}>
       <TouchableOpacity onPress={() => router.push(`/product/${item.product_id}`)} activeOpacity={0.9}>
-        <Image source={{ uri: item.images?.[0] || '' }} style={ss.cartImg} resizeMode="cover" />
+        <ExpoImage source={{ uri: item.images?.[0] || '' }} style={ss.cartImg} contentFit="cover" transition={200} />
       </TouchableOpacity>
 
       <View style={{ flex: 1 }}>
@@ -258,7 +259,7 @@ export default function CartScreen() {
         <>
           <FlatList
             data={items}
-            keyExtractor={item => String(item.id)}
+            keyExtractor={(item, index) => String(item.product_id ?? item.id ?? index)}
             contentContainerStyle={{ padding: 14, gap: 10, paddingBottom: 300 }}
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={

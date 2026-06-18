@@ -7,7 +7,7 @@ import {
   StatusBar, StyleSheet, Text, TouchableOpacity, View, FlatList,
 } from 'react-native'
 import { Image as ExpoImage } from 'expo-image'
-import * as Haptics from 'expo-haptics'
+import { impact, notify, Haptics } from '../utils/haptics'
 import Animated, {
   Extrapolation, FadeIn, FadeInDown, FadeInRight,
   interpolate, useAnimatedScrollHandler, useAnimatedStyle,
@@ -370,7 +370,7 @@ function ProductCard({ item, index }: { item: Product; index: number }) {
 
   const handleWish = async () => {
     if (!user) { setAuthOpen(true); return }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    impact(Haptics.ImpactFeedbackStyle.Light)
     const adding = !wished
     const prev = useStore.getState().wishlistData
     setWished(adding)
@@ -387,11 +387,11 @@ function ProductCard({ item, index }: { item: Product; index: number }) {
 
   const handleCart = async () => {
     if (inCart) { router.push('/cart'); return }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    impact(Haptics.ImpactFeedbackStyle.Medium)
     setAdding(true)
     try {
       await addToCartApi(item.id)
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      notify(Haptics.NotificationFeedbackType.Success)
     } catch { } finally { setAdding(false) }
   }
 
@@ -649,11 +649,11 @@ export default function HomeScreen() {
   }, [])
 
   // Refetch featured products when category filter changes
-  useEffect(async() => {
+  useEffect(() => {
     setProdLoading(true)
     const params: any = { limit: 8 }
     if (activeCatId) params.category_id = activeCatId
-   await api.get('/shop/public', { params })
+    api.get('/shop/public', { params })
       .then(r => setProducts(r.data?.products || []))
       .catch(e => console.warn('[Home products]', e?.response?.status, e?.message))
       .finally(() => setProdLoading(false))

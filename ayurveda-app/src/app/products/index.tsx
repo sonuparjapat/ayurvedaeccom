@@ -7,7 +7,7 @@ import {
   TouchableOpacity, View, Pressable,
 } from 'react-native'
 import { Image as ExpoImage } from 'expo-image'
-import * as Haptics from 'expo-haptics'
+import { impact, notify, Haptics } from '../../utils/haptics'
 import Animated, {
   FadeIn, FadeInDown, FadeInUp,
   useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle,
@@ -196,7 +196,7 @@ export default function ProductsScreen() {
   }
 
   const addToCart = async (productId: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    impact(Haptics.ImpactFeedbackStyle.Medium)
     setAddingId(productId)
     try {
       const payload: any = { productId, quantity: 1 }
@@ -210,14 +210,14 @@ export default function ProductsScreen() {
       const res = await api.get(url)
       const items = res.data?.items || []
       setCartData({ items, subtotal: res.data?.subtotal || 0, totalItems: items.length })
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      notify(Haptics.NotificationFeedbackType.Success)
     } catch { } finally { setAddingId(null) }
   }
 
   const { setWishlistData } = useStore()
   const toggleWish = async (id: number) => {
     if (!user) { setAuthOpen(true); return }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    impact(Haptics.ImpactFeedbackStyle.Light)
     const adding = !wishlist.includes(id)
     const prevLocal = wishlist
     const prevStore = useStore.getState().wishlistData
