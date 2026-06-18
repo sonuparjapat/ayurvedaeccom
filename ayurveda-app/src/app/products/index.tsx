@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
-  Dimensions, FlatList, Image, Modal, Platform,
+  Dimensions, FlatList, Modal, Platform, RefreshControl,
   ScrollView, StatusBar, StyleSheet, Text, TextInput,
   TouchableOpacity, View, Pressable,
 } from 'react-native'
+import { Image as ExpoImage } from 'expo-image'
+import * as Haptics from 'expo-haptics'
 import Animated, {
   FadeIn, FadeInDown, FadeInUp,
   useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle,
@@ -78,7 +80,7 @@ function ProductCard({ p, index, addingId, addToCart, toggleWish, wishlist, inCa
     <Animated.View entering={FadeInDown.delay((index % 8) * 50).duration(400)} style={ss.card}>
       <TouchableOpacity onPress={() => router.push(`/product/${p.id}`)} activeOpacity={0.9}>
         <View style={ss.cardImgWrap}>
-          <Image source={{ uri: p.images?.[0] || '' }} style={ss.cardImg} resizeMode="cover" />
+          <ExpoImage source={{ uri: p.images?.[0] || '' }} style={ss.cardImg} contentFit="cover" transition={200} />
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.2)']} style={StyleSheet.absoluteFill} />
           {d != null && (
             <View style={ss.discBadge}>
@@ -143,6 +145,7 @@ export default function ProductsScreen() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const LIMIT = 12
@@ -193,6 +196,7 @@ export default function ProductsScreen() {
   }
 
   const addToCart = async (productId: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     setAddingId(productId)
     try {
       const payload: any = { productId, quantity: 1 }
@@ -206,12 +210,14 @@ export default function ProductsScreen() {
       const res = await api.get(url)
       const items = res.data?.items || []
       setCartData({ items, subtotal: res.data?.subtotal || 0, totalItems: items.length })
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     } catch { } finally { setAddingId(null) }
   }
 
   const { setWishlistData } = useStore()
   const toggleWish = async (id: number) => {
     if (!user) { setAuthOpen(true); return }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     const adding = !wishlist.includes(id)
     const prevLocal = wishlist
     const prevStore = useStore.getState().wishlistData
@@ -341,6 +347,7 @@ export default function ProductsScreen() {
           columnWrapperStyle={{ gap: 12 }}
           contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 90 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await fetchProducts(1); setRefreshing(false) }} tintColor={Colors.forest} colors={[Colors.forest]} />}
           onEndReached={() => { if (!loadingMore && products.length < total) fetchProducts(page + 1) }}
           onEndReachedThreshold={0.3}
           ListFooterComponent={

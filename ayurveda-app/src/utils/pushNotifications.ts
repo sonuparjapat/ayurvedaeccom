@@ -1,13 +1,20 @@
 import * as Device from 'expo-device'
-import * as Notifications from 'expo-notifications'
+import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 import api from '../api/axios'
 
 const PROJECT_ID = 'dcbef284-0025-4bac-a63e-27fcc1e7c0f0'
 
+// expo-notifications remote push was removed from Expo Go at SDK 53.
+// Detect Expo Go via appOwnership and skip entirely — no crash, no warning.
+const isExpoGo = Constants.appOwnership === 'expo'
+
 export async function registerPushToken(): Promise<string | null> {
   try {
+    if (isExpoGo) return null
     if (!Device.isDevice) return null
+
+    const Notifications = await import('expo-notifications')
 
     Notifications.setNotificationHandler({
       handleNotification: async () => ({

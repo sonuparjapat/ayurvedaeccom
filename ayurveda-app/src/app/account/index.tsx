@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import {
-  Alert, Modal, Pressable, ScrollView, StatusBar,
+  Alert, Clipboard, Modal, Pressable, ScrollView, Share, StatusBar,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import Animated, { FadeIn, FadeInDown, FadeInRight } from 'react-native-reanimated'
@@ -457,6 +457,31 @@ export default function AccountScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Referral Code Card */}
+            {(user as any)?.referral_code && (
+              <View style={{ backgroundColor: '#f0fdf4', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#bbf7d0' }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, marginBottom: 6 }}>🎁 Your Referral Code</Text>
+                <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, marginBottom: 10 }}>Share with friends — they get a discount and you earn wallet credits.</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#d1fae5' }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 16, color: Colors.forest, letterSpacing: 2, textAlign: 'center' }}>{(user as any).referral_code}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => { Clipboard.setString((user as any).referral_code); Alert.alert('Copied!', 'Referral code copied to clipboard.') }}
+                    style={{ backgroundColor: Colors.forest, borderRadius: 10, padding: 10 }}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>Copy</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => Share.share({ message: `Use my code ${(user as any).referral_code} on AyurVeda Desi Foods to get a discount on your first order!` })}
+                    style={{ backgroundColor: Colors.sage, borderRadius: 10, padding: 10 }}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>Share</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
             <TouchableOpacity onPress={handleLogout} disabled={loggingOut} style={ss.logoutBtn}>
               <Text style={ss.logoutText}>{loggingOut ? 'Logging out...' : '🚪  Sign Out'}</Text>

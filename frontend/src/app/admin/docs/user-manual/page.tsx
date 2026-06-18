@@ -666,22 +666,24 @@ export default function UserManualPage() {
             headers={['Screen', 'Features']}
             rows={[
               ['Home', 'Featured products, categories, banners, flash sale countdown.'],
-              ['Products', 'Browse all products with search and category filter.'],
-              ['Product Detail', 'Full product info, variants, add to cart, wishlist, reviews, Q&A tab. Tap any product image to open a full-screen zoom viewer (pinch to zoom on iOS).'],
+              ['Products', 'Browse all products with search and category filter. Pull down on the list to refresh and load the latest products instantly.'],
+              ['Product Detail', 'Full product info, variants, add to cart, wishlist, reviews, Q&A tab. Tap any product image to open a full-screen zoom viewer (pinch to zoom on iOS). Tap the Share icon in the top bar to share the product via any installed app (WhatsApp, email, etc.).'],
               ['Cart', 'View cart, adjust quantities, proceed to checkout.'],
               ['Checkout', 'Address, coupon, wallet/loyalty, payment.'],
-              ['Orders', 'List of all orders with status. Tap to see full tracking details.'],
-              ['Account', 'Profile, wishlist, cart, addresses, support link. Quick links to Wallet and Notifications screens.'],
+              ['Orders', 'List of all orders with status. Tap to see full tracking details. Tap "Chat" on any order to open a support ticket.'],
+              ['Account', 'Profile, wishlist, cart, addresses, support link. Quick links to Wallet and Notifications screens. Displays your unique Referral Code with Copy and Share buttons.'],
               ['Wallet', 'Wallet balance card, transaction history (credit/debit), and loyalty points earned/redeemed — all in one screen with tabs.'],
               ['Notifications', 'In-app notification inbox showing all order status updates, grouped by date and linked to the order detail screen.'],
               ['Support', 'Create and view support tickets. Chat with support team.'],
               ['Search', 'Full-text product search with instant autocomplete suggestions and recent search history. Results tap through to product or category.'],
-              ['Wishlist', 'All saved products with add-to-cart shortcut.'],
+              ['Wishlist', 'All saved products with add-to-cart shortcut. Pull down to refresh your saved items.'],
               ['Auth', 'Login with email/password or OTP.'],
             ]}
           />
           <InfoBox type="tip">A persistent <strong>bottom navigation bar</strong> appears on all main screens (Home, Browse/Products, Wishlist, Account) so you can switch sections without going back. It uses a frosted glass effect and highlights the active tab.</InfoBox>
-          <InfoBox type="info">The mobile app receives <strong>push notifications</strong> for order status updates. Allow notifications when prompted on first launch. You can also view all past notifications in the Notifications screen.</InfoBox>
+          <InfoBox type="info">The mobile app receives <strong>real-time push notifications</strong> for order status updates. Tapping the notification takes you directly to that order's detail screen. Tapping a support reply notification opens the Support screen. Allow notifications when prompted on first launch.</InfoBox>
+          <InfoBox type="tip">Your <strong>referral code</strong> is visible in the Account screen. Tap <strong>Copy</strong> to copy it to clipboard, or tap <strong>Share</strong> to send it via WhatsApp, email, or any app — friends who use your code get a discount and you earn wallet credits.</InfoBox>
+          <InfoBox type="tip">The mobile app gives <strong>haptic feedback</strong> (vibration) on key actions — adding to cart, toggling wishlist, removing items — so you always feel confirmation without looking at the screen.</InfoBox>
         </Section>
 
         {/* ═══ 18. ORDER STATUS GUIDE ═══ */}

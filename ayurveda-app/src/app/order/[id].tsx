@@ -617,7 +617,7 @@ export default function OrderDetailScreen() {
                   <Text style={ss.helpTitle}>Need help?</Text>
                   <Text style={ss.helpSub}>Contact our support team for any order related queries</Text>
                 </View>
-                <TouchableOpacity style={ss.helpBtn}>
+                <TouchableOpacity onPress={() => router.push('/support' as any)} style={ss.helpBtn}>
                   <Text style={ss.helpBtnText}>Chat</Text>
                 </TouchableOpacity>
               </View>

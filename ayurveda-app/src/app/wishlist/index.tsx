@@ -2,10 +2,12 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import {
-  ActivityIndicator, Dimensions, FlatList, Image,
+  ActivityIndicator, Dimensions, FlatList, RefreshControl,
   StatusBar, StyleSheet, Text, TextInput,
   TouchableOpacity, View, Alert,
 } from 'react-native'
+import { Image as ExpoImage } from 'expo-image'
+import * as Haptics from 'expo-haptics'
 import Animated, { FadeInDown, FadeOutRight, Layout } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -47,6 +49,7 @@ export default function WishlistScreen() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [removingId, setRemovingId] = useState<number | null>(null)
   const [addingId, setAddingId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
@@ -79,26 +82,32 @@ export default function WishlistScreen() {
   }
 
   const removeItem = async (productId: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     setRemovingId(productId)
     try {
       await api.delete(`/shop/${productId}`)
       setItems(prev => prev.filter(i => i.id !== productId))
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     } catch (e: any) {
       Alert.alert('Error', e?.response?.data?.message || 'Failed to remove')
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
     } finally { setRemovingId(null) }
   }
 
   const addToCart = async (productId: number) => {
     if (!user) { setAuthOpen(true); return }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     setAddingId(productId)
     try {
       await api.post('/cart', { productId, quantity: 1 })
       const res = await api.get('/cart')
       const cartItems = res.data?.items || []
       setCartData({ items: cartItems, subtotal: res.data?.subtotal || 0, totalItems: cartItems.length })
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       Alert.alert('Added!', 'Item added to cart')
     } catch (e: any) {
       Alert.alert('Error', e?.response?.data?.message || 'Failed')
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
     } finally { setAddingId(null) }
   }
 
@@ -123,7 +132,7 @@ export default function WishlistScreen() {
           {/* Image */}
           <View style={ss.imgWrap}>
             {img ? (
-              <Image source={{ uri: img }} style={ss.img} resizeMode="cover" />
+              <ExpoImage source={{ uri: img }} style={ss.img} contentFit="cover" transition={200} />
             ) : (
               <View style={[ss.img, { backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' }]}>
                 <Text style={{ fontSize: 40 }}>🌿</Text>
@@ -276,6 +285,7 @@ export default function WishlistScreen() {
           columnWrapperStyle={{ gap: 12 }}
           contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await fetchWishlist(1); setRefreshing(false) }} tintColor={Colors.forest} colors={[Colors.forest]} />}
           onEndReached={() => { if (!loadingMore && page < totalPages) fetchWishlist(page + 1) }}
           onEndReachedThreshold={0.4}
           ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.forest} style={{ marginTop: 12 }} /> : null}

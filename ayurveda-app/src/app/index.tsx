@@ -3,9 +3,11 @@ import BottomNav from '../components/BottomNav'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from 'expo-router'
 import {
-  Dimensions, Image, Platform, Pressable, ScrollView,
+  Dimensions, Platform, Pressable, ScrollView,
   StatusBar, StyleSheet, Text, TouchableOpacity, View, FlatList,
 } from 'react-native'
+import { Image as ExpoImage } from 'expo-image'
+import * as Haptics from 'expo-haptics'
 import Animated, {
   Extrapolation, FadeIn, FadeInDown, FadeInRight,
   interpolate, useAnimatedScrollHandler, useAnimatedStyle,
@@ -218,7 +220,7 @@ function HeroCarousel({ slides }: { slides: BannerSlide[] }) {
           <Animated.View entering={FadeIn.delay(index * 80)} style={[ss.heroCard, { width: W - 32 }]}>
             <LinearGradient colors={[slide.bg_color1, slide.bg_color2]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
             {slide.image_url ? (
-              <Image source={{ uri: slide.image_url }} style={[StyleSheet.absoluteFill, { opacity: 0.25, borderRadius: 20 }]} resizeMode="cover" />
+              <ExpoImage source={{ uri: slide.image_url }} style={[StyleSheet.absoluteFill, { opacity: 0.25, borderRadius: 20 }]} contentFit="cover" transition={300} />
             ) : null}
             <View style={[ss.heroBlob, { top: -30, right: -30, backgroundColor: 'rgba(16,185,129,0.12)' }]} />
             <View style={[ss.heroBlob, { bottom: -20, left: -20, width: 120, height: 120, backgroundColor: 'rgba(201,168,76,0.08)' }]} />
@@ -311,7 +313,7 @@ function CategoryCard({ item, index }: { item: any; index: number }) {
         <LinearGradient colors={theme.grad} style={ss.catBar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
         <View style={[ss.catImgWrap, { backgroundColor: theme.light }]}>
           {item.image_url
-            ? <Image source={{ uri: item.image_url }} style={ss.catImg} />
+            ? <ExpoImage source={{ uri: item.image_url }} style={ss.catImg} contentFit="cover" transition={200} />
             : <Text style={{ fontSize: 34 }}>🌿</Text>
           }
         </View>
@@ -368,6 +370,7 @@ function ProductCard({ item, index }: { item: Product; index: number }) {
 
   const handleWish = async () => {
     if (!user) { setAuthOpen(true); return }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     const adding = !wished
     const prev = useStore.getState().wishlistData
     setWished(adding)
@@ -384,8 +387,12 @@ function ProductCard({ item, index }: { item: Product; index: number }) {
 
   const handleCart = async () => {
     if (inCart) { router.push('/cart'); return }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     setAdding(true)
-    try { await addToCartApi(item.id) } catch { } finally { setAdding(false) }
+    try {
+      await addToCartApi(item.id)
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    } catch { } finally { setAdding(false) }
   }
 
   const cartLabel = outOfStock ? 'Out of Stock' : inCart ? '✓ In Cart — View' : adding ? 'Adding...' : '+ Add to Cart'
@@ -401,7 +408,7 @@ function ProductCard({ item, index }: { item: Product; index: number }) {
       >
         <View style={ss.prodImgWrap}>
           {img
-            ? <Image source={{ uri: img }} style={ss.prodImg} resizeMode="cover" />
+            ? <ExpoImage source={{ uri: img }} style={ss.prodImg} contentFit="cover" transition={200} />
             : <View style={[ss.prodImg, { backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' }]}><Text style={{ fontSize: 36 }}>🌿</Text></View>
           }
           <LinearGradient colors={['transparent', 'rgba(10,24,16,0.25)']} style={StyleSheet.absoluteFill} />
@@ -642,11 +649,11 @@ export default function HomeScreen() {
   }, [])
 
   // Refetch featured products when category filter changes
-  useEffect(() => {
+  useEffect(async() => {
     setProdLoading(true)
     const params: any = { limit: 8 }
     if (activeCatId) params.category_id = activeCatId
-    api.get('/shop/public', { params })
+   await api.get('/shop/public', { params })
       .then(r => setProducts(r.data?.products || []))
       .catch(e => console.warn('[Home products]', e?.response?.status, e?.message))
       .finally(() => setProdLoading(false))

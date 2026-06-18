@@ -807,7 +807,9 @@ await api.post('/orders', { address_id, payment_method })`}</Code>
             headers={['Package', 'Purpose']}
             rows={[
               ['expo-router', 'File-based routing (same pattern as Next.js App Router)'],
-              ['expo-notifications', 'Push notification registration + handling'],
+              ['expo-notifications', 'Push notification registration + handling (skipped in Expo Go via appOwnership check)'],
+              ['expo-image', 'High-performance image with disk/memory cache, cross-fade transition, WebP support'],
+              ['expo-haptics', 'Haptic feedback on add-to-cart, wishlist toggle, remove actions'],
               ['expo-linear-gradient', 'Gradient backgrounds in UI'],
               ['@react-native-async-storage/async-storage', 'Persists JWT token + user data locally'],
               ['axios', 'HTTP client (same api.ts pattern as web)'],
@@ -860,6 +862,71 @@ await api.post('/push/push-token', { token, platform: 'android' | 'ios' })
 // WHERE orders.user_id = $1
 // Returns: { id, order_id, invoice_no, new_status, title, body, emoji, created_at, type:'order_update' }
 // No separate notifications table — synthesised from order history on every request`}</Code>
+          <H3>Socket.io deep-link navigation on mobile</H3>
+          <Code>{`// useOrderSocket.ts — both socket events include action buttons (not just "OK")
+// order_status_updated → Alert buttons: "View Order" (router.push('/order/:id')) | "OK"
+// admin_replied       → Alert buttons: "Open Ticket" (router.push('/support'))  | "Later"
+// Gives users one-tap access to the relevant screen directly from the notification Alert`}</Code>
+          <H3>Pull-to-refresh on Products and Wishlist</H3>
+          <Code>{`// products/index.tsx and wishlist/index.tsx
+// Added: import { RefreshControl } from 'react-native'
+// Added: const [refreshing, setRefreshing] = useState(false)
+// FlatList refreshControl prop:
+<RefreshControl
+  refreshing={refreshing}
+  onRefresh={async () => { setRefreshing(true); await fetchProducts(1); setRefreshing(false) }}
+  tintColor={Colors.forest}   // iOS spinner colour
+  colors={[Colors.forest]}    // Android spinner colour
+/>`}</Code>
+          <H3>Native Share on Product Detail (mobile)</H3>
+          <Code>{`// product/[id].tsx — Share button in top action row (alongside wishlist icon)
+import { Share } from 'react-native'
+
+// Handler:
+Share.share({
+  message: \`\${product.name} — AyurVeda Desi Foods\nCheck it out: \${API_BASE}/products/\${id}\`,
+})
+// Opens native share sheet: WhatsApp, email, SMS, copy link, etc.`}</Code>
+          <H3>Referral code card in mobile Account screen</H3>
+          <Code>{`// account/index.tsx — shown only when user.referral_code is truthy
+// Imports: Clipboard, Share from 'react-native'
+// Two action buttons:
+//   Copy → Clipboard.setString(referral_code) + Alert.alert('Copied!')
+//   Share → Share.share({ message: 'Use my code XXXX on AyurVeda Desi Foods...' })
+// Card styled with Colors.forest border, Fonts.bold code display, letter-spacing: 2`}</Code>
+          <H3>Chat button deep-link fix on Order Detail (mobile)</H3>
+          <Code>{`// order/[id].tsx — Chat button previously had no onPress handler (dead button)
+// Fixed: onPress={() => router.push('/support' as any)}
+// Now opens the Support screen so the customer can create/view their ticket`}</Code>
+          <H3>expo-notifications Expo Go fix</H3>
+          <Code>{`// src/utils/pushNotifications.ts
+// expo-notifications remote push removed from Expo Go at SDK 53+
+// Fix: check Constants.appOwnership === 'expo' and return null early
+// Fix: use dynamic import('expo-notifications') inside try block
+// Result: no crash in Expo Go; works normally in dev builds and standalone`}</Code>
+          <H3>expo-image for cached image loading (mobile)</H3>
+          <Code>{`// Replaced react-native Image with expo-image in:
+//   index.tsx        → hero banner, category cards, product cards
+//   products/index.tsx → product card images
+//   wishlist/index.tsx → wishlist item images
+//
+// Changes:
+//   resizeMode="cover"  →  contentFit="cover"
+//   transition={200}       adds a 200ms cross-fade on load
+//
+// Benefits: disk cache, memory cache, faster re-render on scroll,
+//   WebP support, no placeholder flicker on fast scroll`}</Code>
+          <H3>Haptic feedback on key mobile actions</H3>
+          <Code>{`// Package added: expo-haptics ~14.0.1
+// Used in: products/index.tsx, wishlist/index.tsx, index.tsx (home)
+//
+// Patterns:
+//   Haptics.impactAsync(ImpactFeedbackStyle.Medium)   → button press start
+//   Haptics.notificationAsync(NotificationFeedbackType.Success) → after success
+//   Haptics.notificationAsync(NotificationFeedbackType.Error)   → after failure
+//   Haptics.impactAsync(ImpactFeedbackStyle.Light)    → wishlist toggle
+//
+// Actions with haptics: add-to-cart, wishlist toggle, remove-from-wishlist`}</Code>
         </Section>
 
         {/* ═══ DEPLOY ═══ */}

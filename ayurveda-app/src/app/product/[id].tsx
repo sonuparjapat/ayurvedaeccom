@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getGuestSession } from '../../utils/guestSession'
 import {
   ActivityIndicator, Dimensions, FlatList, Image, Alert, KeyboardAvoidingView, Modal,
-  Platform, ScrollView, StatusBar, StyleSheet, Text,
+  Platform, ScrollView, Share, StatusBar, StyleSheet, Text,
   TouchableOpacity, View, TextInput,
 } from 'react-native'
 import Animated, {
@@ -423,6 +423,9 @@ export default function ProductDetailScreen() {
                 <Text style={{ fontSize: 7, color: Colors.forest, fontFamily: Fonts.bold }}>{cartCount}</Text>
               </View>
             )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => Share.share({ message: `${product.name} — ₹${effectivePrice}\n\nAyurVeda Desi Foods`, title: product.name })} style={ss.topBtn}>
+            <Text style={{ fontSize: 17 }}>↗️</Text>
           </TouchableOpacity>
           <Animated.View style={wishStyle}>
             <TouchableOpacity onPress={handleWishlist} style={ss.topBtn}>
