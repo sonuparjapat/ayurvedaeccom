@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import BottomNav from '../../components/BottomNav'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   Dimensions, FlatList, Image, Modal, Platform,
@@ -307,7 +308,7 @@ export default function ProductsScreen() {
           keyExtractor={k => String(k)}
           numColumns={2}
           columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 90 }}
           showsVerticalScrollIndicator={false}
           renderItem={() => <SkeletonCard />}
         />
@@ -338,7 +339,7 @@ export default function ProductsScreen() {
           )}
           numColumns={2}
           columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 90 }}
           showsVerticalScrollIndicator={false}
           onEndReached={() => { if (!loadingMore && products.length < total) fetchProducts(page + 1) }}
           onEndReachedThreshold={0.3}
@@ -410,6 +411,7 @@ export default function ProductsScreen() {
           </TouchableOpacity>
         </Animated.View>
       </Modal>
+      <BottomNav active="/products" />
     </View>
   )
 }

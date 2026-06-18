@@ -1766,3 +1766,77 @@ exports.verifyDeliveryOTP = async (req, res) => {
     res.status(500).json({ message: 'Server error' })
   }
 }
+
+/* ─── RETURNS MANAGEMENT ─── */
+
+exports.adminGetReturns = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status = '7,8,9' } = req.query
+    const offset = (Number(page) - 1) * Number(limit)
+    const statuses = status.split(',').map(Number)
+    const r = await pool.query(
+      `SELECT o.id, o.invoice_no, o.status, o.total_amount, o.return_reason,
+              o.created_at, o.updated_at, o.payment_method,
+              u.name AS user_name, u.email AS user_email, u.id AS user_id,
+              (SELECT json_agg(json_build_object('name',oi.product_name,'qty',oi.quantity,'price',oi.price,'image',p.thumbnail))
+               FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id WHERE oi.order_id=o.id) AS items
+       FROM orders o JOIN users u ON u.id=o.user_id
+       WHERE o.status = ANY($1)
+       ORDER BY o.updated_at DESC
+       LIMIT $2 OFFSET $3`,
+      [statuses, limit, offset]
+    )
+    const cnt = await pool.query(`SELECT COUNT(*) FROM orders WHERE status = ANY($1)`, [statuses])
+    res.json({ data: r.rows, meta: { total: Number(cnt.rows[0].count), page: Number(page), limit: Number(limit) } })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+exports.adminApproveReturn = async (req, res) => {
+  const client = await pool.connect()
+  try {
+    const { id } = req.params
+    const { refund_to_wallet = true } = req.body
+    await client.query('BEGIN')
+    const ord = await client.query(`SELECT id, status, total_amount, user_id FROM orders WHERE id=$1`, [id])
+    if (!ord.rows.length) return res.status(404).json({ message: 'Order not found' })
+    if (ord.rows[0].status !== 7) return res.status(400).json({ message: 'Order is not in Return Requested state' })
+    await client.query(`UPDATE orders SET status=8, updated_at=NOW() WHERE id=$1`, [id])
+    if (refund_to_wallet) {
+      const amount = Number(ord.rows[0].total_amount)
+      const userId = ord.rows[0].user_id
+      await client.query(`INSERT INTO wallet_transactions (user_id, amount, type, source, description) VALUES ($1,$2,'credit','refund','Return refund for order #' || $3)`, [userId, amount, id])
+      await client.query(`UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id=$2`, [amount, userId])
+    }
+    await client.query('COMMIT')
+    res.json({ success: true, message: 'Return approved, refund initiated' })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    res.status(500).json({ message: 'Approval failed' })
+  } finally { client.release() }
+}
+
+exports.adminRejectReturn = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { reason = 'Return request rejected by admin' } = req.body
+    const ord = await pool.query(`SELECT status FROM orders WHERE id=$1`, [id])
+    if (!ord.rows.length) return res.status(404).json({ message: 'Order not found' })
+    if (ord.rows[0].status !== 7) return res.status(400).json({ message: 'Order is not in Return Requested state' })
+    await pool.query(`UPDATE orders SET status=5, cancel_reason=$1, updated_at=NOW() WHERE id=$2`, [reason, id])
+    res.json({ success: true, message: 'Return rejected' })
+  } catch (err) {
+    res.status(500).json({ message: 'Rejection failed' })
+  }
+}
+
+exports.adminCompleteRefund = async (req, res) => {
+  try {
+    const { id } = req.params
+    await pool.query(`UPDATE orders SET status=9, updated_at=NOW() WHERE id=$1 AND status=8`, [id])
+    res.json({ success: true, message: 'Refund completed' })
+  } catch (err) {
+    res.status(500).json({ message: 'Failed' })
+  }
+}

@@ -205,6 +205,14 @@ function HeroCarousel({ slides }: { slides: BannerSlide[] }) {
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onMomentumScrollEnd}
         contentContainerStyle={{ gap: 0 }}
+        getItemLayout={(_, index) => ({
+          length: W - 32,
+          offset: (W - 32) * index,
+          index,
+        })}
+        onScrollToIndexFailed={({ index }) => {
+          flatRef.current?.scrollToOffset({ offset: (W - 32) * index, animated: true })
+        }}
         renderItem={({ item: slide, index }) => (
           <Animated.View entering={FadeIn.delay(index * 80)} style={[ss.heroCard, { width: W - 32 }]}>
             <LinearGradient colors={[slide.bg_color1, slide.bg_color2]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
@@ -652,6 +660,7 @@ export default function HomeScreen() {
   const [activeCoupon, setActiveCoupon] = useState<ActiveCoupon | null>(null)
   const [defaultAddr, setDefaultAddr] = useState<string | null>(null)
   const [prodLoading, setProdLoading] = useState(true)
+  const [revLoading, setRevLoading] = useState(true)
   const [activeCatId, setActiveCatId] = useState<number | null>(null)
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([])
 
@@ -670,6 +679,7 @@ export default function HomeScreen() {
     api.get('/shop/reviews', { params: { rating: 5, limit: 6, page: 1 } })
       .then(r => setReviews(r.data?.data || []))
       .catch(() => {})
+      .finally(() => setRevLoading(false))
   }, [])
 
   // Refetch featured products when category filter changes

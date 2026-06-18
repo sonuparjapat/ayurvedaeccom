@@ -560,6 +560,26 @@ export default function OrderDetailScreen() {
               </Animated.View>
             )}
 
+            {/* ── WRITE REVIEW (Delivered orders) ── */}
+            {order?.status === 5 && (
+              <Animated.View entering={FadeInDown.delay(270)} style={{ paddingHorizontal: 16, marginTop: 8 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    const firstItem = order.items[0]
+                    if (firstItem) router.push(`/product/${firstItem.product_id}` as any)
+                  }}
+                  style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#d1fae5' }}
+                >
+                  <Text style={{ fontSize: 28 }}>⭐</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest }}>Write a Review</Text>
+                    <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, marginTop: 2 }}>Share your experience with this product</Text>
+                  </View>
+                  <Text style={{ color: Colors.textDim, fontSize: 18 }}>›</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+
             {/* ── HELP ── */}
             <Animated.View entering={FadeInDown.delay(280)} style={[ss.card, { marginTop: 10 }]}>
               <View style={ss.helpRow}>

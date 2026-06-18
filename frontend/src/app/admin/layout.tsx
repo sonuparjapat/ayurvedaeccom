@@ -28,6 +28,7 @@ import {
   Download,
   BookOpen,
   Code2,
+  RotateCcw,
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
@@ -169,6 +170,10 @@ export default function AdminLayout({
 </MenuItem>
           <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />}>
             Orders
+          </MenuItem>
+
+          <MenuItem href="/admin/returns" icon={<RotateCcw size={18} />}>
+            Returns
           </MenuItem>
 
           <MenuItem href="/admin/categories" icon={<ShoppingCart size={18} />}>

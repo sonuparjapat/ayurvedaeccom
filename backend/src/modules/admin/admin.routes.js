@@ -208,4 +208,10 @@ router.post('/orders/:id/verify-otp', controller.verifyDeliveryOTP)
 /* ─── REVENUE CHART ─── */
 router.get('/revenue-chart', auth, admin, analyticscontroller.getRevenueChart)
 
+/* ─── RETURNS MANAGEMENT ─── */
+router.get('/returns', auth, admin, controller.adminGetReturns)
+router.put('/returns/:id/approve', auth, admin, controller.adminApproveReturn)
+router.put('/returns/:id/reject', auth, admin, controller.adminRejectReturn)
+router.put('/returns/:id/complete-refund', auth, admin, controller.adminCompleteRefund)
+
 module.exports = router

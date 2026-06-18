@@ -1,9 +1,6 @@
 // src/app/wishlist/index.tsx
-// GET /shop?limit=8&page=1&search= → { data: WishlistItem[], pagination }
-// DELETE /shop/:productId → remove from wishlist
-// POST /cart { productId, quantity:1 } → add to cart
-
 import React, { useCallback, useEffect, useState } from 'react'
+import BottomNav from '../../components/BottomNav'
 import {
   ActivityIndicator, Dimensions, FlatList, Image,
   StatusBar, StyleSheet, Text, TextInput,
@@ -284,6 +281,7 @@ export default function WishlistScreen() {
           ListFooterComponent={loadingMore ? <ActivityIndicator color={Colors.forest} style={{ marginTop: 12 }} /> : null}
         />
       )}
+      <BottomNav active="/wishlist" />
     </View>
   )
 }

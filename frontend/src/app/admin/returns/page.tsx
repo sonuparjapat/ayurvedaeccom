@@ -1,0 +1,333 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import axios from '@/lib/axios'
+import { notify } from '@/app/utils/notify'
+import {
+  RotateCcw, CheckCircle, XCircle, DollarSign, Package,
+  User, Search, RefreshCw, Eye,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import AppModal from '@/components/modal/AppModal'
+
+const STATUS_LABEL: Record<number, { label: string; color: string; bg: string }> = {
+  7: { label: 'Return Requested', color: '#92400e', bg: '#fffbeb' },
+  8: { label: 'Refund Initiated', color: '#6d28d9', bg: '#f5f3ff' },
+  9: { label: 'Refunded',         color: '#065f46', bg: '#ecfdf5' },
+}
+
+export default function AdminReturnsPage() {
+  const [list, setList] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [filter, setFilter] = useState('7,8,9')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [meta, setMeta] = useState<any>({})
+
+  const [selected, setSelected] = useState<any>(null)
+  const [viewOpen, setViewOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [processing, setProcessing] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const res = await axios.get('/admin/returns', { params: { status: filter, page, limit: 20 } })
+      setList(res.data.data || [])
+      setMeta(res.data.meta || {})
+    } catch { notify.error('Load failed') }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { load() }, [filter, page])
+
+  const filtered = list.filter(o =>
+    !search || o.user_name?.toLowerCase().includes(search.toLowerCase()) ||
+    o.user_email?.toLowerCase().includes(search.toLowerCase()) ||
+    String(o.id).includes(search) || (o.invoice_no || '').includes(search)
+  )
+
+  const approve = async (id: number, refundToWallet = true) => {
+    setProcessing(true)
+    try {
+      await axios.put(`/admin/returns/${id}/approve`, { refund_to_wallet: refundToWallet })
+      notify.success('Return approved — wallet credited')
+      setViewOpen(false)
+      load()
+    } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
+    finally { setProcessing(false) }
+  }
+
+  const reject = async (id: number) => {
+    if (!rejectReason.trim()) return notify.error('Please enter rejection reason')
+    setProcessing(true)
+    try {
+      await axios.put(`/admin/returns/${id}/reject`, { reason: rejectReason })
+      notify.success('Return rejected')
+      setRejectOpen(false)
+      setViewOpen(false)
+      setRejectReason('')
+      load()
+    } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
+    finally { setProcessing(false) }
+  }
+
+  const completeRefund = async (id: number) => {
+    setProcessing(true)
+    try {
+      await axios.put(`/admin/returns/${id}/complete-refund`)
+      notify.success('Refund marked complete')
+      setViewOpen(false)
+      load()
+    } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
+    finally { setProcessing(false) }
+  }
+
+  const stats = {
+    requested: list.filter(o => o.status === 7).length,
+    initiated:  list.filter(o => o.status === 8).length,
+    refunded:   list.filter(o => o.status === 9).length,
+    totalValue: list.filter(o => o.status === 7).reduce((s, o) => s + Number(o.total_amount || 0), 0),
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
+      {/* Header */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <RotateCcw className="text-orange-500" size={22} /> Returns Management
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">Review and process customer return requests</p>
+        </div>
+        <Button variant="outline" onClick={load} className="gap-2">
+          <RefreshCw size={15} /> Refresh
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Return Requested', value: stats.requested, color: 'text-orange-600', bg: 'bg-orange-50', icon: <RotateCcw size={18} /> },
+          { label: 'Refund Initiated', value: stats.initiated,  color: 'text-purple-600', bg: 'bg-purple-50', icon: <DollarSign size={18} /> },
+          { label: 'Refunded',         value: stats.refunded,   color: 'text-green-600',  bg: 'bg-green-50',  icon: <CheckCircle size={18} /> },
+          { label: 'Pending Value',    value: `₹${stats.totalValue.toLocaleString()}`, color: 'text-red-600', bg: 'bg-red-50', icon: <Package size={18} /> },
+        ].map((s, i) => (
+          <div key={i} className={`${s.bg} rounded-xl p-4 flex items-center gap-3`}>
+            <div className={`${s.color} opacity-70`}>{s.icon}</div>
+            <div>
+              <p className="text-xs text-gray-500">{s.label}</p>
+              <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-48">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+            placeholder="Search order, customer..."
+            value={search} onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2">
+          {[
+            { val: '7', label: 'Requested' },
+            { val: '7,8,9', label: 'All Returns' },
+            { val: '8', label: 'Refund Initiated' },
+            { val: '9', label: 'Refunded' },
+          ].map(f => (
+            <button
+              key={f.val}
+              onClick={() => { setFilter(f.val); setPage(1) }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                filter === f.val
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                {['Order', 'Customer', 'Amount', 'Return Reason', 'Date', 'Status', 'Actions'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {loading ? (
+                <tr><td colSpan={7} className="text-center py-12 text-gray-400">Loading…</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={7} className="text-center py-12 text-gray-400">No returns found</td></tr>
+              ) : filtered.map(order => {
+                const st = STATUS_LABEL[order.status] ?? STATUS_LABEL[7]
+                return (
+                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {order.invoice_no || `#${order.id}`}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center">
+                          <User size={13} className="text-orange-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">{order.user_name}</p>
+                          <p className="text-xs text-gray-400">{order.user_email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-gray-800">₹{Number(order.total_amount).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-gray-600 max-w-40 truncate">{order.return_reason || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">
+                      {new Date(order.updated_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+                        style={{ backgroundColor: st.bg, color: st.color }}>
+                        {st.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Button size="sm" variant="outline" className="gap-1" onClick={() => { setSelected(order); setViewOpen(true) }}>
+                        <Eye size={13} /> View
+                      </Button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {meta.total > 20 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-sm text-gray-500">Showing {filtered.length} of {meta.total}</span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Prev</Button>
+              <Button size="sm" variant="outline" disabled={page * 20 >= meta.total} onClick={() => setPage(p => p + 1)}>Next</Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* View / Process Modal */}
+      {selected && (
+        <AppModal open={viewOpen} onClose={() => setViewOpen(false)} title={`Return — ${selected.invoice_no || '#' + selected.id}`}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-gray-500 text-xs mb-1">Customer</p>
+                <p className="font-medium">{selected.user_name}</p>
+                <p className="text-gray-400 text-xs">{selected.user_email}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-gray-500 text-xs mb-1">Refund Amount</p>
+                <p className="font-bold text-lg text-green-600">₹{Number(selected.total_amount).toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+              <p className="text-xs text-orange-600 font-medium mb-1">Return Reason</p>
+              <p className="text-sm text-gray-700">{selected.return_reason || 'No reason provided'}</p>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-2 font-medium">Items</p>
+              <div className="space-y-2">
+                {(selected.items || []).map((item: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    {item.image && <img src={item.image} alt={item.name} className="w-8 h-8 object-cover rounded" />}
+                    <span className="flex-1 text-gray-700">{item.name}</span>
+                    <span className="text-gray-400">×{item.qty}</span>
+                    <span className="font-medium">₹{item.price}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {selected.status === 7 && (
+              <div className="border-t border-gray-100 pt-4 space-y-2">
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700 gap-2"
+                  disabled={processing}
+                  onClick={() => approve(selected.id, true)}
+                >
+                  <CheckCircle size={16} /> Approve & Credit Wallet (₹{Number(selected.total_amount).toLocaleString()})
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  disabled={processing}
+                  onClick={() => approve(selected.id, false)}
+                >
+                  <CheckCircle size={16} /> Approve (No Wallet Credit)
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full text-red-600 border-red-200 hover:bg-red-50 gap-2"
+                  disabled={processing}
+                  onClick={() => { setRejectOpen(true) }}
+                >
+                  <XCircle size={16} /> Reject Return
+                </Button>
+              </div>
+            )}
+
+            {selected.status === 8 && (
+              <div className="border-t border-gray-100 pt-4">
+                <Button
+                  className="w-full bg-purple-600 hover:bg-purple-700 gap-2"
+                  disabled={processing}
+                  onClick={() => completeRefund(selected.id)}
+                >
+                  <DollarSign size={16} /> Mark Refund Completed
+                </Button>
+              </div>
+            )}
+
+            {selected.status === 9 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                <CheckCircle size={20} className="text-green-600 mx-auto mb-1" />
+                <p className="text-green-700 font-medium text-sm">Refund Completed</p>
+              </div>
+            )}
+          </div>
+        </AppModal>
+      )}
+
+      {/* Reject Modal */}
+      <AppModal open={rejectOpen} onClose={() => setRejectOpen(false)} title="Reject Return Request">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">Please provide a reason for rejecting this return request. This will be visible to the customer.</p>
+          <textarea
+            className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+            rows={3}
+            placeholder="e.g. Product shows signs of use beyond normal trial period"
+            value={rejectReason}
+            onChange={e => setRejectReason(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setRejectOpen(false)}>Cancel</Button>
+            <Button className="flex-1 bg-red-600 hover:bg-red-700" disabled={processing} onClick={() => reject(selected?.id)}>
+              Reject Return
+            </Button>
+          </div>
+        </div>
+      </AppModal>
+    </div>
+  )
+}

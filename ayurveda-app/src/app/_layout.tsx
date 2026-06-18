@@ -54,6 +54,8 @@ function Inner() {
       <Stack.Screen name="checkout/index" options={{ presentation: 'card' }} />
       <Stack.Screen name="wishlist/index" />
       <Stack.Screen name="account/index" />
+      <Stack.Screen name="account/wallet" options={{ presentation: 'card' }} />
+      <Stack.Screen name="account/notifications" options={{ presentation: 'card' }} />
       <Stack.Screen name="auth/index" />
       <Stack.Screen name="search/index" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
       <Stack.Screen name="support/index" options={{ presentation: 'card' }} />

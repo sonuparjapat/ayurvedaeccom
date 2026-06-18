@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import BottomNav from '../../components/BottomNav'
 import {
   ActivityIndicator,
   FlatList,
@@ -206,6 +207,7 @@ export default function SearchScreen() {
           <Text style={s.emptySubtitle}>Try a different keyword or browse categories</Text>
         </View>
       )}
+      <BottomNav active="/search" />
     </View>
   )
 }

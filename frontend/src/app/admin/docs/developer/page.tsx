@@ -449,6 +449,13 @@ Token location: Authorization: Bearer <token>  (HTTP header)
               ]
             },
             {
+              prefix: '/push', label: 'Push Notifications',
+              routes: [
+                ['POST', '/push-token', 'auth', 'Register Expo push token. Body: { token, platform: "android"|"ios" }'],
+                ['GET', '/notifications', 'auth', 'User notification inbox — order updates sourced from order_status_logs JOIN order_status_master.'],
+              ]
+            },
+            {
               prefix: '/admin', label: 'Admin Routes',
               routes: [
                 ['GET', '/products', 'admin', 'All products (incl. inactive). Supports filters.'],
@@ -479,6 +486,10 @@ Token location: Authorization: Bearer <token>  (HTTP header)
                 ['POST', '/notifications/push', 'admin', 'Send push to all users.'],
                 ['GET', '/export/orders', 'admin', 'Download orders CSV.'],
                 ['GET', '/export/users', 'admin', 'Download users CSV.'],
+                ['GET', '/returns', 'admin', 'All return requests (status 7, 8, 9) with order items and user details.'],
+                ['PUT', '/returns/:id/approve', 'admin', 'Approve return: status→8, optionally credits wallet_balance. Body: { credit_wallet: bool }'],
+                ['PUT', '/returns/:id/reject', 'admin', 'Reject return: status→5 (Delivered), stores cancel_reason.'],
+                ['PUT', '/returns/:id/complete-refund', 'admin', 'Mark refund done: status→9 (requires status 8 first).'],
               ]
             },
             {
@@ -596,7 +607,8 @@ Side effects on transition:
   → 3: Send shipment email with tracking number
   → 5: Credit loyalty points, generate final invoice, send delivered email
   → 6: Restore stock quantities, refund online payments (if paid)
-  → 9: Call Razorpay refund API`}</Code>
+  → 8: Optionally credit wallet_balance (adminApproveReturn with credit_wallet=true)
+  → 9: Final refund complete marker (Razorpay refund triggered separately if needed)`}</Code>
         </Section>
 
         {/* ═══ EMAIL ═══ */}
@@ -680,7 +692,7 @@ case 'my_job_type':
     ├── coupons/              # Coupon management
     ├── flash-sales/          # Flash sale management
     ├── pincodes/             # Serviceable pincode management
-    └── push-notifications/   # Admin push broadcast`}</Code>
+    └── push/                 # Push tokens, user notification inbox, admin broadcast`}</Code>
           <H3>Each module follows this pattern:</H3>
           <Code>{`modules/example/
 ├── example.controller.js    # All request handlers (no business logic in routes)
@@ -700,15 +712,19 @@ case 'my_job_type':
 │   │   └── [id]/page.tsx        # Order detail + tracking (Amazon-style)
 │   ├── account/
 │   │   └── page.tsx             # Account hub (profile, wishlist, addresses)
+│   ├── wallet/page.tsx          # Standalone wallet + loyalty tabs page
+│   ├── notifications/page.tsx   # User notification inbox (order updates, grouped by date)
+│   ├── search/page.tsx          # Search landing page with popular chips
 │   ├── support/
 │   │   ├── page.tsx             # Ticket list + create form
 │   │   └── [id]/page.tsx        # Ticket chat view (real-time)
 │   ├── contact/page.tsx         # Contact form → creates ticket
 │   └── admin/
-│       ├── layout.tsx           # Sidebar + topbar for admin panel
+│       ├── layout.tsx           # Sidebar + topbar for admin panel (Bell+Wallet icons in header)
 │       ├── dashboard/page.tsx   # KPI cards + charts
 │       ├── products/page.tsx    # Product management
 │       ├── orders/page.tsx      # Order management
+│       ├── returns/page.tsx     # Returns management (approve/reject/refund)
 │       ├── users/page.tsx       # User list
 │       ├── support/page.tsx     # Two-panel ticket management
 │       ├── reviews/page.tsx     # Review moderation
@@ -723,7 +739,7 @@ case 'my_job_type':
 │           └── developer/       # This developer doc
 ├── components/
 │   ├── layout/
-│   │   └── header.tsx           # Navbar + cart count + user menu
+│   │   └── header.tsx           # Navbar + cart count + user menu + bell badge (notification count) + wallet icon
 │   └── sections/
 │       ├── hero-section.tsx     # Homepage hero
 │       ├── banner-carousel.tsx  # Homepage banners
@@ -757,24 +773,31 @@ await api.post('/orders', { address_id, payment_method })`}</Code>
 
         {/* ═══ MOBILE ═══ */}
         <Section id="mobile" title="Mobile App (React Native / Expo 56)" icon={Code2}>
-          <Code>{`ayurveda-app/src/app/
-├── _layout.tsx              # Root layout + Stack navigator
-├── index.tsx                # Home screen (products, banners)
-├── product/[id].tsx         # Product detail + variants + reviews
-├── cart/index.tsx           # Cart screen
-├── checkout/index.tsx       # Checkout (address, payment)
-├── orders/
-│   ├── index.tsx            # Order list
-│   └── [id].tsx             # Order detail + tracking
-├── account/
-│   └── index.tsx            # Account screen + navigation
-├── wishlist/index.tsx       # Wishlist
-├── search/index.tsx         # Search
-├── support/index.tsx        # Tickets (list + create + chat in one screen)
-├── auth/
-│   ├── login.tsx            # Email/password login
-│   └── register.tsx         # Registration
-└── (tabs)/                  # Bottom tab navigator`}</Code>
+          <Code>{`ayurveda-app/src/
+├── components/
+│   └── BottomNav.tsx        # Shared bottom nav bar (Home/Browse/Wishlist/Account tabs)
+│                            # BlurView + LinearGradient, position:absolute bottom:0
+│                            # Props: { active: string } — highlights current tab
+└── app/
+    ├── _layout.tsx              # Root layout + Stack navigator
+    ├── index.tsx                # Home screen (products, banners)
+    ├── product/[id].tsx         # Product detail + variants + reviews + "Write Review" card
+    ├── cart/index.tsx           # Cart screen
+    ├── checkout/index.tsx       # Checkout (address, payment)
+    ├── orders/
+    │   ├── index.tsx            # Order list
+    │   └── [id].tsx             # Order detail + tracking + "Write a Review" card when status=5
+    ├── account/
+    │   ├── index.tsx            # Account screen + quick links (Wallet, Notifications)
+    │   ├── wallet.tsx           # Wallet balance card + Transactions/Loyalty tabs
+    │   └── notifications.tsx    # Notification inbox (order_status_logs, grouped by date)
+    ├── wishlist/index.tsx       # Wishlist
+    ├── search/index.tsx         # Search with autocomplete + recent search history
+    ├── support/index.tsx        # Tickets (list + create + chat in one screen)
+    ├── auth/
+    │   ├── login.tsx            # Email/password login
+    │   └── register.tsx         # Registration
+    └── (tabs)/                  # Bottom tab navigator`}</Code>
           <H3>Key mobile dependencies</H3>
           <Table
             headers={['Package', 'Purpose']}
@@ -796,10 +819,23 @@ const { status } = await Notifications.requestPermissionsAsync()
 const token = await Notifications.getExpoPushTokenAsync()
 
 // 3. Send to backend
-await api.post('/users/push-token', { token, platform: 'android' | 'ios' })
+await api.post('/push/push-token', { token, platform: 'android' | 'ios' })
 
 // 4. Backend stores in push_notification_tokens table
 // 5. Admin sends broadcast → backend loops through all tokens → Expo API`}</Code>
+          <H3>BottomNav shared component</H3>
+          <Code>{`// ayurveda-app/src/components/BottomNav.tsx
+// Usage: <BottomNav active="/products" />
+// Renders absolute-positioned bar at bottom of screen
+// Uses BlurView + LinearGradient, Shadows.sm (NOT Shadows.card — doesn't exist)
+// Tabs: Home (/), Browse (/products), Wishlist (/wishlist), Account (/account)
+// Add to any main screen; set paddingBottom: 90 on FlatList to avoid overlap`}</Code>
+          <H3>In-app notification inbox</H3>
+          <Code>{`// GET /push/notifications — handler: push.controller.js → userNotifications
+// Source: order_status_logs JOIN orders JOIN order_status_master
+// WHERE orders.user_id = $1
+// Returns: { id, order_id, invoice_no, new_status, title, body, emoji, created_at, type:'order_update' }
+// No separate notifications table — synthesised from order history on every request`}</Code>
         </Section>
 
         {/* ═══ DEPLOY ═══ */}

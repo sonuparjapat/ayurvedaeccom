@@ -17,6 +17,8 @@ import {
   ShoppingBag,
   Sparkles,
   MessageSquare,
+  Bell,
+  Wallet,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
@@ -44,6 +46,7 @@ const {
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
+  const [notifCount, setNotifCount] = useState(0)
 
 
 
@@ -54,6 +57,13 @@ const {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    if (!loginuserdata?.id) return
+    axios.get('/push/notifications')
+      .then(r => setNotifCount((r.data.notifications || []).length))
+      .catch(() => {})
+  }, [loginuserdata?.id])
 
   // Close menu on resize to desktop
   useEffect(() => {
@@ -894,7 +904,26 @@ const {
                 <Link href="/wishlist" className="action-btn desktop-only" aria-label="Wishlist">
                   <Heart size={18} />
                 </Link>
- 
+
+                {/* Notifications — desktop, logged in */}
+                {loginuserdata?.id && (
+                  <Link href="/notifications" className="action-btn desktop-only" aria-label="Notifications" style={{ position: 'relative' }}>
+                    <Bell size={18} />
+                    {notifCount > 0 && (
+                      <span style={{ position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '0 3px' }}>
+                        {notifCount > 9 ? '9+' : notifCount}
+                      </span>
+                    )}
+                  </Link>
+                )}
+
+                {/* Wallet — desktop, logged in */}
+                {loginuserdata?.id && (
+                  <Link href="/wallet" className="action-btn desktop-only" aria-label="Wallet">
+                    <Wallet size={18} />
+                  </Link>
+                )}
+
                 <div className="divider-v desktop-only" />
  
                 {/* Account */}
@@ -1040,6 +1069,18 @@ const {
                       <span>Wishlist</span>
                       <Heart size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
                     </Link>
+                    {loginuserdata?.id && (
+                      <Link href="/notifications" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
+                        <span>Notifications</span>
+                        <Bell size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
+                      </Link>
+                    )}
+                    {loginuserdata?.id && (
+                      <Link href="/wallet" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
+                        <span>My Wallet</span>
+                        <Wallet size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
+                      </Link>
+                    )}
                   </div>
  
                   <div className="mobile-divider" />

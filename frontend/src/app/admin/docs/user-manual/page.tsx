@@ -29,6 +29,7 @@ const SECTIONS = [
   { id: 'admin-marketing', label: 'Admin: Marketing',        icon: Tag },
   { id: 'admin-analytics', label: 'Admin: Analytics',        icon: BarChart3 },
   { id: 'admin-support',   label: 'Admin: Support Tickets',  icon: MessageSquare },
+  { id: 'admin-returns',   label: 'Admin: Returns',           icon: RotateCcw },
   { id: 'mobile-app',      label: 'Mobile App',              icon: Bell },
   { id: 'order-flow',      label: 'Order Status Guide',      icon: CheckCircle },
 ]
@@ -233,7 +234,8 @@ export default function UserManualPage() {
               ['Orders', 'View all past and current orders. Click any order for detailed tracking and invoice download.'],
               ['Wishlist', 'All saved products. Add directly to cart from here.'],
               ['Addresses', 'Save multiple delivery addresses (Home, Work, Other). Set one as default.'],
-              ['Wallet', 'View wallet balance, transaction history, and loyalty points balance with earning/redemption log.'],
+              ['Wallet', 'View wallet balance, transaction history, and loyalty points balance with earning/redemption log. Also accessible at /wallet from the header.'],
+              ['Notifications', 'View a history of all order status updates as an in-app notification inbox. The bell icon in the header shows an unread count badge.'],
               ['Settings', 'Control email notification preferences (order updates, promotions, price drops).'],
             ]}
           />
@@ -340,7 +342,7 @@ export default function UserManualPage() {
               <p className="font-semibold text-sm text-gray-800 mb-2">How to write a review:</p>
               <div className="space-y-2">
                 <Step num={1} title="Go to My Account → Orders">Find the delivered order.</Step>
-                <Step num={2} title="Click 'Write Review'">This opens the review form for that specific product and order.</Step>
+                <Step num={2} title="Click 'Write Review'">This opens the review form for that specific product and order. On the <strong>mobile app</strong>, a "Write a Review ⭐" card appears automatically on the Order Detail screen once your order is delivered — tap it to go directly to the review form.</Step>
                 <Step num={3} title="Add your rating (1–5 stars) and comment">You can also upload up to 5 product photos.</Step>
                 <Step num={4} title="Submit">Your review may be pending moderation before it appears publicly.</Step>
               </div>
@@ -366,7 +368,7 @@ export default function UserManualPage() {
                 <li>• Wallet balance can be topped up by the admin (refunds, compensation, referral rewards).</li>
                 <li>• At checkout, toggle "Use Wallet Balance" to apply available credits toward your order.</li>
                 <li>• Wallet is currency — ₹1 wallet = ₹1 discount.</li>
-                <li>• View full transaction history in My Account → Wallet.</li>
+                <li>• View full transaction history in My Account → Wallet, or visit the dedicated <strong>/wallet</strong> page via the Wallet icon (💳) in the site header.</li>
               </ul>
             </div>
             <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
@@ -437,6 +439,7 @@ export default function UserManualPage() {
               ['Abandoned Carts', 'View customers with items in cart who haven\'t checked out. Send recovery emails.'],
               ['Wallet & Credits', 'View all wallet balances. Manually add credits to customer accounts.'],
               ['Support Tickets', 'View and reply to all customer support tickets in real-time.'],
+              ['Returns', 'View return requests from customers. Approve or reject returns, credit wallet refunds, and mark refunds complete.'],
               ['Export Data', 'Download orders, users, and revenue data as CSV files.'],
               ['Settings', 'Platform configuration — delivery charges, platform fees, free delivery threshold.'],
               ['Company', 'Update company name, address, GST number, logo, social links.'],
@@ -623,6 +626,37 @@ export default function UserManualPage() {
           </div>
         </Section>
 
+        {/* ═══ 16.5. ADMIN RETURNS ═══ */}
+        <Section id="admin-returns" title="Admin: Returns Management" icon={RotateCcw} color="#7c3aed">
+          <p className="text-sm text-gray-600 leading-relaxed">The <strong>Admin → Returns</strong> page lists all orders where customers have requested a return (status 7 — Return Requested), returns being processed (status 8 — Refund Initiated), and completed refunds (status 9 — Refunded).</p>
+          <div className="space-y-4">
+            <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <p className="font-semibold text-sm text-gray-800 mb-3">Return Processing Flow</p>
+              <div className="space-y-2">
+                <Step num={1} title="Customer requests return">Customer clicks Return on a delivered order. Status changes to <strong>Return Requested (7)</strong>. Visible in Admin → Returns.</Step>
+                <Step num={2} title="Admin reviews the request">Filter by "Return Requested" to see all pending decisions. Click View to see the order items, amounts, and customer details.</Step>
+                <Step num={3} title="Approve or Reject the return">
+                  <ul className="mt-1 space-y-1 list-disc list-inside text-xs">
+                    <li><strong>Approve with Wallet Credit</strong> — Status → Refund Initiated (8). The full order amount is credited to the customer's wallet instantly.</li>
+                    <li><strong>Approve without Wallet Credit</strong> — Status → Refund Initiated (8) without adding wallet credit (use when processing a Razorpay refund externally).</li>
+                    <li><strong>Reject</strong> — Enter a rejection reason. Status reverts to Delivered (5). The item stays with the customer.</li>
+                  </ul>
+                </Step>
+                <Step num={4} title="Mark Refund Complete">Once the refund is confirmed (wallet credited or Razorpay processed), click <strong>Mark Refund Complete</strong>. Status → Refunded (9). This closes the return loop.</Step>
+              </div>
+            </div>
+            <Table
+              headers={['Status Filter', 'Shows']}
+              rows={[
+                ['Return Requested (7)', 'New return requests awaiting your decision.'],
+                ['Refund Initiated (8)', 'Approved returns — complete the refund when ready.'],
+                ['Refunded (9)', 'Fully completed returns for record-keeping.'],
+              ]}
+            />
+            <InfoBox type="info">When a return is approved with wallet credit, the customer's wallet balance updates immediately — they can use it on their next purchase. For online payment returns (Razorpay), trigger the refund from the order detail page and then mark refund complete here.</InfoBox>
+          </div>
+        </Section>
+
         {/* ═══ 17. MOBILE APP ═══ */}
         <Section id="mobile-app" title="Mobile App" icon={Bell} color="#7c3aed">
           <p className="text-sm text-gray-600 leading-relaxed">The AyurVeda mobile app (React Native / Expo) provides the full shopping experience on Android and iOS.</p>
@@ -635,14 +669,17 @@ export default function UserManualPage() {
               ['Cart', 'View cart, adjust quantities, proceed to checkout.'],
               ['Checkout', 'Address, coupon, wallet/loyalty, payment.'],
               ['Orders', 'List of all orders with status. Tap to see full tracking details.'],
-              ['Account', 'Profile, wishlist, cart, addresses, support link.'],
+              ['Account', 'Profile, wishlist, cart, addresses, support link. Quick links to Wallet and Notifications screens.'],
+              ['Wallet', 'Wallet balance card, transaction history (credit/debit), and loyalty points earned/redeemed — all in one screen with tabs.'],
+              ['Notifications', 'In-app notification inbox showing all order status updates, grouped by date and linked to the order detail screen.'],
               ['Support', 'Create and view support tickets. Chat with support team.'],
-              ['Search', 'Full-text product search with instant results.'],
-              ['Wishlist', 'All saved products.'],
+              ['Search', 'Full-text product search with instant autocomplete suggestions and recent search history.'],
+              ['Wishlist', 'All saved products with add-to-cart shortcut.'],
               ['Auth', 'Login with email/password or OTP.'],
             ]}
           />
-          <InfoBox type="tip">The mobile app receives <strong>push notifications</strong> for order status updates. Make sure to allow notifications when prompted on first launch.</InfoBox>
+          <InfoBox type="tip">A persistent <strong>bottom navigation bar</strong> appears on all main screens (Home, Browse/Products, Wishlist, Account) so you can switch sections without going back. It uses a frosted glass effect and highlights the active tab.</InfoBox>
+          <InfoBox type="info">The mobile app receives <strong>push notifications</strong> for order status updates. Allow notifications when prompted on first launch. You can also view all past notifications in the Notifications screen.</InfoBox>
         </Section>
 
         {/* ═══ 18. ORDER STATUS GUIDE ═══ */}

@@ -927,7 +927,7 @@ const addToCart = async () => {
         )}
       </div>
 
-{/* <ReviewSection productId={product.id} fetchProduct={fetchProduct} product={product} loginuserdata={loginuserdata}/> */}
+<ReviewSection productId={product.id} fetchProduct={fetchProduct} product={product} loginuserdata={loginuserdata}/>
       {/* ================= REVIEWS ================= */}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 16px 32px' }}>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a3a2a', marginBottom: 16 }}>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import BottomNav from '../../components/BottomNav'
 import {
   Alert, Modal, Pressable, ScrollView, StatusBar,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -439,6 +440,8 @@ export default function AccountScreen() {
                 { emoji: '📦', label: 'My Orders', sub: 'Track & manage orders', onPress: () => setActiveTab('Orders') },
                 { emoji: '❤️', label: 'My Wishlist', sub: 'Saved products', onPress: () => router.push('/wishlist') },
                 { emoji: '🛍️', label: 'My Cart', sub: `${cartCount} items`, onPress: () => router.push('/cart') },
+                { emoji: '💳', label: 'My Wallet', sub: 'Balance & transactions', onPress: () => router.push('/account/wallet' as any) },
+                { emoji: '🔔', label: 'Notifications', sub: 'Order updates & alerts', onPress: () => router.push('/account/notifications' as any) },
                 { emoji: '📍', label: 'Manage Addresses', sub: 'Delivery addresses', onPress: () => setActiveTab('Addresses') },
                 { emoji: '💬', label: 'Support', sub: 'Raise a ticket or enquiry', onPress: () => router.push('/support' as any) },
               ].map((l, i) => (
@@ -706,6 +709,7 @@ export default function AccountScreen() {
           </TouchableOpacity>
         </View>
       </Modal>
+      <BottomNav active="/account" />
     </View>
   )
 }
