@@ -179,11 +179,24 @@ export default function CheckoutScreen() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
   const [couponError, setCouponError] = useState('')
   const [availableCoupons, setAvailableCoupons] = useState<any[]>([])
+  // Wallet & Loyalty state
+  const [walletBalance, setWalletBalance] = useState(0)
+  const [walletApplied, setWalletApplied] = useState(false)
+  const [walletDiscount, setWalletDiscount] = useState(0)
+  const [loyaltyBalance, setLoyaltyBalance] = useState(0)
+  const [loyaltyApplied, setLoyaltyApplied] = useState(false)
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)
 
   useEffect(() => {
     if (!user) { setAuthOpen(true); router.back(); return }
     init()
     api.get('/coupons/public').then(r => setAvailableCoupons(r.data?.coupons || [])).catch(() => {})
+    if (user) {
+      api.get('/wallet/').then(r => {
+        setWalletBalance(Number(r.data?.wallet_balance || 0))
+        setLoyaltyBalance(Number(r.data?.loyalty_points || 0))
+      }).catch(() => {})
+    }
   }, [user])
 
   const init = async () => {
@@ -234,14 +247,14 @@ export default function CheckoutScreen() {
     const freeLimit = Number(chargesMap.free_delivery_limit || 499)
     const finalDelivery = cartSubtotal >= freeLimit ? 0 : deliveryCharge
     const couponDiscount = appliedCoupon?.discount || 0
-    const finalTotal = Math.max(0, cartSubtotal + cartTax + finalDelivery + platformCharge - couponDiscount)
+    const finalTotal = Math.max(0, cartSubtotal + cartTax + finalDelivery + platformCharge - couponDiscount - walletDiscount - loyaltyDiscount)
     return {
       subtotal: +cartSubtotal.toFixed(2), tax: +cartTax.toFixed(2),
       delivery: +finalDelivery.toFixed(2), platformFee: +platformCharge.toFixed(2),
       discount: +couponDiscount.toFixed(2),
       total: +finalTotal.toFixed(2),
     }
-  }, [cartData, chargesMap, appliedCoupon])
+  }, [cartData, chargesMap, appliedCoupon, walletDiscount, loyaltyDiscount])
 
   const applyCoupon = async () => {
     if (!couponInput.trim()) return
@@ -274,6 +287,9 @@ export default function CheckoutScreen() {
         paymentMethod: payMethod,
         pricing: { subtotal, tax, delivery, platformFee, total },
         couponCode: appliedCoupon?.code || undefined,
+        walletDiscount: walletDiscount > 0 ? walletDiscount : undefined,
+        loyaltyDiscount: loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
+        loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount * 10) : undefined,
       })
       if (!res.data?.success) throw new Error(res.data?.message || 'Order failed')
       const orderId = res.data.orderId
@@ -535,6 +551,66 @@ export default function CheckoutScreen() {
                 {couponError ? <Text style={ss.couponError}>⚠ {couponError}</Text> : null}
               </Animated.View>
 
+              {/* ── WALLET CREDIT ── */}
+              {walletBalance > 0 && (
+                <View style={{ backgroundColor: '#f5f0ff', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#c4b5fd' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                      <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 16 }}>💳</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#4c1d95' }}>Wallet: ₹{walletBalance.toFixed(2)}</Text>
+                        <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: '#6d28d9' }}>
+                          {walletApplied ? `₹${walletDiscount.toFixed(2)} applied` : 'Use credits to reduce bill'}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (walletApplied) { setWalletApplied(false); setWalletDiscount(0) }
+                        else { const use = Math.min(walletBalance, total); setWalletDiscount(use); setWalletApplied(true) }
+                      }}
+                      style={{ backgroundColor: walletApplied ? '#fee2e2' : '#7c3aed', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 }}
+                    >
+                      <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: walletApplied ? '#dc2626' : '#fff' }}>
+                        {walletApplied ? 'Remove' : 'Apply'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* ── LOYALTY POINTS ── */}
+              {loyaltyBalance > 0 && (
+                <View style={{ backgroundColor: '#fffbeb', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#fcd34d' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                      <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#d97706', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 16 }}>⭐</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#78350f' }}>{loyaltyBalance} Points = ₹{(loyaltyBalance * 0.1).toFixed(2)}</Text>
+                        <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: '#92400e' }}>
+                          {loyaltyApplied ? `₹${loyaltyDiscount.toFixed(2)} discount applied` : '1 point = ₹0.10'}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (loyaltyApplied) { setLoyaltyApplied(false); setLoyaltyDiscount(0) }
+                        else { const max = loyaltyBalance * 0.1; const use = Math.min(max, total); setLoyaltyDiscount(+use.toFixed(2)); setLoyaltyApplied(true) }
+                      }}
+                      style={{ backgroundColor: loyaltyApplied ? '#fee2e2' : '#d97706', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 }}
+                    >
+                      <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: loyaltyApplied ? '#dc2626' : '#fff' }}>
+                        {loyaltyApplied ? 'Remove' : 'Redeem'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
               {/* Price breakdown */}
               <LinearGradient colors={['#0d120d', '#111711']} style={[ss.finalBox, { marginBottom: 12 }]}>
                 <Text style={[ss.couponTitle, { color: 'rgba(255,255,255,0.6)', marginBottom: 10 }]}>Price Breakdown</Text>
@@ -545,6 +621,8 @@ export default function CheckoutScreen() {
                   : <SummaryRow label="Delivery" val={`+₹${delivery}`} />}
                 {platformFee > 0 && <SummaryRow label="Platform Fee" val={`+₹${platformFee}`} />}
                 {discount > 0 && <SummaryRow label="Coupon Discount" val={`-₹${discount.toFixed(2)}`} valColor="#6ee7b7" />}
+                {walletDiscount > 0 && <SummaryRow label="💳 Wallet Credit" val={`-₹${walletDiscount.toFixed(2)}`} valColor="#6ee7b7" />}
+                {loyaltyDiscount > 0 && <SummaryRow label="⭐ Loyalty Points" val={`-₹${loyaltyDiscount.toFixed(2)}`} valColor="#6ee7b7" />}
                 <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 10 }} />
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={ss.finalLabel}>Total to Pay</Text>

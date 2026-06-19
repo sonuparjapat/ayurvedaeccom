@@ -10,8 +10,13 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
+import * as WebBrowser from 'expo-web-browser'
+import * as Linking from 'expo-linking'
 import api from '../../api/axios'
+import { Image as ExpoImage } from 'expo-image'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
+
+const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
 
 const { width: W } = Dimensions.get('window')
 
@@ -126,7 +131,7 @@ function OrderItemCard({ item, index }: { item: OrderItem; index: number }) {
     <Animated.View entering={FadeInDown.delay(index * 60)} style={ic.card}>
       <View style={ic.imgWrap}>
         {item.image
-          ? <Image source={{ uri: item.image }} style={ic.img} resizeMode="cover" />
+          ? <ExpoImage source={{ uri: item.image }} style={ic.img} contentFit="cover" />
           : <View style={[ic.img, { backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' }]}>
             <Text style={{ fontSize: 22 }}>🌿</Text>
           </View>
@@ -352,11 +357,48 @@ export default function OrderDetailScreen() {
     } finally { setActionLoading(false) }
   }
 
+  const handleRetryPayment = async () => {
+    if (!order) return
+    setActionLoading(true)
+    try {
+      const res = await api.post(`/orders/${id}/retry-payment`)
+      const payUrl = res.data?.payment_url || res.data?.short_url
+      if (payUrl) {
+        const result = await WebBrowser.openAuthSessionAsync(payUrl, 'oroganix://')
+        if (result.type === 'success' && result.url) {
+          const params = new URL(result.url).searchParams
+          if (params.get('razorpay_payment_id')) {
+            await api.post(`/orders/${order.id}/verify-payment`, {
+              razorpay_order_id: params.get('razorpay_order_id'),
+              razorpay_payment_id: params.get('razorpay_payment_id'),
+              razorpay_signature: params.get('razorpay_signature'),
+            })
+            Alert.alert('Payment Successful', 'Your payment has been verified.', [{ text: 'OK', onPress: fetchOrder }])
+          }
+        }
+      } else {
+        Alert.alert('Error', 'Could not get payment link')
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.message || 'Payment retry failed')
+    } finally { setActionLoading(false) }
+  }
+
+  const handleDownloadInvoice = async () => {
+    if (!order?.pdf_url) return
+    try {
+      await Linking.openURL(order.pdf_url)
+    } catch {
+      Alert.alert('Error', 'Could not open invoice')
+    }
+  }
+
   if (!order && !loading) return null
 
   const statusInfo = order ? (STATUS_MAP[order.status] ?? STATUS_MAP[0]) : STATUS_MAP[0]
   const canCancel = order && [0, 1].includes(order.status)
   const canReturn = order && order.status === 5
+  const canRetryPayment = order && order.payment_method === 'online' && order.payment_status === 'unpaid' && order.status !== 6
   const shippingAddr = order?.shipping_address || {}
   const totalItems = order?.items.reduce((s, i) => s + i.quantity, 0) || 0
 
@@ -380,7 +422,7 @@ export default function OrderDetailScreen() {
             {order && <Text style={ss.headerSub}>#{order.invoice_no || `ORD-${order.id}`}</Text>}
           </View>
           {order?.pdf_url && (
-            <TouchableOpacity style={ss.invoiceBtn}>
+            <TouchableOpacity onPress={handleDownloadInvoice} style={ss.invoiceBtn}>
               <Text style={{ color: Colors.gold, fontSize: 13 }}>📄</Text>
               <Text style={ss.invoiceBtnText}>Invoice</Text>
             </TouchableOpacity>
@@ -593,6 +635,23 @@ export default function OrderDetailScreen() {
               </Animated.View>
             )}
 
+            {/* ── RETRY PAYMENT ── */}
+            {canRetryPayment && (
+              <Animated.View entering={FadeInDown.delay(270)} style={{ paddingHorizontal: 16, marginTop: 8 }}>
+                <TouchableOpacity
+                  onPress={handleRetryPayment}
+                  disabled={actionLoading}
+                  style={{ borderRadius: 16, overflow: 'hidden' }}
+                >
+                  <LinearGradient colors={['#7c3aed', '#6d28d9']} style={{ padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                    <Text style={{ fontSize: 18 }}>💳</Text>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: '#fff' }}>{actionLoading ? 'Processing...' : 'Retry Payment'}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: Colors.textDim, textAlign: 'center', marginTop: 6 }}>Complete your pending online payment</Text>
+              </Animated.View>
+            )}
+
             {/* ── RE-ORDER ── */}
             {[5, 6].includes(order.status) && (
               <Animated.View entering={FadeInDown.delay(275)} style={{ paddingHorizontal: 16, marginTop: 8 }}>
@@ -612,7 +671,7 @@ export default function OrderDetailScreen() {
             {/* ── HELP ── */}
             <Animated.View entering={FadeInDown.delay(280)} style={[ss.card, { marginTop: 10 }]}>
               <View style={ss.helpRow}>
-                <Text style={{ fontSize: 20 }}>🌿</Text>
+                <ExpoImage source={{ uri: LOGO_URL }} style={{ width: 32, height: 32 }} contentFit="contain" />
                 <View style={{ flex: 1 }}>
                   <Text style={ss.helpTitle}>Need help?</Text>
                   <Text style={ss.helpSub}>Contact our support team for any order related queries</Text>

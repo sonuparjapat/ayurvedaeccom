@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import {
   Alert, Clipboard, Modal, Pressable, ScrollView, Share, StatusBar,
@@ -7,7 +7,7 @@ import {
 import Animated, { FadeIn, FadeInDown, FadeInRight } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import api from '../../api/axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useStore } from '../../store'
@@ -183,11 +183,24 @@ export default function AccountScreen() {
   const [editAddrForm, setEditAddrForm] = useState({ street: '', city: '', state: '', pincode: '', type: 'Home', email: '' })
   const [savingEditAddr, setSavingEditAddr] = useState(false)
 
+  useFocusEffect(useCallback(() => {
+    if (!user) return
+    fetchOrders()
+    fetchAddresses()
+    api.get('/users/me').then(res => {
+      const fullUser = res.data?.user
+      if (fullUser) {
+        setUser(fullUser)
+        AsyncStorage.setItem('stored_user', JSON.stringify(fullUser)).catch(() => {})
+      }
+    }).catch(() => {})
+  }, [user?.id]))
+
   useEffect(() => {
     if (!user) return
     if (activeTab === 'Orders') fetchOrders()
     if (activeTab === 'Addresses') fetchAddresses()
-  }, [activeTab, user])
+  }, [activeTab])
 
   useEffect(() => {
     if (user) {

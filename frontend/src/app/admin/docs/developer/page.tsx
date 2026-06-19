@@ -940,6 +940,76 @@ Share.share({
 //   Haptics.impactAsync(ImpactFeedbackStyle.Light)    → wishlist toggle
 //
 // Actions with haptics: add-to-cart, wishlist toggle, remove-from-wishlist`}</Code>
+          <H3>Post-login auto-refresh pattern</H3>
+          <Code>{`// File: auth/index.tsx → afterLogin()
+// Problem: login API returns partial user (no is_verified, referral_code, etc.)
+// Fix: afterLogin calls /users/me in parallel with cart & wishlist fetch
+const [cartRes, wishRes, meRes] = await Promise.allSettled([
+  api.get('/cart'),
+  api.get('/shop'),
+  api.get('/users/me'),  // ← fetches full profile with is_verified, referral_code
+])
+if (meRes.status === 'fulfilled') {
+  const fullUser = meRes.value.data?.user || user
+  setUser(fullUser)  // ← store gets complete user data
+  await AsyncStorage.setItem('stored_user', JSON.stringify(fullUser))
+}
+
+// File: account/index.tsx
+// Uses useFocusEffect to auto-refresh on every screen visit:
+//   1. Calls /users/me to sync verification status, phone, referral_code
+//   2. Pre-fetches orders + addresses so stats row shows real counts
+//   3. Updates store + AsyncStorage so all screens see fresh data`}</Code>
+          <H3>Consistent brand logo across all screens</H3>
+          <Code>{`// Logo URL (S3): same across web header, admin sidebar, and mobile app
+const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
+
+// Used in mobile screens:
+//   index.tsx    — TopBar (110×32) + floating header (100×28)
+//   auth/        — brand section on login/register screen (140×40)
+//   order/[id]   — help section footer (32×32)
+// All use ExpoImage with contentFit="contain" + transition={200}
+
+// Web:
+//   header.tsx  — NEXT_PUBLIC_LOGO_URL env var → <img> in nav
+//   admin/layout.tsx — same S3 URL in sidebar logo`}</Code>
+          <H3>Wallet and loyalty points in mobile checkout</H3>
+          <Code>{`// File: checkout/index.tsx
+// Mirrors the web checkout (frontend/src/app/checkout/page.tsx)
+//
+// On mount: GET /wallet/ → { wallet_balance, loyalty_points }
+// State: walletBalance, walletApplied, walletDiscount,
+//        loyaltyBalance, loyaltyApplied, loyaltyDiscount
+//
+// Total calculation:
+//   finalTotal = subtotal + tax + delivery + platform
+//                - couponDiscount - walletDiscount - loyaltyDiscount
+//
+// Order payload includes:
+//   walletDiscount, loyaltyDiscount, loyaltyPointsUsed
+//
+// UI: purple card for wallet, amber card for loyalty points
+//     each with Apply/Remove toggle button
+// Loyalty: 1 point = ₹0.10`}</Code>
+          <H3>Flash sale banner on mobile home screen</H3>
+          <Code>{`// File: index.tsx → FlashSaleSection component
+// API: GET /flash-sales/active → { sales: [{ id, title, ends_at, products }] }
+// Shows: gradient banner (red→orange→amber), live countdown timer,
+//   horizontal scroll of flash products with image, flash_price,
+//   original_price, discount %, and sold progress bar.
+// Auto-hides when countdown reaches 0.`}</Code>
+          <H3>Retry payment for unpaid online orders</H3>
+          <Code>{`// File: order/[id].tsx → handleRetryPayment()
+// Condition: payment_method==='online' && payment_status==='unpaid' && status!==6
+// Flow:
+//   1. POST /orders/:id/retry-payment → { payment_url }
+//   2. WebBrowser.openAuthSessionAsync(payment_url, 'oroganix://')
+//   3. On return: verify with POST /orders/:id/verify-payment
+// UI: purple gradient button "Retry Payment" below order details`}</Code>
+          <H3>Invoice download on order detail</H3>
+          <Code>{`// File: order/[id].tsx → handleDownloadInvoice()
+// Shows only when order.pdf_url exists
+// Uses Linking.openURL(order.pdf_url) to open in browser/PDF viewer`}</Code>
         </Section>
 
         {/* ═══ DEPLOY ═══ */}

@@ -669,9 +669,9 @@ export default function UserManualPage() {
               ['Products', 'Browse all products with search and category filter. Pull down on the list to refresh and load the latest products instantly.'],
               ['Product Detail', 'Full product info, variants, add to cart, wishlist, reviews, Q&A tab. Tap any product image to open a full-screen zoom viewer (pinch to zoom on iOS). Tap the Share icon in the top bar to share the product via any installed app (WhatsApp, email, etc.).'],
               ['Cart', 'View cart, adjust quantities, proceed to checkout.'],
-              ['Checkout', 'Address, coupon, wallet/loyalty, payment.'],
-              ['Orders', 'List of all orders with status. Tap to see full tracking details. Tap "Chat" on any order to open a support ticket.'],
-              ['Account', 'Profile, wishlist, cart, addresses, support link. Quick links to Wallet and Notifications screens. Displays your unique Referral Code with Copy and Share buttons.'],
+              ['Checkout', 'Address, coupon, wallet credits, loyalty points redemption (1pt = ₹0.10), payment via Razorpay. Wallet and loyalty discounts are shown in the price breakdown and deducted from the total.'],
+              ['Orders', 'List of all orders with status. Tap to see full tracking timeline, cancel, return, re-order, download invoice (PDF), and retry payment for unpaid online orders. Tap "Chat" to open a support ticket.'],
+              ['Account', 'Profile, wishlist, cart, addresses, support link. Quick links to Wallet and Notifications screens. Displays your unique Referral Code with Copy and Share buttons. Auto-refreshes all data (profile, verification status, orders, addresses) every time you open the screen.'],
               ['Wallet', 'Wallet balance card, transaction history (credit/debit), and loyalty points earned/redeemed — all in one screen with tabs.'],
               ['Notifications', 'In-app notification inbox showing all order status updates, grouped by date and linked to the order detail screen.'],
               ['Support', 'Create and view support tickets. Chat with support team.'],
@@ -682,8 +682,11 @@ export default function UserManualPage() {
           />
           <InfoBox type="tip">A persistent <strong>bottom navigation bar</strong> appears on all main screens (Home, Browse/Products, Wishlist, Account) so you can switch sections without going back. It uses a frosted glass effect and highlights the active tab.</InfoBox>
           <InfoBox type="info">The mobile app receives <strong>real-time push notifications</strong> for order status updates. Tapping the notification takes you directly to that order's detail screen. Tapping a support reply notification opens the Support screen. Allow notifications when prompted on first launch.</InfoBox>
+          <InfoBox type="info">After <strong>logging in</strong>, the app automatically fetches your full profile (verified status, referral code, phone, etc.), cart, wishlist, orders, and addresses — everything updates instantly without needing to refresh or restart.</InfoBox>
           <InfoBox type="tip">Your <strong>referral code</strong> is visible in the Account screen. Tap <strong>Copy</strong> to copy it to clipboard, or tap <strong>Share</strong> to send it via WhatsApp, email, or any app — friends who use your code get a discount and you earn wallet credits.</InfoBox>
           <InfoBox type="tip">The mobile app gives <strong>haptic feedback</strong> (vibration) on key actions — adding to cart, toggling wishlist, removing items — so you always feel confirmation without looking at the screen.</InfoBox>
+          <InfoBox type="tip">The app uses the <strong>real Oroganix logo</strong> (from your S3 bucket) in the top bar, auth screen, floating header, and order details — consistent with the website branding.</InfoBox>
+          <InfoBox type="tip">During checkout, if you have <strong>wallet credits</strong> or <strong>loyalty points</strong>, the app shows Apply/Redeem cards. Tap <strong>Apply</strong> to use wallet credits or <strong>Redeem</strong> to convert loyalty points (1 point = ₹0.10). Both discounts appear in the price breakdown. Tap <strong>Remove</strong> to undo.</InfoBox>
           <InfoBox type="info">If the Featured Products section shows a <strong>"Server is starting up"</strong> message, the backend server is on a free hosting plan and takes a moment to wake up. The app <strong>automatically retries up to 3 times</strong> — you will see "Server warming up (1/3)" below the skeleton cards. You can also tap <strong>Retry</strong> to reload manually at any time.</InfoBox>
         </Section>
 

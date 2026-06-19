@@ -91,9 +91,13 @@ export default function AdminLayout({
 
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
 
-          <h1 className="text-xl font-bold tracking-wide">
-            AyurVeda Admin
-          </h1>
+          <Link href="/admin/dashboard" className="flex items-center gap-3">
+            <img
+              src="https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png"
+              alt="Oroganix"
+              style={{ height: 36, objectFit: 'contain' }}
+            />
+          </Link>
 
           {/* Close (Mobile) */}
           <button

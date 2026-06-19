@@ -10,7 +10,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import api from '../../api/axios'
 import { useStore } from '../../store'
+import { Image as ExpoImage } from 'expo-image'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
+
+const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
 
 const { width: W } = Dimensions.get('window')
 type Mode = 'login' | 'register' | 'otp' | 'mobileOtp' | 'forgot' | 'verifySent'
@@ -120,9 +123,10 @@ export default function AuthScreen() {
           await AsyncStorage.removeItem('guest_session_id')
         } catch { }
       }
-      const [cartRes, wishRes] = await Promise.allSettled([
+      const [cartRes, wishRes, meRes] = await Promise.allSettled([
         api.get('/cart'),
         api.get('/shop'),
+        api.get('/users/me'),
       ])
       if (cartRes.status === 'fulfilled') {
         const items = cartRes.value.data?.items || []
@@ -131,6 +135,11 @@ export default function AuthScreen() {
       if (wishRes.status === 'fulfilled') {
         const wishItems = wishRes.value.data?.data || []
         setWishlistData({ items: wishItems, loading: false, totalItems: wishItems.length })
+      }
+      if (meRes.status === 'fulfilled') {
+        const fullUser = meRes.value.data?.user || user
+        setUser(fullUser)
+        await AsyncStorage.setItem('stored_user', JSON.stringify(fullUser))
       }
     } catch { }
     router.back()
@@ -250,13 +259,7 @@ export default function AuthScreen() {
 
             {/* Brand */}
             <Animated.View entering={FadeIn.delay(80)} style={ss.brandRow}>
-              <LinearGradient colors={[Colors.sage, Colors.gold]} style={ss.brandOrb}>
-                <Text style={{ fontSize: 22 }}>🌿</Text>
-              </LinearGradient>
-              <View>
-                <Text style={ss.brandName}>Oroganix</Text>
-                <Text style={ss.brandTag}>Pure · Natural · Ayurvedic</Text>
-              </View>
+              <ExpoImage source={{ uri: LOGO_URL }} style={{ width: 140, height: 40 }} contentFit="contain" transition={200} />
             </Animated.View>
 
             {/* Heading */}
