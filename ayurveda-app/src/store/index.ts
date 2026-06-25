@@ -36,6 +36,19 @@ export interface Category {
   image_url?: string
   product_count?: number
   tag?: string
+  slug?: string
+  parent_id?: number | null
+  level?: number
+  sort_order?: number
+  is_featured?: boolean
+  banner_url?: string
+}
+
+export interface Brand {
+  id: number
+  name: string
+  slug: string
+  logo_url?: string
 }
 
 export interface CompanyData {

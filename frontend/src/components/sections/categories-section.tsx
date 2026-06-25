@@ -124,7 +124,7 @@ function CategoryCard({
         animation: `fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) ${index * 110 + 80}ms forwards`,
       }}
     >
-      <a href={`/category/${category?.id}`} className="block h-full">
+      <a href={`/category/${category?.slug || category?.id}`} className="block h-full">
         {/* outer glow wrapper */}
         <div
           className="relative h-full rounded-[20px] transition-all duration-350"
@@ -236,7 +236,7 @@ function CategoryCard({
                   {category.product_count} Products
                 </span>
 
-                <Link href={`/category/${category.id}`} onClick={(e) => e.stopPropagation()}>
+                <Link href={`/category/${category.slug || category.id}`} onClick={(e) => e.stopPropagation()}>
                   <button
                     className="flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-full transition-all duration-200"
                     style={{
@@ -358,6 +358,14 @@ export function CategoriesSection() {
 
   if (!categoriesdata?.rows?.length) return null;
 
+  // Filter to show only top-level categories (parent_id is null/undefined and level is 0 or undefined)
+  const topLevelCategories = categoriesdata.rows.filter(
+    (cat: any) => (cat.parent_id === null || cat.parent_id === undefined) && (cat.level === 0 || cat.level === undefined || cat.level === null)
+  );
+
+  // Fallback: if filter results in empty array (no parent_id/level fields yet), show all
+  const displayCategories = topLevelCategories.length > 0 ? topLevelCategories : categoriesdata.rows;
+
   return (
     <section className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
       <Background />
@@ -367,7 +375,7 @@ export function CategoriesSection() {
 
         {/* grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {categoriesdata.rows.map((category, index) => (
+          {displayCategories.map((category: any, index: number) => (
             <CategoryCard
               key={category.id}
               category={category}

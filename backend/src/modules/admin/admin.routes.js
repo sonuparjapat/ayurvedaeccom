@@ -214,4 +214,10 @@ router.put('/returns/:id/approve', auth, admin, controller.adminApproveReturn)
 router.put('/returns/:id/reject', auth, admin, controller.adminRejectReturn)
 router.put('/returns/:id/complete-refund', auth, admin, controller.adminCompleteRefund)
 
+/* ─── BRAND CRUD ─── */
+router.get('/brands', auth, admin, controller.adminListBrands)
+router.post('/brands', auth, admin, upload.single('logo'), controller.adminCreateBrand)
+router.put('/brands/:id', auth, admin, upload.single('logo'), controller.adminUpdateBrand)
+router.delete('/brands/:id', auth, admin, controller.adminDeleteBrand)
+
 module.exports = router

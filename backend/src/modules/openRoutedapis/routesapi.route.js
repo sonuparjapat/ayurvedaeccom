@@ -7,6 +7,8 @@ const categoryCtrl = require("./routedapis.controler");
 const upload = require("../../config/multer");
 
 router.get('/categories', categoryCtrl.getCategories)
+router.get('/categories/tree', categoryCtrl.getCategoryTree)
+router.get('/brands', categoryCtrl.getPublicBrands)
 router.get('/categories/:id', categoryCtrl.getCategoryById)
 
 router.post('/categories',upload.single('image'), categoryCtrl.createCategory)

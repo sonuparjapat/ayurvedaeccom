@@ -312,6 +312,15 @@ export default function CategoryPage() {
 
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Subcategories & banner
+  const [subcategories, setSubcategories] = useState<any[]>([])
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('')
+  const [categoryBanner, setCategoryBanner] = useState<string>('')
+  const [categoryInfo, setCategoryInfo] = useState<any>(null)
+
+  // Determine if slug is numeric (backward compat) or a slug string
+  const isNumericSlug = /^\d+$/.test(String(slug))
+
   /* ================= SEARCH DEBOUNCE ================= */
 
   useEffect(() => {
@@ -323,19 +332,52 @@ export default function CategoryPage() {
     return () => { if (searchRef.current) clearTimeout(searchRef.current) }
   }, [searchInput])
 
+  /* ================= FETCH CATEGORY INFO & SUBCATEGORIES ================= */
+
+  useEffect(() => {
+    if (!slug) return
+    // Fetch category info (for banner and subcategories)
+    const fetchCategoryInfo = async () => {
+      try {
+        const endpoint = isNumericSlug ? `/categories/${slug}` : `/categories/slug/${slug}`
+        const res = await axios.get(endpoint)
+        const cat = res.data?.category || res.data?.data || res.data
+        if (cat) {
+          setCategoryInfo(cat)
+          if (cat.banner_url) setCategoryBanner(cat.banner_url)
+        }
+      } catch {
+        // fallback - category info is optional
+      }
+    }
+    const fetchSubcats = async () => {
+      try {
+        const catParam = isNumericSlug ? slug : slug
+        const res = await axios.get(`/categories`, { params: { parent_id: catParam } })
+        const subs = res.data?.categories || res.data?.rows || res.data?.data || []
+        setSubcategories(Array.isArray(subs) ? subs : [])
+      } catch {
+        // subcategories are optional
+      }
+    }
+    fetchCategoryInfo()
+    fetchSubcats()
+  }, [slug])
+
   /* ================= FETCH ================= */
 
   useEffect(() => {
     fetchProducts()
-  }, [slug, searchTerm, sortBy, priceRange, page, inStockOnly, minRating])
-console.log(slug,'idfsdfsdf')
+  }, [slug, searchTerm, sortBy, priceRange, page, inStockOnly, minRating, selectedSubcategory])
+
   const fetchProducts = async () => {
-    console.log(slug,"id cominggggggggggg")
     try {
       setLoading(true)
+      // Use subcategory if selected, otherwise use slug param
+      const categoryParam = selectedSubcategory || slug
       const res = await axios.get('/shop/public', {
         params: {
-          category_id: slug,
+          ...(isNumericSlug || selectedSubcategory ? { category_id: categoryParam } : { category_slug: categoryParam }),
           search: searchTerm,
           minPrice: priceRange.min,
           maxPrice: priceRange.max,
@@ -988,6 +1030,22 @@ console.log(slug,'idfsdfsdf')
 
         <main className="flex-1">
 
+          {/* ======= CATEGORY BANNER ======= */}
+          {categoryBanner && (
+            <section className="relative w-full overflow-hidden" style={{ maxHeight: 320 }}>
+              <img
+                src={categoryBanner}
+                alt={categoryName}
+                className="w-full h-full object-cover"
+                style={{ maxHeight: 320, width: '100%' }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 container mx-auto px-4 pb-8 relative z-10">
+                <h1 className="text-4xl lg:text-5xl font-black text-white drop-shadow-lg">{categoryName}</h1>
+              </div>
+            </section>
+          )}
+
           {/* ======= HERO BANNER ======= */}
           <section className="relative bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-500 overflow-hidden">
             <div className="absolute inset-0 opacity-10">
@@ -1012,6 +1070,40 @@ console.log(slug,'idfsdfsdf')
               </motion.div>
             </div>
           </section>
+
+          {/* ======= SUBCATEGORY CHIPS ======= */}
+          {subcategories.length > 0 && (
+            <section className="bg-white border-b border-gray-100">
+              <div className="container mx-auto px-4 py-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mr-2">Subcategories:</span>
+                  <button
+                    onClick={() => { setSelectedSubcategory(''); setPage(1) }}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                      !selectedSubcategory
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {subcategories.map((sub: any) => (
+                    <button
+                      key={sub.id}
+                      onClick={() => { setSelectedSubcategory(String(sub.id)); setPage(1) }}
+                      className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                        selectedSubcategory === String(sub.id)
+                          ? 'bg-emerald-600 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                      }`}
+                    >
+                      {sub.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* ======= TRUST BADGES ======= */}
           <section className="bg-white border-b border-gray-100">

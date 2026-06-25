@@ -64,8 +64,8 @@ exports.downloadTemplate = async (req, res) => {
   try {
 
    const csvContent =
-`name,slug,price,compareprice,inventory,sku,category_id,gst_percent,hsn_code,cess_percent,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords,images
-Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,,,0,Himalaya,active,Short text,Long text,Meta title,Meta desc,keywords,https://site.com/a.jpg|https://site.com/b.jpg`
+`name,slug,price,compareprice,inventory,sku,category_id,gst_percent,hsn_code,cess_percent,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords,images,brand_id,tags,is_featured,is_bestseller,cost_price,weight_grams,barcode,low_stock_threshold
+Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,,,0,Himalaya,active,Short text,Long text,Meta title,Meta desc,keywords,https://site.com/a.jpg|https://site.com/b.jpg,,immunity|wellness,false,false,300,200,,10`
 
     res.setHeader(
       'Content-Type',

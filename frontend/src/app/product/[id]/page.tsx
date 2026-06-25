@@ -27,6 +27,8 @@ import {
   MapPin,
   Bell,
   Tag,
+  Award,
+  Weight,
 } from 'lucide-react'
 
 import { Header } from '@/components/layout/header'
@@ -56,6 +58,15 @@ interface Product {
   meta_description?: string
   category_name?: string
   brand?: string
+  brand_id?: number
+  brand_display_name?: string
+  brand_slug?: string
+  tags?: string[]
+  is_featured?: boolean
+  is_bestseller?: boolean
+  weight_grams?: number
+  total_sold?: number
+  specifications?: any[]
 }
 
 
@@ -535,12 +546,26 @@ const addToCart = async () => {
 
             <div className="space-y-7">
 
+              {/* BRAND LINK */}
+              {(product.brand_display_name || product.brand) && (
+                <Link href={product.brand_slug ? `/products?brand=${product.brand_slug}` : '/products'} className="text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:underline">
+                  {product.brand_display_name || product.brand}
+                </Link>
+              )}
 
-              <Badge className="bg-emerald-100 text-emerald-700 px-4 py-1">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Badge className="bg-emerald-100 text-emerald-700 px-4 py-1">
+                  {product.category_name || 'Ayurveda'}
+                </Badge>
 
-                {product.brand || product.category_name || 'Ayurveda'}
-
-              </Badge>
+                {/* BESTSELLER BADGE */}
+                {product.is_bestseller && (
+                  <Badge className="bg-amber-100 text-amber-700 px-4 py-1 flex items-center gap-1">
+                    <Award size={14} />
+                    BESTSELLER
+                  </Badge>
+                )}
+              </div>
 
 
               <h1 className="text-4xl lg:text-5xl font-bold">
@@ -568,6 +593,11 @@ const addToCart = async () => {
                         <span className="text-xs font-body" style={{ color: 'var(--light-brown)' }}>
                           ({product.reviewcount})
                         </span>
+                        {product.total_sold != null && product.total_sold > 0 && (
+                          <span className="text-xs font-semibold text-gray-500 ml-2">
+                            {product.total_sold}+ sold
+                          </span>
+                        )}
                       </div>
 
             
@@ -647,6 +677,28 @@ const addToCart = async () => {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* WEIGHT */}
+              {product.weight_grams != null && product.weight_grams > 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Weight size={16} className="text-gray-500" />
+                  <span>Net Weight: {product.weight_grams}g</span>
+                </div>
+              )}
+
+              {/* TAGS */}
+              {product.tags && product.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {product.tags.map((tag, i) => (
+                    <span
+                      key={i}
+                      className="text-xs font-medium px-3 py-1 rounded-full bg-stone-100 text-stone-600 border border-stone-200"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               )}
 
@@ -862,6 +914,29 @@ const addToCart = async () => {
                 {product.longdescription}
 
               </p>
+
+              {/* SPECIFICATIONS */}
+              {product.specifications && product.specifications.length > 0 && (
+                <div className="mt-10">
+                  <h3 className="text-2xl font-bold mb-4">Specifications</h3>
+                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <tbody>
+                        {product.specifications.map((spec: any, i: number) => (
+                          <tr key={i} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                            <td className="px-5 py-3 font-semibold text-gray-700 w-1/3 border-r border-gray-200">
+                              {spec.key}
+                            </td>
+                            <td className="px-5 py-3 text-gray-600">
+                              {spec.value}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
             </CardContent>
 

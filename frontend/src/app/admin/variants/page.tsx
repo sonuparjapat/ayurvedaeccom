@@ -12,13 +12,17 @@ interface Variant {
   sku: string | null
   price: number
   compareprice: number | null
+  cost_price: number | null
+  weight_grams: number | null
+  barcode: string | null
+  image_url: string | null
   inventory: number
   is_active: boolean
   attributes: Record<string, string> | null
   sort_order: number
 }
 
-const EMPTY_VARIANT = { label: '', sku: '', price: 0, compareprice: '', inventory: 0, is_active: true, attributes: '', sort_order: 0 }
+const EMPTY_VARIANT = { label: '', sku: '', price: 0, compareprice: '', cost_price: '', weight_grams: '', barcode: '', image_url: '', inventory: 0, is_active: true, attributes: '', sort_order: 0 }
 
 export default function AdminVariantsPage() {
   const [products, setProducts] = useState<any[]>([])
@@ -67,6 +71,10 @@ export default function AdminVariantsPage() {
       sku: v.sku || '',
       price: v.price,
       compareprice: v.compareprice != null ? String(v.compareprice) : '',
+      cost_price: v.cost_price != null ? String(v.cost_price) : '',
+      weight_grams: v.weight_grams != null ? String(v.weight_grams) : '',
+      barcode: v.barcode || '',
+      image_url: v.image_url || '',
       inventory: v.inventory,
       is_active: v.is_active,
       attributes: v.attributes ? JSON.stringify(v.attributes) : '',
@@ -84,6 +92,10 @@ export default function AdminVariantsPage() {
       sku: form.sku || null,
       price: Number(form.price),
       compareprice: form.compareprice ? Number(form.compareprice) : null,
+      cost_price: form.cost_price ? Number(form.cost_price) : null,
+      weight_grams: form.weight_grams ? Number(form.weight_grams) : null,
+      barcode: form.barcode || null,
+      image_url: form.image_url || null,
       inventory: Number(form.inventory),
       is_active: form.is_active,
       sort_order: Number(form.sort_order),
@@ -250,6 +262,20 @@ export default function AdminVariantsPage() {
                   <input type="number" value={form.compareprice} onChange={e => set('compareprice', e.target.value)} min={0} placeholder="MRP" style={inp} />
                 </FormField>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <FormField label="Cost Price (₹)">
+                  <input type="number" value={form.cost_price} onChange={e => set('cost_price', e.target.value)} min={0} placeholder="Cost" style={inp} />
+                </FormField>
+                <FormField label="Weight (g)">
+                  <input type="number" value={form.weight_grams} onChange={e => set('weight_grams', e.target.value)} min={0} placeholder="Weight in grams" style={inp} />
+                </FormField>
+              </div>
+              <FormField label="Barcode">
+                <input value={form.barcode} onChange={e => set('barcode', e.target.value)} placeholder="e.g. 8901234567890" style={inp} />
+              </FormField>
+              <FormField label="Image URL">
+                <input value={form.image_url} onChange={e => set('image_url', e.target.value)} placeholder="https://..." style={inp} />
+              </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="Inventory">
                   <input type="number" value={form.inventory} onChange={e => set('inventory', e.target.value)} min={0} style={inp} />

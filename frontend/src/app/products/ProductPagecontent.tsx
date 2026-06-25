@@ -35,6 +35,7 @@ import {
   RefreshCw,
   Zap,
   Filter,
+  Award,
 } from 'lucide-react'
 
 import { motion, AnimatePresence } from 'framer-motion'
@@ -57,6 +58,13 @@ interface Product {
   category_name: string
   averagerating: number
   reviewcount: number
+  is_bestseller?: boolean
+}
+
+interface Brand {
+  id: number
+  name: string
+  slug: string
 }
 
 /* ================= COMPONENT ================= */
@@ -65,6 +73,8 @@ export default function ProductsPageContent() {
   /* ---------- STATE ---------- */
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<string[]>([])
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [selectedBrand, setSelectedBrand] = useState('')
   const [loading, setLoading] = useState(true)
   const params = useSearchParams()
   const q = params.get('q') || ''
@@ -93,6 +103,7 @@ export default function ProductsPageContent() {
   /* ---------- FETCH ---------- */
   useEffect(() => {
     fetchCategories()
+    fetchBrands()
     fetchProducts()
   }, [])
 
@@ -101,14 +112,14 @@ export default function ProductsPageContent() {
       fetchProducts()
     }, 400)
     return () => clearTimeout(t)
-  }, [search, category, minPrice, maxPrice, rating, inStock, discount, sortBy, sortOrder, page])
+  }, [search, category, minPrice, maxPrice, rating, inStock, discount, sortBy, sortOrder, page, selectedBrand])
 
   /* ---------- API ---------- */
   const fetchProducts = async () => {
     try {
       setLoading(true)
       const res = await axios.get('/shop/public', {
-        params: { search, category, minPrice, maxPrice, rating, inStock, discount, sortBy, sortOrder, page, limit },
+        params: { search, category, minPrice, maxPrice, rating, inStock, discount, sortBy, sortOrder, page, limit, ...(selectedBrand ? { brand_id: selectedBrand } : {}) },
       })
       setProducts(res.data.products || [])
       setTotal(res.data.total || 0)
@@ -125,6 +136,15 @@ export default function ProductsPageContent() {
       setCategories(res.data.categories || [])
     } catch {
       notify.error('Category load failed')
+    }
+  }
+
+  const fetchBrands = async () => {
+    try {
+      const res = await axios.get('/brands')
+      setBrands(res.data?.brands || res.data?.data || res.data || [])
+    } catch {
+      // brands are optional, fail silently
     }
   }
 
@@ -224,11 +244,12 @@ const addToCart = async (id: string) => {
     setDiscount(false)
     setSortBy('created_at')
     setSortOrder('desc')
+    setSelectedBrand('')
     setPage(1)
   }
 
-  const hasActiveFilters = minPrice || maxPrice || rating !== '0' || inStock || discount || sortBy !== 'created_at'
-  const activeFiltersCount = [minPrice, maxPrice, rating !== '0', inStock, discount, sortBy !== 'created_at'].filter(Boolean).length
+  const hasActiveFilters = minPrice || maxPrice || rating !== '0' || inStock || discount || sortBy !== 'created_at' || selectedBrand
+  const activeFiltersCount = [minPrice, maxPrice, rating !== '0', inStock, discount, sortBy !== 'created_at', selectedBrand].filter(Boolean).length
 
   /* ================= UI ================= */
   return (
@@ -808,6 +829,26 @@ const addToCart = async (id: string) => {
                         </div>
                       </div>
                       <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                      {/* Brand Filter */}
+                      {brands.length > 0 && (
+                        <>
+                          <div>
+                            <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Brand</p>
+                            <select
+                              value={selectedBrand}
+                              onChange={e => { setSelectedBrand(e.target.value); setPage(1) }}
+                              className="custom-select w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                              style={{ background: 'var(--warm-white)', border: '1.5px solid var(--gold-pale)', color: 'var(--charcoal)', fontFamily: 'inherit', cursor: 'pointer' }}
+                            >
+                              <option value="">All Brands</option>
+                              {brands.map(b => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                        </>
+                      )}
                       <div>
                         <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Price Range</p>
                         <div className="flex gap-2">
@@ -880,6 +921,7 @@ const addToCart = async (id: string) => {
                   {rating !== '0' && <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: '#fff8e1', color: '#b8860b' }}>{rating}★ & above <button onClick={() => setRating('0')}><X size={10} /></button></span>}
                   {inStock && <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'var(--emerald-pale)', color: 'var(--emerald)' }}>In Stock <button onClick={() => setInStock(false)}><X size={10} /></button></span>}
                   {discount && <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: '#fce8e1', color: 'var(--terracotta)' }}>On Sale <button onClick={() => setDiscount(false)}><X size={10} /></button></span>}
+                  {selectedBrand && <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'var(--gold-pale)', color: 'var(--medium-brown)' }}>Brand: {brands.find(b => String(b.id) === selectedBrand)?.name || selectedBrand} <button onClick={() => setSelectedBrand('')}><X size={10} /></button></span>}
                 </div>
               )}
 
@@ -951,6 +993,11 @@ const addToCart = async (id: string) => {
                               </div>
                             )}
                             {discountPct && !isOutOfStock && <div className="img-badge-discount">-{discountPct}%</div>}
+                            {!discountPct && product.is_bestseller && !isOutOfStock && (
+                              <div className="img-badge-discount" style={{ background: 'linear-gradient(135deg, #b8860b, #d4a843)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Award size={11} /> BESTSELLER
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex-1 p-5 flex flex-col">
@@ -1040,6 +1087,11 @@ const addToCart = async (id: string) => {
 
                           {/* Badges */}
                           {discountPct && !isOutOfStock && <div className="img-badge-discount">-{discountPct}%</div>}
+                          {!discountPct && product.is_bestseller && !isOutOfStock && (
+                            <div className="img-badge-discount" style={{ background: 'linear-gradient(135deg, #b8860b, #d4a843)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <Award size={11} /> BESTSELLER
+                            </div>
+                          )}
                           {isLowStock && !isOutOfStock && <div className="img-badge-low">Only {product.inventory} left</div>}
 
                           {/* Floating actions — slide in on hover */}
@@ -1274,6 +1326,26 @@ const addToCart = async (id: string) => {
                   </div>
                 </div>
                 <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                {/* Brand Filter (Mobile) */}
+                {brands.length > 0 && (
+                  <>
+                    <div>
+                      <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Brand</p>
+                      <select
+                        value={selectedBrand}
+                        onChange={e => { setSelectedBrand(e.target.value); setPage(1) }}
+                        className="custom-select w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                        style={{ background: 'var(--warm-white)', border: '1.5px solid var(--gold-pale)', color: 'var(--charcoal)', fontFamily: 'inherit', cursor: 'pointer' }}
+                      >
+                        <option value="">All Brands</option>
+                        {brands.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ height: '1px', background: 'rgba(184,134,11,0.1)' }} />
+                  </>
+                )}
                 <div>
                   <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--light-brown)' }}>Price Range</p>
                   <div className="flex gap-2">

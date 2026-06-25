@@ -31,6 +31,9 @@ interface Product {
   id: number; name: string; price: number; compareprice?: number
   images: string[]; inventory: number; category_name?: string
   averagerating?: number; reviewcount?: number; shortdescription?: string
+  brand?: string; brand_id?: number; tags?: string[]
+  is_featured?: boolean; is_bestseller?: boolean
+  weight_grams?: number; total_sold?: number
 }
 interface Review {
   id?: number; user_name: string; rating: number; comment: string; product_name: string
@@ -418,6 +421,11 @@ function ProductCard({ item, index }: { item: Product; index: number }) {
           {disc != null && disc > 0 && (
             <View style={ss.discBadge}>
               <Text style={ss.discText}>{disc}%{'\n'}OFF</Text>
+            </View>
+          )}
+          {item.is_bestseller && (
+            <View style={{ position: 'absolute', top: 8, right: 8, backgroundColor: Colors.gold, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 8, color: '#fff' }}>BESTSELLER</Text>
             </View>
           )}
           {outOfStock && (

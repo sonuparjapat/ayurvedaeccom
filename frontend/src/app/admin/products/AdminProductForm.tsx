@@ -19,33 +19,36 @@ export default function AdminProductForm({
 
   const previewUrls = useRef<string[]>([])
 
+  const [brands, setBrands] = useState<any[]>([])
+
   const [form, setForm] = useState<any>({
     name: '',
     slug: '',
-
     shortdescription: '',
     longdescription: '',
-
     price: '',
     compareprice: '',
-
+    cost_price: '',
     inventory: '',
     sku: '',
-
+    barcode: '',
     category_name: '',
-    category_id: "",
+    category_id: '',
     gst_percent: 0,
     brand: '',
-
+    brand_id: '',
     status: 'draft',
-
     meta_title: '',
     meta_description: '',
-
     images: [],
     hsn_code: '',
-// tax_name: '',
-cess_percent: 0,
+    cess_percent: 0,
+    tags: '',
+    is_featured: false,
+    is_bestseller: false,
+    weight_grams: '',
+    low_stock_threshold: 10,
+    specifications: '[]',
   })
 
 
@@ -72,7 +75,9 @@ cess_percent: 0,
     }
 
     loadCategories()
-
+    axios.get('/admin/brands', { params: { limit: 200 } })
+      .then(r => setBrands(r.data?.data || []))
+      .catch(() => {})
   }, [])
 
 
@@ -334,14 +339,9 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
               </option>
 
               {categories?.map(cat => (
-
-                <option
-                  key={cat.id}
-                  value={cat.id}
-                >
-                  {cat.name}
+                <option key={cat.id} value={cat.id}>
+                  {'— '.repeat(cat.level || 0)}{cat.name}
                 </option>
-
               ))}
 
             </select>
@@ -387,19 +387,53 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
     setForm({...form,tax_name:v})
   }
 /> */}
+          {/* BRAND DROPDOWN */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Brand</label>
+            <select
+              value={form.brand_id || ''}
+              disabled={isView}
+              onChange={e => {
+                const selected = brands.find((b: any) => b.id == e.target.value)
+                setForm({ ...form, brand_id: e.target.value, brand: selected?.name || form.brand })
+              }}
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-emerald-500 bg-white"
+            >
+              <option value="">Select Brand (optional)</option>
+              {brands.map((b: any) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <Select label="Status" value={form.status} readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, status: v })} />
+
+          {/* TAGS */}
           <Input
-            label="Brand"
-            value={form.brand}
+            label="Tags (comma separated)"
+            value={typeof form.tags === 'string' ? form.tags : (form.tags || []).join(', ')}
             readOnly={isView}
-            onChange={(v: string) =>
-              setForm({ ...form, brand: v })
-            }
+            onChange={(v: string) => setForm({ ...form, tags: v })}
           />
-          <Select label="Status" value={form.status}  readOnly={isView}
-            onChange={(v: string) =>
-              setForm({ ...form, status: v })
-            } />
-        
+
+          {/* FEATURED / BESTSELLER */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Badges</label>
+            <div className="flex gap-4 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 rounded" checked={!!form.is_featured} disabled={isView}
+                  onChange={e => setForm({ ...form, is_featured: e.target.checked })} />
+                <span className="text-sm">Featured</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 rounded" checked={!!form.is_bestseller} disabled={isView}
+                  onChange={e => setForm({ ...form, is_bestseller: e.target.checked })} />
+                <span className="text-sm">Bestseller</span>
+              </label>
+            </div>
+          </div>
+
         </Grid>
 
       </Section>
@@ -423,12 +457,22 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
 
           <Input
-            label="Compare Price"
+            label="Compare Price (MRP)"
             type="number"
             value={form.compareprice}
             readOnly={isView}
             onChange={(v: string) =>
               setForm({ ...form, compareprice: v })
+            }
+          />
+
+          <Input
+            label="Cost Price (your cost)"
+            type="number"
+            value={form.cost_price}
+            readOnly={isView}
+            onChange={(v: string) =>
+              setForm({ ...form, cost_price: v })
             }
           />
 
@@ -461,6 +505,29 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             onChange={(v: string) =>
               setForm({ ...form, sku: v })
             }
+          />
+
+          <Input
+            label="Barcode"
+            value={form.barcode}
+            readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, barcode: v })}
+          />
+
+          <Input
+            label="Weight (grams)"
+            type="number"
+            value={form.weight_grams}
+            readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, weight_grams: v })}
+          />
+
+          <Input
+            label="Low Stock Alert Threshold"
+            type="number"
+            value={form.low_stock_threshold}
+            readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, low_stock_threshold: v })}
           />
 
         </Grid>
@@ -598,6 +665,28 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
       </Section>
 
+
+      {/* SPECIFICATIONS */}
+      <Section title="Specifications (optional)">
+        <p className="text-xs text-gray-500 mb-2">Add product specifications as JSON array: [{"key":"Ingredient","value":"Amla"}, ...]</p>
+        <TextArea
+          label="Specifications JSON"
+          rows={3}
+          value={typeof form.specifications === 'string' ? form.specifications : JSON.stringify(form.specifications || [], null, 2)}
+          readOnly={isView}
+          onChange={(v: string) => setForm({ ...form, specifications: v })}
+        />
+      </Section>
+
+      {/* SEO */}
+      <Section title="SEO (optional)">
+        <Grid>
+          <Input label="Meta Title" value={form.meta_title} readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, meta_title: v })} />
+          <Input label="Meta Description" value={form.meta_description} readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, meta_description: v })} />
+        </Grid>
+      </Section>
 
       {/* SUBMIT */}
 

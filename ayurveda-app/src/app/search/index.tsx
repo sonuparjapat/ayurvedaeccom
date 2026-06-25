@@ -24,6 +24,9 @@ interface Suggestion {
   price?: string
   image?: string
   _type: 'product' | 'category'
+  brand?: string
+  is_bestseller?: boolean
+  tags?: string[]
 }
 
 const RECENT_KEY = 'recent_searches'
@@ -170,7 +173,17 @@ export default function SearchScreen() {
                 </View>
               )}
               <View style={s.rowText}>
-                <Text style={s.rowName} numberOfLines={1}>{item.name}</Text>
+                {item._type === 'product' && item.brand && (
+                  <Text style={{ fontFamily: Fonts.medium, fontSize: 10, color: Colors.textDim, marginBottom: 1 }}>{item.brand}</Text>
+                )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={s.rowName} numberOfLines={1}>{item.name}</Text>
+                  {item.is_bestseller && (
+                    <View style={{ backgroundColor: '#f0e4bc', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                      <Text style={{ fontFamily: Fonts.bold, fontSize: 8, color: '#92400e' }}>Bestseller</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={s.rowMeta}>
                   {item._type === 'category' ? 'Category' : item.price ? `₹${Number(item.price).toLocaleString('en-IN')}` : 'Product'}
                 </Text>

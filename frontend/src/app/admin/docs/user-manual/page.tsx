@@ -422,9 +422,10 @@ export default function UserManualPage() {
             headers={['Admin Section', 'Purpose']}
             rows={[
               ['Dashboard', 'Overview of total orders, revenue, users, and recent activity at a glance.'],
-              ['Products', 'Add, edit, delete, and manage inventory for all products.'],
+              ['Products', 'Add, edit, delete products with full details: pricing (sell/compare/cost), inventory (stock, SKU, barcode, low-stock threshold), brand, tags, featured/bestseller badges, weight, specifications, SEO meta fields, and multiple images.'],
               ['Orders', 'View all customer orders, update status, manage returns and refunds.'],
-              ['Categories', 'Create and manage product categories with GST rates.'],
+              ['Categories', 'Hierarchical category management — create parent and subcategories (unlimited depth). Each has slug (SEO URL), sort order, featured flag, banner image, GST/HSN/CESS tax defaults.'],
+              ['Brands', 'Create and manage product brands with logo, slug, description, sort order, and active/inactive status. Products reference brands via dropdown.'],
               ['Users', 'View all registered customers. Create admin/staff accounts.'],
               ['Invoices', 'View and download all generated invoices.'],
               ['Analytics', 'Revenue charts (daily, weekly, monthly), order stats, product performance.'],

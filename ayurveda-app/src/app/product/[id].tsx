@@ -26,6 +26,9 @@ interface Product {
   id: number; name: string; shortdescription: string; longdescription: string
   price: string; compareprice?: string; inventory: number; images: string[]
   averagerating: string; reviewcount: number; category_name?: string; brand?: string
+  brand_id?: number; brand_display_name?: string; tags?: string[]
+  is_bestseller?: boolean; weight_grams?: number; total_sold?: number
+  specifications?: any[]
 }
 interface Review { id?: number; name: string; rating: number; comment: string; images?: string[] }
 
@@ -461,6 +464,11 @@ export default function ProductDetailScreen() {
             }
           </View>
 
+          {(product.brand_display_name || product.brand) && (
+            <Text style={{ fontFamily: Fonts.medium, fontSize: 11, color: Colors.sage, marginBottom: 2 }}>
+              {product.brand_display_name || product.brand}
+            </Text>
+          )}
           <Text style={ss.productName}>{product.name}</Text>
           <Text style={ss.productDesc}>{product.shortdescription}</Text>
 
@@ -473,6 +481,11 @@ export default function ProductDetailScreen() {
               <Text style={ss.ratingText}>{product.averagerating}</Text>
             </View>
             <Text style={ss.reviewCount}>({product.reviewcount} reviews)</Text>
+            {product.total_sold != null && product.total_sold > 0 && (
+              <View style={{ backgroundColor: Colors.mint, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 0.5, borderColor: '#bbf7d0' }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: Colors.sage }}>{product.total_sold}+ sold</Text>
+              </View>
+            )}
           </View>
 
           {/* Price */}
@@ -484,7 +497,30 @@ export default function ProductDetailScreen() {
                 <Text style={ss.saveText}>🎉 Save {disc}%</Text>
               </View>
             )}
+            {product.is_bestseller && (
+              <View style={{ backgroundColor: Colors.goldLight, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 0.5, borderColor: Colors.gold }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: '#92400e' }}>Bestseller</Text>
+              </View>
+            )}
           </View>
+
+          {/* Weight */}
+          {product.weight_grams != null && product.weight_grams > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.textDim }}>Net Wt: {product.weight_grams}g</Text>
+            </View>
+          )}
+
+          {/* Tags */}
+          {product.tags && product.tags.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 14 }}>
+              {product.tags.map((tag, idx) => (
+                <View key={idx} style={{ backgroundColor: Colors.mint, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 0.5, borderColor: '#bbf7d0' }}>
+                  <Text style={{ fontFamily: Fonts.medium, fontSize: 10, color: Colors.sage }}>{tag}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          )}
 
           {/* Variants */}
           {variants.length > 0 && (
@@ -636,6 +672,29 @@ export default function ProductDetailScreen() {
           {tab === 'desc' ? (
             <Animated.View entering={FadeIn.duration(300)}>
               <Text style={ss.longDesc}>{product.longdescription || product.shortdescription}</Text>
+
+              {/* Specifications */}
+              {product.specifications && product.specifications.length > 0 && (
+                <View style={{ marginTop: 20 }}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest, marginBottom: 12 }}>Specifications</Text>
+                  <View style={{ backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 0.5, borderColor: Colors.border }}>
+                    {product.specifications.map((spec: any, idx: number) => (
+                      <View
+                        key={idx}
+                        style={{
+                          flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 14,
+                          borderBottomWidth: idx < (product.specifications?.length ?? 0) - 1 ? 0.5 : 0,
+                          borderBottomColor: Colors.border,
+                          backgroundColor: idx % 2 === 0 ? '#fff' : Colors.cream,
+                        }}
+                      >
+                        <Text style={{ flex: 1, fontFamily: Fonts.medium, fontSize: 12, color: Colors.textDim }}>{spec.key || spec.label || spec.name || ''}</Text>
+                        <Text style={{ flex: 1, fontFamily: Fonts.regular, fontSize: 12, color: Colors.forest }}>{spec.value || ''}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
             </Animated.View>
           ) : (
             <Animated.View entering={FadeIn.duration(300)}>

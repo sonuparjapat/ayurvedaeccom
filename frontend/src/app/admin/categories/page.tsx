@@ -17,11 +17,17 @@ interface Category {
   name: string
   gst_percent: number
   hsn_code?: string
-
   cess_percent?: number
   color_class?: string
   image_url?: string
   description?: string
+  parent_id?: number | null
+  slug?: string
+  level?: number
+  sort_order?: number
+  is_featured?: boolean
+  banner_url?: string
+  product_count?: number
 }
 
 interface ApiResponse {
@@ -57,6 +63,11 @@ const [taxName, setTaxName] = useState('')
 const [cessPercent, setCessPercent] = useState<any>(0)
   const [color, setColor] = useState('')
   const [desc, setDesc] = useState('')
+
+  const [parentId, setParentId] = useState<number | string>('')
+  const [slug, setSlug] = useState('')
+  const [sortOrder, setSortOrder] = useState(0)
+  const [isFeatured, setIsFeatured] = useState(false)
 
   const [image, setImage] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -105,19 +116,20 @@ const [cessPercent, setCessPercent] = useState<any>(0)
   const openCreate = () => {
 
     setEditData(null)
-setHsnCode('')
-setTaxName('')
-setCessPercent(0)
+    setHsnCode('')
+    setTaxName('')
+    setCessPercent(0)
     setName('')
     setGstPercent(0)
-
     setColor('')
     setDesc('')
-
+    setParentId('')
+    setSlug('')
+    setSortOrder(0)
+    setIsFeatured(false)
     setImage(null)
     setPreview(null)
     setRemoveImage(false)
-
     setOpenModal(true)
 
   }
@@ -126,20 +138,19 @@ setCessPercent(0)
   const openEdit = (row: Category) => {
 
     setEditData(row)
-
     setName(row.name)
     setGstPercent(row.gst_percent || 0)
-setHsnCode(row.hsn_code || '')
-
-setCessPercent(row.cess_percent || 0)
+    setHsnCode(row.hsn_code || '')
+    setCessPercent(row.cess_percent || 0)
     setColor(row.color_class || '')
     setDesc(row.description || '')
-
+    setParentId(row.parent_id || '')
+    setSlug(row.slug || '')
+    setSortOrder(row.sort_order || 0)
+    setIsFeatured(row.is_featured || false)
     setPreview(row.image_url || null)
-
     setImage(null)
     setRemoveImage(false)
-
     setOpenModal(true)
 
   }
@@ -151,15 +162,17 @@ setCessPercent(row.cess_percent || 0)
 
     setOpenModal(false)
     setEditData(null)
-
     setName('')
     setGstPercent(0)
-setHsnCode('')
-setTaxName('')
-setCessPercent(0)
+    setHsnCode('')
+    setTaxName('')
+    setCessPercent(0)
     setColor('')
     setDesc('')
-
+    setParentId('')
+    setSlug('')
+    setSortOrder(0)
+    setIsFeatured(false)
     setImage(null)
     setPreview(null)
     setRemoveImage(false)
@@ -231,9 +244,12 @@ setCessPercent(0)
       form.append('gst_percent', String(gstpercent))
       form.append('color_class', color)
       form.append('description', desc)
-form.append('hsn_code', hsnCode)
-
-form.append('cess_percent', String(cessPercent))
+      form.append('hsn_code', hsnCode)
+      form.append('cess_percent', String(cessPercent))
+      form.append('parent_id', parentId ? String(parentId) : '')
+      form.append('slug', slug || name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+      form.append('sort_order', String(sortOrder))
+      form.append('is_featured', String(isFeatured))
       if (image) {
         form.append('image', image)
       }
@@ -321,10 +337,11 @@ form.append('cess_percent', String(cessPercent))
 
 const columns = [
   { key: 'id', label: 'ID', align: 'center' },
-  { key: 'name', label: 'Category Name' },
+  { key: 'name_display', label: 'Category Name' },
+  { key: 'parent_name', label: 'Parent', align: 'center' },
   { key: 'hsn_code', label: 'HSN', align: 'center' },
   { key: 'gst_percent', label: 'GST %', align: 'center' },
-  { key: 'cess_percent', label: 'CESS %', align: 'center' },
+  { key: 'sort_order', label: 'Order', align: 'center' },
   { key: 'actions', label: 'Actions', align: 'center' },
 ]
 
@@ -332,6 +349,18 @@ const columns = [
   const rows = categories.map(cat => ({
 
     ...cat,
+
+    name_display: (
+      <span>
+        {(cat.level || 0) > 0 && <span className="text-gray-400">{'— '.repeat(cat.level || 0)}</span>}
+        {cat.name}
+        {cat.is_featured && <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Featured</span>}
+      </span>
+    ),
+
+    parent_name: cat.parent_id
+      ? categories.find(c => c.id === cat.parent_id)?.name || `#${cat.parent_id}`
+      : '—',
 
     actions: (
       <div className="flex justify-center gap-3 flex-wrap">
@@ -537,19 +566,72 @@ const columns = [
           <div className="space-y-4">
 
 
+            {/* PARENT CATEGORY */}
+            <div>
+              <label className="text-xs uppercase text-slate-400 font-semibold">
+                Parent Category (optional)
+              </label>
+              <select
+                value={parentId}
+                onChange={e => setParentId(e.target.value ? Number(e.target.value) : '')}
+                className="input"
+              >
+                <option value="">— None (Top Level) —</option>
+                {categories.filter(c => c.id !== editData?.id).map(c => (
+                  <option key={c.id} value={c.id}>{'— '.repeat(c.level || 0)}{c.name}</option>
+                ))}
+              </select>
+            </div>
+
             {/* NAME */}
             <div>
-              <label className="text-xs uppercase
-              text-slate-400 font-semibold">
+              <label className="text-xs uppercase text-slate-400 font-semibold">
                 Category Name
               </label>
-
               <input
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => {
+                  setName(e.target.value)
+                  if (!editData) setSlug(e.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+                }}
                 maxLength={50}
                 className="input"
               />
+            </div>
+
+            {/* SLUG */}
+            <div>
+              <label className="text-xs uppercase text-slate-400 font-semibold">
+                Slug (URL-friendly)
+              </label>
+              <input
+                value={slug}
+                onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, ''))}
+                placeholder="auto-generated-from-name"
+                className="input"
+              />
+            </div>
+
+            {/* SORT ORDER + FEATURED */}
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="text-xs uppercase text-slate-400 font-semibold">
+                  Sort Order
+                </label>
+                <input
+                  type="number"
+                  value={sortOrder}
+                  onChange={e => setSortOrder(Number(e.target.value) || 0)}
+                  className="input"
+                />
+              </div>
+              <div className="flex items-end pb-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 rounded" checked={isFeatured}
+                    onChange={e => setIsFeatured(e.target.checked)} />
+                  <span className="text-sm font-medium">Featured</span>
+                </label>
+              </div>
             </div>
 
 

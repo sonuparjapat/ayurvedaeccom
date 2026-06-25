@@ -265,9 +265,11 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
             headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
             rows={[
               ['users', 'id (serial)', 'name, email, phone, password_hash, role (0-3), wallet_balance, loyalty_points, referral_code', 'role: 0=superadmin, 1=admin, 2=staff, 3=customer'],
-              ['products', 'id (serial)', 'name, description, price, compare_price, category_id, stock_quantity, is_active, average_rating, review_count, gst_rate, hsn_code, slug', 'is_active=false hides from storefront'],
-              ['product_images', 'id (serial)', 'product_id (FK), url, sort_order', 'Multiple images per product'],
-              ['categories', 'id (serial)', 'name, parent_id, gst_rate, is_active', 'Supports nested categories via parent_id'],
+              ['brands', 'id (serial)', 'name, slug, logo_url, description, is_active, sort_order', 'Admin CRUD at /admin/brands'],
+              ['products', 'id (serial)', 'name, slug, price, compareprice, cost_price, inventory, sku, barcode, category_id, category_name, brand_id (FK→brands), brand, status, images (JSONB), tags (JSONB), is_featured, is_bestseller, weight_grams, low_stock_threshold, total_sold, specifications (JSONB), gst_percent, hsn_code', 'brand text kept for backward compat; brand_id is optional FK'],
+              ['product_categories', '(product_id, category_id)', 'product_id (FK), category_id (FK)', 'Many-to-many junction for additional categories beyond primary category_id'],
+              ['categories', 'id (serial)', 'name, slug, parent_id (self-ref FK), level, sort_order, gst_percent, hsn_code, cess_percent, image_url, banner_url, is_active, is_featured', 'Supports nested categories via parent_id; level auto-computed'],
+              ['related_products', 'id (serial)', 'product_id (FK), related_id (FK), type (related/cross_sell/upsell), sort_order', 'Explicit product relations for "You may also like"'],
               ['orders', 'id (serial)', 'user_id, status (0-9), total_amount, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, address_id, coupon_id, discount_amount, wallet_used, loyalty_points_used, cod_otp, shipped_at, courier_name, tracking_number', 'status enum: see Order State Machine'],
               ['order_items', 'id (serial)', 'order_id, product_id, variant_id, quantity, unit_price, total_price, gst_amount', 'Snapshot prices at order time'],
               ['user_addresses', 'id (serial)', 'user_id, name, phone, address_line1/2, city, state, pincode, is_default', ''],

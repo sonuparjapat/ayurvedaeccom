@@ -28,6 +28,7 @@ interface Product {
   price: number; compareprice?: number; images: string[]
   inventory: number; category_name: string
   averagerating: number; reviewcount: number
+  brand?: string; is_bestseller?: boolean; tags?: string[]
 }
 
 const SORTS = [
@@ -85,6 +86,11 @@ function ProductCard({ p, index, addingId, addToCart, toggleWish, wishlist, inCa
           {d != null && (
             <View style={ss.discBadge}>
               <Text style={ss.discText}>{d}%{'\n'}OFF</Text>
+            </View>
+          )}
+          {p.is_bestseller && (
+            <View style={ss.bestsellerBadge}>
+              <Text style={ss.bestsellerText}>Bestseller</Text>
             </View>
           )}
           {p.inventory === 0 && (
@@ -162,6 +168,10 @@ export default function ProductsScreen() {
     wishlistData.items.map((w: any) => w.id)
   )
 
+  // Subcategories
+  const [subcategories, setSubcategories] = useState<{ id: number; name: string }[]>([])
+  const [selectedSubcat, setSelectedSubcat] = useState<number | null>(null)
+
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -169,7 +179,19 @@ export default function ProductsScreen() {
     searchTimer.current = setTimeout(() => { setSearch(searchInput); setPage(1) }, 400)
   }, [searchInput])
 
-  useEffect(() => { fetchProducts(1) }, [search, selectedSort, minPrice, maxPrice, inStockOnly, categoryId])
+  // Fetch subcategories when a category is selected
+  useEffect(() => {
+    if (categoryId) {
+      api.get('/categories', { params: { parent_id: categoryId } })
+        .then(r => setSubcategories(r.data?.categories || r.data || []))
+        .catch(() => setSubcategories([]))
+    } else {
+      setSubcategories([])
+    }
+    setSelectedSubcat(null)
+  }, [categoryId])
+
+  useEffect(() => { fetchProducts(1) }, [search, selectedSort, minPrice, maxPrice, inStockOnly, categoryId, selectedSubcat])
 
   const fetchProducts = async (pg: number) => {
     if (pg === 1) setLoading(true); else setLoadingMore(true)
@@ -182,7 +204,7 @@ export default function ProductsScreen() {
           ...(minPrice && { minPrice }),
           ...(maxPrice && { maxPrice }),
           ...(inStockOnly && { inStock: true }),
-          ...(categoryId && { category_id: categoryId }),
+          ...(selectedSubcat ? { category_id: selectedSubcat } : categoryId ? { category_id: categoryId } : {}),
         }
       })
       const newProducts = res.data?.products || []
@@ -306,6 +328,29 @@ export default function ProductsScreen() {
           ))}
         </ScrollView>
       </View>
+
+      {/* Subcategory chips */}
+      {subcategories.length > 0 && (
+        <View style={{ backgroundColor: Colors.cream, borderBottomWidth: 0.5, borderBottomColor: Colors.border }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
+            <TouchableOpacity
+              onPress={() => { setSelectedSubcat(null); setPage(1) }}
+              style={[ss.sortPill, selectedSubcat === null && ss.sortPillActive]}
+            >
+              <Text style={[ss.sortPillText, selectedSubcat === null && ss.sortPillTextActive]}>All</Text>
+            </TouchableOpacity>
+            {subcategories.map(sc => (
+              <TouchableOpacity
+                key={sc.id}
+                onPress={() => { setSelectedSubcat(selectedSubcat === sc.id ? null : sc.id); setPage(1) }}
+                style={[ss.sortPill, selectedSubcat === sc.id && ss.sortPillActive]}
+              >
+                <Text style={[ss.sortPillText, selectedSubcat === sc.id && ss.sortPillTextActive]}>{sc.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Grid */}
       {loading ? (
@@ -455,6 +500,8 @@ const ss = StyleSheet.create({
   cardImg: { width: '100%', height: '100%' },
   discBadge: { position: 'absolute', top: 8, left: 8, backgroundColor: Colors.red, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, alignItems: 'center' },
   discText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 8, textAlign: 'center', lineHeight: 12 },
+  bestsellerBadge: { position: 'absolute', bottom: 8, left: 8, backgroundColor: Colors.gold, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, alignItems: 'center' },
+  bestsellerText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 8 },
   oosBadge: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.42)', alignItems: 'center', justifyContent: 'center' },
   oosText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 10 },
   wishBtn: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 99, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', ...Shadows.sm },

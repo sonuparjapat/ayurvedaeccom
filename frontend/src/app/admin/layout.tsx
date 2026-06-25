@@ -184,6 +184,10 @@ export default function AdminLayout({
             Categories
           </MenuItem>
 
+          <MenuItem href="/admin/brands" icon={<Tag size={18} />}>
+            Brands
+          </MenuItem>
+
           <MenuItem href="/admin/invoices" icon={<List size={18} />}>
             Invoices
           </MenuItem>

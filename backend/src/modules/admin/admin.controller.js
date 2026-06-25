@@ -458,8 +458,21 @@ exports.create = async (req, res) => {
       meta_description,
       meta_keywords,
       gst_percent,
-hsn_code,
-cess_percent,
+      hsn_code,
+      cess_percent,
+
+      brand_id,
+      tags,
+      is_featured,
+      is_bestseller,
+      cost_price,
+      weight_grams,
+      length_cm,
+      width_cm,
+      height_cm,
+      low_stock_threshold,
+      specifications,
+      barcode,
     } = req.body
 
     // Validation
@@ -508,8 +521,21 @@ if (req.files?.length) {
         meta_description,
         meta_keywords,
         gst_percent,
-hsn_code,
-cess_percent
+        hsn_code,
+        cess_percent,
+
+        brand_id,
+        tags,
+        is_featured,
+        is_bestseller,
+        cost_price,
+        weight_grams,
+        length_cm,
+        width_cm,
+        height_cm,
+        low_stock_threshold,
+        specifications,
+        barcode
 
       )
 
@@ -520,7 +546,8 @@ cess_percent
         $8,$9,
         $10,$11,$12,
         $13,
-        $14,$15,$16,$17,$18,$19
+        $14,$15,$16,$17,$18,$19,
+        $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31
       )
     `, [
       name,
@@ -536,7 +563,7 @@ cess_percent
       sku || '',
 
       category_name || '',
-      category_id||"",
+      category_id || "",
       brand || '',
       status || 'draft',
 
@@ -544,9 +571,23 @@ cess_percent
 
       meta_title || '',
       meta_description || '',
-      meta_keywords || '',Number(gst_percent || 0),
-hsn_code || '',
-Number(cess_percent || 0),
+      meta_keywords || '',
+      Number(gst_percent || 0),
+      hsn_code || '',
+      Number(cess_percent || 0),
+
+      brand_id || null,
+      tags ? (typeof tags === 'string' ? tags : JSON.stringify(tags)) : null,
+      is_featured === 'true' || is_featured === true || false,
+      is_bestseller === 'true' || is_bestseller === true || false,
+      cost_price ? Number(cost_price) : null,
+      weight_grams ? Number(weight_grams) : null,
+      length_cm ? Number(length_cm) : null,
+      width_cm ? Number(width_cm) : null,
+      height_cm ? Number(height_cm) : null,
+      low_stock_threshold ? Number(low_stock_threshold) : null,
+      specifications ? (typeof specifications === 'string' ? specifications : JSON.stringify(specifications)) : null,
+      barcode || null,
 
     ])
 
@@ -587,15 +628,18 @@ exports.getAll = async (req, res) => {
 // console.log("test")
     const data = await pool.query(`
 
-      SELECT *
-      FROM products
+      SELECT p.*,
+        b.name AS brand_display_name
+      FROM products p
+
+      LEFT JOIN brands b ON p.brand_id = b.id
 
       WHERE
-        name ILIKE $1
-        OR category_name ILIKE $1
-        OR brand ILIKE $1
+        p.name ILIKE $1
+        OR p.category_name ILIKE $1
+        OR p.brand ILIKE $1
 
-      ORDER BY created_at DESC
+      ORDER BY p.created_at DESC
 
       LIMIT $2 OFFSET $3
 
@@ -748,7 +792,7 @@ const finalImages = [
         sku=$8,
 
         category_name=$9,
-        
+
         brand=$10,
         status=$11,
 
@@ -757,11 +801,25 @@ const finalImages = [
         meta_title=$13,
         meta_description=$14,
         meta_keywords=$15,
-  category_id=$16,
-gst_percent=$17,
-hsn_code=$18,
-cess_percent=$19
-WHERE id=$20
+        category_id=$16,
+        gst_percent=$17,
+        hsn_code=$18,
+        cess_percent=$19,
+
+        brand_id=$21,
+        tags=$22,
+        is_featured=$23,
+        is_bestseller=$24,
+        cost_price=$25,
+        weight_grams=$26,
+        length_cm=$27,
+        width_cm=$28,
+        height_cm=$29,
+        low_stock_threshold=$30,
+        specifications=$31,
+        barcode=$32
+
+      WHERE id=$20
       RETURNING *
 
     `, [
@@ -786,11 +844,25 @@ WHERE id=$20
 
       body.meta_title,
       body.meta_description,
-      body.meta_keywords,body.category_id,
+      body.meta_keywords,
+      body.category_id,
       Number(body.gst_percent || 0),
-body.hsn_code || '',
-Number(body.cess_percent || 0),
-      id
+      body.hsn_code || '',
+      Number(body.cess_percent || 0),
+      id,
+
+      body.brand_id || null,
+      body.tags ? (typeof body.tags === 'string' ? body.tags : JSON.stringify(body.tags)) : null,
+      body.is_featured === 'true' || body.is_featured === true || false,
+      body.is_bestseller === 'true' || body.is_bestseller === true || false,
+      body.cost_price ? Number(body.cost_price) : null,
+      body.weight_grams ? Number(body.weight_grams) : null,
+      body.length_cm ? Number(body.length_cm) : null,
+      body.width_cm ? Number(body.width_cm) : null,
+      body.height_cm ? Number(body.height_cm) : null,
+      body.low_stock_threshold ? Number(body.low_stock_threshold) : null,
+      body.specifications ? (typeof body.specifications === 'string' ? body.specifications : JSON.stringify(body.specifications)) : null,
+      body.barcode || null,
 
     ])
 
@@ -1421,12 +1493,12 @@ exports.adminGetVariants = async (req, res) => {
 exports.adminCreateVariant = async (req, res) => {
   try {
     const { productId } = req.params
-    const { label, sku, price, compareprice, inventory, attributes, sort_order } = req.body
+    const { label, sku, price, compareprice, inventory, attributes, sort_order, cost_price, weight_grams, barcode, image_url } = req.body
     if (!label || !price) return res.status(400).json({ success: false, message: 'label and price required' })
     const result = await pool.query(`
-      INSERT INTO product_variants (product_id, label, sku, price, compareprice, inventory, attributes, sort_order)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
-    `, [productId, label, sku || null, price, compareprice || null, inventory || 0, attributes || {}, sort_order || 0])
+      INSERT INTO product_variants (product_id, label, sku, price, compareprice, inventory, attributes, sort_order, cost_price, weight_grams, barcode, image_url)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *
+    `, [productId, label, sku || null, price, compareprice || null, inventory || 0, attributes || {}, sort_order || 0, cost_price ? Number(cost_price) : null, weight_grams ? Number(weight_grams) : null, barcode || null, image_url || null])
     res.status(201).json({ success: true, variant: result.rows[0] })
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to create variant' })
@@ -1436,14 +1508,17 @@ exports.adminCreateVariant = async (req, res) => {
 exports.adminUpdateVariant = async (req, res) => {
   try {
     const { id } = req.params
-    const { label, sku, price, compareprice, inventory, attributes, sort_order, is_active } = req.body
+    const { label, sku, price, compareprice, inventory, attributes, sort_order, is_active, cost_price, weight_grams, barcode, image_url } = req.body
     const result = await pool.query(`
       UPDATE product_variants SET
         label = COALESCE($1, label), sku = COALESCE($2, sku), price = COALESCE($3, price),
         compareprice = $4, inventory = COALESCE($5, inventory), attributes = COALESCE($6, attributes),
-        sort_order = COALESCE($7, sort_order), is_active = COALESCE($8, is_active), updated_at = NOW()
+        sort_order = COALESCE($7, sort_order), is_active = COALESCE($8, is_active),
+        cost_price = COALESCE($10, cost_price), weight_grams = COALESCE($11, weight_grams),
+        barcode = COALESCE($12, barcode), image_url = COALESCE($13, image_url),
+        updated_at = NOW()
       WHERE id = $9 RETURNING *
-    `, [label, sku, price, compareprice || null, inventory, attributes, sort_order, is_active, id])
+    `, [label, sku, price, compareprice || null, inventory, attributes, sort_order, is_active, id, cost_price ? Number(cost_price) : null, weight_grams ? Number(weight_grams) : null, barcode || null, image_url || null])
     if (!result.rows.length) return res.status(404).json({ success: false, message: 'Variant not found' })
     res.json({ success: true, variant: result.rows[0] })
   } catch (err) {
@@ -1838,5 +1913,85 @@ exports.adminCompleteRefund = async (req, res) => {
     res.json({ success: true, message: 'Refund completed' })
   } catch (err) {
     res.status(500).json({ message: 'Failed' })
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   BRAND CRUD — ADMIN
+═══════════════════════════════════════════════════════ */
+
+exports.adminListBrands = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, search = '' } = req.query
+    const offset = (page - 1) * limit
+    const countRes = await pool.query('SELECT COUNT(*) FROM brands WHERE LOWER(name) LIKE LOWER($1)', [`%${search}%`])
+    const result = await pool.query(
+      'SELECT * FROM brands WHERE LOWER(name) LIKE LOWER($1) ORDER BY sort_order, id DESC LIMIT $2 OFFSET $3',
+      [`%${search}%`, limit, offset]
+    )
+    res.json({ success: true, data: result.rows, total: Number(countRes.rows[0].count) })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ success: false, message: 'Failed to fetch brands' })
+  }
+}
+
+exports.adminCreateBrand = async (req, res) => {
+  try {
+    const { name, description, is_active = true, sort_order = 0 } = req.body
+    if (!name?.trim()) return res.status(400).json({ success: false, message: 'Brand name required' })
+    const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    let logo_url = null
+    if (req.file) logo_url = await uploadImageToAWS(req.file, 'brands')
+    const result = await pool.query(
+      'INSERT INTO brands (name, slug, logo_url, description, is_active, sort_order) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+      [name.trim(), slug, logo_url, description || null, is_active !== 'false', Number(sort_order) || 0]
+    )
+    res.json({ success: true, data: result.rows[0], message: 'Brand created' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ success: false, message: 'Failed to create brand' })
+  }
+}
+
+exports.adminUpdateBrand = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { name, description, is_active, sort_order, remove_logo } = req.body
+    const old = await pool.query('SELECT * FROM brands WHERE id=$1', [id])
+    if (!old.rows.length) return res.status(404).json({ success: false, message: 'Brand not found' })
+    let logo_url = old.rows[0].logo_url
+    if (req.file) {
+      if (logo_url) await deleteFromAWS(logo_url)
+      logo_url = await uploadImageToAWS(req.file, 'brands')
+    }
+    if (remove_logo === 'true') {
+      if (logo_url) await deleteFromAWS(logo_url)
+      logo_url = null
+    }
+    const slug = name ? name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') : old.rows[0].slug
+    const result = await pool.query(
+      'UPDATE brands SET name=$1, slug=$2, logo_url=$3, description=$4, is_active=$5, sort_order=$6, updated_at=NOW() WHERE id=$7 RETURNING *',
+      [name?.trim() || old.rows[0].name, slug, logo_url, description ?? old.rows[0].description, is_active !== undefined ? is_active !== 'false' : old.rows[0].is_active, Number(sort_order) ?? old.rows[0].sort_order, id]
+    )
+    res.json({ success: true, data: result.rows[0], message: 'Brand updated' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ success: false, message: 'Failed to update brand' })
+  }
+}
+
+exports.adminDeleteBrand = async (req, res) => {
+  try {
+    const { id } = req.params
+    const used = await pool.query('SELECT id FROM products WHERE brand_id=$1 LIMIT 1', [id])
+    if (used.rows.length) return res.status(400).json({ success: false, message: 'Brand is in use by products' })
+    const old = await pool.query('SELECT logo_url FROM brands WHERE id=$1', [id])
+    if (old.rows[0]?.logo_url) await deleteFromAWS(old.rows[0].logo_url)
+    await pool.query('DELETE FROM brands WHERE id=$1', [id])
+    res.json({ success: true, message: 'Brand deleted' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ success: false, message: 'Failed to delete brand' })
   }
 }

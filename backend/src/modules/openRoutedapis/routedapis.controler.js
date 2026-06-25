@@ -34,6 +34,24 @@ exports.getCategories = async (req, res) => {
 
     const offset = (page - 1) * limit;
 
+  /* Build optional parent_id filter */
+  const { parent_id } = req.query;
+  let parentFilter = '';
+  let countParentFilter = '';
+  const countParams = [`%${search}%`];
+  const queryParams = [`%${search}%`];
+  let paramIdx = 2;
+
+  if (parent_id === 'null' || parent_id === 'root') {
+    parentFilter = ' AND c.parent_id IS NULL';
+    countParentFilter = ' AND parent_id IS NULL';
+  } else if (parent_id) {
+    parentFilter = ` AND c.parent_id = $${paramIdx}`;
+    countParentFilter = ` AND parent_id = $2`;
+    countParams.push(parent_id);
+    queryParams.push(parent_id);
+    paramIdx++;
+  }
 
     /* Count */
 
@@ -42,14 +60,17 @@ exports.getCategories = async (req, res) => {
       SELECT COUNT(*)
       FROM categories
       WHERE LOWER(name) LIKE LOWER($1)
+      ${countParentFilter}
       `,
-      [`%${search}%`]
+      countParams
     );
 
     const total = Number(countResult.rows[0].count);
 
 
     /* Data */
+
+  queryParams.push(limit, offset);
 
   const result = await pool.query(
   `
@@ -61,7 +82,13 @@ exports.getCategories = async (req, res) => {
     c.image_url,
     c.description,
     c.hsn_code,
-c.cess_percent,
+    c.cess_percent,
+    c.parent_id,
+    c.slug,
+    c.level,
+    c.sort_order,
+    c.is_featured,
+    c.banner_url,
 
     COUNT(p.id) AS product_count
 
@@ -71,6 +98,7 @@ c.cess_percent,
     ON c.id = p.category_id
 
   WHERE LOWER(c.name) LIKE LOWER($1)
+  ${parentFilter}
 
   GROUP BY
     c.id,
@@ -79,15 +107,20 @@ c.cess_percent,
     c.color_class,
     c.image_url,
     c.hsn_code,
+    c.cess_percent,
+    c.description,
+    c.parent_id,
+    c.slug,
+    c.level,
+    c.sort_order,
+    c.is_featured,
+    c.banner_url
 
-c.cess_percent,
-    c.description
+  ORDER BY c.sort_order ASC, c.id DESC
 
-  ORDER BY c.id DESC
-
-  LIMIT $2 OFFSET $3
+  LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
   `,
-  [`%${search}%`, limit, offset]
+  queryParams
 );
 
     return sendSuccess(res, {
@@ -133,9 +166,15 @@ exports.getCategoryById = async (req, res) => {
         gst_percent,
         color_class,
         image_url,
-        description,hsn_code,
-
-cess_percent
+        description,
+        hsn_code,
+        cess_percent,
+        parent_id,
+        slug,
+        level,
+        sort_order,
+        is_featured,
+        banner_url
       FROM categories
       WHERE id = $1
       `,
@@ -147,8 +186,13 @@ cess_percent
       return sendError(res, 404, "Category not found");
     }
 
+    /* Fetch subcategories */
+    const subcategories = await pool.query(
+      `SELECT id, name, slug, image_url FROM categories WHERE parent_id = $1 AND is_active = TRUE ORDER BY sort_order`,
+      [id]
+    );
 
-    return sendSuccess(res, result.rows[0]);
+    return sendSuccess(res, { ...result.rows[0], subcategories: subcategories.rows });
 
   } catch (err) {
 
@@ -177,8 +221,12 @@ exports.createCategory = async (req, res) => {
   color_class,
   description,
   hsn_code,
-
   cess_percent,
+  parent_id,
+  slug,
+  sort_order,
+  is_featured,
+  banner_url,
 } = req.body;
 
 
@@ -204,6 +252,18 @@ exports.createCategory = async (req, res) => {
 if (cess < 0 || cess > 100) {
   return sendError(res, 400, "CESS must be between 0–100");
 }
+
+    /* Auto-generate slug from name if not provided */
+    const autoSlug = slug?.trim() || cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+    /* Compute level based on parent */
+    let level = 0;
+    if (parent_id) {
+      const parentRow = await pool.query('SELECT level FROM categories WHERE id = $1', [parent_id]);
+      if (parentRow.rows.length) {
+        level = (parentRow.rows[0].level || 0) + 1;
+      }
+    }
 
 
     /* ================= DUPLICATE CHECK ================= */
@@ -257,23 +317,35 @@ if (cess < 0 || cess > 100) {
       INSERT INTO categories
       (
   name,
-gst_percent,
-hsn_code,
-cess_percent,
-color_class,
-image_url,
-description
+  gst_percent,
+  hsn_code,
+  cess_percent,
+  color_class,
+  image_url,
+  description,
+  parent_id,
+  slug,
+  level,
+  sort_order,
+  is_featured,
+  banner_url
       )
-  VALUES ($1,$2,$3,$4,$5,$6,$7)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
       RETURNING
         id,
         name,
         gst_percent,
         color_class,
         image_url,
-        description,hsn_code,
-cess_percent,
-hsn_code
+        description,
+        hsn_code,
+        cess_percent,
+        parent_id,
+        slug,
+        level,
+        sort_order,
+        is_featured,
+        banner_url
       `,
    [
   cleanName,
@@ -283,6 +355,12 @@ hsn_code
   color_class || null,
   imageUrl,
   description || null,
+  parent_id || null,
+  autoSlug,
+  level,
+  Number(sort_order) || 0,
+  is_featured === 'true' || is_featured === true,
+  banner_url || null,
 ]
     );
 
@@ -323,8 +401,11 @@ exports.updateCategory = async (req, res) => {
   description,
   remove_image,
   hsn_code,
-
   cess_percent,
+  parent_id,
+  slug,
+  sort_order,
+  is_featured,
 } = req.body;
 
 
@@ -383,6 +464,25 @@ if (cess < 0 || cess > 100) {
       return sendError(res, 409, "Name already used");
     }
 
+    /* ================= CIRCULAR REFERENCE CHECK ================= */
+    if (parent_id !== undefined && parent_id !== null) {
+      if (String(parent_id) === String(id)) {
+        return sendError(res, 400, "Category cannot be its own parent");
+      }
+      /* Check if parent_id is a descendant of this category */
+      let checkId = parent_id;
+      const visited = new Set();
+      while (checkId) {
+        if (visited.has(checkId)) break;
+        visited.add(checkId);
+        const ancestor = await pool.query('SELECT parent_id FROM categories WHERE id = $1', [checkId]);
+        if (!ancestor.rows.length) break;
+        if (String(ancestor.rows[0].parent_id) === String(id)) {
+          return sendError(res, 400, "Cannot set parent: would create a circular reference");
+        }
+        checkId = ancestor.rows[0].parent_id;
+      }
+    }
 
     /* ================= IMAGE LOGIC ================= */
 
@@ -416,6 +516,9 @@ if (cess < 0 || cess > 100) {
 
     /* ================= UPDATE ================= */
 
+    /* Compute slug for update */
+    const updateSlug = slug?.trim() || cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
    const result = await pool.query(
   `
   UPDATE categories
@@ -427,6 +530,10 @@ if (cess < 0 || cess > 100) {
     color_class=$5,
     image_url=$6,
     description=$7,
+    parent_id=$9,
+    slug=$10,
+    sort_order=$11,
+    is_featured=$12,
     updated_at=NOW()
   WHERE id=$8
 
@@ -438,7 +545,13 @@ if (cess < 0 || cess > 100) {
     cess_percent,
     color_class,
     image_url,
-    description
+    description,
+    parent_id,
+    slug,
+    level,
+    sort_order,
+    is_featured,
+    banner_url
   `,
   [
     cleanName,
@@ -449,6 +562,10 @@ if (cess < 0 || cess > 100) {
     imageUrl,
     description || null,
     id,
+    parent_id !== undefined ? (parent_id || null) : old.rows[0].parent_id,
+    updateSlug,
+    sort_order !== undefined ? (Number(sort_order) || 0) : old.rows[0].sort_order,
+    is_featured !== undefined ? (is_featured === 'true' || is_featured === true) : old.rows[0].is_featured,
   ]
 );
 
@@ -476,6 +593,48 @@ if (cess < 0 || cess > 100) {
 
 /* ================= DELETE ================= */
 
+/* ================= CATEGORY TREE ================= */
+
+exports.getCategoryTree = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, name, slug, parent_id, level, sort_order, image_url, is_active, is_featured FROM categories WHERE is_active = TRUE ORDER BY sort_order, id'
+    );
+    const rows = result.rows;
+    const map = {};
+    rows.forEach(r => { map[r.id] = { ...r, children: [] }; });
+    const tree = [];
+    rows.forEach(r => {
+      if (r.parent_id && map[r.parent_id]) {
+        map[r.parent_id].children.push(map[r.id]);
+      } else {
+        tree.push(map[r.id]);
+      }
+    });
+    return sendSuccess(res, tree);
+  } catch (err) {
+    console.error("Category Tree Error:", err);
+    return sendError(res, 500, "Failed to fetch category tree");
+  }
+};
+
+/* ================= PUBLIC BRANDS ================= */
+
+exports.getPublicBrands = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, name, slug, logo_url FROM brands WHERE is_active = TRUE ORDER BY sort_order, name'
+    );
+    return sendSuccess(res, result.rows);
+  } catch (err) {
+    console.error("Public Brands Error:", err);
+    return sendError(res, 500, "Failed to fetch brands");
+  }
+};
+
+
+/* ================= DELETE ================= */
+
 exports.deleteCategory = async (req, res) => {
 
   try {
@@ -498,6 +657,17 @@ exports.deleteCategory = async (req, res) => {
       return sendError(res, 404, "Not found");
     }
 
+
+    /* ================= SUBCATEGORY CHECK ================= */
+
+    const subCheck = await pool.query(
+      `SELECT id FROM categories WHERE parent_id = $1 LIMIT 1`,
+      [id]
+    );
+
+    if (subCheck.rows.length) {
+      return sendError(res, 400, "Cannot delete: category has subcategories. Delete or reassign them first.");
+    }
 
     /* ================= IN USE ================= */
 

@@ -19,6 +19,9 @@ exports.getAllPublic = async (req, res) => {
     const category = req.query.category || 'all'
     const category_id=req.query.category_id||null
     const brand = req.query.brand || null
+    const brand_id = req.query.brand_id || null
+    const is_featured_filter = req.query.is_featured || null
+    const is_bestseller_filter = req.query.is_bestseller || null
 
     const minPrice = parseFloat(req.query.minPrice) || 0
     const maxPrice = parseFloat(req.query.maxPrice) || null
@@ -74,6 +77,20 @@ exports.getAllPublic = async (req, res) => {
       where += ` AND brand = $${i}`
       values.push(brand)
       i++
+    }
+
+    if (brand_id) {
+      where += ` AND brand_id = $${i}`
+      values.push(brand_id)
+      i++
+    }
+
+    if (is_featured_filter === 'true') {
+      where += ` AND is_featured = TRUE`
+    }
+
+    if (is_bestseller_filter === 'true') {
+      where += ` AND is_bestseller = TRUE`
     }
 
     if (minPrice) {
@@ -150,7 +167,13 @@ exports.getsingleproduct=async(req,res)=>{
   const {id}=req.params
   console.log(id,"id coming")
 try{
-const data= await pool.query('select * from products where id=$1',[id])
+const data= await pool.query(
+  `SELECT p.*, b.name AS brand_display_name, b.slug AS brand_slug, b.logo_url AS brand_logo_url
+   FROM products p
+   LEFT JOIN brands b ON p.brand_id = b.id
+   WHERE p.id=$1`,
+  [id]
+)
 if(data?.rows?.length>=1){
   res?.status(200).json({data:data?.rows[0],status:200})
 }else{
