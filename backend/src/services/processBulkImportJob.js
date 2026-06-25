@@ -296,54 +296,38 @@ const finalCess =
 
       await pool.query(`
         INSERT INTO products (
-          name,
-          slug,
-          shortdescription,
-          longdescription,
-          price,
-          compareprice,
-          inventory,
-          sku,
-          category_id,
-          category_name,
-          brand,
-          status,
-          images,
-          meta_title,
-          meta_description,
-     meta_keywords,
-gst_percent,
-hsn_code,
-cess_percent
+          name, slug, shortdescription, longdescription,
+          price, compareprice, inventory, sku,
+          category_id, category_name, brand, status,
+          images, meta_title, meta_description, meta_keywords,
+          gst_percent, hsn_code, cess_percent,
+          brand_id, tags, is_featured, is_bestseller,
+          cost_price, weight_grams, barcode, low_stock_threshold
         )
         VALUES (
           $1,$2,$3,$4,$5,$6,$7,$8,
-          $9,$10,$11,$12,$13,$14,
-      $15,$16,$17,$18,$19
+          $9,$10,$11,$12,$13,$14,$15,$16,
+          $17,$18,$19,
+          $20,$21,$22,$23,$24,$25,$26,$27
         )
       `,[
         name,
-        slug ||
-        `${sku.toLowerCase()}-${Date.now()}-${i}`,
+        slug || `${sku.toLowerCase()}-${Date.now()}-${i}`,
         r.shortdescription || '',
         r.longdescription || '',
-        price,
-        compareprice,
-        inventory,
-        sku,
-        cat.id,
-        cat.name,
-        brand,
-        status,
-        JSON.stringify(
-          imageUrls
-        ),
-        r.meta_title || '',
-        r.meta_description || '',
-       r.meta_keywords || '',
-finalGst,
-finalHsn,
-finalCess
+        price, compareprice, inventory, sku,
+        cat.id, cat.name, brand, status,
+        JSON.stringify(imageUrls),
+        r.meta_title || '', r.meta_description || '', r.meta_keywords || '',
+        finalGst, finalHsn, finalCess,
+        r.brand_id ? Number(r.brand_id) : null,
+        r.tags ? JSON.stringify(r.tags.split(',').map(t => t.trim()).filter(Boolean)) : '[]',
+        r.is_featured === 'true' || r.is_featured === '1',
+        r.is_bestseller === 'true' || r.is_bestseller === '1',
+        r.cost_price ? Number(r.cost_price) : null,
+        r.weight_grams ? Number(r.weight_grams) : null,
+        r.barcode || null,
+        r.low_stock_threshold ? Number(r.low_stock_threshold) : 10,
       ])
 
       successCount++

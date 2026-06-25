@@ -277,12 +277,14 @@ useEffect(() => {
 
                     <td className="p-3">
 
-                      <div className="font-medium">
+                      <div className="font-medium flex items-center gap-1.5">
                         {p.name}
+                        {p.is_featured && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">Featured</span>}
+                        {p.is_bestseller && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">Bestseller</span>}
                       </div>
 
                       <div className="text-xs text-gray-500">
-                        {p.category_name}
+                        {p.category_name}{p.brand_display_name ? ` · ${p.brand_display_name}` : p.brand ? ` · ${p.brand}` : ''}
                       </div>
 
                     </td>

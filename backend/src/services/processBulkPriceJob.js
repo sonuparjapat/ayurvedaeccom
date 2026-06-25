@@ -101,16 +101,20 @@ async function processBulkPriceJob(job) {
         )
       }
 
+      const costPrice = r.cost_price ? Number(r.cost_price) : null
+
       const result =
         await pool.query(`
           UPDATE products
           SET price=$1,
-              compareprice=$2
-          WHERE LOWER(sku)=LOWER($3)
+              compareprice=$2,
+              cost_price=COALESCE($3, cost_price)
+          WHERE LOWER(sku)=LOWER($4)
           RETURNING id
         `,[
           price,
           compareprice,
+          costPrice,
           sku
         ])
 
