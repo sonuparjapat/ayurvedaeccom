@@ -54,7 +54,7 @@ export default function AdminLayout({
 
   return (
 
-    <div className="min-h-screen w-full flex bg-gray-100">
+    <div className="h-screen w-full flex bg-gray-100 overflow-hidden">
 
       <Toaster position="top-right" />
 
@@ -77,8 +77,8 @@ export default function AdminLayout({
 
         className={`
 
-          w-64 bg-slate-900 text-white flex flex-col
-          fixed md:static inset-y-0 left-0 z-50
+          w-64 bg-slate-900 text-white flex flex-col shrink-0
+          fixed md:sticky md:top-0 inset-y-0 left-0 z-50 h-screen
 
           transform transition-transform duration-300
 
@@ -113,7 +113,7 @@ export default function AdminLayout({
 
         {/* Menu */}
 
-        <nav className="flex-1 px-4 py-6 space-y-2">
+        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-2">
 
           <MenuItem href="/admin/dashboard" icon={<LayoutDashboard size={18} />}>
             Dashboard
@@ -326,12 +326,12 @@ export default function AdminLayout({
 
       {/* ================= MAIN ================= */}
 
-      <div className="w-full flex flex-col md:ml-0">
+      <div className="flex-1 flex flex-col min-w-0 h-screen">
 
 
         {/* ================= TOP BAR ================= */}
 
-        <header className="h-16 bg-white border-b flex items-center justify-between px-6 w-full">
+        <header className="h-16 bg-white border-b flex items-center justify-between px-6 w-full shrink-0">
 
           <div className="flex items-center gap-3">
 
@@ -360,7 +360,7 @@ export default function AdminLayout({
 
         {/* ================= CONTENT ================= */}
 
-        <main className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
+        <main className="flex-1 p-6 overflow-y-auto overflow-x-hidden min-h-0">
 
           {children}
 
