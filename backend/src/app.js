@@ -22,6 +22,7 @@ const walletRoutes = require('./modules/wallet/wallet.routes');
 const qaRoutes = require('./modules/qa/qa.routes');
 const pushRoutes = require('./modules/push/push.routes');
 const supportRoutes = require('./modules/support/support.routes');
+const analyticsRoutes = require('./modules/analytics/analytics.routes');
 
 const app = express();
 
@@ -102,6 +103,7 @@ app.use('/api/flash-sales', flashRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/qa', qaRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api/support', supportRoutes);
 
 

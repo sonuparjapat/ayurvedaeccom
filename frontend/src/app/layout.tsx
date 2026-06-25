@@ -5,6 +5,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/auth-context";
 import { AuthSheet } from "@/components/auth/AuthSheet";
+import PageTracker from "@/components/analytics/PageTracker";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,6 +54,7 @@ export default function RootLayout({
           suppressHydrationWarning   // ✅ THIS FIXES YOUR ERROR
           className={`${inter.variable} font-sans antialiased bg-background text-foreground relative z-0`}
         >
+          <PageTracker />
           {children}
   <AuthSheet />
 

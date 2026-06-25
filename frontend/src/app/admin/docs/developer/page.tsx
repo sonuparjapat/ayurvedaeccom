@@ -1044,6 +1044,53 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 // Buttons:  bg-emerald-600 hover:bg-emerald-700 rounded-lg (primary)
 // Empty:    centered icon + title + description
 // Mobile:   responsive card layout below md: breakpoint`}</Code>
+          <H3>Product/Category architecture (eCommerce-grade)</H3>
+          <Code>{`// Categories: hierarchical via parent_id (unlimited depth)
+//   GET /categories?parent_id=5    → subcategories of ID 5
+//   GET /categories?parent_id=null → top-level only
+//   GET /categories/tree           → nested tree structure
+//   Fields: parent_id, slug, level, sort_order, is_featured, banner_url
+//
+// Brands: separate table with CRUD
+//   GET /brands          → public list (active only)
+//   GET /admin/brands    → admin list with pagination
+//   POST/PUT/DELETE      → admin CRUD with logo upload
+//
+// Products: enhanced fields
+//   brand_id (FK→brands), tags (JSONB), is_featured, is_bestseller,
+//   cost_price, weight_grams, dimensions, low_stock_threshold,
+//   total_sold, specifications (JSONB), barcode
+//   Filters: brand_id, is_featured=true, is_bestseller=true
+//
+// product_categories: many-to-many junction (additional categories)
+// related_products: explicit relations (related/cross_sell/upsell)
+//
+// Customer-facing display:
+//   Web: brand filter dropdown, subcategory chips on category page,
+//        bestseller badges, specs table, brand name link, tags pills
+//   Mobile: same features + subcategory chips in products listing,
+//        brand in search suggestions, specs section in product detail`}</Code>
+          <H3>Visitor analytics tracking</H3>
+          <Code>{`// Database: page_views table (path, referrer, user_agent, ip, device_type, browser, user_id, session_id)
+// Backend:  POST /api/analytics/pageview — records a page view (public, no auth)
+//           GET  /api/analytics/visitors  — admin-only stats endpoint
+//
+// Frontend: PageTracker component (layout.tsx) fires on every route change
+//   - Skips /admin pages
+//   - Debounced 300ms to avoid double-fires
+//   - Generates session_id in sessionStorage for unique visitor tracking
+//   - Sends: path, referrer, session_id
+//   - Backend parses user-agent for device type + browser
+//
+// Admin page: /admin/visitors
+//   - 5 stat cards: Total Views, Unique Visitors, Today Views, Today Unique, Live Now
+//   - Daily traffic bar chart with hover tooltips
+//   - Top 10 pages by views
+//   - Device breakdown (desktop/mobile/tablet) with progress bars
+//   - Browser breakdown with progress bars
+//   - Period filter: 24h, 7d, 30d, 90d
+//   - Auto-refreshes every 60 seconds
+//   - "Live now" = visitors in last 5 minutes`}</Code>
         </Section>
 
         {/* ═══ DEPLOY ═══ */}

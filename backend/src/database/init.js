@@ -902,6 +902,26 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS barcode VARCHAR(100) DEFAULT NULL`);
     await client.query(`ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT NULL`);
 
+    /* ================= VISITOR ANALYTICS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS page_views (
+        id SERIAL PRIMARY KEY,
+        path VARCHAR(500) NOT NULL,
+        referrer TEXT,
+        user_agent TEXT,
+        ip_address VARCHAR(45),
+        device_type VARCHAR(20) DEFAULT 'desktop',
+        browser VARCHAR(50),
+        country VARCHAR(50),
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        session_id VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_pageviews_created ON page_views(created_at DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_pageviews_path ON page_views(path, created_at)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_pageviews_session ON page_views(session_id)`);
+
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

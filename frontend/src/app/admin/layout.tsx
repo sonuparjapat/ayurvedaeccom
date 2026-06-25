@@ -29,6 +29,7 @@ import {
   BookOpen,
   Code2,
   RotateCcw,
+  Eye,
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
@@ -204,6 +205,10 @@ export default function AdminLayout({
           </MenuItem>
           <MenuItem href="/admin/analytics" icon={<BarChart3 size={18} />}>
             Analytics
+          </MenuItem>
+
+          <MenuItem href="/admin/visitors" icon={<Eye size={18} />}>
+            Visitors
           </MenuItem>
 
           <div className="pt-2 pb-1 px-3">

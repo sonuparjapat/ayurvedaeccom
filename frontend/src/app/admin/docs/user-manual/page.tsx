@@ -261,9 +261,12 @@ export default function UserManualPage() {
           <Table
             headers={['Feature', 'How to use']}
             rows={[
-              ['Category Navigation', 'Use the top navigation bar or homepage category icons to filter by product type.'],
-              ['Search Bar', 'Type any keyword — product name, brand, ingredient. Get instant suggestions as you type.'],
-              ['Product Filters', 'On listing pages, filter by price range, category, rating, or availability.'],
+              ['Category Navigation', 'Use the top navigation bar or homepage category icons to browse by product type. Categories support subcategories — click a parent category to see its children as filter chips.'],
+              ['Search Bar', 'Type any keyword — product name, brand, ingredient. Get instant suggestions with brand names and bestseller badges as you type.'],
+              ['Product Filters', 'On listing pages, filter by price range, category, brand, rating, or availability. Select a brand from the dropdown to see only that brand\'s products.'],
+              ['Product Badges', 'Products may show "Bestseller" (gold badge), discount percentage, and "X+ sold" count. These help identify popular items.'],
+              ['Product Specs', 'On the product detail page, scroll down to see product specifications (ingredients, weight, origin, etc.) displayed as a table.'],
+              ['Brand Pages', 'Click a brand name on any product page to see all products from that brand.'],
               ['Flash Sales', 'A countdown banner appears on the homepage when a flash sale is active. Products show the discounted price and remaining stock.'],
               ['Recently Viewed', 'A section shows the last products you visited (requires being logged in).'],
               ['Wishlist', 'Click the heart icon on any product to save it. Access all saved items from My Account → Wishlist.'],
@@ -429,6 +432,7 @@ export default function UserManualPage() {
               ['Users', 'View all registered customers. Create admin/staff accounts.'],
               ['Invoices', 'View and download all generated invoices.'],
               ['Analytics', 'Revenue charts (daily, weekly, monthly), order stats, product performance.'],
+              ['Visitors', 'Live visitor count, total/unique page views, daily traffic chart, top pages, device breakdown (desktop/mobile/tablet), browser breakdown. Filter by 24h, 7 days, 30 days, or 90 days. Auto-refreshes every 60 seconds.'],
               ['Banners', 'Create homepage banner slides with images and call-to-action links.'],
               ['Coupons', 'Create discount codes (flat or percentage), set usage limits and validity.'],
               ['Flash Sales', 'Create time-limited sales with countdown timers and special prices.'],
