@@ -18,6 +18,31 @@ import { Colors, Fonts, Shadows } from '../../constants/theme'
 
 const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
 
+const CARRIER_URLS: Record<string, (n: string) => string> = {
+  'delhivery': n => `https://www.delhivery.com/track/package/${n}`,
+  'bluedart': n => `https://www.bluedart.com/tracking`,
+  'blue dart': n => `https://www.bluedart.com/tracking`,
+  'ekart': n => `https://ekartlogistics.com/track/${n}`,
+  'xpressbees': n => `https://www.xpressbees.com/shipment/tracking/?awb=${n}`,
+  'xpressbee': n => `https://www.xpressbees.com/shipment/tracking/?awb=${n}`,
+  'dtdc': n => `https://www.dtdc.in/tracking/tracking_results.asp?track_type=consignment&strCnno=${n}`,
+  'shadowfax': n => `https://www.shadowfax.in/`,
+  'ecom express': n => `https://ecomexpress.in/tracking/?awb_field=${n}`,
+  'india post': n => `https://www.indiapost.gov.in/vas/pages/AnonymousTracking.aspx`,
+  'speed post': n => `https://www.indiapost.gov.in/vas/pages/AnonymousTracking.aspx`,
+  'amazon': n => `https://track.amazon.in/tracking/${n}`,
+  'fedex': n => `https://www.fedex.com/en-in/tracking.html?trknbr=${n}`,
+  'dhl': n => `https://www.dhl.com/in-en/home/tracking.html?tracking-id=${n}`,
+}
+
+function getCarrierUrl(courier: string, tracking: string): string | null {
+  const key = courier.toLowerCase().trim()
+  for (const [name, fn] of Object.entries(CARRIER_URLS)) {
+    if (key.includes(name)) return fn(tracking)
+  }
+  return null
+}
+
 const { width: W } = Dimensions.get('window')
 
 interface OrderItem {
@@ -495,9 +520,16 @@ export default function OrderDetailScreen() {
             )}
 
             {/* ── TRACKING ── */}
-            {order.tracking_number && (
+            {order.tracking_number && (() => {
+              const carrierUrl = (order as any).courier_name ? getCarrierUrl((order as any).courier_name, order.tracking_number!) : null
+              return (
               <Animated.View entering={FadeInDown.delay(140)} style={ss.card}>
                 <Text style={ss.cardTitle}>Tracking Info</Text>
+                {(order as any).courier_name && (
+                  <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.textDim, marginBottom: 8 }}>
+                    Courier: {(order as any).courier_name}
+                  </Text>
+                )}
                 <View style={ss.trackingRow}>
                   <View style={ss.trackingIconWrap}>
                     <Text style={{ fontSize: 22 }}>🚚</Text>
@@ -510,12 +542,17 @@ export default function OrderDetailScreen() {
                       </Text>
                     )}
                   </View>
-                  <View style={ss.trackingBadge}>
-                    <Text style={ss.trackingBadgeText}>Track</Text>
-                  </View>
+                  <TouchableOpacity
+                    onPress={() => { if (carrierUrl) Linking.openURL(carrierUrl) }}
+                    style={[ss.trackingBadge, !carrierUrl && { opacity: 0.5 }]}
+                    disabled={!carrierUrl}
+                  >
+                    <Text style={ss.trackingBadgeText}>Track ›</Text>
+                  </TouchableOpacity>
                 </View>
               </Animated.View>
-            )}
+              )
+            })()}
 
             {/* ── ORDER ITEMS ── */}
             <Animated.View entering={FadeInDown.delay(160)} style={ss.card}>

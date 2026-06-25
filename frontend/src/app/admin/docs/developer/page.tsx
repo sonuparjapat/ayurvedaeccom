@@ -1010,6 +1010,38 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
           <Code>{`// File: order/[id].tsx → handleDownloadInvoice()
 // Shows only when order.pdf_url exists
 // Uses Linking.openURL(order.pdf_url) to open in browser/PDF viewer`}</Code>
+          <H3>Carrier tracking links (web + mobile)</H3>
+          <Code>{`// 14 carriers supported: Delhivery, BlueDart, Ekart, XpressBees,
+// DTDC, Shadowfax, Ecom Express, India Post, Speed Post,
+// Amazon, FedEx, DHL
+//
+// Web:    frontend/src/app/orders/[id]/page.tsx (CARRIER_URLS map)
+// Mobile: ayurveda-app/src/app/order/[id].tsx (same map)
+//
+// getCarrierUrl(courier, trackingNum) → URL or null
+// Mobile uses Linking.openURL() to open in browser
+// Web uses <a href> target="_blank"
+// Track button is disabled when courier not recognized`}</Code>
+          <H3>Admin panel modal behaviour</H3>
+          <Code>{`// AppModal (frontend/src/components/modal/AppModal.tsx)
+// Modals close ONLY via:
+//   1. Close (X) button in header
+//   2. Cancel button in footer
+//   3. Escape key press
+// Modals do NOT close on backdrop click (prevents accidental data loss)
+// Body scroll is locked while modal is open (document.body.style.overflow = 'hidden')
+// Used by: categories, orders, banners, coupons, invoices, returns,
+//          settings, company, jobs, logs, pincodes`}</Code>
+          <H3>Admin UI consistency patterns</H3>
+          <Code>{`// All admin pages follow these patterns:
+// Wrapper:  min-h-screen bg-gray-50 p-4 md:p-6 space-y-6
+// Header:   gradient card (emerald/blue/purple/orange) with icon + title + CTA
+// Stats:    grid grid-cols-2 md:grid-cols-N gap-4, icon + metric + label
+// Tables:   rounded-xl border shadow-sm, bg-slate-50 header, hover:bg-gray-50/80
+// Inputs:   border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500
+// Buttons:  bg-emerald-600 hover:bg-emerald-700 rounded-lg (primary)
+// Empty:    centered icon + title + description
+// Mobile:   responsive card layout below md: breakpoint`}</Code>
         </Section>
 
         {/* ═══ DEPLOY ═══ */}

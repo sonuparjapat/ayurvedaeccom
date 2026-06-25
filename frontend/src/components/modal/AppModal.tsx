@@ -1,20 +1,15 @@
 'use client'
 
-import { ReactNode, useEffect, useRef } from 'react'
+import { ReactNode, useEffect, useRef, useCallback } from 'react'
 import { X } from 'lucide-react'
 
 interface Props {
-
   open: boolean
   onClose: () => void
-
   title?: string
   description?: string
-
   footer?: ReactNode
-
   width?: string
-
   children: ReactNode
 }
 
@@ -26,8 +21,18 @@ export default function AppModal({
   footer,
   width = 'max-w-xl',
   children,
-  handleclose,
 }: Props) {
+
+  useEffect(() => {
+    if (!open) return
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleEsc)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handleEsc)
+      document.body.style.overflow = ''
+    }
+  }, [open, onClose])
 
   if (!open) return null
 
@@ -130,7 +135,7 @@ export default function AppModal({
         p-3
       "
       style={overlayStyle}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      onClick={(e) => e.stopPropagation()}
     >
 
       <style>{`

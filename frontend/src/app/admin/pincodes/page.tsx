@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Edit2, Search, Download, Upload } from 'lucide-react'
+import { Plus, Trash2, Edit2, Search, MapPin, Package, CheckCircle2, XCircle } from 'lucide-react'
 
 interface Pincode {
   id: number
@@ -95,76 +95,136 @@ export default function AdminPincodesPage() {
   }
 
   const totalPages = Math.ceil(total / limit)
+  const activeCount = rows.filter(r => r.is_active).length
 
   return (
-    <div style={{ padding: '24px', fontFamily: 'DM Sans, sans-serif', minHeight: '100vh', background: '#f8fafc' }}>
-      <div style={{ maxWidth: 960, margin: '0 auto' }}>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 space-y-6">
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1a3a2a', margin: 0 }}>Serviceable Pincodes</h1>
-            <p style={{ color: '#888', fontSize: 13, marginTop: 4 }}>Manage delivery coverage — pincodes not listed get a generic 6-day estimate</p>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <MapPin className="text-white" size={24} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Serviceable Pincodes</h1>
+              <p className="text-emerald-100 text-sm mt-0.5">Manage delivery coverage — unlisted pincodes get a generic 6-day estimate</p>
+            </div>
           </div>
           <button
             onClick={openCreate}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '0 18px', height: 42, background: '#1a3a2a', color: 'white', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white text-emerald-700 rounded-xl text-sm font-semibold hover:bg-emerald-50 transition shadow-sm"
           >
-            <Plus size={15} /> Add Pincode
+            <Plus size={16} /> Add Pincode
           </button>
         </div>
+      </div>
 
-        {/* Search + count */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
-            <input
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              placeholder="Search pincode, city, state..."
-              style={{ width: '100%', height: 40, paddingLeft: 36, paddingRight: 12, border: '1.5px solid rgba(26,58,42,0.15)', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', outline: 'none', boxSizing: 'border-box' }}
-            />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <Package className="text-emerald-600" size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{total}</p>
+              <p className="text-xs text-gray-500 font-medium">Total Pincodes</p>
+            </div>
           </div>
-          <span style={{ fontSize: 13, color: '#888', whiteSpace: 'nowrap' }}>{total} pincodes total</span>
         </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+              <CheckCircle2 className="text-green-600" size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{activeCount}</p>
+              <p className="text-xs text-gray-500 font-medium">Active</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 col-span-2 md:col-span-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
+              <XCircle className="text-red-500" size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{rows.length - activeCount}</p>
+              <p className="text-xs text-gray-500 font-medium">Inactive</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* Table */}
-        <div style={{ background: 'white', borderRadius: 14, border: '1px solid rgba(26,58,42,0.1)', overflow: 'hidden' }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Loading...</div>
-          ) : rows.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>No pincodes found</div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      {/* Search */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="relative flex-1 w-full sm:max-w-md">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            placeholder="Search pincode, city, state..."
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white shadow-sm transition"
+          />
+        </div>
+        <span className="text-sm text-gray-500 font-medium whitespace-nowrap">{total} pincodes total</span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full" />
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+            <MapPin size={40} className="mb-3 text-gray-300" />
+            <p className="text-base font-medium">No pincodes found</p>
+            <p className="text-sm mt-1">Try a different search or add a new pincode</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(26,58,42,0.08)', background: '#f8faf8' }}>
+                <tr className="border-b border-gray-100 bg-slate-50">
                   {['Pincode', 'City', 'State', 'Delivery Days', 'Status', 'Actions'].map(h => (
-                    <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                    <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
-                {rows.map((r, idx) => (
-                  <tr key={r.id} style={{ borderBottom: idx < rows.length - 1 ? '1px solid rgba(26,58,42,0.06)' : 'none' }}>
-                    <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: '#1a3a2a', fontFamily: 'monospace' }}>{r.pincode}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#1a3a2a' }}>{r.city}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#888' }}>{r.state}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ background: '#e8f5ee', color: '#2d5a3d', padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+              <tbody className="divide-y divide-gray-50">
+                {rows.map((r) => (
+                  <tr key={r.id} className="hover:bg-gray-50/80 transition-colors">
+                    <td className="px-5 py-3.5 text-sm font-bold text-gray-900 font-mono">{r.pincode}</td>
+                    <td className="px-5 py-3.5 text-sm font-medium text-gray-800">{r.city}</td>
+                    <td className="px-5 py-3.5 text-sm text-gray-500">{r.state}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex items-center bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">
                         {r.delivery_days} {r.delivery_days === 1 ? 'day' : 'days'}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ background: r.is_active ? '#e8f5ee' : '#f0f0f0', color: r.is_active ? '#2d5a3d' : '#888', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500 }}>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${r.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {r.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => openEdit(r)} style={{ width: 30, height: 30, borderRadius: 7, border: '1px solid rgba(26,58,42,0.2)', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1a3a2a' }}>
-                          <Edit2 size={13} />
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEdit(r)}
+                          className="w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-amber-50 hover:border-amber-300 text-gray-500 hover:text-amber-600 flex items-center justify-center transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 size={14} />
                         </button>
-                        <button onClick={() => deletePincode(r.id, r.pincode)} style={{ width: 30, height: 30, borderRadius: 7, border: 'none', background: '#fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e05252' }}>
-                          <Trash2 size={13} />
+                        <button
+                          onClick={() => deletePincode(r.id, r.pincode)}
+                          className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 flex items-center justify-center transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -172,86 +232,135 @@ export default function AdminPincodesPage() {
                 ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 20 }}>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, page - 3), page + 2).map(pg => (
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 pt-2">
+          <button
+            disabled={page === 1}
+            onClick={() => setPage(p => p - 1)}
+            className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            Previous
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .slice(Math.max(0, page - 3), page + 2)
+            .map(pg => (
               <button
                 key={pg}
                 onClick={() => setPage(pg)}
-                style={{ width: 36, height: 36, borderRadius: 8, border: '1.5px solid rgba(26,58,42,0.2)', background: pg === page ? '#1a3a2a' : 'white', color: pg === page ? 'white' : '#1a3a2a', fontSize: 13, fontWeight: pg === page ? 600 : 400, cursor: 'pointer' }}
+                className={`w-9 h-9 rounded-lg text-sm font-medium transition ${
+                  pg === page
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                }`}
               >
                 {pg}
               </button>
             ))}
-          </div>
-        )}
+          <button
+            disabled={page === totalPages}
+            onClick={() => setPage(p => p + 1)}
+            className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
-        {/* Form Modal */}
-        {showForm && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-            <div style={{ background: 'white', borderRadius: 18, padding: 28, width: '100%', maxWidth: 460, boxShadow: '0 32px 80px rgba(0,0,0,0.15)' }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1a3a2a', marginBottom: 20, marginTop: 0 }}>
-                {editingId ? 'Edit Pincode' : 'Add Pincode'}
+      {/* Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5">
+              <h2 className="text-lg font-bold text-white">
+                {editingId ? 'Edit Pincode' : 'Add New Pincode'}
               </h2>
+              <p className="text-emerald-100 text-sm mt-0.5">
+                {editingId ? 'Update pincode details' : 'Add a new serviceable pincode'}
+              </p>
+            </div>
 
-              <Field label="Pincode * (6 digits)">
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Pincode * (6 digits)</label>
                 <input
                   value={form.pincode}
                   onChange={e => set('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="400001"
                   maxLength={6}
-                  style={inp}
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
                 />
-              </Field>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Field label="City *">
-                  <input value={form.city} onChange={e => set('city', e.target.value)} placeholder="Mumbai" style={inp} />
-                </Field>
-                <Field label="State">
-                  <input value={form.state} onChange={e => set('state', e.target.value)} placeholder="Maharashtra" style={inp} />
-                </Field>
               </div>
-              <Field label="Delivery Days">
-                <input type="number" value={form.delivery_days} onChange={e => set('delivery_days', e.target.value)} min={1} max={30} style={inp} />
-              </Field>
-              <Field label="Status">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} />
-                  <span style={{ fontSize: 13, color: '#1a3a2a' }}>Active</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">City *</label>
+                  <input
+                    value={form.city}
+                    onChange={e => set('city', e.target.value)}
+                    placeholder="Mumbai"
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">State</label>
+                  <input
+                    value={form.state}
+                    onChange={e => set('state', e.target.value)}
+                    placeholder="Maharashtra"
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Delivery Days</label>
+                <input
+                  type="number"
+                  value={form.delivery_days}
+                  onChange={e => set('delivery_days', e.target.value)}
+                  min={1}
+                  max={30}
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Status</label>
+                <label className="inline-flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.is_active}
+                    onChange={e => set('is_active', e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-gray-700 font-medium">Active</span>
                 </label>
-              </Field>
-
-              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                <button onClick={save} disabled={saving} style={{ flex: 1, height: 44, background: '#1a3a2a', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                  {saving ? 'Saving...' : editingId ? 'Update' : 'Add Pincode'}
-                </button>
-                <button onClick={() => setShowForm(false)} style={{ height: 44, padding: '0 20px', background: 'transparent', border: '1.5px solid rgba(26,58,42,0.2)', borderRadius: 10, fontSize: 14, cursor: 'pointer', color: '#888' }}>
-                  Cancel
-                </button>
               </div>
             </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3">
+              <button
+                onClick={save}
+                disabled={saving}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : editingId ? 'Update Pincode' : 'Add Pincode'}
+              </button>
+              <button
+                onClick={() => setShowForm(false)}
+                className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{ fontSize: 12, fontWeight: 600, color: '#666', display: 'block', marginBottom: 5 }}>{label}</label>
-      {children}
-    </div>
-  )
-}
-
-const inp: React.CSSProperties = {
-  width: '100%', height: 40, border: '1.5px solid rgba(26,58,42,0.2)', borderRadius: 8,
-  padding: '0 12px', fontSize: 13, fontFamily: 'DM Sans, sans-serif', outline: 'none',
-  boxSizing: 'border-box', color: '#1a3a2a',
 }

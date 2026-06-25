@@ -106,7 +106,7 @@ function CsvPreviewModal({
   if (!open) return null
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={(e) => e.stopPropagation()}>
       <div className="modal-box">
         <style>{`
           .modal-overlay {

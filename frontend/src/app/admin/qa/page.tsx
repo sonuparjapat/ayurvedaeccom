@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import { notify } from '@/app/utils/notify'
-import { MessageSquare, Check, X, Trash2, Send } from 'lucide-react'
+import { MessageSquare, Check, X, Trash2, Send, HelpCircle, Clock, Package, MessageCircle } from 'lucide-react'
 
 export default function AdminQAPage() {
   const [questions, setQuestions] = useState<any[]>([])
@@ -48,85 +48,231 @@ export default function AdminQAPage() {
     load()
   }
 
+  const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
+    pending: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' },
+    approved: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-400' },
+    rejected: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-400' },
+  }
+
+  const tabConfig: Record<string, { active: string; icon: React.ReactNode }> = {
+    pending: { active: 'bg-amber-500 text-white shadow-sm', icon: <Clock size={14} /> },
+    approved: { active: 'bg-green-600 text-white shadow-sm', icon: <Check size={14} /> },
+    rejected: { active: 'bg-red-500 text-white shadow-sm', icon: <X size={14} /> },
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
-      <div className="bg-white rounded-2xl p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <MessageSquare className="text-blue-500" size={22} /> Q&A Moderation
-        </h1>
-        <p className="text-gray-500 text-sm mt-1">Review and answer customer questions</p>
-      </div>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 space-y-6">
 
-      <div className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-3 flex-wrap">
-        {['pending','approved','rejected'].map(s => (
-          <button key={s} onClick={() => { setStatus(s); setPage(1) }}
-            className={`px-4 py-1.5 rounded-full text-sm font-semibold capitalize ${status === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-            {s}
-          </button>
-        ))}
-        <span className="ml-auto text-sm text-gray-400">{total} questions</span>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-20"><div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full" /></div>
-      ) : (
-        <div className="space-y-3">
-          {questions.map(q => (
-            <div key={q.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-semibold text-gray-900">{q.user_name || 'Anonymous'}</span>
-                    <span className="text-xs text-blue-600 font-medium">re: {q.product_name}</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.status === 'approved' ? 'bg-green-100 text-green-700' : q.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{q.status}</span>
-                  </div>
-                  <p className="text-sm text-gray-800 font-medium">"{q.question}"</p>
-                  <p className="text-xs text-gray-400 mt-1">{new Date(q.created_at).toLocaleString('en-IN')} · {q.answer_count} answers</p>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  {q.status !== 'approved' && (
-                    <button onClick={() => updateStatus(q.id, 'approved')} title="Approve"
-                      className="w-8 h-8 bg-green-100 hover:bg-green-200 text-green-700 rounded-full flex items-center justify-center">
-                      <Check size={14} />
-                    </button>
-                  )}
-                  {q.status !== 'rejected' && (
-                    <button onClick={() => updateStatus(q.id, 'rejected')} title="Reject"
-                      className="w-8 h-8 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-full flex items-center justify-center">
-                      <X size={14} />
-                    </button>
-                  )}
-                  <button onClick={() => deleteQ(q.id)} title="Delete"
-                    className="w-8 h-8 bg-red-100 hover:bg-red-200 text-red-600 rounded-full flex items-center justify-center">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {q.status === 'approved' && (
-                <div className="flex gap-2 pt-2 border-t border-gray-50">
-                  <input className="flex-1 border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 outline-none"
-                    placeholder="Write official answer as admin..."
-                    value={answerMap[q.id] || ''}
-                    onChange={e => setAnswerMap(m => ({...m, [q.id]: e.target.value}))}
-                  />
-                  <button onClick={() => answerQ(q.id)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold flex items-center gap-1">
-                    <Send size={13} /> Reply
-                  </button>
-                </div>
-              )}
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <MessageSquare className="text-white" size={24} />
             </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Q&A Moderation</h1>
+              <p className="text-blue-100 text-sm mt-0.5">Review and answer customer questions</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="bg-white/20 rounded-xl px-4 py-2">
+              <p className="text-white text-sm font-semibold">{total} questions</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center">
+              <Clock className="text-amber-600" size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{status === 'pending' ? total : '-'}</p>
+              <p className="text-xs text-gray-500 font-medium">Pending Review</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+              <Check className="text-green-600" size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{status === 'approved' ? total : '-'}</p>
+              <p className="text-xs text-gray-500 font-medium">Approved</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 col-span-2 md:col-span-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+              <MessageCircle className="text-blue-600" size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{total}</p>
+              <p className="text-xs text-gray-500 font-medium">Current View Total</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+        <div className="flex items-center gap-2 flex-wrap">
+          {(['pending', 'approved', 'rejected'] as const).map(s => (
+            <button
+              key={s}
+              onClick={() => { setStatus(s); setPage(1) }}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold capitalize transition ${
+                status === s
+                  ? tabConfig[s].active
+                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              {tabConfig[s].icon}
+              {s}
+            </button>
           ))}
-          {!questions.length && <div className="text-center py-20 text-gray-400 bg-white rounded-2xl">No questions found</div>}
+        </div>
+      </div>
+
+      {/* Questions List */}
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {questions.map(q => {
+            const sConfig = statusConfig[q.status] || statusConfig.pending
+            return (
+              <div key={q.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      {/* User & Product Info */}
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center shrink-0">
+                          <HelpCircle className="text-blue-600" size={16} />
+                        </div>
+                        <span className="font-semibold text-gray-900 text-sm">{q.user_name || 'Anonymous'}</span>
+                        <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-xs font-medium">
+                          <Package size={10} />
+                          {q.product_name}
+                        </span>
+                        <span className={`inline-flex items-center gap-1 ${sConfig.bg} ${sConfig.text} px-2 py-0.5 rounded-full text-xs font-semibold`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${sConfig.dot}`} />
+                          {q.status}
+                        </span>
+                      </div>
+
+                      {/* Question */}
+                      <div className="bg-gray-50 rounded-lg p-3 mt-2">
+                        <p className="text-sm text-gray-800 font-medium leading-relaxed">&ldquo;{q.question}&rdquo;</p>
+                      </div>
+
+                      {/* Meta */}
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Clock size={11} />
+                          {new Date(q.created_at).toLocaleString('en-IN')}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageCircle size={11} />
+                          {q.answer_count} {q.answer_count === 1 ? 'answer' : 'answers'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {q.status !== 'approved' && (
+                        <button
+                          onClick={() => updateStatus(q.id, 'approved')}
+                          title="Approve"
+                          className="w-9 h-9 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg flex items-center justify-center transition-colors"
+                        >
+                          <Check size={16} />
+                        </button>
+                      )}
+                      {q.status !== 'rejected' && (
+                        <button
+                          onClick={() => updateStatus(q.id, 'rejected')}
+                          title="Reject"
+                          className="w-9 h-9 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => deleteQ(q.id)}
+                        title="Delete"
+                        className="w-9 h-9 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg flex items-center justify-center transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Admin Reply Input */}
+                {q.status === 'approved' && (
+                  <div className="px-5 pb-4 pt-0">
+                    <div className="flex gap-2 pt-3 border-t border-gray-100">
+                      <input
+                        className="flex-1 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                        placeholder="Write official answer as admin..."
+                        value={answerMap[q.id] || ''}
+                        onChange={e => setAnswerMap(m => ({...m, [q.id]: e.target.value}))}
+                      />
+                      <button
+                        onClick={() => answerQ(q.id)}
+                        className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5 transition shadow-sm"
+                      >
+                        <Send size={14} /> Reply
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Empty State */}
+          {!questions.length && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 py-20 flex flex-col items-center text-gray-400">
+              <MessageSquare size={40} className="mb-3 text-gray-300" />
+              <p className="text-base font-medium text-gray-500">No questions found</p>
+              <p className="text-sm mt-1">No {status} questions at the moment</p>
+            </div>
+          )}
         </div>
       )}
 
+      {/* Pagination */}
       {total > limit && (
-        <div className="flex justify-center gap-3">
-          <button disabled={page === 1} onClick={() => setPage(p => p-1)} className="px-4 py-2 border rounded-lg disabled:opacity-50">Prev</button>
-          <span className="px-4 py-2 text-sm">Page {page} of {Math.ceil(total/limit)}</span>
-          <button disabled={page >= Math.ceil(total/limit)} onClick={() => setPage(p => p+1)} className="px-4 py-2 border rounded-lg disabled:opacity-50">Next</button>
+        <div className="flex justify-center items-center gap-3 pt-2">
+          <button
+            disabled={page === 1}
+            onClick={() => setPage(p => p - 1)}
+            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            Previous
+          </button>
+          <span className="px-4 py-2 text-sm text-gray-500 font-medium">
+            Page {page} of {Math.ceil(total / limit)}
+          </span>
+          <button
+            disabled={page >= Math.ceil(total / limit)}
+            onClick={() => setPage(p => p + 1)}
+            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            Next
+          </button>
         </div>
       )}
     </div>
