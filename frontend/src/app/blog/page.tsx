@@ -1,133 +1,94 @@
 'use client'
 
+import { useEffect, useState, useCallback } from 'react'
+import axios from '@/lib/axios'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Carousel, CarouselItem } from '@/components/ui/carousel/carousel'
-import { 
-  Calendar, 
-  User, 
-  Clock, 
+import {
+  Calendar,
+  User,
+  Clock,
   ArrowRight,
-  Heart,
-  MessageCircle,
-  Share2
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  BookOpen,
 } from 'lucide-react'
-import { motion } from 'framer-motion'
 import Link from 'next/link'
 
-const blogPosts = [
-  {
-    id: 1,
-    title: "The Ancient Wisdom of Ayurveda in Modern Life",
-    slug: "ancient-wisdom-ayurveda-modern-life",
-    excerpt: "Discover how 5000-year-old Ayurvedic principles can transform your modern lifestyle and bring balance to your daily routine.",
-    content: "Ayurveda, the ancient Indian system of medicine, offers timeless wisdom for modern living...",
-    author: "Dr. Rajesh Sharma",
-    date: "2024-01-15",
-    readTime: "5 min read",
-    category: "Ayurvedic Wisdom",
-    image: "🌿",
-    featured: true,
-    tags: ["Ayurveda", "Wellness", "Lifestyle"]
-  },
-  {
-    id: 2,
-    title: "Top 10 Ayurvedic Herbs for Immunity Boost",
-    slug: "top-10-ayurvedic-herbs-immunity",
-    excerpt: "Strengthen your immune system naturally with these powerful Ayurvedic herbs that have been used for centuries.",
-    content: "In today's fast-paced world, maintaining strong immunity is more important than ever...",
-    author: "Priya Nair",
-    date: "2024-01-12",
-    readTime: "7 min read",
-    category: "Herbal Remedies",
-    image: "🌱",
-    featured: true,
-    tags: ["Immunity", "Herbs", "Health"]
-  },
-  {
-    id: 3,
-    title: "The Science Behind Turmeric: Golden Spice of Life",
-    slug: "science-behind-turmeric-golden-spice",
-    excerpt: "Explore the scientific evidence behind turmeric's health benefits and why it's considered a superfood in Ayurveda.",
-    content: "Turmeric, often called the 'golden spice of life', has been revered in Ayurvedic medicine...",
-    author: "Dr. Amit Kumar",
-    date: "2024-01-10",
-    readTime: "6 min read",
-    category: "Ingredient Spotlight",
-    image: "🟡",
-    featured: false,
-    tags: ["Turmeric", "Science", "Superfood"]
-  },
-  {
-    id: 4,
-    title: "Dry Fruits: Nature's Energy Boosters",
-    slug: "dry-fruits-nature-energy-boosters",
-    excerpt: "Learn how incorporating dry fruits into your diet can provide sustained energy and numerous health benefits.",
-    content: "Dry fruits have been a staple in Indian diets for centuries, offering concentrated nutrition...",
-    author: "Sneha Patel",
-    date: "2024-01-08",
-    readTime: "4 min read",
-    category: "Nutrition",
-    image: "��",
-    featured: false,
-    tags: ["Dry Fruits", "Energy", "Nutrition"]
-  },
-  {
-    id: 5,
-    title: "Understanding Doshas: Your Unique Body Type",
-    slug: "understanding-doshas-body-type",
-    excerpt: "Discover your Ayurvedic body type (dosha) and how to balance it for optimal health and wellness.",
-    content: "According to Ayurveda, each person has a unique constitution called 'dosha'...",
-    author: "Dr. Rajesh Sharma",
-    date: "2024-01-05",
-    readTime: "8 min read",
-    category: "Ayurvedic Wisdom",
-    image: "⚖️",
-    featured: false,
-    tags: ["Doshas", "Body Type", "Wellness"]
-  },
-  {
-    id: 6,
-    title: "Tofu: The Plant-Based Protein Powerhouse",
-    slug: "tofu-plant-based-protein-powerhouse",
-    excerpt: "Discover why tofu is becoming increasingly popular in Indian diets and its numerous health benefits.",
-    content: "Tofu, also known as soya paneer, is an excellent source of plant-based protein...",
-    author: "Priya Nair",
-    date: "2024-01-03",
-    readTime: "5 min read",
-    category: "Plant-Based Nutrition",
-    image: "🧈",
-    featured: false,
-    tags: ["Tofu", "Protein", "Plant-Based"]
-  }
-]
-
-const categories = [
-  { name: "Ayurvedic Wisdom", count: 2 },
-  { name: "Herbal Remedies", count: 1 },
-  { name: "Ingredient Spotlight", count: 1 },
-  { name: "Nutrition", count: 1 },
-  { name: "Plant-Based Nutrition", count: 1 }
-]
+interface BlogPost {
+  id: number
+  title: string
+  slug: string
+  excerpt?: string | null
+  cover_image?: string | null
+  author_name: string
+  category: string
+  tags: string[]
+  views_count: number
+  published_at: string
+}
 
 export default function BlogPage() {
-  const featuredPosts = blogPosts.filter(post => post.featured)
-  const recentPosts = blogPosts.filter(post => !post.featured)
+  const [posts, setPosts] = useState<BlogPost[]>([])
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [category, setCategory] = useState('')
+  const [categories, setCategories] = useState<string[]>([])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params: any = { page, limit: 12 }
+      if (search) params.search = search
+      if (category) params.category = category
+      const res = await axios.get('/blog/public', { params })
+      setPosts(res.data.data || [])
+      setTotalPages(res.data.totalPages || 1)
+
+      // extract unique categories for filter pills
+      if (!category && page === 1) {
+        const cats = [...new Set((res.data.data || []).map((p: BlogPost) => p.category).filter(Boolean))] as string[]
+        setCategories(prev => {
+          const merged = [...new Set([...prev, ...cats])]
+          return merged.length > prev.length ? merged : prev
+        })
+      }
+    } catch {
+      setPosts([])
+    }
+    finally { setLoading(false) }
+  }, [page, search, category])
+
+  useEffect(() => { load() }, [load])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setSearch(searchInput)
+    setPage(1)
+  }
+
+  const formatDate = (d: string) => {
+    return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1">
         {/* Hero Section */}
         <section className="bg-gradient-to-br from-emerald-50 via-white to-amber-50 py-16">
           <div className="container mx-auto px-4">
             <div className="text-center max-w-3xl mx-auto">
               <Badge className="bg-emerald-100 text-emerald-800 mb-6">
-                📝 Ayurveda & Wellness Blog
+                Ayurveda & Wellness Blog
               </Badge>
               <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
                 Discover the
@@ -136,203 +97,146 @@ export default function BlogPage() {
               <p className="text-xl text-gray-600 mb-8">
                 Expert insights, traditional remedies, and modern wellness tips to help you live your healthiest life.
               </p>
+
+              {/* Search */}
+              <form onSubmit={handleSearch} className="max-w-xl mx-auto">
+                <div className="relative">
+                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    className="w-full pl-11 pr-24 py-3 rounded-full border border-gray-200 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 shadow-sm"
+                    placeholder="Search articles..."
+                    value={searchInput}
+                    onChange={e => setSearchInput(e.target.value)}
+                  />
+                  <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-600 text-white text-sm font-semibold px-5 py-2 rounded-full hover:bg-emerald-700 transition">
+                    Search
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </section>
 
-        {/* Featured Posts Carousel */}
-        <section className="py-12 bg-white">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-              Featured Articles
-            </h2>
-            
-            <Carousel autoSlide autoSlideInterval={5000} className="h-96 rounded-2xl overflow-hidden">
-              {featuredPosts.map((post) => (
-                <CarouselItem key={post.id}>
-                  <div className="h-96 bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center">
-                    <div className="text-center text-white p-8 max-w-2xl mx-auto">
-                      <div className="text-6xl mb-4">{post.image}</div>
-                      <Badge className="bg-white/20 text-white mb-4">
-                        {post.category}
-                      </Badge>
-                      <h3 className="text-2xl font-bold mb-4">{post.title}</h3>
-                      <p className="text-lg mb-6 opacity-90">{post.excerpt}</p>
-                      <div className="flex items-center justify-center gap-4 text-sm opacity-75">
-                        <span className="flex items-center gap-1">
-                          <User className="w-4 h-4" />
-                          {post.author}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(post.date).toLocaleDateString()}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {post.readTime}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CarouselItem>
-              ))}
-            </Carousel>
-          </div>
-        </section>
-
-        {/* Blog Posts Grid */}
+        {/* Blog Posts */}
         <section className="py-16 bg-gray-50">
           <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Main Content */}
-              <div className="lg:col-span-2">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900">Latest Articles</h2>
-                  <Button variant="outline" size="sm">
-                    View All
-                  </Button>
-                </div>
 
-                <div className="space-y-8">
-                  {blogPosts.map((post, index) => (
-                    <motion.div
-                      key={post.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      viewport={{ once: true }}
-                    >
-                      <Card className="hover:shadow-lg transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex gap-6">
-                            <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 text-4xl">
-                              {post.image}
-                            </div>
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="secondary">{post.category}</Badge>
-                                {post.featured && (
-                                  <Badge className="bg-amber-100 text-amber-800">Featured</Badge>
-                                )}
-                              </div>
-                              
-                              <h3 className="text-xl font-semibold text-gray-900 mb-2 hover:text-emerald-600 transition-colors">
-                                <Link href={`/blog/${post.slug}`}>
-                                  {post.title}
-                                </Link>
-                              </h3>
-                              
-                              <p className="text-gray-600 mb-4 line-clamp-2">
-                                {post.excerpt}
-                              </p>
-                              
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4 text-sm text-gray-500">
-                                  <span className="flex items-center gap-1">
-                                    <User className="w-4 h-4" />
-                                    {post.author}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="w-4 h-4" />
-                                    {new Date(post.date).toLocaleDateString()}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="w-4 h-4" />
-                                    {post.readTime}
-                                  </span>
-                                </div>
-                                
-                                <Link href={`/blog/${post.slug}`}>
-                                  <Button variant="ghost" size="sm">
-                                    Read More
-                                    <ArrowRight className="w-4 h-4 ml-1" />
-                                  </Button>
-                                </Link>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
+            {/* Category Filter Pills */}
+            {categories.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-8 justify-center">
+                <button
+                  onClick={() => { setCategory(''); setPage(1) }}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${!category ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-emerald-300'}`}
+                >
+                  All
+                </button>
+                {categories.map(c => (
+                  <button key={c}
+                    onClick={() => { setCategory(c); setPage(1) }}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${category === c ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-emerald-300'}`}
+                  >
+                    {c}
+                  </button>
+                ))}
               </div>
+            )}
 
-              {/* Sidebar */}
-              <div className="space-y-8">
-                {/* Categories */}
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Categories</h3>
-                    <div className="space-y-2">
-                      {categories.map((category) => (
-                        <div key={category.name} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <span className="text-gray-700 hover:text-emerald-600 cursor-pointer transition-colors">
-                            {category.name}
-                          </span>
-                          <Badge variant="secondary">{category.count}</Badge>
+            {/* Content */}
+            {loading ? (
+              <div className="text-center py-20 text-gray-400">
+                <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-3" />
+                Loading articles...
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="text-center py-20 text-gray-400">
+                <BookOpen size={48} className="mx-auto mb-3 text-gray-300" />
+                <p className="text-lg font-medium">No articles found</p>
+                <p className="text-sm mt-1">Try a different search or check back later.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {posts.map(post => (
+                  <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
+                    {/* Cover Image */}
+                    <div className="aspect-[16/9] bg-gray-100 overflow-hidden">
+                      {post.cover_image ? (
+                        <img
+                          src={post.cover_image}
+                          alt={post.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-50">
+                          <BookOpen size={40} className="text-emerald-300" />
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
 
-                {/* Popular Tags */}
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Popular Tags</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {['Ayurveda', 'Wellness', 'Herbs', 'Nutrition', 'Immunity', 'Turmeric', 'Dry Fruits', 'Tofu'].map((tag) => (
-                        <Badge key={tag} variant="outline" className="cursor-pointer hover:bg-emerald-100 hover:text-emerald-800 transition-colors">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                    <CardContent className="p-5">
+                      {/* Category Badge */}
+                      <Badge className="bg-emerald-100 text-emerald-800 mb-3">
+                        {post.category}
+                      </Badge>
 
-                {/* Newsletter */}
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Subscribe to Newsletter
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      Get the latest Ayurvedic tips and wellness insights delivered to your inbox.
-                    </p>
-                    <div className="space-y-3">
-                      <input
-                        type="email"
-                        placeholder="Your email address"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                      <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                        Subscribe
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors">
+                        <Link href={`/blog/${post.slug}`}>
+                          {post.title}
+                        </Link>
+                      </h3>
 
-                {/* Follow Us */}
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Follow Us</h3>
-                    <p className="text-gray-600 mb-4">
-                      Stay connected for daily wellness tips and updates.
-                    </p>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        Facebook
-                      </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
-                        Instagram
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      {post.excerpt && (
+                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{post.excerpt}</p>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            {post.author_name}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {formatDate(post.published_at)}
+                          </span>
+                        </div>
+
+                        <Link href={`/blog/${post.slug}`}>
+                          <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 p-0 h-auto">
+                            Read More
+                            <ArrowRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-10">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage(p => p - 1)}
+                >
+                  <ChevronLeft size={16} className="mr-1" /> Previous
+                </Button>
+                <span className="text-sm text-gray-500">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  Next <ChevronRight size={16} className="ml-1" />
+                </Button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -354,7 +258,7 @@ export default function BlogPage() {
           </div>
         </section>
       </main>
-      
+
       <Footer />
     </div>
   )

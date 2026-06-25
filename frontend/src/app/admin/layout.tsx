@@ -235,12 +235,20 @@ export default function AdminLayout({
             Stock Alerts
           </MenuItem>
 
+          <MenuItem href="/admin/blog" icon={<BookOpen size={18} />}>
+            Blog
+          </MenuItem>
+
           <div className="pt-2 pb-1 px-3">
             <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Engagement</p>
           </div>
 
           <MenuItem href="/admin/flash-sales" icon={<Zap size={18} />}>
             Flash Sales
+          </MenuItem>
+
+          <MenuItem href="/admin/bundles" icon={<Package size={18} />}>
+            Bundles
           </MenuItem>
 
           <MenuItem href="/admin/reviews" icon={<Star size={18} />}>
@@ -253,6 +261,10 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/abandoned-carts" icon={<ShoppingCart size={18} />}>
             Abandoned Carts
+          </MenuItem>
+
+          <MenuItem href="/admin/subscriptions" icon={<RotateCcw size={18} />}>
+            Subscriptions
           </MenuItem>
 
           <MenuItem href="/admin/wallet" icon={<Wallet size={18} />}>

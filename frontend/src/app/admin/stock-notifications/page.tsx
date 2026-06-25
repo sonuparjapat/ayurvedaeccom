@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { Bell, Search, Package, Mail, CheckCircle, Clock, RefreshCw } from 'lucide-react'
+import { Bell, Search, Package, Mail, CheckCircle, Clock, RefreshCw, AlertTriangle, XCircle } from 'lucide-react'
 import { notify } from '@/app/utils/notify'
 
 export default function AdminStockNotificationsPage() {
@@ -11,6 +11,9 @@ export default function AdminStockNotificationsPage() {
   const [filtered, setFiltered] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const [lowStock, setLowStock] = useState<any[]>([])
+  const [outOfStock, setOutOfStock] = useState<any[]>([])
+  const [alertsLoading, setAlertsLoading] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -24,7 +27,20 @@ export default function AdminStockNotificationsPage() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  const loadAlerts = async () => {
+    setAlertsLoading(true)
+    try {
+      const res = await axios.get('/admin/low-stock-alerts')
+      setLowStock(res.data.data?.lowStock || [])
+      setOutOfStock(res.data.data?.outOfStock || [])
+    } catch {
+      // silently fail if endpoint not available yet
+    } finally {
+      setAlertsLoading(false)
+    }
+  }
+
+  useEffect(() => { load(); loadAlerts() }, [])
 
   useEffect(() => {
     const q = search.toLowerCase()
@@ -57,7 +73,7 @@ export default function AdminStockNotificationsPage() {
               </p>
             </div>
             <button
-              onClick={load}
+              onClick={() => { load(); loadAlerts() }}
               disabled={loading}
               className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium text-sm transition disabled:opacity-50"
             >
@@ -66,6 +82,58 @@ export default function AdminStockNotificationsPage() {
             </button>
           </div>
         </div>
+
+        {/* LOW STOCK & OUT OF STOCK ALERTS */}
+        {(lowStock.length > 0 || outOfStock.length > 0) && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* OUT OF STOCK */}
+            {outOfStock.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-5">
+                <h3 className="text-lg font-bold text-red-700 flex items-center gap-2 mb-3">
+                  <XCircle size={20} className="text-red-500" />
+                  Out of Stock ({outOfStock.length})
+                </h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {outOfStock.map((p: any) => (
+                    <div key={p.id} className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
+                        {p.sku && <p className="text-xs text-gray-400">SKU: {p.sku}</p>}
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-200 text-red-800">0 left</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* LOW STOCK */}
+            {lowStock.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-5">
+                <h3 className="text-lg font-bold text-amber-700 flex items-center gap-2 mb-3">
+                  <AlertTriangle size={20} className="text-amber-500" />
+                  Low Stock ({lowStock.length})
+                </h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {lowStock.map((p: any) => (
+                    <div key={p.id} className="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-100">
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
+                        {p.sku && <p className="text-xs text-gray-400">SKU: {p.sku}</p>}
+                      </div>
+                      <div className="text-right">
+                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-200 text-amber-800">
+                          {p.inventory} left
+                        </span>
+                        <p className="text-xs text-gray-400 mt-1">Threshold: {p.threshold}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* STATS */}
         <div className="grid grid-cols-3 gap-4">

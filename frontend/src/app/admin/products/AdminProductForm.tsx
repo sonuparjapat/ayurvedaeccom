@@ -668,7 +668,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
       {/* SPECIFICATIONS */}
       <Section title="Specifications (optional)">
-        <p className="text-xs text-gray-500 mb-2">Add product specifications as JSON array: [{"key":"Ingredient","value":"Amla"}, ...]</p>
+        <p className="text-xs text-gray-500 mb-2">{'Add product specifications as JSON array: [{"key":"Ingredient","value":"Amla"}, ...]'}</p>
         <TextArea
           label="Specifications JSON"
           rows={3}

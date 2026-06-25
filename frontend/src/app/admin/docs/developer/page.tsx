@@ -1091,6 +1091,47 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 //   - Period filter: 24h, 7d, 30d, 90d
 //   - Auto-refreshes every 60 seconds
 //   - "Live now" = visitors in last 5 minutes`}</Code>
+          <H3>Blog system</H3>
+          <Code>{`// Database: blog_posts (title, slug, excerpt, content, cover_image, category, tags, status, views_count)
+// Backend: /api/blog/public (GET list), /api/blog/public/:slug (GET + view count++)
+//          /api/blog/admin (CRUD with cover image upload to S3)
+// Admin: /admin/blog — CRUD with AppModal
+// Web: /blog (listing with category filter) + /blog/[slug] (full post with HTML content)
+// Features: auto-slug, SEO meta, draft/published/archived, view counting`}</Code>
+          <H3>Product bundles</H3>
+          <Code>{`// Database: product_bundles + bundle_products (many-to-many)
+// Backend: /api/bundles/public (GET), /api/bundles/admin (CRUD)
+//          /api/bundles/add-to-cart (POST — adds all products with stock check)
+// Admin: /admin/bundles — CRUD with product multi-select
+// Discount: flat or percent off total bundle price`}</Code>
+          <H3>Subscriptions (auto-reorder)</H3>
+          <Code>{`// Database: subscriptions (user_id, product_id, variant_id, quantity, frequency_days, next_order_date, status)
+// Backend: /api/subscriptions (POST create, GET /my, PUT /:id, DELETE /:id)
+//          /api/subscriptions/admin (GET — admin list with user/product details)
+// Frequency options: 7, 14, 30, 60, 90 days
+// Status: active, paused, cancelled
+// Admin: /admin/subscriptions — view all with status filters`}</Code>
+          <H3>Google social login</H3>
+          <Code>{`// Backend: POST /api/users/google-login
+//   Accepts: { email, name, id_token }
+//   Logic: find-or-create user, auto-verify, generate JWT
+//   No password needed — random hash generated for DB constraint
+// Web: Google Sign-In script loaded in layout.tsx
+//   "Continue with Google" button in AuthSheet after regular login
+//   Uses Google One Tap via accounts.google.com/gsi/client
+// Mobile: placeholder button (requires production OAuth credentials)
+// Env: NEXT_PUBLIC_GOOGLE_CLIENT_ID`}</Code>
+          <H3>Sitemap.xml</H3>
+          <Code>{`// Backend: GET /sitemap.xml (served at root, before /api routes)
+// Auto-generates from: products (by slug), categories (by slug),
+//   blog posts (by slug), and static pages
+// Content-Type: application/xml
+// Env: FRONTEND_URL for base URL`}</Code>
+          <H3>Low-stock email alerts</H3>
+          <Code>{`// Backend: GET /admin/low-stock-alerts
+// Returns products where inventory <= low_stock_threshold (and > 0)
+// Also returns completely out-of-stock products (inventory <= 0)
+// Admin UI: stock-notifications page shows alerts at top with badges`}</Code>
         </Section>
 
         {/* ═══ DEPLOY ═══ */}
