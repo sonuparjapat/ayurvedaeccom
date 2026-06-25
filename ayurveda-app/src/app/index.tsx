@@ -267,10 +267,12 @@ function HeroCarousel({ slides }: { slides: BannerSlide[] }) {
 // ─── FILTER PILLS — driven by real categories from store ──────────────────────
 function FilterPills({ activeCatId, setActiveCatId }: { activeCatId: number | null; setActiveCatId: (id: number | null) => void }) {
   const categories = useStore(s => s.categories)
+  const topLevel = categories.filter(c => !c.parent_id && (!c.level || c.level === 0))
+  const pills = topLevel.length > 0 ? topLevel : categories
   return (
     <Animated.View entering={FadeInDown.delay(200).duration(500)}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 12 }}>
-        {[{ id: null, name: 'All' }, ...categories].map((c: any) => {
+        {[{ id: null, name: 'All' }, ...pills].map((c: any) => {
           const isActive = activeCatId === c.id
           return (
             <TouchableOpacity key={String(c.id)} onPress={() => setActiveCatId(c.id)} style={[ss.pill, isActive ? ss.pillActive : ss.pillInactive]} activeOpacity={0.8}>
@@ -340,12 +342,14 @@ function CategoryCard({ item, index }: { item: any; index: number }) {
 // ─── CATEGORIES SECTION ───────────────────────────────────────────────────────
 function CategoriesSection() {
   const categories = useStore(s => s.categories)
-  if (!categories.length) return null
+  const topLevel = categories.filter(c => !c.parent_id && (!c.level || c.level === 0))
+  const displayCats = topLevel.length > 0 ? topLevel : categories
+  if (!displayCats.length) return null
   return (
     <View style={{ marginBottom: 8 }}>
       <SectionHeader title="Shop by Category" onSeeAll={() => router.push('/products')} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}>
-        {categories.map((cat, i) => <CategoryCard key={cat.id} item={cat} index={i} />)}
+        {displayCats.map((cat, i) => <CategoryCard key={cat.id} item={cat} index={i} />)}
       </ScrollView>
     </View>
   )

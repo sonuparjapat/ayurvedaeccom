@@ -183,6 +183,9 @@ router.delete('/pincodes/:id', auth, admin, controller.adminDeletePincode)
 /* ─── STOCK NOTIFICATIONS ADMIN ─── */
 router.get('/stock-notifications', auth, admin, controller.adminListStockNotifications)
 
+/* ─── LOW STOCK ALERTS ─── */
+router.get('/low-stock-alerts', auth, admin, controller.checkLowStock)
+
 /* ─── ORDER TIMELINE ─── */
 router.get('/orders/:id/timeline', auth, admin, controller.getOrderTimeline)
 

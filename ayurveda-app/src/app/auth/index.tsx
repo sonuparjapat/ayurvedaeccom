@@ -315,6 +315,15 @@ export default function AuthScreen() {
                   <Text style={ss.divText}>or</Text>
                   <View style={ss.divLine} />
                 </View>
+                <TouchableOpacity
+                  onPress={async () => {
+                    Alert.alert('Google Login', 'Google Sign-In requires a production build with proper OAuth credentials configured. Use email/password or OTP login for now.')
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, backgroundColor: '#fff', marginBottom: 12 }}
+                >
+                  <Text style={{ fontSize: 18 }}>G</Text>
+                  <Text style={{ fontFamily: Fonts.medium, fontSize: 14, color: Colors.forest }}>Continue with Google</Text>
+                </TouchableOpacity>
                 <SecondaryBtn label="Create new account →" onPress={() => setMode('register')} />
                 <View style={ss.trustRow}>
                   {['🌿 100% Organic', '✨ Ayurvedic', '🛡️ Lab Tested'].map(b => (

@@ -922,6 +922,79 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`CREATE INDEX IF NOT EXISTS idx_pageviews_path ON page_views(path, created_at)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_pageviews_session ON page_views(session_id)`);
 
+    /* ================= BLOG POSTS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS blog_posts (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(300) NOT NULL,
+        slug VARCHAR(300) UNIQUE NOT NULL,
+        excerpt TEXT,
+        content TEXT NOT NULL,
+        cover_image TEXT,
+        author_name VARCHAR(100) DEFAULT 'Oroganix Team',
+        category VARCHAR(100) DEFAULT 'General',
+        tags JSONB DEFAULT '[]',
+        status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft','published','archived')),
+        views_count INTEGER DEFAULT 0,
+        meta_title VARCHAR(300),
+        meta_description TEXT,
+        published_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_blog_status ON blog_posts(status, published_at DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_blog_slug ON blog_posts(slug)`);
+
+    /* ================= PRODUCT BUNDLES ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS product_bundles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        slug VARCHAR(255) UNIQUE NOT NULL,
+        description TEXT,
+        discount_type VARCHAR(20) DEFAULT 'percent' CHECK (discount_type IN ('percent', 'flat')),
+        discount_value NUMERIC(10,2) NOT NULL DEFAULT 0,
+        image_url TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bundle_products (
+        id SERIAL PRIMARY KEY,
+        bundle_id INTEGER NOT NULL REFERENCES product_bundles(id) ON DELETE CASCADE,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        quantity INTEGER DEFAULT 1,
+        UNIQUE(bundle_id, product_id)
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_bundle_products_bundle ON bundle_products(bundle_id)`);
+
+    /* ================= SUBSCRIPTIONS (Auto-Reorder) ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        variant_id INTEGER REFERENCES product_variants(id) ON DELETE SET NULL,
+        quantity INTEGER DEFAULT 1,
+        frequency_days INTEGER NOT NULL DEFAULT 30,
+        next_order_date DATE NOT NULL,
+        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','paused','cancelled')),
+        total_orders INTEGER DEFAULT 0,
+        last_order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+        address_id INTEGER REFERENCES user_addresses(id) ON DELETE SET NULL,
+        payment_method VARCHAR(20) DEFAULT 'cod',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_next ON subscriptions(status, next_order_date) WHERE status = 'active'`);
+
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

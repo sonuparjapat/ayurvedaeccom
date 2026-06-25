@@ -672,17 +672,18 @@ exports.deleteCategory = async (req, res) => {
     /* ================= IN USE ================= */
 
     const used = await pool.query(
-      `
-      SELECT id
-      FROM products
-      WHERE category_id=$1
-      LIMIT 1
-      `,
+      `SELECT id FROM products WHERE category_id IN (
+        WITH RECURSIVE cat_tree AS (
+          SELECT id FROM categories WHERE id = $1
+          UNION ALL
+          SELECT c.id FROM categories c JOIN cat_tree ct ON c.parent_id = ct.id
+        ) SELECT id FROM cat_tree
+      ) LIMIT 1`,
       [id]
     );
 
     if (used.rows.length) {
-      return sendError(res, 400, "Category is in use");
+      return sendError(res, 400, "Category or its subcategories have products. Remove or reassign them first.");
     }
 
 

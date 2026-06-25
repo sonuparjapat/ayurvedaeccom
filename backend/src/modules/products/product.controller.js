@@ -65,10 +65,16 @@ exports.getAllPublic = async (req, res) => {
       values.push(category)
       i++
     }
-    console.log(req.query,"cominggggggggg")
      if (category_id) {
-      console.log(category_id,"id commmmmmmmmmmmm")
-      where += ` AND category_id = $${i}`
+      // Include products from this category AND all its descendant subcategories
+      where += ` AND category_id IN (
+        WITH RECURSIVE cat_tree AS (
+          SELECT id FROM categories WHERE id = $${i}
+          UNION ALL
+          SELECT c.id FROM categories c JOIN cat_tree ct ON c.parent_id = ct.id
+        )
+        SELECT id FROM cat_tree
+      )`
       values.push(category_id)
       i++
     }

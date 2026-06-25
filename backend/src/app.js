@@ -23,6 +23,10 @@ const qaRoutes = require('./modules/qa/qa.routes');
 const pushRoutes = require('./modules/push/push.routes');
 const supportRoutes = require('./modules/support/support.routes');
 const analyticsRoutes = require('./modules/analytics/analytics.routes');
+const sitemapRoutes = require('./modules/sitemap/sitemap.routes');
+const bundleRoutes = require('./modules/bundles/bundle.routes');
+const blogRoutes = require('./modules/blog/blog.routes');
+const subscriptionRoutes = require('./modules/subscriptions/subscription.routes');
 
 const app = express();
 
@@ -84,6 +88,8 @@ app.use(express.urlencoded({ extended: true }));
 
 /* ================= ROUTES ================= */
 
+app.use('/', sitemapRoutes);
+
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/admin/settings", settingRoutes);
 app.use("/api/admin", adminRoutes);
@@ -105,6 +111,9 @@ app.use('/api/qa', qaRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/bundles', bundleRoutes);
+app.use('/api/blog', blogRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 
 /* ================= EXPORT ================= */

@@ -1922,7 +1922,9 @@ exports.adminCompleteRefund = async (req, res) => {
 
 exports.adminListBrands = async (req, res) => {
   try {
-    const { page = 1, limit = 50, search = '' } = req.query
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50))
+    const search = req.query.search || ''
     const offset = (page - 1) * limit
     const countRes = await pool.query('SELECT COUNT(*) FROM brands WHERE LOWER(name) LIKE LOWER($1)', [`%${search}%`])
     const result = await pool.query(
@@ -1993,5 +1995,41 @@ exports.adminDeleteBrand = async (req, res) => {
   } catch (err) {
     console.error(err)
     res.status(500).json({ success: false, message: 'Failed to delete brand' })
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOW STOCK ALERTS — DETAILED VIEW
+═══════════════════════════════════════════════════════ */
+
+exports.checkLowStock = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT p.id, p.name, p.sku, p.inventory, p.low_stock_threshold,
+             COALESCE(p.low_stock_threshold, 10) as threshold
+      FROM products p
+      WHERE p.status = 'active'
+        AND p.inventory <= COALESCE(p.low_stock_threshold, 10)
+        AND p.inventory > 0
+      ORDER BY p.inventory ASC
+      LIMIT 50
+    `)
+
+    const outOfStock = await pool.query(`
+      SELECT id, name, sku FROM products WHERE status='active' AND inventory <= 0 LIMIT 50
+    `)
+
+    res.json({
+      success: true,
+      data: {
+        lowStock: result.rows,
+        outOfStock: outOfStock.rows,
+        lowStockCount: result.rows.length,
+        outOfStockCount: outOfStock.rows.length,
+      }
+    })
+  } catch (err) {
+    console.error('[LowStock] Error:', err)
+    res.status(500).json({ success: false, message: 'Failed' })
   }
 }

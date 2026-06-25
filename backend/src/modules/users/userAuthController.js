@@ -1482,6 +1482,50 @@ exports.resetPassword = async (req, res) => {
 };
 /* ================= LOGOUT ================= */
 
+exports.googleLogin = async (req, res) => {
+  try {
+    const { id_token, name, email, photo } = req.body
+    if (!email) return res.status(400).json({ success: false, message: 'Email required' })
+
+    const cleanEmail = email.trim().toLowerCase()
+    const cleanName = name?.trim() || cleanEmail.split('@')[0]
+
+    let user = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [cleanEmail])
+
+    if (user.rows.length) {
+      user = user.rows[0]
+      if (!user.is_verified) {
+        await pool.query('UPDATE users SET is_verified = TRUE WHERE id = $1', [user.id])
+        user.is_verified = true
+      }
+    } else {
+      const hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10)
+      const referralCode = crypto.randomBytes(4).toString('hex').toUpperCase()
+      const result = await pool.query(
+        `INSERT INTO users (name, email, password_hash, role, is_verified, referral_code)
+         VALUES ($1, $2, $3, 3, TRUE, $4) RETURNING *`,
+        [cleanName, cleanEmail, hash, referralCode]
+      )
+      user = result.rows[0]
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '30d' }
+    )
+
+    res.json({
+      success: true,
+      token,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, is_verified: user.is_verified, phone: user.phone },
+    })
+  } catch (err) {
+    console.error('[Google Login]', err)
+    res.status(500).json({ success: false, message: 'Google login failed' })
+  }
+}
+
 exports.logout = async (req, res) => {
 
   res.clearCookie("token")
