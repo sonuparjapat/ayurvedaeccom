@@ -45,6 +45,7 @@ export default function AdminCategories() {
   /* ================= STATES ================= */
 
   const [categories, setCategories] = useState<Category[]>([])
+  const [allCategories, setAllCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
 
   const [search, setSearch] = useState('')
@@ -78,6 +79,13 @@ const [cessPercent, setCessPercent] = useState<any>(0)
 
   /* ================= LOAD ================= */
 
+  const loadAllCategories = async () => {
+    try {
+      const res = await axios.get('/categories', { params: { limit: 500 } })
+      setAllCategories(res.data?.data?.rows || [])
+    } catch {}
+  }
+
   const loadCategories = async () => {
 
     try {
@@ -109,6 +117,10 @@ const [cessPercent, setCessPercent] = useState<any>(0)
   useEffect(() => {
     loadCategories()
   }, [page, search])
+
+  useEffect(() => {
+    loadAllCategories()
+  }, [])
 
 
   /* ================= MODAL ================= */
@@ -290,6 +302,7 @@ const [cessPercent, setCessPercent] = useState<any>(0)
 
       closeModal()
       loadCategories()
+      loadAllCategories()
 
     } catch (err: any) {
 
@@ -319,6 +332,7 @@ const [cessPercent, setCessPercent] = useState<any>(0)
       toast.success('Category deleted')
 
       loadCategories()
+      loadAllCategories()
 
     } catch (err: any) {
 
@@ -359,7 +373,7 @@ const columns = [
     ),
 
     parent_name: cat.parent_id
-      ? categories.find(c => c.id === cat.parent_id)?.name || `#${cat.parent_id}`
+      ? allCategories.find(c => c.id === cat.parent_id)?.name || `#${cat.parent_id}`
       : '—',
 
     actions: (
@@ -577,7 +591,7 @@ const columns = [
                 className="input"
               >
                 <option value="">— None (Top Level) —</option>
-                {categories.filter(c => c.id !== editData?.id).map(c => (
+                {allCategories.filter(c => c.id !== editData?.id).map(c => (
                   <option key={c.id} value={c.id}>{'— '.repeat(c.level || 0)}{c.name}</option>
                 ))}
               </select>

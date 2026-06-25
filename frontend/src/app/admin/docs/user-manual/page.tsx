@@ -30,6 +30,15 @@ const SECTIONS = [
   { id: 'admin-analytics', label: 'Admin: Analytics',        icon: BarChart3 },
   { id: 'admin-support',   label: 'Admin: Support Tickets',  icon: MessageSquare },
   { id: 'admin-returns',   label: 'Admin: Returns',           icon: RotateCcw },
+  { id: 'admin-categories', label: 'Admin: Categories',      icon: ShoppingCart },
+  { id: 'admin-brands',     label: 'Admin: Brands',          icon: Tag },
+  { id: 'admin-variants',   label: 'Admin: Variants',        icon: Package },
+  { id: 'admin-bundles',    label: 'Admin: Bundles',          icon: Package },
+  { id: 'admin-blog',       label: 'Admin: Blog',            icon: BookOpen },
+  { id: 'admin-subscriptions', label: 'Admin: Subscriptions', icon: RotateCcw },
+  { id: 'admin-visitors',   label: 'Admin: Visitors',        icon: BarChart3 },
+  { id: 'admin-settings',   label: 'Admin: Settings',        icon: Settings },
+  { id: 'admin-pincodes',   label: 'Admin: Pincodes',        icon: MapPin },
   { id: 'mobile-app',      label: 'Mobile App',              icon: Bell },
   { id: 'order-flow',      label: 'Order Status Guide',      icon: CheckCircle },
 ]
@@ -461,30 +470,75 @@ export default function UserManualPage() {
         {/* ═══ 11. ADMIN PRODUCTS ═══ */}
         <Section id="admin-products" title="Admin: Managing Products" icon={Package} color="#2d5a3d">
           <div className="space-y-4">
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Products are the core of your store. Every item you sell is a product. The product form has many fields — each one exists for a specific reason. Below is a complete field-by-field explanation so you know exactly what every field does and why it matters.
+            </p>
+
             <div className="bg-white border border-gray-100 rounded-xl p-4">
-              <p className="font-semibold text-sm text-gray-800 mb-3">Adding a New Product</p>
+              <p className="font-semibold text-sm text-gray-800 mb-3">Complete Product Form — Field Reference</p>
+              <Table
+                headers={['Field', 'What it is', 'Why it matters']}
+                rows={[
+                  ['Name', 'Product title (e.g., "Organic Triphala Powder")', 'This is the main display name shown everywhere — product cards, search results, cart, invoices, emails.'],
+                  ['Slug', 'URL-friendly version of the name (auto-generated from name)', 'Used in product URLs like /product/organic-triphala-powder. Good slugs improve SEO and make links readable when shared.'],
+                  ['Category', 'Primary product category (select from dropdown)', 'Determines where the product appears in navigation and category filters. Also auto-fills GST%, HSN Code, and CESS% from the category defaults.'],
+                  ['Brand', 'Select from your brands list (e.g., Patanjali, Dabur)', 'Customers can filter products by brand. The brand name shows on product cards and detail pages. Helps customers find all products from a brand they trust.'],
+                  ['Price (₹)', 'The actual selling price customers pay', 'This is the price shown on the product card and charged at checkout. Set this to your final selling price after any permanent discounts.'],
+                  ['Compare Price / MRP (₹)', 'Original or Maximum Retail Price', 'Shows as a strikethrough price next to the selling price (e.g., ₹599 ₹499). The system automatically calculates and shows a "X% OFF" badge. Leave empty if there is no discount.'],
+                  ['Cost Price (₹)', 'Your purchase/manufacturing cost', 'Used internally in admin profit reports and analytics. Never shown to customers. Helps you track margins.'],
+                  ['Inventory / Stock', 'Current stock quantity available', 'When this reaches 0, the product automatically shows "Out of Stock" and the Add to Cart button is disabled. The system decreases this number by 1 for each unit sold.'],
+                  ['SKU', 'Stock Keeping Unit — your internal product code', 'A unique reference code for inventory management (e.g., TRP-250-ORG). Useful for warehouse operations, bulk imports, and matching with your supplier catalog.'],
+                  ['Barcode', 'Product barcode number (EAN/UPC)', 'For scanning with barcode readers in warehouse/fulfillment. Not shown to customers. Leave empty if you do not use barcodes.'],
+                  ['Weight (grams)', 'Net weight of the product', 'Shows on the product page as product information. Used for shipping cost calculation if you charge by weight. Important for compliance (net weight must be displayed for food products).'],
+                  ['Low Stock Threshold', 'Alert number — notify when stock drops below this', 'When inventory falls below this number, the product appears in Admin → Stock Alerts. Set to 10 if you want to be warned when only 10 units remain so you can reorder from your supplier.'],
+                  ['Tags', 'Comma-separated labels (e.g., "bestseller, new, organic")', 'Tags appear as small badges on product cards. Customers can also find products by searching for tags. Use tags to highlight product attributes.'],
+                  ['Featured', 'Toggle on/off', 'Featured products appear in the "Featured Products" section on the homepage. Turn this on for products you want to promote prominently. Only a limited number should be featured at a time to keep the homepage curated.'],
+                  ['Bestseller', 'Toggle on/off', 'Shows a gold "BESTSELLER" badge on the product card. Turn this on for your top-selling or most popular products. This is a manual flag — you decide which products get the badge.'],
+                  ['Status', 'Draft / Active / Inactive', 'Only Active products are visible to customers on the store. Use Draft while you are still setting up the product (filling details, uploading images). Use Inactive to temporarily hide a product without deleting it.'],
+                  ['Images', 'Upload up to 20 product photos', 'The first image becomes the main listing image shown on product cards. Additional images show in a gallery on the product detail page. Drag to reorder. Use high-quality images (at least 800x800px).'],
+                  ['Short Description', 'Brief product summary (1-2 sentences)', 'Shows in product cards, search results, and category listing pages. Keep it concise — highlight the key benefit.'],
+                  ['Long Description', 'Full product details (supports HTML formatting)', 'Shows on the product detail page below the main info. Include ingredients, usage instructions, benefits, warnings, and any other details customers need before purchasing.'],
+                  ['GST %', 'Goods and Services Tax rate', 'Auto-filled from the product category when you select a category. Override here if this specific product has a different GST rate. Common rates: 5%, 12%, 18%.'],
+                  ['HSN Code', 'Harmonized System Nomenclature code', 'Required on Indian tax invoices. Auto-filled from the category. Each product type has a specific HSN code (e.g., 2106 for food supplements). Check with your accountant if unsure.'],
+                  ['CESS %', 'Additional cess tax on top of GST', 'Some product categories have CESS (e.g., tobacco, luxury items). Usually 0 for Ayurvedic food products. Auto-filled from category.'],
+                  ['Specifications', 'Key-value pairs (e.g., Ingredient: Amla, Origin: Kerala)', 'Displays as a structured specifications table on the product detail page. Customers can see details like ingredients, origin, shelf life, certifications at a glance without reading the full description.'],
+                  ['Meta Title', 'SEO page title (for search engines)', 'Shows in the browser tab and as the clickable title in Google search results. Keep it under 60 characters. Include your product name and a key benefit.'],
+                  ['Meta Description', 'SEO description (for search engines)', 'Shows as the description snippet below the title in Google search results. Keep it under 160 characters. Write a compelling summary that makes people want to click.'],
+                ]}
+              />
+            </div>
+
+            <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <p className="font-semibold text-sm text-gray-800 mb-3">Adding a New Product — Step by Step</p>
               <div className="space-y-2">
-                <Step num={1} title="Admin → Products → Add Product">Fill in the product name, description, price, compare-at price (for showing a strikethrough).</Step>
-                <Step num={2} title="Set Category & HSN/GST">Select the category. GST rate is auto-filled from the category. You can override per product.</Step>
-                <Step num={3} title="Upload Images">Upload up to 10 product images. The first image becomes the main listing image.</Step>
-                <Step num={4} title="Set Inventory">Enter the current stock quantity. The system auto-decreases inventory on each purchase.</Step>
-                <Step num={5} title="Add Variants (Optional)">For products that come in multiple sizes (e.g., 250g, 500g), add variants each with their own price and inventory.</Step>
-                <Step num={6} title="SEO Fields">Fill in meta title, meta description, and keywords for search engine visibility.</Step>
-                <Step num={7} title="Set Status to Active">Only Active products appear on the customer-facing store. Use Draft to save without publishing.</Step>
+                <Step num={1} title="Admin → Products → Add Product">Fill in the product name. The slug is auto-generated. Add the short and long descriptions.</Step>
+                <Step num={2} title="Set Pricing">Enter the selling price. If the product is discounted, set the Compare Price (MRP) to the original price so the discount badge appears.</Step>
+                <Step num={3} title="Set Category & Brand">Select the category from the dropdown. GST rate, HSN code, and CESS are auto-filled from the category. Select the brand if applicable.</Step>
+                <Step num={4} title="Upload Images">Upload up to 20 product images. Drag to reorder — the first image becomes the main listing image shown on product cards everywhere.</Step>
+                <Step num={5} title="Set Inventory">Enter the current stock quantity and SKU. Set a low stock threshold (e.g., 10) to get alerts before you run out.</Step>
+                <Step num={6} title="Add Tags & Badges">Add comma-separated tags. Toggle Featured if you want it on the homepage. Toggle Bestseller to add a gold badge.</Step>
+                <Step num={7} title="Add Specifications">Add key-value pairs for product specs (ingredients, weight, origin, etc.). These show as a table on the product page.</Step>
+                <Step num={8} title="SEO Fields">Fill in meta title and meta description for better Google search ranking. These are separate from the product name and description.</Step>
+                <Step num={9} title="Add Variants (Optional)">If the product comes in multiple sizes or packs (e.g., 100g, 250g, 500g), add variants. See the Variants section below for details.</Step>
+                <Step num={10} title="Set Status to Active">Only Active products appear on the store. Use Draft while setting up. Click Save.</Step>
               </div>
             </div>
+
             <Table
               headers={['Bulk Action', 'Purpose']}
               rows={[
-                ['Bulk Upload', 'Import hundreds of products from a CSV/Excel file at once.'],
-                ['Bulk Stock Update', 'Update inventory quantities for multiple products in one go.'],
-                ['Bulk Price Update', 'Change prices for multiple products simultaneously.'],
-                ['Bulk Status', 'Activate or deactivate multiple products at once.'],
-                ['Bulk Category', 'Re-assign categories for multiple products.'],
-                ['Bulk Images', 'Upload images for multiple products from a ZIP file.'],
+                ['Bulk Upload', 'Import hundreds of products from a CSV/Excel file at once. Download the template CSV, fill it in, and upload.'],
+                ['Bulk Stock Update', 'Update inventory quantities for multiple products in one go without editing each product individually.'],
+                ['Bulk Price Update', 'Change selling prices for multiple products simultaneously. Useful during sales or price revisions.'],
+                ['Bulk Status', 'Activate or deactivate multiple products at once. Useful for seasonal products.'],
+                ['Bulk Category', 'Re-assign categories for multiple products when reorganizing your store structure.'],
+                ['Bulk Images', 'Upload images for multiple products from a ZIP file. Images are matched to products by filename.'],
               ]}
             />
-            <InfoBox type="tip">When a product goes out of stock (inventory = 0), it automatically shows as "Out of Stock" to customers and the "Add to Cart" button is disabled.</InfoBox>
+
+            <InfoBox type="tip">When a product goes out of stock (inventory = 0), it automatically shows as "Out of Stock" to customers and the "Add to Cart" button is disabled. Customers can click "Notify Me" to receive an email when you restock.</InfoBox>
+            <InfoBox type="warning">The Compare Price (MRP) must always be higher than the selling Price. If they are the same, no discount badge will show. If Compare Price is lower than Price, customers will see a confusing negative discount.</InfoBox>
+            <InfoBox type="info">Cost Price is completely private — it never appears anywhere on the customer-facing website or app. It is only used in admin reports to calculate your profit margins.</InfoBox>
           </div>
         </Section>
 
@@ -665,6 +719,350 @@ export default function UserManualPage() {
             />
             <InfoBox type="info">When a return is approved with wallet credit, the customer's wallet balance updates immediately — they can use it on their next purchase. For online payment returns (Razorpay), trigger the refund from the order detail page and then mark refund complete here.</InfoBox>
           </div>
+        </Section>
+
+        {/* ═══ ADMIN: CATEGORIES ═══ */}
+        <Section id="admin-categories" title="Admin: Categories" icon={ShoppingCart} color="#2563eb">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Categories organize your products into logical groups so customers can find what they need. Think of categories as the aisles in a physical store — "Digestive Care", "Immunity Boosters", "Hair Care", etc. Without categories, customers would have to scroll through every single product. Categories also affect SEO (search engine ranking), tax defaults, and homepage layout.
+          </p>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Category Form — Complete Field Reference</p>
+            <Table
+              headers={['Field', 'What it is', 'Why it matters']}
+              rows={[
+                ['Name', 'The category name displayed to customers (e.g., "Immunity Boosters")', 'Appears in the top navigation bar, category filter sidebar, product cards, and mobile app browse screen. Choose clear, customer-friendly names.'],
+                ['Slug', 'URL-friendly version of the name (auto-generated from name)', 'Used in URLs like /category/immunity-boosters. Good slugs improve SEO and make links readable when shared on social media. You can edit the slug manually if needed.'],
+                ['Parent Category', 'Select another category as the parent (dropdown)', 'Creates a subcategory hierarchy. For example, "Churna" under "Digestive Care". Leave empty (None) for top-level categories. Subcategories appear as filter chips when a customer clicks the parent category.'],
+                ['Sort Order', 'A number (0, 1, 2, 3...) controlling display position', 'Lower numbers appear first in navigation and filter lists. Categories with sort_order=0 show before sort_order=5. If two categories have the same sort order, they are sorted alphabetically. Use this to put your most important categories first.'],
+                ['Featured', 'Toggle on/off', 'Featured categories appear in special homepage sections (e.g., "Shop by Category" cards on the homepage). Turn this on for your most popular or promoted categories. Non-featured categories still appear in navigation — they just do not get a special spot on the homepage.'],
+                ['GST %', 'Default GST tax rate for products in this category', 'When you create a product and select this category, the GST% field on the product auto-fills from here. Saves time when all products in a category share the same tax rate. You can still override GST per product if needed.'],
+                ['HSN Code', 'Harmonized System Nomenclature code for tax classification', 'Required for Indian GST tax invoices. Each product type has a standard HSN code. Setting it at the category level auto-fills it on all products in this category, so you do not have to look it up for every product.'],
+                ['CESS %', 'Additional cess tax on top of GST', 'Some product categories have additional CESS (e.g., tobacco, aerated drinks). For most Ayurvedic food products this is 0. Set it here so it auto-fills on products.'],
+                ['Image', 'Category display image (square recommended)', 'Shows on category cards on the homepage "Shop by Category" section and in the mobile app category browser. Use a clear, representative image (e.g., a photo of immunity products for the Immunity category).'],
+                ['Banner', 'Full-width banner image (1200x400px recommended)', 'Shows at the top of the category page when customers browse this category. Creates a professional, branded look for each category. If no banner is set, the category page shows a plain header.'],
+                ['Description', 'Text description of the category', 'Shown on the category landing page below the banner. Also helps with SEO — Google indexes this text. Describe what types of products are in this category and their benefits.'],
+              ]}
+            />
+          </div>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Creating a Category — Step by Step</p>
+            <div className="space-y-2">
+              <Step num={1} title="Admin → Categories → Add Category">Click the Add Category button to open the form.</Step>
+              <Step num={2} title="Enter Name and Description">Type the category name. The slug is auto-generated. Add a description for SEO.</Step>
+              <Step num={3} title="Set Parent (if subcategory)">If this is a subcategory, select the parent from the dropdown. Leave empty for top-level.</Step>
+              <Step num={4} title="Set Sort Order">Enter a number to control position. Use 0 for the first category, 1 for the second, etc.</Step>
+              <Step num={5} title="Toggle Featured">Turn on Featured if you want this category to appear on the homepage.</Step>
+              <Step num={6} title="Set Tax Defaults">Enter GST%, HSN Code, and CESS%. These will auto-fill on every product you create in this category.</Step>
+              <Step num={7} title="Upload Images">Upload the category image (for cards) and banner image (for the category page header).</Step>
+              <Step num={8} title="Save">Click Save. The category is now available in the product form dropdown and in customer navigation.</Step>
+            </div>
+          </div>
+
+          <InfoBox type="tip"><strong>Sort Order tip:</strong> Use increments of 10 (0, 10, 20, 30...) instead of 1, 2, 3. This way, if you later need to insert a category between two existing ones, you have room (e.g., insert at 15 between 10 and 20) without renumbering everything.</InfoBox>
+          <InfoBox type="info"><strong>Featured vs. non-Featured:</strong> All categories appear in navigation menus and filter dropdowns regardless of the Featured toggle. Featured only controls whether the category gets a prominent card/section on the homepage. Think of it as "spotlight" — turning it on puts the category in the spotlight.</InfoBox>
+          <InfoBox type="warning">Deleting a category does not delete its products. The products will become uncategorized. Reassign their category before deleting to keep your store organized.</InfoBox>
+        </Section>
+
+        {/* ═══ ADMIN: BRANDS ═══ */}
+        <Section id="admin-brands" title="Admin: Brands" icon={Tag} color="#7c3aed">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Brands represent the manufacturers or companies behind your products (e.g., Patanjali, Dabur, Himalaya). Managing brands lets customers filter products by the brands they trust. Each product can be assigned to one brand.
+          </p>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Brand Form — Complete Field Reference</p>
+            <Table
+              headers={['Field', 'What it is', 'Why it matters']}
+              rows={[
+                ['Name', 'Brand name (e.g., "Patanjali", "Dabur", "Himalaya")', 'Shows on product cards next to the product name, in brand filter dropdowns, and on brand detail pages. Use the official brand name.'],
+                ['Slug', 'URL-friendly version of the name (auto-generated)', 'Used for brand pages like /brand/patanjali and for SEO. Customers can share brand page links.'],
+                ['Logo', 'Brand logo image (square or transparent PNG recommended)', 'Displayed next to the brand name on product pages and in the brand filter. Use the official brand logo for recognition.'],
+                ['Description', 'About the brand (text)', 'Can be shown on brand detail pages. Describe the brand history, values, and what makes them special. Also helps with SEO.'],
+                ['Sort Order', 'A number controlling display position in lists', 'Controls the order in which brands appear in the brand filter dropdown on product listing pages. Lower numbers appear first. Use this to put your most popular brands at the top of the filter.'],
+                ['Active', 'On/off toggle', 'Inactive brands will not appear in the brand filter dropdown or on the product creation form. Products already assigned to an inactive brand still show the brand name, but new products cannot be assigned to it. Use this to retire brands you no longer carry.'],
+              ]}
+            />
+          </div>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Creating a Brand — Step by Step</p>
+            <div className="space-y-2">
+              <Step num={1} title="Admin → Brands → Add Brand">Click Add Brand to open the form.</Step>
+              <Step num={2} title="Enter Name">Type the brand name. The slug is auto-generated.</Step>
+              <Step num={3} title="Upload Logo">Upload the brand logo. Use a transparent PNG or a square image for best appearance.</Step>
+              <Step num={4} title="Add Description">Write a brief description of the brand for the brand detail page.</Step>
+              <Step num={5} title="Set Sort Order">Enter a number. Lower numbers appear first in the brand filter. Set your top brands to 0 or 1.</Step>
+              <Step num={6} title="Keep Active toggled on">Active brands appear in filters and the product form. Turn off only for discontinued brands.</Step>
+              <Step num={7} title="Save">The brand is now available when creating or editing products.</Step>
+            </div>
+          </div>
+
+          <InfoBox type="tip">When customers click a brand name on any product page, they see all products from that brand on a dedicated brand page. This is great for brand-loyal customers.</InfoBox>
+          <InfoBox type="info">The Sort Order for brands specifically controls the order in the brand filter dropdown that customers see on product listing pages. If you carry 50 brands but 3 are your best sellers, set those 3 to sort order 0, 1, 2 so they appear at the top of the filter.</InfoBox>
+        </Section>
+
+        {/* ═══ ADMIN: VARIANTS ═══ */}
+        <Section id="admin-variants" title="Admin: Product Variants" icon={Package} color="#ea580c">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Variants let you sell different versions of the same product — for example, a "Triphala Powder" that comes in 100g, 250g, and 500g packs, each with its own price and stock. Without variants, you would have to create three separate products. With variants, customers see one product listing with a size selector.
+          </p>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-2">When to use variants vs. separate products</p>
+            <p className="text-sm text-gray-600 leading-relaxed mb-3">
+              Use variants when the products are the same item in different sizes, quantities, or packs. Use separate products when the items are fundamentally different (e.g., Triphala Powder vs. Triphala Tablets are different products, not variants).
+            </p>
+            <Table
+              headers={['Example', 'Approach']}
+              rows={[
+                ['Triphala Powder in 100g, 250g, 500g', 'One product with 3 variants — same product, different sizes'],
+                ['Chyawanprash 500g in Regular and Sugar-Free', 'One product with 2 variants — same product, different formulations'],
+                ['Amla Juice and Amla Powder', 'Two separate products — fundamentally different items'],
+              ]}
+            />
+          </div>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Variant Form — Complete Field Reference</p>
+            <Table
+              headers={['Field', 'What it is', 'Why it matters']}
+              rows={[
+                ['Label', 'Variant name shown to the customer (e.g., "250g Pack", "Family Size 1kg")', 'This is what customers see in the variant selector on the product page. Make it descriptive and clear.'],
+                ['SKU', 'Unique stock code for this specific variant', 'Each variant needs its own SKU because they are tracked separately in inventory. Your warehouse uses this to pick the right size.'],
+                ['Price (₹)', 'Selling price for this variant', 'Each variant can have a different price. The 500g pack might be ₹399 while the 100g pack is ₹99. The product page updates the displayed price when the customer selects a variant.'],
+                ['Compare Price / MRP (₹)', 'Original price for this variant', 'Shows as a strikethrough price for this variant. Creates a "X% OFF" badge specific to this variant size.'],
+                ['Cost Price (₹)', 'Your purchase cost for this variant', 'Used in admin profit reports. Never shown to customers. Track different costs for different sizes.'],
+                ['Inventory / Stock', 'Stock quantity for this specific variant', 'Each variant tracks inventory independently. The 100g pack might have 50 units while the 500g pack has 20. When a variant reaches 0, it shows "Out of Stock" but other variants of the same product may still be available.'],
+                ['Weight (grams)', 'Weight of this specific variant', 'Shows on the product page when this variant is selected. Important for accurate shipping cost calculation.'],
+                ['Barcode', 'Barcode number for this variant', 'Each size/variant has its own barcode for warehouse scanning. Leave empty if not using barcodes.'],
+                ['Image URL', 'Specific image for this variant', 'If different variants look different (e.g., different colored packaging), you can set a variant-specific image. When the customer selects this variant, the product image switches to this one.'],
+                ['Sort Order', 'Display order in the variant selector', 'Controls which variant appears first in the dropdown/selector. Lower numbers first. Usually list smallest size first (100g=0, 250g=1, 500g=2).'],
+                ['Active', 'Whether this variant is available for purchase', 'Inactive variants are hidden from customers. Use this to temporarily remove a size without deleting the variant data. Useful when a specific size is out of production.'],
+              ]}
+            />
+          </div>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Adding Variants to a Product</p>
+            <div className="space-y-2">
+              <Step num={1} title="Go to the product edit page">Open the product you want to add variants to.</Step>
+              <Step num={2} title="Scroll to the Variants section">Click "Add Variant" to add a new row.</Step>
+              <Step num={3} title="Fill in each variant">Enter the label, price, stock, SKU, and other fields for each size/option.</Step>
+              <Step num={4} title="Set sort order">Number them 0, 1, 2... so they display in the right order (smallest first, usually).</Step>
+              <Step num={5} title="Save the product">All variants are saved together with the product.</Step>
+            </div>
+          </div>
+
+          <InfoBox type="warning">When a product has variants, the main product price becomes the "starting from" price. The actual price changes based on which variant the customer selects. Make sure every variant has its own price set.</InfoBox>
+          <InfoBox type="tip">You can also manage all variants across all products from <strong>Admin → Variants</strong>. This gives you a table view of every variant in the system, filterable by product. Useful for bulk inventory checks.</InfoBox>
+        </Section>
+
+        {/* ═══ ADMIN: BUNDLES ═══ */}
+        <Section id="admin-bundles" title="Admin: Product Bundles" icon={Package} color="#16a34a">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Bundles let you group multiple products together and offer them at a discounted price — like a "Buy Together and Save" deal. For example, an "Immunity Starter Kit" might include Chyawanprash, Giloy Tablets, and Tulsi Drops for 20% off the combined price. Bundles increase average order value because customers get a deal by buying more.
+          </p>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Bundle Form — Complete Field Reference</p>
+            <Table
+              headers={['Field', 'What it is', 'Why it matters']}
+              rows={[
+                ['Name', 'Bundle name (e.g., "Immunity Starter Kit", "Digestive Health Pack")', 'This is the title customers see. Make it descriptive and appealing. It should convey what the bundle is for.'],
+                ['Description', 'What is included and why the customer should buy this bundle', 'Explain the value proposition — "Everything you need to boost immunity this season" or "Save 25% compared to buying individually". Shown on the bundle card.'],
+                ['Discount Type', 'Percent or Flat — how the bundle discount is calculated', 'Percent: takes a percentage off the total of all included products. Flat: subtracts a fixed rupee amount. Choose Percent for proportional savings ("20% off") or Flat for a fixed deal ("Save ₹200").'],
+                ['Discount Value', 'The discount amount (e.g., 20 for 20% off, or 200 for ₹200 off)', 'For Percent type: 20 means 20% off the combined price of all products. For Flat type: 200 means ₹200 off. The customer sees both the original total and the bundle price.'],
+                ['Products', 'Select which products are included in the bundle', 'Choose 2 or more products that make sense together. Customers see the individual products listed with their prices, plus the bundle discount. They can add the entire bundle to cart in one click.'],
+                ['Image', 'Display image for the bundle', 'A custom image showing all the bundled products together. If not set, the system may show the first product image. A good bundle image helps sell the package deal.'],
+                ['Active', 'Whether the bundle is visible to customers', 'Only active bundles appear on the store. Set to inactive to pause a bundle without deleting it — useful for seasonal bundles you want to bring back later.'],
+              ]}
+            />
+          </div>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Creating a Bundle — Step by Step</p>
+            <div className="space-y-2">
+              <Step num={1} title="Admin → Bundles → Create Bundle">Click the Create Bundle button.</Step>
+              <Step num={2} title="Name and Describe the bundle">Give it a clear name. Write a description explaining the value.</Step>
+              <Step num={3} title="Choose Discount Type and Value">Select Percent or Flat, then enter the discount amount.</Step>
+              <Step num={4} title="Select Products">Add the products that make up this bundle. Choose products that complement each other.</Step>
+              <Step num={5} title="Upload a Bundle Image">Use a photo showing all products together, or a designed graphic.</Step>
+              <Step num={6} title="Set Active and Save">Toggle Active on so customers can see and buy the bundle.</Step>
+            </div>
+          </div>
+
+          <InfoBox type="tip"><strong>Bundle strategy:</strong> Create bundles around themes — "Morning Wellness Routine", "Winter Immunity Pack", "Starter Kit for New Customers". Themed bundles sell better than random groupings.</InfoBox>
+          <InfoBox type="info">When a customer adds a bundle to cart, each product in the bundle is added as an individual line item with the discount applied proportionally. Inventory is tracked per product, not per bundle.</InfoBox>
+        </Section>
+
+        {/* ═══ ADMIN: BLOG ═══ */}
+        <Section id="admin-blog" title="Admin: Blog" icon={BookOpen} color="#0891b2">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            The blog lets you publish articles about Ayurveda, health tips, recipes, product guides, and more. Blog posts drive organic traffic from Google (SEO), establish your store as a knowledge authority, and give you content to share on social media. Each post has its own URL that can be indexed by search engines.
+          </p>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Blog Post Form — Complete Field Reference</p>
+            <Table
+              headers={['Field', 'What it is', 'Why it matters']}
+              rows={[
+                ['Title', 'Blog post headline (e.g., "5 Ayurvedic Remedies for Better Digestion")', 'The main headline shown at the top of the post and in the blog listing page. Write clear, engaging titles that tell readers what they will learn.'],
+                ['Slug', 'URL-friendly version of the title (auto-generated)', 'Used in the blog post URL like /blog/5-ayurvedic-remedies-better-digestion. Good slugs help with SEO. You can edit the slug manually.'],
+                ['Excerpt', 'Short preview text (1-2 sentences)', 'Shown in the blog listing page as a preview under each post title. Should summarize the article and entice readers to click and read the full post.'],
+                ['Content', 'Full article text (supports HTML formatting)', 'The complete blog post body. You can format text with headings, bold, italic, lists, links, and embed images within the content. Write detailed, helpful articles.'],
+                ['Cover Image', 'Hero image shown at the top of the post', 'The main visual for the blog post. Shows at the top of the article and as a thumbnail in the blog listing. Use a high-quality, relevant image (1200x630px recommended for social media sharing).'],
+                ['Category', 'Blog category (e.g., "Ayurveda Tips", "Recipes", "Product Guides")', 'Organizes blog posts into topics. Readers can browse posts by category. Helps keep your blog organized as you publish more articles.'],
+                ['Author', 'Author name displayed on the post', 'Shows below the title as "By [Author Name]". Can be the store name, a team member, or a health expert for credibility.'],
+                ['Tags', 'Comma-separated topic tags (e.g., "digestion, gut health, triphala")', 'Help readers find related posts. Tags can be used for filtering and also help with SEO by associating posts with specific keywords.'],
+                ['Status', 'Draft / Published / Archived', 'Draft: only visible in admin, not on the website. Published: live and visible to all visitors. Archived: hidden from the blog listing but the URL still works (for old posts you do not want to delete).'],
+                ['Meta Title', 'SEO page title (for search engines)', 'Shows in the browser tab and as the title in Google search results. If not set, the post Title is used. Customize this to optimize for specific search keywords.'],
+                ['Meta Description', 'SEO description (for search engines)', 'Shows as the snippet below the title in Google search results. Write a compelling 150-character summary that makes people want to click your article.'],
+              ]}
+            />
+          </div>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Publishing a Blog Post</p>
+            <div className="space-y-2">
+              <Step num={1} title="Admin → Blog → Create Post">Click Create Post to open the editor.</Step>
+              <Step num={2} title="Write the Title and Content">Enter a compelling headline. Write the full article in the content editor with formatting.</Step>
+              <Step num={3} title="Add an Excerpt">Write a 1-2 sentence preview for the blog listing page.</Step>
+              <Step num={4} title="Upload a Cover Image">Choose a high-quality hero image for the top of the article.</Step>
+              <Step num={5} title="Set Category, Author, and Tags">Organize the post with a category, set the author name, and add relevant tags.</Step>
+              <Step num={6} title="Fill SEO Fields">Add a meta title and meta description for search engine optimization.</Step>
+              <Step num={7} title="Set Status to Published">Change the status from Draft to Published. The post is now live on your website.</Step>
+            </div>
+          </div>
+
+          <InfoBox type="tip">Blog posts that answer common questions ("What is Triphala?", "How to use Chyawanprash?") rank well on Google and bring new customers who are searching for Ayurvedic information.</InfoBox>
+          <InfoBox type="info">Each blog post tracks its view count automatically. Check view counts from the blog list in admin to see which topics resonate most with your audience.</InfoBox>
+        </Section>
+
+        {/* ═══ ADMIN: SUBSCRIPTIONS ═══ */}
+        <Section id="admin-subscriptions" title="Admin: Subscriptions (Auto-Reorder)" icon={RotateCcw} color="#d97706">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Subscriptions let customers set up automatic recurring orders for products they use regularly. For example, a customer who uses Chyawanprash daily can subscribe to receive a new jar every 30 days without having to remember to reorder. This ensures they never run out, and it gives your store predictable recurring revenue.
+          </p>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">What the Admin Sees</p>
+            <p className="text-sm text-gray-600 leading-relaxed mb-3">
+              The <strong>Admin → Subscriptions</strong> page shows a table of all active, paused, and cancelled subscriptions across all customers. This is a read-only view — subscriptions are created by customers from the product page.
+            </p>
+            <Table
+              headers={['Column', 'What it shows', 'Why it matters']}
+              rows={[
+                ['Customer', 'Name and email of the subscriber', 'Identifies who has the subscription. Click to view their full account.'],
+                ['Product', 'Which product is being auto-reordered', 'Shows the product name and variant (if applicable). Helps you forecast demand.'],
+                ['Frequency', 'How often the order repeats (e.g., every 15 days, 30 days, 60 days)', 'Set by the customer when they subscribe. Common frequencies are monthly (30 days) for daily-use products.'],
+                ['Next Order Date', 'When the next automatic order will be placed', 'Helps you ensure stock is available before this date. If the product is out of stock on this date, the auto-order may fail.'],
+                ['Total Orders', 'How many times this subscription has successfully ordered', 'Shows the lifetime value of this subscription. A subscription with 12 total orders means 12 months of repeat revenue.'],
+                ['Status', 'Active / Paused / Cancelled', 'Active: next order will be placed automatically. Paused: customer has temporarily stopped the subscription. Cancelled: subscription is permanently stopped.'],
+              ]}
+            />
+          </div>
+
+          <InfoBox type="tip"><strong>Forecast demand:</strong> Check the Next Order Date column regularly. If many subscriptions for the same product are due next week, make sure you have enough stock. Running out means failed auto-orders and unhappy subscribers.</InfoBox>
+          <InfoBox type="info">Customers manage their own subscriptions — they can pause, resume, change frequency, or cancel from their account. Admins have a view-only dashboard to monitor all subscriptions across the platform.</InfoBox>
+        </Section>
+
+        {/* ═══ ADMIN: VISITORS ═══ */}
+        <Section id="admin-visitors" title="Admin: Visitors & Traffic Analytics" icon={BarChart3} color="#16a34a">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            The Visitors page (<strong>Admin → Visitors</strong>) shows you how many people are visiting your store, which pages they view, and what devices they use. This data helps you understand your audience, identify popular products, and make decisions about marketing and design. The page auto-refreshes every 60 seconds.
+          </p>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Visitor Metrics — What Each Number Means</p>
+            <Table
+              headers={['Metric', 'What it tells you', 'How to use this information']}
+              rows={[
+                ['Total Views', 'How many pages were loaded in the selected time period', 'A high number means lots of browsing activity. Compare week over week to see growth trends. If total views are high but orders are low, customers are browsing but not buying — review your product pages and checkout flow.'],
+                ['Unique Visitors', 'How many different people visited (counted by unique session)', 'More meaningful than total views because one person can load many pages. This tells you how many actual humans came to your store. Track this to measure marketing effectiveness.'],
+                ['Today Views', 'Total page loads today so far', 'Quick check on today\'s traffic. Compare with yesterday at the same time to spot unusual patterns.'],
+                ['Today Unique', 'Unique visitors today so far', 'How many different people have visited today. If you ran a social media ad today, this shows if people are responding.'],
+                ['Live Now', 'People on your website right now (active in the last 5 minutes)', 'Real-time activity indicator. Useful during flash sales or marketing campaigns to see immediate impact. If you just posted on social media, watch this number spike.'],
+                ['Top Pages', 'Most visited pages ranked by view count', 'Shows where customers spend time. If a product page is in the top list, it is getting a lot of interest — make sure it is well-stocked and has great images. If a category page is top, that category is popular.'],
+                ['Device Breakdown', 'Desktop vs. Mobile vs. Tablet visitor percentages', 'If 70% of your visitors are on mobile, your mobile experience must be excellent. This helps decide design priorities — if almost no one visits on tablet, you do not need to prioritize tablet layouts.'],
+                ['Browser Breakdown', 'Which browsers visitors use (Chrome, Safari, Firefox, etc.)', 'Helps with technical decisions. If 90% of visitors use Chrome, prioritize Chrome testing. If some visitors use older browsers, you may need to ensure compatibility.'],
+              ]}
+            />
+          </div>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-2">Time Period Filters</p>
+            <Table
+              headers={['Filter', 'What it shows']}
+              rows={[
+                ['24 Hours', 'Traffic from the last 24 hours. Use for real-time campaign monitoring.'],
+                ['7 Days', 'One week of data. Good for comparing weekday vs. weekend traffic patterns.'],
+                ['30 Days', 'One month of data. Standard view for monthly performance reviews.'],
+                ['90 Days', 'Three months of data. Best for identifying long-term trends and seasonal patterns.'],
+              ]}
+            />
+          </div>
+
+          <InfoBox type="tip">Check the <strong>Top Pages</strong> list weekly. If a product page is getting high views but the product has few orders, it might have a pricing issue, unclear description, or poor images that are preventing conversions.</InfoBox>
+          <InfoBox type="info">The traffic chart shows a visual graph of daily visitor counts over the selected period. Look for spikes (marketing campaigns working) and dips (website issues or low-traffic days).</InfoBox>
+        </Section>
+
+        {/* ═══ ADMIN: SETTINGS ═══ */}
+        <Section id="admin-settings" title="Admin: Platform Settings" icon={Settings} color="#6b7280">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            The Settings page (<strong>Admin → Settings</strong>) controls platform-wide configuration that affects every order. These settings directly impact what customers pay at checkout.
+          </p>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Settings — Complete Field Reference</p>
+            <Table
+              headers={['Setting', 'What it controls', 'How it works']}
+              rows={[
+                ['Delivery Charge (₹)', 'Default shipping fee added to every order', 'This amount is added to the order total at checkout as a delivery/shipping charge. Customers see it as a separate line item in the order summary. Set to 0 if you want to offer free shipping on all orders.'],
+                ['Free Delivery Limit (₹)', 'Orders above this amount get free shipping automatically', 'If a customer\'s cart total exceeds this amount, the delivery charge is waived (set to ₹0). For example, if Free Delivery Limit is ₹499, an order of ₹500 gets free delivery while an order of ₹400 pays the delivery charge. This encourages customers to add more items to reach the free delivery threshold.'],
+                ['Platform Fee (₹)', 'Service/convenience charge added to each order', 'A small fee added to every order for platform maintenance. Shows as a separate line item at checkout. Set to 0 if you do not want to charge a platform fee. Common for marketplace-style platforms.'],
+              ]}
+            />
+          </div>
+
+          <InfoBox type="tip"><strong>Free Delivery strategy:</strong> Set the Free Delivery Limit slightly above your average order value. If customers typically spend ₹350, set the limit to ₹499. Many customers will add one more item to qualify for free delivery, increasing your average order value.</InfoBox>
+          <InfoBox type="warning">Changes to these settings take effect immediately for all new orders. Orders already placed are not affected — they keep the charges calculated at the time of checkout.</InfoBox>
+        </Section>
+
+        {/* ═══ ADMIN: PINCODES ═══ */}
+        <Section id="admin-pincodes" title="Admin: Delivery Pincodes" icon={MapPin} color="#dc2626">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Pincodes define where you can deliver. Customers enter their pincode on the product page and during checkout to check if delivery is available to their area. If the pincode is not in your list, the customer sees "Delivery not available to this pincode" and cannot place the order. Managing pincodes lets you control your delivery coverage area.
+          </p>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Pincode Form — Complete Field Reference</p>
+            <Table
+              headers={['Field', 'What it is', 'Why it matters']}
+              rows={[
+                ['Pincode', '6-digit Indian postal code (e.g., 110001, 400001)', 'The exact pincode where you can deliver. Customers type this on the product page to check availability. Must be exactly 6 digits.'],
+                ['City', 'City name for this pincode (e.g., "New Delhi", "Mumbai")', 'Shows to the customer when they check pincode availability — "Delivery available to Mumbai". Also useful for admin reporting on which cities get the most orders.'],
+                ['State', 'State name (e.g., "Delhi", "Maharashtra")', 'Used for address validation and shipping logistics. Shows in order details and invoices.'],
+                ['Delivery Days', 'Estimated delivery time to this pincode (e.g., 3, 5, 7)', 'Shows to the customer as "Estimated delivery in X days" on the product page and at checkout. Set realistic estimates based on your courier partner capabilities for each area.'],
+                ['Active', 'Whether delivery is currently available to this pincode', 'Only active pincodes accept orders. Set to inactive to temporarily stop delivering to an area (e.g., during floods, lockdowns, or courier issues) without deleting the pincode data.'],
+              ]}
+            />
+          </div>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <p className="font-semibold text-sm text-gray-800 mb-3">Managing Pincodes</p>
+            <div className="space-y-2">
+              <Step num={1} title="Admin → Pincodes → Add Pincode">Enter the pincode, city, state, and estimated delivery days.</Step>
+              <Step num={2} title="Set Active to on">This pincode is now serviceable — customers with this pincode can place orders.</Step>
+              <Step num={3} title="Review the stats bar">The top of the page shows total pincodes, active pincodes, and inactive pincodes at a glance.</Step>
+            </div>
+          </div>
+
+          <InfoBox type="tip"><strong>Bulk add:</strong> If you deliver to an entire city, add all pincodes for that city at once. You can find lists of pincodes by city on India Post website.</InfoBox>
+          <InfoBox type="warning">If a pincode is not in your list, customers in that area <strong>cannot place orders</strong>. They will see a "Not serviceable" message. Make sure to add all pincodes your courier partner covers.</InfoBox>
+          <InfoBox type="info">Setting a pincode to Inactive (instead of deleting it) is useful for temporary delivery suspensions. When the issue is resolved, just toggle it back to Active — no need to re-enter all the data.</InfoBox>
         </Section>
 
         {/* ═══ 17. MOBILE APP ═══ */}
