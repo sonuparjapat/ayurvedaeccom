@@ -297,6 +297,14 @@ export default function AdminLayout({
           </MenuItem>
 
           <div className="pt-2 pb-1 px-3">
+            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Content</p>
+          </div>
+
+          <MenuItem href="/admin/about" icon={<BookOpen size={18} />}>
+            About Page
+          </MenuItem>
+
+          <div className="pt-2 pb-1 px-3">
             <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Documentation</p>
           </div>
 

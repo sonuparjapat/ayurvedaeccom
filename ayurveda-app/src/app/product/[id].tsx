@@ -257,11 +257,11 @@ export default function ProductDetailScreen() {
     if (!id) return
     fetchProduct()
     fetchReviews(1)
-    setWished(wishlistData.items.some(w => w.id === Number(id)))
+    // wishlist check moved to after product loads (id may be slug)
     api.get(`/shop/variants/${id}`).then(r => setVariants(r.data?.variants || [])).catch(() => {})
     api.get(`/shop/related/${id}`).then(r => setRelatedProducts(r.data?.products || [])).catch(() => {})
     api.get(`/qa/product/${id}`).then(r => setQuestions(r.data?.questions || [])).catch(() => {})
-    if (user?.id) api.post('/shop/recently-viewed', { productId: id }).catch(() => {})
+    // recently-viewed logged inside fetchProduct after product loads
   }, [id])
 
   const fetchProduct = async () => {
@@ -269,6 +269,12 @@ export default function ProductDetailScreen() {
       const res = await api.get(`/shop/public/${id}`)
       const p = res.data?.data || null
       setProduct(p)
+      // check wishlist status with numeric ID
+      if (p) setWished(wishlistData.items.some((w: any) => w.id === p.id))
+      // log recently viewed
+      if (p && user?.id) {
+        api.post('/shop/recently-viewed', { productId: p.id }).catch(() => {})
+      }
       // store in AsyncStorage for guest recently viewed
       if (p && !user?.id) {
         try {
@@ -358,7 +364,7 @@ export default function ProductDetailScreen() {
     const next = !wished
     setWished(next)
     wishScale.value = withSequence(withSpring(1.4, { damping: 8 }), withSpring(1, { damping: 12 }))
-    try { await api.post('/shop/wishlist', { productId: id }) }
+    try { await api.post('/shop/wishlist', { productId: product?.id || id }) }
     catch { setWished(!next) }
   }
 

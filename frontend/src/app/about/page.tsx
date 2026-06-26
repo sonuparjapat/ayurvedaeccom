@@ -6,105 +6,117 @@ import { Carousel, CarouselItem } from '@/components/ui/carousel/carousel'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Leaf, 
-  Heart, 
-  Award, 
-  Users, 
-  Globe, 
-  Shield,
-  CheckCircle,
+import {
   ArrowRight,
   Instagram,
   Facebook,
   Twitter,
-  Youtube
+  Youtube,
+  Loader2
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useAuth } from '@/context/auth-context'
+
+/* ================= DEFAULT / FALLBACK DATA ================= */
+
+const defaultValues = [
+  {
+    icon: "🌿",
+    title: "100% Natural",
+    description: "All our products are sourced directly from farms without any preservatives or additives."
+  },
+  {
+    icon: "❤️",
+    title: "Ayurvedic Wisdom",
+    description: "Ancient Indian wellness traditions combined with modern quality standards."
+  },
+  {
+    icon: "🛡️",
+    title: "Quality Assured",
+    description: "Rigorous testing and certification ensures only the best reaches our customers."
+  },
+  {
+    icon: "🌍",
+    title: "Sustainable",
+    description: "Environmentally friendly practices that support local farmers and communities."
+  }
+]
+
+const defaultMilestones = [
+  { year: "2024", title: "Our Journey Begins", description: "Started with a vision to bring authentic Ayurvedic products online" },
+  { year: "2024", title: "First Product Launch", description: "Introduced our premium range of natural wellness products" },
+  { year: "2025", title: "Growing Community", description: "Expanded our product range and customer base nationwide" },
+  { year: "2025", title: "Digital Excellence", description: "Launched our premium online store with seamless experience" }
+]
+
+const defaultTeam = [
+  {
+    name: "Sonu",
+    role: "Founder & CEO",
+    image: "",
+    description: "Passionate about bringing authentic Ayurvedic wellness to modern India."
+  }
+]
+
+const defaultHeroTitle = "Bringing Ancient Ayurvedic Wisdom to Modern Wellness"
+const defaultHeroDescription = "Founded in 2024, Oroganix is on a mission to make authentic Ayurvedic and traditional Indian products accessible to everyone. We bridge the gap between ancient wisdom and modern lifestyle."
+const defaultCtaTitle = "Join Our Wellness Community"
+const defaultCtaDescription = "Be part of a movement that's bringing authentic Ayurvedic wellness to modern India. Follow us on social media and stay updated with our latest products and wellness tips."
+
+/* ================= SOCIAL ICON MAP ================= */
+
+const socialIconMap: Record<string, any> = {
+  facebook: Facebook,
+  instagram: Instagram,
+  twitter: Twitter,
+  youtube: Youtube,
+}
+
+const socialLabels: Record<string, string> = {
+  facebook: "Facebook",
+  instagram: "Instagram",
+  twitter: "Twitter",
+  youtube: "YouTube",
+}
 
 export default function AboutPage() {
-  const values = [
-    {
-      icon: Leaf,
-      title: "100% Natural",
-      description: "All our products are sourced directly from farms without any preservatives or additives."
-    },
-    {
-      icon: Heart,
-      title: "Ayurvedic Wisdom",
-      description: "Ancient Indian wellness traditions combined with modern quality standards."
-    },
-    {
-      icon: Shield,
-      title: "Quality Assured",
-      description: "Rigorous testing and certification ensures only the best reaches our customers."
-    },
-    {
-      icon: Globe,
-      title: "Sustainable",
-      description: "Environmentally friendly practices that support local farmers and communities."
-    }
-  ]
+  const { companydata } = useAuth()
+  const company = (companydata as any)?.[0] || {}
+  const about = company?.extra_data?.about || {}
+  const socialLinks = company?.social_links || {}
 
-  const milestones = [
-    { year: "2018", title: "Our Journey Begins", description: "Started with a small farm in Kerala" },
-    { year: "2019", title: "First Product Launch", description: "Introduced our premium turmeric powder" },
-    { year: "2020", title: "Expanded Nationwide", description: "Began shipping across India" },
-    { year: "2021", title: "100+ Products", description: "Expanded our product range significantly" },
-    { year: "2022", title: "10K+ Customers", description: "Reached a major milestone" },
-    { year: "2024", title: "Digital Launch", description: "Launched our premium online store" }
-  ]
+  /* Merge fetched data with fallbacks */
+  const heroTitle = about.hero_title || defaultHeroTitle
+  const heroDescription = about.hero_description || defaultHeroDescription
+  const values = about.values?.length ? about.values : defaultValues
+  const milestones = about.milestones?.length ? about.milestones : defaultMilestones
+  const team = about.team?.length ? about.team : defaultTeam
+  const ctaTitle = about.cta_title || defaultCtaTitle
+  const ctaDescription = about.cta_description || defaultCtaDescription
 
-  const team = [
-    {
-      name: "Dr. Rajesh Sharma",
-      role: "Founder & CEO",
-      image: "👨‍⚕️",
-      description: "Ayurvedic practitioner with 20+ years of experience in traditional medicine."
-    },
-    {
-      name: "Priya Nair",
-      role: "Head of Operations",
-      image: "👩‍💼",
-      description: "Expert in supply chain management and sustainable sourcing."
-    },
-    {
-      name: "Amit Kumar",
-      role: "Head of Quality",
-      image: "👨‍🔬",
-      description: "Food scientist ensuring highest quality standards for all products."
-    },
-    {
-      name: "Sneha Patel",
-      role: "Customer Experience",
-      image: "👩‍💻",
-      description: "Dedicated to making wellness accessible to everyone."
-    }
-  ]
+  /* Build social links array from company data */
+  const socialEntries = Object.entries(socialLinks).filter(
+    ([, url]) => typeof url === 'string' && (url as string).trim()
+  )
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1">
         {/* Hero Section */}
         <section className="bg-gradient-to-br from-emerald-50 via-white to-amber-50 py-20">
           <div className="container mx-auto px-4">
             <div className="text-center max-w-4xl mx-auto">
               <Badge className="bg-emerald-100 text-emerald-800 mb-6">
-                🌿 Our Story
+                {"🌿"} Our Story
               </Badge>
               <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 mb-6">
-                Bringing Ancient
-                <span className="text-emerald-600"> Ayurvedic Wisdom</span>
-                <br />
-                to Modern Wellness
+                {heroTitle}
               </h1>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Founded in 2018, AyurVeda Desi Foods is on a mission to make authentic 
-                Ayurvedic and traditional Indian products accessible to everyone. We bridge 
-                the gap between ancient wisdom and modern lifestyle.
+                {heroDescription}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700" asChild>
@@ -130,7 +142,7 @@ export default function AboutPage() {
               <CarouselItem>
                 <div className="h-96 bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center">
                   <div className="text-center text-white p-8">
-                    <div className="text-6xl mb-4">🌾</div>
+                    <div className="text-6xl mb-4">{"🌾"}</div>
                     <h3 className="text-2xl font-bold mb-2">Sourced from Indian Farms</h3>
                     <p className="text-lg">Direct partnerships with local farmers across India</p>
                   </div>
@@ -139,7 +151,7 @@ export default function AboutPage() {
               <CarouselItem>
                 <div className="h-96 bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center">
                   <div className="text-center text-white p-8">
-                    <div className="text-6xl mb-4">🌿</div>
+                    <div className="text-6xl mb-4">{"🌿"}</div>
                     <h3 className="text-2xl font-bold mb-2">Authentic Ayurvedic Herbs</h3>
                     <p className="text-lg">Traditional knowledge meets modern quality standards</p>
                   </div>
@@ -148,7 +160,7 @@ export default function AboutPage() {
               <CarouselItem>
                 <div className="h-96 bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center">
                   <div className="text-center text-white p-8">
-                    <div className="text-6xl mb-4">🥜</div>
+                    <div className="text-6xl mb-4">{"🥜"}</div>
                     <h3 className="text-2xl font-bold mb-2">Premium Dry Fruits</h3>
                     <p className="text-lg">Handpicked and processed with care</p>
                   </div>
@@ -171,7 +183,7 @@ export default function AboutPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {values.map((value, index) => (
+              {values.map((value: any, index: number) => (
                 <motion.div
                   key={value.title}
                   initial={{ opacity: 0, y: 30 }}
@@ -182,7 +194,7 @@ export default function AboutPage() {
                   <Card className="h-full text-center hover:shadow-lg transition-shadow">
                     <CardContent className="p-6">
                       <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <value.icon className="w-8 h-8 text-emerald-600" />
+                        <span className="text-3xl">{value.icon}</span>
                       </div>
                       <h3 className="text-xl font-semibold text-gray-900 mb-3">
                         {value.title}
@@ -206,18 +218,18 @@ export default function AboutPage() {
                 Our Journey
               </h2>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                From a small farm to a nationwide wellness movement
+                From a small vision to a nationwide wellness movement
               </p>
             </div>
 
             <div className="relative">
               {/* Timeline Line */}
               <div className="absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-emerald-200"></div>
-              
+
               <div className="space-y-12">
-                {milestones.map((milestone, index) => (
+                {milestones.map((milestone: any, index: number) => (
                   <motion.div
-                    key={milestone.year}
+                    key={`${milestone.year}-${index}`}
                     initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -239,7 +251,7 @@ export default function AboutPage() {
                         </p>
                       </div>
                     </div>
-                    
+
                     {/* Timeline Dot */}
                     <div className="absolute left-1/2 transform -translate-x-1/2 w-4 h-4 bg-emerald-600 rounded-full border-4 border-white"></div>
                   </motion.div>
@@ -257,12 +269,12 @@ export default function AboutPage() {
                 Meet Our Team
               </h2>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                The passionate individuals behind AyurVeda Desi Foods
+                The passionate individuals behind Oroganix
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {team.map((member, index) => (
+              {team.map((member: any, index: number) => (
                 <motion.div
                   key={member.name}
                   initial={{ opacity: 0, y: 30 }}
@@ -272,7 +284,19 @@ export default function AboutPage() {
                 >
                   <Card className="text-center hover:shadow-lg transition-shadow">
                     <CardContent className="p-6">
-                      <div className="text-6xl mb-4">{member.image}</div>
+                      {member.image && member.image.startsWith('http') ? (
+                        <div className="w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden">
+                          <img
+                            src={member.image}
+                            alt={member.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-6xl mb-4">
+                          {member.image || "👤"}
+                        </div>
+                      )}
                       <h3 className="text-xl font-semibold text-gray-900 mb-1">
                         {member.name}
                       </h3>
@@ -294,30 +318,54 @@ export default function AboutPage() {
         <section className="py-20 bg-emerald-600">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">
-              Join Our Wellness Community
+              {ctaTitle}
             </h2>
             <p className="text-xl text-emerald-100 mb-8 max-w-2xl mx-auto">
-              Be part of a movement that's bringing authentic Ayurvedic wellness to modern India. 
-              Follow us on social media and stay updated with our latest products and wellness tips.
+              {ctaDescription}
             </p>
-            
-            <div className="flex justify-center gap-4 mb-8">
-              <Button variant="secondary" size="sm" className="bg-white text-emerald-600 hover:bg-gray-100">
-                <Facebook className="w-5 h-5 mr-2" />
-                Facebook
-              </Button>
-              <Button variant="secondary" size="sm" className="bg-white text-emerald-600 hover:bg-gray-100">
-                <Instagram className="w-5 h-5 mr-2" />
-                Instagram
-              </Button>
-              <Button variant="secondary" size="sm" className="bg-white text-emerald-600 hover:bg-gray-100">
-                <Twitter className="w-5 h-5 mr-2" />
-                Twitter
-              </Button>
-              <Button variant="secondary" size="sm" className="bg-white text-emerald-600 hover:bg-gray-100">
-                <Youtube className="w-5 h-5 mr-2" />
-                YouTube
-              </Button>
+
+            <div className="flex justify-center gap-4 mb-8 flex-wrap">
+              {socialEntries.length > 0 ? (
+                socialEntries.map(([platform, url]) => {
+                  const Icon = socialIconMap[platform.toLowerCase()]
+                  const label = socialLabels[platform.toLowerCase()] || platform
+                  if (!Icon) return null
+                  return (
+                    <Button
+                      key={platform}
+                      variant="secondary"
+                      size="sm"
+                      className="bg-white text-emerald-600 hover:bg-gray-100"
+                      asChild
+                    >
+                      <a href={url as string} target="_blank" rel="noopener noreferrer">
+                        <Icon className="w-5 h-5 mr-2" />
+                        {label}
+                      </a>
+                    </Button>
+                  )
+                })
+              ) : (
+                /* Fallback when no social links configured */
+                <>
+                  <Button variant="secondary" size="sm" className="bg-white text-emerald-600 hover:bg-gray-100">
+                    <Facebook className="w-5 h-5 mr-2" />
+                    Facebook
+                  </Button>
+                  <Button variant="secondary" size="sm" className="bg-white text-emerald-600 hover:bg-gray-100">
+                    <Instagram className="w-5 h-5 mr-2" />
+                    Instagram
+                  </Button>
+                  <Button variant="secondary" size="sm" className="bg-white text-emerald-600 hover:bg-gray-100">
+                    <Twitter className="w-5 h-5 mr-2" />
+                    Twitter
+                  </Button>
+                  <Button variant="secondary" size="sm" className="bg-white text-emerald-600 hover:bg-gray-100">
+                    <Youtube className="w-5 h-5 mr-2" />
+                    YouTube
+                  </Button>
+                </>
+              )}
             </div>
 
             <Button size="lg" className="bg-white text-emerald-600 hover:bg-gray-100" asChild>
@@ -329,7 +377,7 @@ export default function AboutPage() {
           </div>
         </section>
       </main>
-      
+
       <Footer />
     </div>
   )
