@@ -15,21 +15,38 @@ exports.getActiveFlashSales = async (req, res) => {
 
     const salesWithProducts = await Promise.all(salesRes.rows.map(async (sale) => {
       const prodRes = await pool.query(
-        `SELECT fsp.*, p.name, p.images, p.price, p.sale_price, p.inventory,
+        `SELECT fsp.*, p.name, p.images, p.price, p.compareprice, p.inventory,
                 p.slug, p.gst_percent,
                 COALESCE(fsp.special_price,
-                  CASE WHEN '${sale.discount_type}' = 'percent'
-                    THEN COALESCE(p.sale_price, p.price) * (1 - ${sale.discount_value}/100)
-                    ELSE COALESCE(p.sale_price, p.price) - ${sale.discount_value}
+                  CASE WHEN $2 = 'percent'
+                    THEN p.price * (1 - $3::numeric/100)
+                    ELSE p.price - $3::numeric
                   END
-                ) AS flash_price
+                ) AS flash_price,
+                CASE WHEN p.compareprice > 0 AND p.compareprice > p.price
+                  THEN ROUND(((p.compareprice - COALESCE(fsp.special_price, p.price)) / p.compareprice * 100))
+                  ELSE 0
+                END AS discount_percent
          FROM flash_sale_products fsp
          JOIN products p ON p.id = fsp.product_id
-         WHERE fsp.flash_sale_id = $1 AND p.status = TRUE
+         WHERE fsp.flash_sale_id = $1 AND p.status = 'active'
          AND (fsp.stock_limit IS NULL OR fsp.sold_count < fsp.stock_limit)`,
-        [sale.id]
+        [sale.id, sale.discount_type, sale.discount_value]
       )
-      return { ...sale, products: prodRes.rows }
+
+      const products = prodRes.rows.map(p => ({
+        product_id: p.product_id,
+        product_name: p.name,
+        image: p.images?.[0] || null,
+        flash_price: Number(p.special_price || p.flash_price || p.price),
+        original_price: Number(p.compareprice || p.price),
+        discount_percent: Number(p.discount_percent || 0),
+        stock_limit: p.stock_limit,
+        sold_count: p.sold_count || 0,
+        slug: p.slug,
+      }))
+
+      return { ...sale, products }
     }))
 
     res.json({ sales: salesWithProducts })
@@ -61,7 +78,7 @@ exports.adminGet = async (req, res) => {
     if (!saleRes.rows.length) return res.status(404).json({ message: 'Not found' })
 
     const prodRes = await pool.query(
-      `SELECT fsp.*, p.name, p.price, p.sale_price, p.images
+      `SELECT fsp.*, p.name, p.price, p.compareprice, p.images
        FROM flash_sale_products fsp
        JOIN products p ON p.id = fsp.product_id
        WHERE fsp.flash_sale_id = $1`,
