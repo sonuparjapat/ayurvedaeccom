@@ -1048,6 +1048,17 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_next ON subscriptions(status, next_order_date) WHERE status = 'active'`);
 
+    /* ================= NEWSLETTER SUBSCRIBERS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(150) NOT NULL UNIQUE,
+        is_active BOOLEAN DEFAULT TRUE,
+        subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscribers(email)`);
+
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

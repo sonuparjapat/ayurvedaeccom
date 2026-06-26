@@ -51,11 +51,18 @@ export const metadata: Metadata = {
     siteName: "Oroganix",
     locale: "en_IN",
     url: SITE_URL,
+    images: [{
+      url: "https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png",
+      width: 1536,
+      height: 1024,
+      alt: "Oroganix - Premium Ayurvedic & Organic Products",
+    }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Oroganix - Premium Ayurvedic Products",
     description: "Shop authentic Ayurvedic herbs and organic wellness products. 100% natural, lab-tested.",
+    images: ["https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png"],
   },
   robots: {
     index: true,
