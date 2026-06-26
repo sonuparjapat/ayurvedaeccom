@@ -1,9 +1,16 @@
 const pool = require('../../config/db')
 
+async function resolveProductId(idOrSlug) {
+  if (/^\d+$/.test(String(idOrSlug))) return Number(idOrSlug)
+  const r = await pool.query('SELECT id FROM products WHERE slug=$1 LIMIT 1', [idOrSlug])
+  return r.rows[0]?.id || null
+}
+
 /* ─── PUBLIC: get approved Q&A for a product ─── */
 exports.getProductQA = async (req, res) => {
   try {
-    const { productId } = req.params
+    const productId = await resolveProductId(req.params.productId)
+    if (!productId) return res.json({ questions: [], total: 0 })
     const { page = 1, limit = 10 } = req.query
     const offset = (Number(page) - 1) * Number(limit)
 
@@ -36,7 +43,8 @@ exports.getProductQA = async (req, res) => {
 /* ─── USER: ask a question ─── */
 exports.askQuestion = async (req, res) => {
   try {
-    const { productId } = req.params
+    const productId = await resolveProductId(req.params.productId)
+    if (!productId) return res.status(404).json({ message: 'Product not found' })
     const { question } = req.body
     const userId = req.user?.id
     const userName = req.user?.name || 'Anonymous'

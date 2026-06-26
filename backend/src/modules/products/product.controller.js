@@ -2,8 +2,11 @@ const pool = require('../../config/db')
 const { v4: uuid } = require('uuid')
 const { deleteFromAWS, uploadImageToAWS } = require('../../utils/awsImageUpload')
 
-
-
+async function resolveProductId(idOrSlug) {
+  if (/^\d+$/.test(String(idOrSlug))) return Number(idOrSlug)
+  const r = await pool.query('SELECT id FROM products WHERE slug=$1 LIMIT 1', [idOrSlug])
+  return r.rows[0]?.id || null
+}
 
 /* GET ALL PUBLIC PRODUCTS - ADVANCED FILTER VERSION */
 
@@ -527,7 +530,8 @@ exports.addOrUpdateReview = async (req, res) => {
 
     /* ================= INPUT ================= */
 
-    const { orderId, productId } = req.params;
+    const { orderId } = req.params;
+    const productId = await resolveProductId(req.params.productId);
 
     let {
       rating,
@@ -857,7 +861,8 @@ exports.getProductReviews = async (req, res) => {
   try {
     console.log(req.query)
 
-    const productId = parseInt(req?.query?.productId, 10);
+    const rawProductId = req?.query?.productId || req?.params?.productId;
+    const productId = rawProductId ? await resolveProductId(rawProductId) : null;
     const userId = req.user?.id || null; // optional
     const onlyMe = req.query.me === "1";
 
@@ -1143,7 +1148,9 @@ exports.searchSuggestions = async (req, res) => {
 ───────────────────────────────────────────────────────── */
 exports.getRelatedProducts = async (req, res) => {
   try {
-    const { id } = req.params
+    const pid = await resolveProductId(req.params.id)
+    if (!pid) return res.json({ products: [] })
+    const id = pid
     const product = await pool.query(
       `SELECT category_id, price FROM products WHERE id=$1 AND status='active'`, [id]
     )
@@ -1174,12 +1181,13 @@ exports.getRelatedProducts = async (req, res) => {
 ───────────────────────────────────────────────────────── */
 exports.getProductVariants = async (req, res) => {
   try {
-    const { id } = req.params
+    const pid = await resolveProductId(req.params.id)
+    if (!pid) return res.json({ variants: [] })
     const result = await pool.query(`
       SELECT * FROM product_variants
       WHERE product_id = $1 AND is_active = TRUE
       ORDER BY sort_order ASC, price ASC
-    `, [id])
+    `, [pid])
     res.json({ variants: result.rows })
   } catch (err) {
     res.status(500).json({ variants: [] })
@@ -1277,7 +1285,8 @@ exports.checkPincode = async (req, res) => {
 ───────────────────────────────────────────────────────── */
 exports.getRatingBreakdown = async (req, res) => {
   try {
-    const { id } = req.params
+    const pid = await resolveProductId(req.params.id)
+    if (!pid) return res.json({ breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }, total: 0, average: 0 })
     const result = await pool.query(`
       SELECT
         rating,
@@ -1286,7 +1295,7 @@ exports.getRatingBreakdown = async (req, res) => {
       WHERE product_id = $1
       GROUP BY rating
       ORDER BY rating DESC
-    `, [id])
+    `, [pid])
 
     const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
     let total = 0
