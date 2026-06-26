@@ -15,7 +15,7 @@ module.exports = async function runAbandonedCartRecovery() {
       `SELECT DISTINCT c.user_id, u.email, u.name,
         JSON_AGG(JSON_BUILD_OBJECT(
           'product_id', c.product_id, 'name', p.name, 'price', p.price,
-          'quantity', c.quantity, 'image', p.images[1]
+          'quantity', c.quantity, 'image', p.images->>0
         )) AS items,
         COUNT(c.id) AS item_count
        FROM cart c
