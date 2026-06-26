@@ -7,6 +7,7 @@ import {
   BookOpen, Plus, Pencil, Trash2, Search, Eye, Clock, RefreshCw,
 } from 'lucide-react'
 import AppModal from '@/components/modal/AppModal'
+import RichTextEditor from '@/components/editor/RichTextEditor'
 
 interface BlogPost {
   id: number
@@ -284,7 +285,7 @@ export default function AdminBlogPage() {
       </div>
 
       {/* Modal */}
-      <AppModal open={modalOpen} onClose={() => { if (!saving) setModalOpen(false) }} title={editing ? 'Edit Post' : 'Create Post'} width="max-w-3xl">
+      <AppModal open={modalOpen} onClose={() => { if (!saving) setModalOpen(false) }} title={editing ? 'Edit Post' : 'Create Post'} width="max-w-5xl">
         <div className="space-y-4">
 
           {/* Title */}
@@ -317,13 +318,15 @@ export default function AdminBlogPage() {
               placeholder="Short summary for listing cards" />
           </div>
 
-          {/* Content */}
+          {/* Content — Rich Text Editor */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Content *</label>
-            <textarea className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none resize-y font-mono" rows={10}
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Content *</label>
+            <RichTextEditor
               value={form.content}
-              onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-              placeholder="Write your blog post content here. HTML tags are supported for formatting (bold, lists, headings)." />
+              onChange={(html: string) => setForm(f => ({ ...f, content: html }))}
+              placeholder="Start writing your blog post... Use the toolbar to format text, add headings, images, lists, and more."
+              minHeight={350}
+            />
           </div>
 
           {/* Cover Image */}
