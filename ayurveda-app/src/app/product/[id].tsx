@@ -913,6 +913,19 @@ export default function ProductDetailScreen() {
               )}
             </Animated.View>
           )}
+          {/* FAQs */}
+          {product.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
+            <View style={{ marginTop: 16 }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 15, color: Colors.forest, marginBottom: 10 }}>Frequently Asked Questions</Text>
+              {product.faqs.map((faq: any, i: number) => (
+                <View key={i} style={{ backgroundColor: '#f8fafc', borderRadius: 12, marginBottom: 8, borderWidth: 0.5, borderColor: Colors.border, overflow: 'hidden' }}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, padding: 12, paddingBottom: 6 }}>Q: {faq.question}</Text>
+                  <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, paddingHorizontal: 12, paddingBottom: 12, lineHeight: 18 }}>A: {faq.answer}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
         </View>
       </Animated.ScrollView>
 

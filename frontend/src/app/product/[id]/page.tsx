@@ -1093,6 +1093,24 @@ const addToCart = async () => {
         </div>
 
       </div>
+      {/* ================= FAQs ================= */}
+      {product?.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Frequently Asked Questions</h3>
+          <div className="space-y-3">
+            {product.faqs.map((faq: any, i: number) => (
+              <details key={i} className="group border border-gray-100 rounded-xl overflow-hidden">
+                <summary className="flex items-center justify-between cursor-pointer px-4 py-3 bg-gray-50 hover:bg-gray-100 transition font-medium text-sm text-gray-800">
+                  {faq.question}
+                  <span className="text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+                </summary>
+                <div className="px-4 py-3 text-sm text-gray-600 leading-relaxed">{faq.answer}</div>
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ================= RELATED PRODUCTS ================= */}
       {relatedProducts.length > 0 && (
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 16px 0' }}>

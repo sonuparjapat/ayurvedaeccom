@@ -243,6 +243,9 @@ await client.query(`
         /* ── Specifications ── */
         specifications JSONB DEFAULT '[]',
 
+        /* ── FAQs (admin-written) ── */
+        faqs JSONB DEFAULT '[]',
+
         /* ── SEO ── */
         meta_title VARCHAR(255),
         meta_description TEXT,
@@ -915,6 +918,9 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     /* ================= CATEGORY INDEXES ================= */
     await client.query(`CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_categories_sort ON categories(sort_order)`);
+
+    /* ================= PRODUCT FAQs (add if missing on existing table) ================= */
+    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS faqs JSONB DEFAULT '[]'`);
 
     /* ================= PRODUCT INDEXES ================= */
     await client.query(`CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand_id)`);

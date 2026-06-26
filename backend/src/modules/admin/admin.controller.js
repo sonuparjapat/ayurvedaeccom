@@ -575,7 +575,8 @@ if (req.files?.length) {
         min_order_qty,
         max_order_qty,
         is_returnable,
-        sort_order
+        sort_order,
+        faqs
 
       )
 
@@ -588,7 +589,7 @@ if (req.files?.length) {
         $13,
         $14,$15,$16,$17,$18,$19,
         $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,
-        $32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50
+        $32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51
       )
     `, [
       name,
@@ -604,7 +605,7 @@ if (req.files?.length) {
       sku || '',
 
       category_name || '',
-      category_id || "",
+      category_id ? Number(category_id) : null,
       brand || '',
       status || 'draft',
 
@@ -617,7 +618,7 @@ if (req.files?.length) {
       hsn_code || '',
       Number(cess_percent || 0),
 
-      brand_id || null,
+      brand_id ? Number(brand_id) : null,
       tags ? (typeof tags === 'string' ? tags : JSON.stringify(tags)) : null,
       is_featured === 'true' || is_featured === true || false,
       is_bestseller === 'true' || is_bestseller === true || false,
@@ -649,6 +650,7 @@ if (req.files?.length) {
       max_order_qty ? Number(max_order_qty) : null,
       is_returnable === 'false' || is_returnable === false ? false : true,
       sort_order ? Number(sort_order) : 0,
+      req.body.faqs ? (typeof req.body.faqs === 'string' ? req.body.faqs : JSON.stringify(req.body.faqs)) : '[]',
 
     ])
 
@@ -898,7 +900,8 @@ const finalImages = [
         min_order_qty=$48,
         max_order_qty=$49,
         is_returnable=$50,
-        sort_order=$51
+        sort_order=$51,
+        faqs=$52
 
       WHERE id=$20
       RETURNING *
@@ -926,13 +929,13 @@ const finalImages = [
       body.meta_title,
       body.meta_description,
       body.meta_keywords,
-      body.category_id,
+      body.category_id ? Number(body.category_id) : null,
       Number(body.gst_percent || 0),
       body.hsn_code || '',
       Number(body.cess_percent || 0),
       id,
 
-      body.brand_id || null,
+      body.brand_id ? Number(body.brand_id) : null,
       body.tags ? (typeof body.tags === 'string' ? body.tags : JSON.stringify(body.tags)) : null,
       body.is_featured === 'true' || body.is_featured === true || false,
       body.is_bestseller === 'true' || body.is_bestseller === true || false,
@@ -964,6 +967,7 @@ const finalImages = [
       body.max_order_qty ? Number(body.max_order_qty) : null,
       body.is_returnable === 'false' || body.is_returnable === false ? false : true,
       body.sort_order ? Number(body.sort_order) : 0,
+      body.faqs ? (typeof body.faqs === 'string' ? body.faqs : JSON.stringify(body.faqs)) : '[]',
 
     ])
 

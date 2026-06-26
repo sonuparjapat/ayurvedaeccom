@@ -68,6 +68,7 @@ export default function AdminProductForm({
     max_order_qty: 100,
     is_returnable: true,
     sort_order: 0,
+    faqs: '[]',
   })
 
 
@@ -909,6 +910,19 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
           readOnly={isView}
           placeholder={'[{"key":"Shelf Life","value":"24 months"}, {"key":"Country of Origin","value":"India"}]'}
           onChange={(v: string) => setForm({ ...form, specifications: v })}
+        />
+      </Section>
+
+      {/* FAQs */}
+      <Section title="FAQs (Frequently Asked Questions)">
+        <p className="text-xs text-gray-500 mb-2">{'Pre-written FAQs shown on the product page. JSON array: [{"question":"Is this organic?","answer":"Yes, 100% certified organic."}, ...]'}</p>
+        <TextArea
+          label="FAQs JSON"
+          rows={4}
+          value={typeof form.faqs === 'string' ? form.faqs : JSON.stringify(form.faqs || [], null, 2)}
+          readOnly={isView}
+          placeholder={'[{"question":"Is this product organic?","answer":"Yes, it is 100% certified organic and lab-tested."},{"question":"What is the shelf life?","answer":"24 months from manufacturing date."},{"question":"Can pregnant women use this?","answer":"Please consult your doctor before use."}]'}
+          onChange={(v: string) => setForm({ ...form, faqs: v })}
         />
       </Section>
 
