@@ -12,7 +12,7 @@ module.exports = async function runAbandonedCartRecovery() {
     // console.log("HI2")
     // Find carts updated > 1 hour ago with items but user has no order in last 2 hours
     const result = await pool.query(
-      `SELECT DISTINCT c.user_id, u.email, u.name,
+      `SELECT c.user_id, u.email, u.name,
         JSON_AGG(JSON_BUILD_OBJECT(
           'product_id', c.product_id, 'name', p.name, 'price', p.price,
           'quantity', c.quantity, 'image', p.images->>0
