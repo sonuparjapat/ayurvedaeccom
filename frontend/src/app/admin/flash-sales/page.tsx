@@ -10,6 +10,7 @@ const empty = {
   title: '', description: '', discount_type: 'percent', discount_value: '',
   starts_at: '', ends_at: '', max_uses: '', banner_image: '', is_active: true, products: []
 }
+type BannerMode = 'url' | 'upload'
 
 export default function FlashSalesPage() {
   const [sales, setSales] = useState<any[]>([])
@@ -19,6 +20,9 @@ export default function FlashSalesPage() {
   const [form, setForm] = useState<any>(empty)
   const [allProducts, setAllProducts] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
+  const [bannerMode, setBannerMode] = useState<BannerMode>('upload')
+  const [bannerFile, setBannerFile] = useState<File | null>(null)
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null)
 
   const load = async () => {
     try {
@@ -27,26 +31,45 @@ export default function FlashSalesPage() {
         axios.get('/admin/products?limit=200')
       ])
       setSales(salesRes.data.sales || [])
-      setAllProducts(prodRes.data.data || [])
+      setAllProducts(prodRes.data.products || prodRes.data.data || [])
     } catch { notify.error('Load failed') }
     finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])
 
-  const openCreate = () => { setEditing(null); setForm(empty); setShowForm(true) }
+  const openCreate = () => { setEditing(null); setForm(empty); setBannerFile(null); setBannerPreview(null); setShowForm(true) }
   const openEdit = async (sale: any) => {
     const r = await axios.get(`/flash-sales/admin/${sale.id}`)
     setEditing(r.data.sale)
     setForm({ ...r.data.sale, products: r.data.sale.products || [] })
+    setBannerPreview(r.data.sale.banner_image || null)
+    setBannerFile(null)
     setShowForm(true)
   }
 
   const save = async () => {
     try {
       setSaving(true)
-      if (editing) await axios.put(`/flash-sales/admin/${editing.id}`, form)
-      else await axios.post('/flash-sales/admin', form)
+      if (bannerFile) {
+        const fd = new FormData()
+        fd.append('banner', bannerFile)
+        fd.append('title', form.title)
+        fd.append('description', form.description || '')
+        fd.append('discount_type', form.discount_type)
+        fd.append('discount_value', String(form.discount_value))
+        fd.append('starts_at', form.starts_at)
+        fd.append('ends_at', form.ends_at)
+        if (form.max_uses) fd.append('max_uses', String(form.max_uses))
+        fd.append('is_active', String(form.is_active))
+        fd.append('products', JSON.stringify(form.products))
+        if (editing) await axios.put(`/flash-sales/admin/${editing.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+        else await axios.post('/flash-sales/admin', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      } else {
+        const payload = { ...form }
+        if (editing) await axios.put(`/flash-sales/admin/${editing.id}`, payload)
+        else await axios.post('/flash-sales/admin', payload)
+      }
       notify.success(editing ? 'Updated' : 'Created')
       setShowForm(false)
       load()
@@ -148,9 +171,32 @@ export default function FlashSalesPage() {
                 <label className="text-xs font-semibold text-gray-500 uppercase">Max Uses (optional)</label>
                 <input type="number" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.max_uses} onChange={e => setForm({...form, max_uses: e.target.value})} placeholder="Leave blank for unlimited" />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Banner Image URL</label>
-                <input className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.banner_image} onChange={e => setForm({...form, banner_image: e.target.value})} placeholder="https://..." />
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Banner Image</label>
+                <div className="flex gap-2 mb-2">
+                  <button type="button" onClick={() => setBannerMode('upload')}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium ${bannerMode === 'upload' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>Upload File</button>
+                  <button type="button" onClick={() => setBannerMode('url')}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium ${bannerMode === 'url' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>Paste URL</button>
+                </div>
+                {bannerMode === 'upload' ? (
+                  <input type="file" accept="image/*" className="w-full border rounded-xl px-3 py-2 text-sm"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) { setBannerFile(f); setBannerPreview(URL.createObjectURL(f)) }
+                    }} />
+                ) : (
+                  <input className="w-full border rounded-xl px-3 py-2 text-sm" value={form.banner_image || ''}
+                    onChange={e => { setForm({...form, banner_image: e.target.value}); setBannerPreview(e.target.value) }}
+                    placeholder="https://your-image-url.com/banner.jpg" />
+                )}
+                {bannerPreview && (
+                  <div className="mt-2 relative inline-block">
+                    <img src={bannerPreview} alt="Banner preview" className="h-24 rounded-lg border object-cover" />
+                    <button type="button" onClick={() => { setBannerPreview(null); setBannerFile(null); setForm({...form, banner_image: ''}) }}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center">×</button>
+                  </div>
+                )}
               </div>
               <div className="col-span-2 flex items-center gap-2">
                 <input type="checkbox" id="is_active" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} />

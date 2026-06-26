@@ -77,13 +77,20 @@ exports.adminGet = async (req, res) => {
 exports.adminCreate = async (req, res) => {
   const client = await pool.connect()
   try {
-    const { title, description, discount_type, discount_value, starts_at, ends_at, max_uses, banner_image, products } = req.body
+    const { title, description, discount_type, discount_value, starts_at, ends_at, max_uses } = req.body
+    let products = req.body.products
+    if (typeof products === 'string') try { products = JSON.parse(products) } catch { products = [] }
+    let banner_image = req.body.banner_image || null
+    if (req.file) {
+      const { uploadImageToAWS } = require('../../utils/awsImageUpload')
+      banner_image = await uploadImageToAWS(req.file, 'flash-sales')
+    }
     await client.query('BEGIN')
 
     const r = await client.query(
       `INSERT INTO flash_sales (title, description, discount_type, discount_value, starts_at, ends_at, max_uses, banner_image)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [title, description, discount_type || 'percent', discount_value, starts_at, ends_at, max_uses || null, banner_image || null]
+      [title, description, discount_type || 'percent', discount_value, starts_at, ends_at, max_uses || null, banner_image]
     )
     const sale = r.rows[0]
 
@@ -114,14 +121,21 @@ exports.adminUpdate = async (req, res) => {
   const client = await pool.connect()
   try {
     const { id } = req.params
-    const { title, description, discount_type, discount_value, starts_at, ends_at, max_uses, banner_image, is_active, products } = req.body
+    const { title, description, discount_type, discount_value, starts_at, ends_at, max_uses, is_active } = req.body
+    let products = req.body.products
+    if (typeof products === 'string') try { products = JSON.parse(products) } catch { products = [] }
+    let banner_image = req.body.banner_image || null
+    if (req.file) {
+      const { uploadImageToAWS } = require('../../utils/awsImageUpload')
+      banner_image = await uploadImageToAWS(req.file, 'flash-sales')
+    }
     await client.query('BEGIN')
 
     await client.query(
       `UPDATE flash_sales SET title=$1, description=$2, discount_type=$3, discount_value=$4,
         starts_at=$5, ends_at=$6, max_uses=$7, banner_image=$8, is_active=$9
        WHERE id=$10`,
-      [title, description, discount_type, discount_value, starts_at, ends_at, max_uses || null, banner_image || null, is_active !== false, id]
+      [title, description, discount_type, discount_value, starts_at, ends_at, max_uses || null, banner_image, is_active !== false && is_active !== 'false', id]
     )
 
     if (Array.isArray(products)) {
