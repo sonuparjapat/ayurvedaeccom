@@ -29,6 +29,13 @@ interface Product {
   brand_id?: number; brand_display_name?: string; tags?: string[]
   is_bestseller?: boolean; weight_grams?: number; total_sold?: number
   specifications?: any[]
+  product_type?: string; unit?: string; tax_included?: boolean
+  shipping_class?: string; allow_backorder?: boolean
+  highlights?: string; ingredients?: string; benefits?: string
+  usage_instructions?: string; storage_instructions?: string; warnings?: string
+  video_url?: string; fssai_number?: string; coa_url?: string
+  focus_keyword?: string; min_order_qty?: number; max_order_qty?: number
+  is_returnable?: boolean; sort_order?: number
 }
 interface Review { id?: number; name: string; rating: number; comment: string; images?: string[] }
 
@@ -491,6 +498,7 @@ export default function ProductDetailScreen() {
           {/* Price */}
           <View style={ss.priceRow}>
             <Text style={ss.price}>₹{effectivePrice}</Text>
+            {product.unit && <Text style={{ fontFamily: Fonts.regular, fontSize: 13, color: Colors.textDim, alignSelf: 'flex-end', marginBottom: 4 }}>({product.unit})</Text>}
             {product.compareprice && <Text style={ss.mrp}>₹{product.compareprice}</Text>}
             {disc != null && disc > 0 && (
               <View style={ss.savePill}>
@@ -520,6 +528,116 @@ export default function ProductDetailScreen() {
                 </View>
               ))}
             </ScrollView>
+          )}
+
+          {/* HIGHLIGHTS */}
+          {product.highlights && (
+            <View style={{ backgroundColor: Colors.mint, borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 0.5, borderColor: '#bbf7d0' }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, marginBottom: 6 }}>Product Highlights</Text>
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.forest, lineHeight: 20 }}>{product.highlights}</Text>
+            </View>
+          )}
+
+          {/* INGREDIENTS */}
+          {product.ingredients && (
+            <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 0.5, borderColor: Colors.border }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, marginBottom: 6 }}>Ingredients</Text>
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, lineHeight: 20 }}>{product.ingredients}</Text>
+            </View>
+          )}
+
+          {/* BENEFITS */}
+          {product.benefits && (
+            <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 0.5, borderColor: Colors.border }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, marginBottom: 6 }}>Health Benefits</Text>
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, lineHeight: 20 }}>{product.benefits}</Text>
+            </View>
+          )}
+
+          {/* USAGE/DOSAGE */}
+          {product.usage_instructions && (
+            <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 0.5, borderColor: Colors.border }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, marginBottom: 6 }}>Usage / Dosage</Text>
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, lineHeight: 20 }}>{product.usage_instructions}</Text>
+            </View>
+          )}
+
+          {/* STORAGE */}
+          {product.storage_instructions && (
+            <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 0.5, borderColor: Colors.border }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, marginBottom: 6 }}>Storage Instructions</Text>
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, lineHeight: 20 }}>{product.storage_instructions}</Text>
+            </View>
+          )}
+
+          {/* WARNINGS */}
+          {product.warnings && (
+            <View style={{ backgroundColor: '#fef2f2', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 0.5, borderColor: '#fecaca', borderLeftWidth: 3, borderLeftColor: Colors.red }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.red, marginBottom: 6 }}>Warnings & Precautions</Text>
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: '#991b1b', lineHeight: 20 }}>{product.warnings}</Text>
+            </View>
+          )}
+
+          {/* VIDEO LINK */}
+          {product.video_url && (
+            <TouchableOpacity
+              onPress={() => {
+                const { Linking } = require('react-native')
+                Linking.openURL(product.video_url!)
+              }}
+              style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+            >
+              <Text style={{ fontSize: 24 }}>🎬</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest }}>Watch Product Video</Text>
+                <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: Colors.textDim }}>Tap to view on YouTube</Text>
+              </View>
+              <Text style={{ fontSize: 14, color: Colors.sage }}>→</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* FSSAI BADGE */}
+          {product.fssai_number && (
+            <View style={{ backgroundColor: Colors.mint, borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 0.5, borderColor: '#bbf7d0', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text style={{ fontSize: 20 }}>🛡️</Text>
+              <View>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: Colors.sage, letterSpacing: 0.5, textTransform: 'uppercase' }}>FSSAI Certified</Text>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest }}>{product.fssai_number}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* COA LINK */}
+          {product.coa_url && (
+            <TouchableOpacity
+              onPress={() => {
+                const { Linking } = require('react-native')
+                Linking.openURL(product.coa_url!)
+              }}
+              style={{ backgroundColor: '#eff6ff', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 0.5, borderColor: '#bfdbfe', flexDirection: 'row', alignItems: 'center', gap: 10 }}
+            >
+              <Text style={{ fontSize: 20 }}>🧪</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: '#2563eb', letterSpacing: 0.5, textTransform: 'uppercase' }}>Lab Tested</Text>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#1e40af' }}>View COA / Lab Report →</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* NON-RETURNABLE NOTICE */}
+          {product.is_returnable === false && (
+            <View style={{ backgroundColor: '#fef2f2', borderRadius: 14, padding: 12, marginBottom: 14, borderWidth: 0.5, borderColor: '#fecaca', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 14 }}>⚠️</Text>
+              <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.red }}>This product is non-returnable</Text>
+            </View>
+          )}
+
+          {/* MIN ORDER QTY NOTICE */}
+          {product.min_order_qty != null && product.min_order_qty > 1 && (
+            <View style={{ backgroundColor: '#fff8e6', borderRadius: 14, padding: 12, marginBottom: 14, borderWidth: 0.5, borderColor: '#fde68a', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 14 }}>📦</Text>
+              <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: '#92400e' }}>Minimum order quantity: {product.min_order_qty}</Text>
+            </View>
           )}
 
           {/* Variants */}

@@ -151,26 +151,88 @@ await client.query(`
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         slug VARCHAR(255) UNIQUE NOT NULL,
+
+        /* ── Type & Classification ── */
+        product_type VARCHAR(20) DEFAULT 'simple' CHECK (product_type IN ('simple','variable','bundle')),
+        unit VARCHAR(50),
+
+        /* ── Descriptions ── */
         shortdescription TEXT,
         longdescription TEXT,
+        highlights TEXT,
+        ingredients TEXT,
+        benefits TEXT,
+        usage_instructions TEXT,
+        storage_instructions TEXT,
+        warnings TEXT,
+
+        /* ── Pricing ── */
         price NUMERIC(10,2) NOT NULL CHECK (price > 0),
         compareprice NUMERIC(10,2) CHECK (compareprice >= 0),
+        cost_price NUMERIC(10,2),
+        tax_included BOOLEAN DEFAULT FALSE,
+
+        /* ── Inventory ── */
         inventory INT DEFAULT 0 CHECK (inventory >= 0),
+        low_stock_threshold INTEGER DEFAULT 10,
+        track_inventory BOOLEAN DEFAULT TRUE,
+        allow_backorder BOOLEAN DEFAULT FALSE,
+        min_order_qty INTEGER DEFAULT 1,
+        max_order_qty INTEGER DEFAULT 100,
+        total_sold INTEGER DEFAULT 0,
+
+        /* ── Identifiers ── */
         sku VARCHAR(100),
+        barcode VARCHAR(100),
+
+        /* ── Categorization ── */
         category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
         category_name VARCHAR(150),
         brand VARCHAR(100),
+        brand_id INTEGER REFERENCES brands(id) ON DELETE SET NULL,
+        tags JSONB DEFAULT '[]',
+
+        /* ── Display ── */
         status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft','active','inactive')),
+        is_featured BOOLEAN DEFAULT FALSE,
+        is_bestseller BOOLEAN DEFAULT FALSE,
+        is_returnable BOOLEAN DEFAULT TRUE,
+        sort_order INTEGER DEFAULT 0,
+
+        /* ── Physical / Shipping ── */
+        weight_grams NUMERIC(10,2),
+        length_cm NUMERIC(8,2),
+        width_cm NUMERIC(8,2),
+        height_cm NUMERIC(8,2),
+        shipping_class VARCHAR(30) DEFAULT 'standard',
+
+        /* ── Media ── */
         images JSONB,
-        averagerating NUMERIC(2,1) DEFAULT 0 CHECK (averagerating BETWEEN 0 AND 5),
-        reviewcount INT DEFAULT 0 CHECK (reviewcount >= 0),
-        meta_title VARCHAR(255),
-        meta_description TEXT,
-        meta_keywords TEXT,
+        video_url TEXT,
+
+        /* ── Tax & Compliance ── */
         gst_percent NUMERIC(5,2) DEFAULT 18 CHECK (gst_percent >= 0),
         hsn_code VARCHAR(30),
         cess_percent NUMERIC(5,2) DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        fssai_number VARCHAR(30),
+        coa_url TEXT,
+
+        /* ── Specifications ── */
+        specifications JSONB DEFAULT '[]',
+
+        /* ── SEO ── */
+        meta_title VARCHAR(255),
+        meta_description TEXT,
+        meta_keywords TEXT,
+        focus_keyword VARCHAR(100),
+
+        /* ── Reviews ── */
+        averagerating NUMERIC(2,1) DEFAULT 0 CHECK (averagerating BETWEEN 0 AND 5),
+        reviewcount INT DEFAULT 0 CHECK (reviewcount >= 0),
+
+        /* ── Timestamps ── */
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -855,23 +917,12 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
       WHERE slug IS NULL
     `);
 
-    /* ================= PRODUCT ENHANCEMENTS ================= */
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS brand_id INTEGER REFERENCES brands(id) ON DELETE SET NULL`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS is_bestseller BOOLEAN DEFAULT FALSE`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10,2) DEFAULT NULL`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS weight_grams NUMERIC(10,2) DEFAULT NULL`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS length_cm NUMERIC(8,2) DEFAULT NULL`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS width_cm NUMERIC(8,2) DEFAULT NULL`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS height_cm NUMERIC(8,2) DEFAULT NULL`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER DEFAULT 10`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS total_sold INTEGER DEFAULT 0`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS specifications JSONB DEFAULT '[]'`);
-    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(100) DEFAULT NULL`);
+    /* ================= PRODUCT INDEXES ================= */
     await client.query(`CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_products_featured ON products(is_featured) WHERE is_featured = TRUE`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_products_bestseller ON products(is_bestseller) WHERE is_bestseller = TRUE`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_type ON products(product_type)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_sort ON products(sort_order)`);
 
     /* ================= PRODUCT ↔ CATEGORIES (many-to-many) ================= */
     await client.query(`

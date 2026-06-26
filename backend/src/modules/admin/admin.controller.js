@@ -473,6 +473,26 @@ exports.create = async (req, res) => {
       low_stock_threshold,
       specifications,
       barcode,
+
+      product_type,
+      unit,
+      tax_included,
+      shipping_class,
+      allow_backorder,
+      highlights,
+      ingredients,
+      benefits,
+      usage_instructions,
+      storage_instructions,
+      warnings,
+      video_url,
+      fssai_number,
+      coa_url,
+      focus_keyword,
+      min_order_qty,
+      max_order_qty,
+      is_returnable,
+      sort_order,
     } = req.body
 
     // Validation
@@ -535,7 +555,27 @@ if (req.files?.length) {
         height_cm,
         low_stock_threshold,
         specifications,
-        barcode
+        barcode,
+
+        product_type,
+        unit,
+        tax_included,
+        shipping_class,
+        allow_backorder,
+        highlights,
+        ingredients,
+        benefits,
+        usage_instructions,
+        storage_instructions,
+        warnings,
+        video_url,
+        fssai_number,
+        coa_url,
+        focus_keyword,
+        min_order_qty,
+        max_order_qty,
+        is_returnable,
+        sort_order
 
       )
 
@@ -547,7 +587,8 @@ if (req.files?.length) {
         $10,$11,$12,
         $13,
         $14,$15,$16,$17,$18,$19,
-        $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31
+        $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,
+        $32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50
       )
     `, [
       name,
@@ -588,6 +629,26 @@ if (req.files?.length) {
       low_stock_threshold ? Number(low_stock_threshold) : null,
       specifications ? (typeof specifications === 'string' ? specifications : JSON.stringify(specifications)) : null,
       barcode || null,
+
+      product_type || 'simple',
+      unit || null,
+      tax_included === 'true' || tax_included === true || false,
+      shipping_class || 'standard',
+      allow_backorder === 'true' || allow_backorder === true || false,
+      highlights ? (typeof highlights === 'string' ? highlights : JSON.stringify(highlights)) : null,
+      ingredients || null,
+      benefits || null,
+      usage_instructions || null,
+      storage_instructions || null,
+      warnings || null,
+      video_url || null,
+      fssai_number || null,
+      coa_url || null,
+      focus_keyword || null,
+      min_order_qty ? Number(min_order_qty) : 1,
+      max_order_qty ? Number(max_order_qty) : null,
+      is_returnable === 'false' || is_returnable === false ? false : true,
+      sort_order ? Number(sort_order) : 0,
 
     ])
 
@@ -817,7 +878,27 @@ const finalImages = [
         height_cm=$29,
         low_stock_threshold=$30,
         specifications=$31,
-        barcode=$32
+        barcode=$32,
+
+        product_type=$33,
+        unit=$34,
+        tax_included=$35,
+        shipping_class=$36,
+        allow_backorder=$37,
+        highlights=$38,
+        ingredients=$39,
+        benefits=$40,
+        usage_instructions=$41,
+        storage_instructions=$42,
+        warnings=$43,
+        video_url=$44,
+        fssai_number=$45,
+        coa_url=$46,
+        focus_keyword=$47,
+        min_order_qty=$48,
+        max_order_qty=$49,
+        is_returnable=$50,
+        sort_order=$51
 
       WHERE id=$20
       RETURNING *
@@ -863,6 +944,26 @@ const finalImages = [
       body.low_stock_threshold ? Number(body.low_stock_threshold) : null,
       body.specifications ? (typeof body.specifications === 'string' ? body.specifications : JSON.stringify(body.specifications)) : null,
       body.barcode || null,
+
+      body.product_type || 'simple',
+      body.unit || null,
+      body.tax_included === 'true' || body.tax_included === true || false,
+      body.shipping_class || 'standard',
+      body.allow_backorder === 'true' || body.allow_backorder === true || false,
+      body.highlights ? (typeof body.highlights === 'string' ? body.highlights : JSON.stringify(body.highlights)) : null,
+      body.ingredients || null,
+      body.benefits || null,
+      body.usage_instructions || null,
+      body.storage_instructions || null,
+      body.warnings || null,
+      body.video_url || null,
+      body.fssai_number || null,
+      body.coa_url || null,
+      body.focus_keyword || null,
+      body.min_order_qty ? Number(body.min_order_qty) : 1,
+      body.max_order_qty ? Number(body.max_order_qty) : null,
+      body.is_returnable === 'false' || body.is_returnable === false ? false : true,
+      body.sort_order ? Number(body.sort_order) : 0,
 
     ])
 

@@ -197,6 +197,11 @@ export default function CartScreen() {
   }
 
   const updateQty = async (productId: number, newQty: number, stock: number) => {
+    const cartItem = items.find(i => i.product_id === productId)
+    const minQty = cartItem?.min_order_qty || 1
+    const maxQty = cartItem?.max_order_qty || 100
+    if (newQty < minQty) { Alert.alert('Minimum Qty', `Minimum order quantity is ${minQty}`); return }
+    if (newQty > maxQty) { Alert.alert('Maximum Qty', `Maximum order quantity is ${maxQty}`); return }
     if (newQty < 1) { removeItem(productId); return }
     const finalQty = Math.min(newQty, stock)
     setUpdatingId(productId)

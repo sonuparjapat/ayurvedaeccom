@@ -302,13 +302,20 @@ const finalCess =
           images, meta_title, meta_description, meta_keywords,
           gst_percent, hsn_code, cess_percent,
           brand_id, tags, is_featured, is_bestseller,
-          cost_price, weight_grams, barcode, low_stock_threshold
+          cost_price, weight_grams, barcode, low_stock_threshold,
+          product_type, unit, tax_included, shipping_class,
+          allow_backorder, highlights, ingredients, benefits,
+          usage_instructions, storage_instructions, warnings,
+          video_url, fssai_number, coa_url, focus_keyword,
+          min_order_qty, max_order_qty, is_returnable, sort_order
         )
         VALUES (
           $1,$2,$3,$4,$5,$6,$7,$8,
           $9,$10,$11,$12,$13,$14,$15,$16,
           $17,$18,$19,
-          $20,$21,$22,$23,$24,$25,$26,$27
+          $20,$21,$22,$23,$24,$25,$26,$27,
+          $28,$29,$30,$31,$32,$33,$34,$35,
+          $36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46
         )
       `,[
         name,
@@ -328,6 +335,25 @@ const finalCess =
         r.weight_grams ? Number(r.weight_grams) : null,
         r.barcode || null,
         r.low_stock_threshold ? Number(r.low_stock_threshold) : 10,
+        r.product_type || 'simple',
+        r.unit || null,
+        r.tax_included === 'true' || r.tax_included === '1',
+        r.shipping_class || 'standard',
+        r.allow_backorder === 'true' || r.allow_backorder === '1',
+        r.highlights || null,
+        r.ingredients || null,
+        r.benefits || null,
+        r.usage_instructions || null,
+        r.storage_instructions || null,
+        r.warnings || null,
+        r.video_url || null,
+        r.fssai_number || null,
+        r.coa_url || null,
+        r.focus_keyword || null,
+        r.min_order_qty ? Number(r.min_order_qty) : 1,
+        r.max_order_qty ? Number(r.max_order_qty) : null,
+        r.is_returnable === 'false' || r.is_returnable === '0' ? false : true,
+        r.sort_order ? Number(r.sort_order) : 0,
       ])
 
       successCount++

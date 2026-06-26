@@ -103,7 +103,7 @@ exports.addToCart = async (req, res) => {
         return res.status(400).json({ message: "Not enough stock for this variant" });
     } else {
       const product = await pool.query(
-        "SELECT inventory FROM products WHERE id=$1",
+        "SELECT inventory, min_order_qty, max_order_qty FROM products WHERE id=$1",
         [productId]
       );
       if (!product.rows.length)
@@ -111,6 +111,12 @@ exports.addToCart = async (req, res) => {
       maxStock = parseInt(product.rows[0].inventory);
       if (maxStock < qty)
         return res.status(400).json({ message: "Not enough stock" });
+
+      // Min/Max order quantity validation
+      const minQty = Number(product.rows[0].min_order_qty) || 1;
+      const maxQty = Number(product.rows[0].max_order_qty) || 100;
+      if (qty < minQty) return res.status(400).json({ success: false, message: `Minimum order quantity is ${minQty}` });
+      if (qty > maxQty) return res.status(400).json({ success: false, message: `Maximum order quantity is ${maxQty}` });
     }
 
     if (userId) {
@@ -250,9 +256,15 @@ exports.updateCartQty = async (req, res) => {
       if (!v.rows.length) return res.status(404).json({ message: "Variant not found" });
       maxStock = parseInt(v.rows[0].inventory);
     } else {
-      const p = await pool.query("SELECT inventory FROM products WHERE id=$1", [productId]);
+      const p = await pool.query("SELECT inventory, min_order_qty, max_order_qty FROM products WHERE id=$1", [productId]);
       if (!p.rows.length) return res.status(404).json({ message: "Product not found" });
       maxStock = parseInt(p.rows[0].inventory);
+
+      // Min/Max order quantity validation
+      const minQty = Number(p.rows[0].min_order_qty) || 1;
+      const maxQty = Number(p.rows[0].max_order_qty) || 100;
+      if (qty < minQty) return res.status(400).json({ success: false, message: `Minimum order quantity is ${minQty}` });
+      if (qty > maxQty) return res.status(400).json({ success: false, message: `Maximum order quantity is ${maxQty}` });
     }
 
     if (qty > maxStock) return res.status(400).json({ message: "Not enough stock" });

@@ -34,6 +34,7 @@ interface Product {
   brand?: string; brand_id?: number; tags?: string[]
   is_featured?: boolean; is_bestseller?: boolean
   weight_grams?: number; total_sold?: number
+  unit?: string
 }
 interface Review {
   id?: number; user_name: string; rating: number; comment: string; product_name: string
@@ -455,6 +456,7 @@ function ProductCard({ item, index }: { item: Product; index: number }) {
           )}
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
             <Text style={ss.prodPrice}>₹{item.price}</Text>
+            {item.unit && <Text style={{ fontSize: 10, color: Colors.textDim, fontFamily: Fonts.regular }}>({item.unit})</Text>}
             {item.compareprice && <Text style={ss.prodMrp}>₹{item.compareprice}</Text>}
           </View>
         </View>

@@ -15,12 +15,17 @@ export interface User {
 export interface CartItem {
   id: number           // cart row id
   product_id: number   // foreign key to products
+  variant_id?: number  // optional variant foreign key
   name: string
   price: number
   quantity: number
   images: string[]     // array of URLs
   inventory: number
   gst_percent?: number
+  unit?: string
+  min_order_qty?: number
+  max_order_qty?: number
+  is_returnable?: boolean
 }
 
 export interface CartData {

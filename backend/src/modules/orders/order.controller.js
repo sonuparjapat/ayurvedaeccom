@@ -847,6 +847,16 @@ exports.returnOrder = async (req, res) => {
       });
     }
 
+    // Check if products are returnable
+    const itemsCheck = await client.query(
+      `SELECT p.is_returnable FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = $1 AND p.is_returnable = FALSE LIMIT 1`,
+      [id]
+    );
+    if (itemsCheck.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ success: false, message: 'This order contains non-returnable products' });
+    }
+
     // Enforce 7-day return window (updated_at = delivery timestamp when status was set to 5)
     const deliveredAt = new Date(order.updated_at);
     const daysSinceDelivery = (Date.now() - deliveredAt.getTime()) / (1000 * 60 * 60 * 24);

@@ -29,6 +29,7 @@ interface Product {
   inventory: number; category_name: string
   averagerating: number; reviewcount: number
   brand?: string; is_bestseller?: boolean; tags?: string[]
+  unit?: string
 }
 
 const SORTS = [
@@ -112,6 +113,7 @@ function ProductCard({ p, index, addingId, addToCart, toggleWish, wishlist, inCa
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
             <Text style={ss.price}>₹{p.price}</Text>
+            {p.unit && <Text style={{ fontSize: 10, color: Colors.textDim, fontFamily: Fonts.regular }}>({p.unit})</Text>}
             {p.compareprice && <Text style={ss.mrp}>₹{p.compareprice}</Text>}
           </View>
         </View>

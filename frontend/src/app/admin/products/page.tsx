@@ -284,7 +284,15 @@ useEffect(() => {
                       </div>
 
                       <div className="text-xs text-gray-500">
-                        {p.category_name}{p.brand_display_name ? ` · ${p.brand_display_name}` : p.brand ? ` · ${p.brand}` : ''}
+                        {p.category_name}{p.brand_display_name ? ` · ${p.brand_display_name}` : p.brand ? ` · ${p.brand}` : ''}{p.unit ? ` · ${p.unit}` : ''}
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        {p.product_type && p.product_type !== 'simple' && (
+                          <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-semibold capitalize">{p.product_type}</span>
+                        )}
+                        {p.is_returnable === false && (
+                          <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-semibold">Non-Returnable</span>
+                        )}
                       </div>
 
                     </td>

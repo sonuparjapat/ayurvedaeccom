@@ -26,6 +26,10 @@ interface CartItem {
   gst_percent: number
   category_name: string
   quantity: number
+  unit?: string
+  min_order_qty?: number
+  max_order_qty?: number
+  is_returnable?: boolean
 }
 
 interface CouponResult {
@@ -68,6 +72,10 @@ export default function CartPage() {
 
   const updateQty = async (item: CartItem, delta: number) => {
     const newQty = item.quantity + delta
+    const minQty = item.min_order_qty || 1
+    const maxQty = item.max_order_qty || 100
+    if (newQty < minQty) { toast.error(`Minimum order quantity: ${minQty}`); return }
+    if (newQty > maxQty) { toast.error(`Maximum order quantity: ${maxQty}`); return }
     if (newQty < 1) return
     if (newQty > item.inventory) { toast.error('Maximum stock reached'); return }
     setUpdatingId(item.cart_item_id)
@@ -184,7 +192,7 @@ export default function CartPage() {
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Link href={`/product/${item.product_id}`} style={{ textDecoration: 'none' }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: '#1a3a2a', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: '#1a3a2a', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}{item.unit && <span style={{ fontSize: 12, fontWeight: 400, color: '#6b8f74', marginLeft: 4 }}>({item.unit})</span>}</div>
                   </Link>
                   {item.variant_label && (
                     <span style={{ display: 'inline-block', background: '#e8f5ee', color: '#2d5a3d', fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 6, marginBottom: 6 }}>

@@ -49,6 +49,25 @@ export default function AdminProductForm({
     weight_grams: '',
     low_stock_threshold: 10,
     specifications: '[]',
+    product_type: 'simple',
+    unit: '',
+    tax_included: false,
+    shipping_class: 'standard',
+    allow_backorder: false,
+    highlights: '',
+    ingredients: '',
+    benefits: '',
+    usage_instructions: '',
+    storage_instructions: '',
+    warnings: '',
+    video_url: '',
+    fssai_number: '',
+    coa_url: '',
+    focus_keyword: '',
+    min_order_qty: 1,
+    max_order_qty: 100,
+    is_returnable: true,
+    sort_order: 0,
   })
 
 
@@ -434,6 +453,29 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             </div>
           </div>
 
+          {/* PRODUCT TYPE */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Product Type</label>
+            <select
+              value={form.product_type || 'simple'}
+              disabled={isView}
+              onChange={e => setForm({ ...form, product_type: e.target.value })}
+              className={`w-full border rounded px-3 py-2 focus:ring-2 focus:ring-emerald-500 ${isView ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+            >
+              <option value="simple">Simple</option>
+              <option value="variable">Variable</option>
+              <option value="bundle">Bundle</option>
+            </select>
+          </div>
+
+          {/* UNIT */}
+          <Input
+            label="Unit"
+            value={form.unit}
+            readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, unit: v })}
+          />
+
         </Grid>
 
       </Section>
@@ -475,6 +517,18 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
               setForm({ ...form, cost_price: v })
             }
           />
+
+          {/* TAX INCLUDED */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Tax</label>
+            <div className="flex gap-4 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 rounded" checked={!!form.tax_included} disabled={isView}
+                  onChange={e => setForm({ ...form, tax_included: e.target.checked })} />
+                <span className="text-sm">Tax Included in Price</span>
+              </label>
+            </div>
+          </div>
 
         </Grid>
 
@@ -530,6 +584,46 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             onChange={(v: string) => setForm({ ...form, low_stock_threshold: v })}
           />
 
+          {/* ALLOW BACKORDER */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Backorder</label>
+            <div className="flex gap-4 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 rounded" checked={!!form.allow_backorder} disabled={isView}
+                  onChange={e => setForm({ ...form, allow_backorder: e.target.checked })} />
+                <span className="text-sm">Allow Backorder</span>
+              </label>
+            </div>
+          </div>
+
+          <Input
+            label="Min Order Qty"
+            type="number"
+            value={form.min_order_qty}
+            readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, min_order_qty: v })}
+          />
+
+          <Input
+            label="Max Order Qty"
+            type="number"
+            value={form.max_order_qty}
+            readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, max_order_qty: v })}
+          />
+
+          {/* IS RETURNABLE */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Returns</label>
+            <div className="flex gap-4 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 rounded" checked={form.is_returnable !== false} disabled={isView}
+                  onChange={e => setForm({ ...form, is_returnable: e.target.checked })} />
+                <span className="text-sm">Is Returnable</span>
+              </label>
+            </div>
+          </div>
+
         </Grid>
 
       </Section>
@@ -557,6 +651,61 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
           onChange={(v: string) =>
             setForm({ ...form, longdescription: v })
           }
+        />
+
+      </Section>
+
+
+      {/* AYURVEDIC DETAILS */}
+
+      <Section title="Ayurvedic Details">
+
+        <TextArea
+          label="Product Highlights"
+          rows={3}
+          value={form.highlights}
+          readOnly={isView}
+          onChange={(v: string) => setForm({ ...form, highlights: v })}
+        />
+
+        <TextArea
+          label="Ingredients"
+          rows={3}
+          value={form.ingredients}
+          readOnly={isView}
+          onChange={(v: string) => setForm({ ...form, ingredients: v })}
+        />
+
+        <TextArea
+          label="Health Benefits"
+          rows={3}
+          value={form.benefits}
+          readOnly={isView}
+          onChange={(v: string) => setForm({ ...form, benefits: v })}
+        />
+
+        <TextArea
+          label="Usage / Dosage Instructions"
+          rows={3}
+          value={form.usage_instructions}
+          readOnly={isView}
+          onChange={(v: string) => setForm({ ...form, usage_instructions: v })}
+        />
+
+        <TextArea
+          label="Storage Instructions"
+          rows={2}
+          value={form.storage_instructions}
+          readOnly={isView}
+          onChange={(v: string) => setForm({ ...form, storage_instructions: v })}
+        />
+
+        <TextArea
+          label="Warnings & Precautions"
+          rows={2}
+          value={form.warnings}
+          readOnly={isView}
+          onChange={(v: string) => setForm({ ...form, warnings: v })}
         />
 
       </Section>
@@ -666,6 +815,62 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
       </Section>
 
 
+      {/* MEDIA */}
+
+      <Section title="Media">
+        <Grid>
+          <Input
+            label="Video URL"
+            value={form.video_url}
+            readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, video_url: v })}
+          />
+        </Grid>
+      </Section>
+
+
+      {/* SHIPPING */}
+
+      <Section title="Shipping">
+        <Grid>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Shipping Class</label>
+            <select
+              value={form.shipping_class || 'standard'}
+              disabled={isView}
+              onChange={e => setForm({ ...form, shipping_class: e.target.value })}
+              className={`w-full border rounded px-3 py-2 focus:ring-2 focus:ring-emerald-500 ${isView ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+            >
+              <option value="standard">Standard</option>
+              <option value="free">Free</option>
+              <option value="heavy">Heavy</option>
+              <option value="fragile">Fragile</option>
+            </select>
+          </div>
+        </Grid>
+      </Section>
+
+
+      {/* COMPLIANCE */}
+
+      <Section title="Compliance">
+        <Grid>
+          <Input
+            label="FSSAI Number"
+            value={form.fssai_number}
+            readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, fssai_number: v })}
+          />
+          <Input
+            label="COA / Lab Report URL"
+            value={form.coa_url}
+            readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, coa_url: v })}
+          />
+        </Grid>
+      </Section>
+
+
       {/* SPECIFICATIONS */}
       <Section title="Specifications (optional)">
         <p className="text-xs text-gray-500 mb-2">{'Add product specifications as JSON array: [{"key":"Ingredient","value":"Amla"}, ...]'}</p>
@@ -685,6 +890,10 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             onChange={(v: string) => setForm({ ...form, meta_title: v })} />
           <Input label="Meta Description" value={form.meta_description} readOnly={isView}
             onChange={(v: string) => setForm({ ...form, meta_description: v })} />
+          <Input label="Focus Keyword" value={form.focus_keyword} readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, focus_keyword: v })} />
+          <Input label="Sort Order" type="number" value={form.sort_order} readOnly={isView}
+            onChange={(v: string) => setForm({ ...form, sort_order: v })} />
         </Grid>
       </Section>
 

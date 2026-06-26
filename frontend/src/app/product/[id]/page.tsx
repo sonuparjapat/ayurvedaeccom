@@ -67,6 +67,25 @@ interface Product {
   weight_grams?: number
   total_sold?: number
   specifications?: any[]
+  product_type?: string
+  unit?: string
+  tax_included?: boolean
+  shipping_class?: string
+  allow_backorder?: boolean
+  highlights?: string
+  ingredients?: string
+  benefits?: string
+  usage_instructions?: string
+  storage_instructions?: string
+  warnings?: string
+  video_url?: string
+  fssai_number?: string
+  coa_url?: string
+  focus_keyword?: string
+  min_order_qty?: number
+  max_order_qty?: number
+  is_returnable?: boolean
+  sort_order?: number
 }
 
 
@@ -622,6 +641,9 @@ const addToCart = async () => {
                 <span className="text-4xl font-bold text-emerald-600">
                   {flashSaleInfo ? `₹${Number(flashSaleInfo.flash_price).toFixed(0)}` : formatPrice(String(effectivePrice))}
                 </span>
+                {product.unit && (
+                  <span className="text-base text-gray-500 ml-1">({product.unit})</span>
+                )}
 
                 {flashSaleInfo ? (
                   <span className="text-lg text-gray-400 line-through">{formatPrice(String(effectivePrice))}</span>
@@ -795,6 +817,22 @@ const addToCart = async () => {
 
 
 
+              {/* MIN ORDER QTY NOTICE */}
+              {product.min_order_qty && product.min_order_qty > 1 && (
+                <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">
+                  <AlertCircle size={16} />
+                  <span>Minimum order quantity: {product.min_order_qty}</span>
+                </div>
+              )}
+
+              {/* NON-RETURNABLE NOTICE */}
+              {product.is_returnable === false && (
+                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2">
+                  <AlertCircle size={16} />
+                  <span>This product is non-returnable</span>
+                </div>
+              )}
+
               {/* QUANTITY + CART */}
 
               <div className="space-y-4">
@@ -942,6 +980,115 @@ const addToCart = async () => {
 
           </Card>
 
+
+        </div>
+
+        {/* ================= AYURVEDIC DETAILS ================= */}
+
+        <div className="max-w-7xl mx-auto px-4 mt-10 space-y-6">
+
+          {/* HIGHLIGHTS */}
+          {product.highlights && (
+            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+              <CardContent className="p-10">
+                <h3 className="text-2xl font-bold mb-4">Product Highlights</h3>
+                <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{product.highlights}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* INGREDIENTS */}
+          {product.ingredients && (
+            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+              <CardContent className="p-10">
+                <h3 className="text-2xl font-bold mb-4">Ingredients</h3>
+                <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{product.ingredients}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* BENEFITS */}
+          {product.benefits && (
+            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+              <CardContent className="p-10">
+                <h3 className="text-2xl font-bold mb-4">Health Benefits</h3>
+                <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{product.benefits}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* USAGE INSTRUCTIONS */}
+          {product.usage_instructions && (
+            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+              <CardContent className="p-10">
+                <h3 className="text-2xl font-bold mb-4">Usage / Dosage Instructions</h3>
+                <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{product.usage_instructions}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* STORAGE INSTRUCTIONS */}
+          {product.storage_instructions && (
+            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+              <CardContent className="p-10">
+                <h3 className="text-2xl font-bold mb-4">Storage Instructions</h3>
+                <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{product.storage_instructions}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* WARNINGS */}
+          {product.warnings && (
+            <div className="bg-red-50 border border-red-200 rounded-3xl p-10">
+              <div className="flex items-center gap-3 mb-4">
+                <AlertCircle className="text-red-500" size={24} />
+                <h3 className="text-2xl font-bold text-red-700">Warnings & Precautions</h3>
+              </div>
+              <p className="text-lg text-red-700 leading-relaxed whitespace-pre-line">{product.warnings}</p>
+            </div>
+          )}
+
+          {/* VIDEO */}
+          {product.video_url && (
+            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+              <CardContent className="p-10">
+                <h3 className="text-2xl font-bold mb-4">Product Video</h3>
+                <div className="aspect-video rounded-2xl overflow-hidden">
+                  <iframe
+                    src={product.video_url.replace('watch?v=', 'embed/')}
+                    className="w-full h-full"
+                    allowFullScreen
+                    title="Product Video"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* FSSAI & COA */}
+          {(product.fssai_number || product.coa_url) && (
+            <div className="flex flex-wrap gap-4">
+              {product.fssai_number && (
+                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-3">
+                  <Shield className="text-emerald-600" size={20} />
+                  <div>
+                    <span className="text-xs text-emerald-600 font-semibold">FSSAI Certified</span>
+                    <div className="text-sm text-emerald-800 font-bold">{product.fssai_number}</div>
+                  </div>
+                </div>
+              )}
+              {product.coa_url && (
+                <a href={product.coa_url} target="_blank" rel="noreferrer"
+                  className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-5 py-3 hover:bg-blue-100 transition-colors">
+                  <CheckCircle className="text-blue-600" size={20} />
+                  <div>
+                    <span className="text-xs text-blue-600 font-semibold">Lab Tested</span>
+                    <div className="text-sm text-blue-800 font-bold">View COA / Lab Report →</div>
+                  </div>
+                </a>
+              )}
+            </div>
+          )}
 
         </div>
 

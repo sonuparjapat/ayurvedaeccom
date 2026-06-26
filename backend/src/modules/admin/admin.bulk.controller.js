@@ -64,8 +64,8 @@ exports.downloadTemplate = async (req, res) => {
   try {
 
    const csvContent =
-`name,slug,price,compareprice,inventory,sku,category_id,gst_percent,hsn_code,cess_percent,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords,images,brand_id,tags,is_featured,is_bestseller,cost_price,weight_grams,barcode,low_stock_threshold
-Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,,,0,Himalaya,active,Short text,Long text,Meta title,Meta desc,keywords,https://site.com/a.jpg|https://site.com/b.jpg,,immunity|wellness,false,false,300,200,,10`
+`name,slug,price,compareprice,inventory,sku,category_id,gst_percent,hsn_code,cess_percent,brand,status,shortdescription,longdescription,meta_title,meta_description,meta_keywords,images,brand_id,tags,is_featured,is_bestseller,cost_price,weight_grams,barcode,low_stock_threshold,product_type,unit,tax_included,shipping_class,allow_backorder,highlights,ingredients,benefits,usage_instructions,storage_instructions,warnings,video_url,fssai_number,coa_url,focus_keyword,min_order_qty,max_order_qty,is_returnable,sort_order
+Ashwagandha Tablets,ashwagandha-tablets,499,599,50,AYU001,1,,,0,Himalaya,active,Short text,Long text,Meta title,Meta desc,keywords,https://site.com/a.jpg|https://site.com/b.jpg,,immunity|wellness,false,false,300,200,,10,simple,tablets,false,standard,false,Boosts immunity|Reduces stress,Ashwagandha extract,Stress relief,Take 2 tablets daily,Store in cool dry place,Not for pregnant women,,,,,1,100,true,0`
 
     res.setHeader(
       'Content-Type',
