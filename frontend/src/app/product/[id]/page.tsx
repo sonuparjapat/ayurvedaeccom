@@ -1144,7 +1144,7 @@ const addToCart = async () => {
           <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a3a2a', marginBottom: 20 }}>You May Also Like</h2>
           <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 12, scrollbarWidth: 'none' }}>
             {relatedProducts.map((p: any) => (
-              <a key={p.id} href={`/product/${p.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: 180 }}>
+              <a key={p.id} href={`/product/${p.slug || p.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: 180 }}>
                 <div style={{ background: 'white', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(26,58,42,0.1)', transition: 'transform 0.2s' }}>
                   <img src={p.images?.[0] || '/placeholder.png'} alt={p.name} style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
                   <div style={{ padding: '10px 12px' }}>

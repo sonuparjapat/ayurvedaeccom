@@ -101,7 +101,7 @@ export default function SearchScreen() {
     if (item._type === 'category') {
       router.push(`/category/${item.id}`)
     } else {
-      router.push(`/product/${item.id}`)
+      router.push(`/product/${item.slug || item.id}`)
     }
   }
 

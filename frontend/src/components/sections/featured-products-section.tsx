@@ -12,6 +12,7 @@ import { useInView } from 'framer-motion'
 interface Product {
   id: number
   name: string
+  slug?: string
   price: string
   compareprice?: string
   images: string[]
@@ -77,7 +78,7 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
   const stars = Math.round(Number(product.averagerating) || 0)
 
   return (
-    <Link href={`/product/${product.id}`} className="block group focus:outline-none"
+    <Link href={`/product/${product.slug || product.id}`} className="block group focus:outline-none"
       style={{ animation: `pcFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) ${index * 80 + 100}ms both` }}>
       <div
         className="relative rounded-2xl overflow-hidden bg-white transition-all duration-300"

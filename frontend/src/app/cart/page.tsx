@@ -181,7 +181,7 @@ export default function CartPage() {
                 style={{ background: 'white', borderRadius: 16, border: '1px solid rgba(26,58,42,0.1)', padding: '16px', display: 'flex', gap: 16, alignItems: 'flex-start' }}
               >
                 {/* Image */}
-                <Link href={`/product/${item.product_id}`}>
+                <Link href={`/product/${item.slug || item.product_id}`}>
                   <img
                     src={item.images?.[0] || '/placeholder.png'}
                     alt={item.name}
@@ -191,7 +191,7 @@ export default function CartPage() {
 
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <Link href={`/product/${item.product_id}`} style={{ textDecoration: 'none' }}>
+                  <Link href={`/product/${item.slug || item.product_id}`} style={{ textDecoration: 'none' }}>
                     <div style={{ fontSize: 15, fontWeight: 600, color: '#1a3a2a', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}{item.unit && <span style={{ fontSize: 12, fontWeight: 400, color: '#6b8f74', marginLeft: 4 }}>({item.unit})</span>}</div>
                   </Link>
                   {item.variant_label && (

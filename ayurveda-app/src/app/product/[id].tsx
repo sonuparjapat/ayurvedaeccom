@@ -764,7 +764,7 @@ export default function ProductDetailScreen() {
               <Text style={{ fontFamily: Fonts.bold, fontSize: 15, color: Colors.forest, marginBottom: 12 }}>You May Also Like</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
                 {relatedProducts.map((p: any) => (
-                  <TouchableOpacity key={p.id} onPress={() => router.push(`/product/${p.id}`)} style={{ width: 140, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 0.5, borderColor: Colors.border }}>
+                  <TouchableOpacity key={p.id} onPress={() => router.push(`/product/${p.slug || p.id}`)} style={{ width: 140, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 0.5, borderColor: Colors.border }}>
                     <Image source={{ uri: p.images?.[0] || '' }} style={{ width: 140, height: 120 }} resizeMode="cover" />
                     <View style={{ padding: 10 }}>
                       <Text numberOfLines={2} style={{ fontFamily: Fonts.bold, fontSize: 11, color: Colors.forest, marginBottom: 4 }}>{p.name}</Text>

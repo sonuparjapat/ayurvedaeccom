@@ -60,6 +60,7 @@ import { notify } from '@/app/utils/notify'
 interface Product {
   id: number
   name: string
+  slug?: string
   shortdescription: string
   price: number
   compareprice?: number
@@ -320,6 +321,13 @@ export default function CategoryPage() {
 
   // Determine if slug is numeric (backward compat) or a slug string
   const isNumericSlug = /^\d+$/.test(String(slug))
+
+  // Dynamic document title for SEO
+  useEffect(() => {
+    if (categoryInfo?.name) {
+      document.title = `${categoryInfo.name} - Shop Online | Oroganix`
+    }
+  }, [categoryInfo])
 
   /* ================= SEARCH DEBOUNCE ================= */
 
@@ -1024,6 +1032,23 @@ export default function CategoryPage() {
         <title>{categoryName} | Shop Online</title>
         <meta name="description" content={`Buy best ${categoryName} products online at best price.`} />
       </Head>
+
+      {/* CollectionPage JSON-LD */}
+      {categoryInfo && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'CollectionPage',
+              name: categoryInfo.name,
+              description: categoryInfo.description || `Shop ${categoryInfo.name} products at Oroganix`,
+              url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com'}/category/${categoryInfo.slug || slug}`,
+              ...(categoryInfo.image_url && { image: categoryInfo.image_url }),
+            }),
+          }}
+        />
+      )}
 
       <div className="min-h-screen flex flex-col bg-[#f7f8fc]">
         <Header />

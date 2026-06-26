@@ -80,7 +80,7 @@ function ProductCard({ p, index, addingId, addToCart, toggleWish, wishlist, inCa
 
   return (
     <Animated.View entering={FadeInDown.delay((index % 8) * 50).duration(400)} style={ss.card}>
-      <TouchableOpacity onPress={() => router.push(`/product/${p.id}`)} activeOpacity={0.9}>
+      <TouchableOpacity onPress={() => router.push(`/product/${p.slug || p.id}`)} activeOpacity={0.9}>
         <View style={ss.cardImgWrap}>
           <ExpoImage source={{ uri: p.images?.[0] || '' }} style={ss.cardImg} contentFit="cover" transition={200} />
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.2)']} style={StyleSheet.absoluteFill} />

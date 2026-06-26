@@ -31,6 +31,7 @@ interface BlogPost {
   meta_title?: string | null
   meta_description?: string | null
   published_at: string
+  updated_at?: string
   created_at: string
 }
 
@@ -55,6 +56,13 @@ export default function BlogPostPage() {
       })
       .finally(() => setLoading(false))
   }, [slug])
+
+  // Dynamic document title for SEO
+  useEffect(() => {
+    if (post?.title) {
+      document.title = `${post.meta_title || post.title} | Oroganix`
+    }
+  }, [post])
 
   const formatDate = (d: string) => {
     return new Date(d).toLocaleDateString('en-IN', {
@@ -85,6 +93,27 @@ export default function BlogPostPage() {
           </div>
         ) : (
           <>
+            {/* Article JSON-LD */}
+            {post && (
+              <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                  __html: JSON.stringify({
+                    '@context': 'https://schema.org',
+                    '@type': 'Article',
+                    headline: post.title,
+                    description: post.excerpt || post.meta_description,
+                    image: post.cover_image || undefined,
+                    author: { '@type': 'Person', name: post.author_name || 'Oroganix Team' },
+                    publisher: { '@type': 'Organization', name: 'Oroganix' },
+                    datePublished: post.published_at,
+                    dateModified: post.updated_at || post.published_at,
+                    url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com'}/blog/${post.slug}`,
+                  }),
+                }}
+              />
+            )}
+
             {/* Cover Image */}
             {post.cover_image && (
               <div className="w-full max-h-[480px] overflow-hidden bg-gray-100">

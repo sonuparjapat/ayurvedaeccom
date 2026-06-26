@@ -100,6 +100,11 @@ export default function ProductsPageContent() {
   const router = useRouter()
   const { wishlistdata } = useAuth()
 
+  // Set document title for SEO
+  useEffect(() => {
+    document.title = 'All Products - Shop Ayurvedic & Organic | Oroganix'
+  }, [])
+
   /* ---------- FETCH ---------- */
   useEffect(() => {
     fetchCategories()
@@ -1026,7 +1031,7 @@ const addToCart = async (id: string) => {
                                 {product.compareprice && <span className="price-strike">{formatPrice(product.compareprice)}</span>}
                               </div>
                               <div className="flex gap-2">
-                                <Link href={`/product/${product.id}`}>
+                                <Link href={`/product/${product.slug || product.id}`}>
                                   <button className="btn-outline-brown flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold" style={{ cursor: 'pointer', fontFamily: 'inherit' }}><Eye size={13} /> View</button>
                                 </Link>
                                 {isOutOfStock ? (
@@ -1107,7 +1112,7 @@ const addToCart = async (id: string) => {
                             >
                               <Heart size={15} fill={isWishlisted ? '#c4673a' : 'transparent'} color={isWishlisted ? '#c4673a' : 'var(--medium-brown)'} />
                             </button>
-                            <Link href={`/product/${product.id}`}>
+                            <Link href={`/product/${product.slug || product.id}`}>
                               <button className="card-action-btn">
                                 <Eye size={14} style={{ color: 'var(--medium-brown)' }} />
                               </button>
@@ -1195,7 +1200,7 @@ const addToCart = async (id: string) => {
                             </div>
 
                             {/* View button (always visible) */}
-                            <Link href={`/product/${product.id}`}>
+                            <Link href={`/product/${product.slug || product.id}`}>
                               <button
                                 className="btn-outline-brown flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-semibold"
                                 style={{ cursor: 'pointer', fontFamily: 'inherit' }}
