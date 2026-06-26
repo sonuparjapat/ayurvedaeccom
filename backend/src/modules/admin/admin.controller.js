@@ -619,7 +619,7 @@ if (req.files?.length) {
       Number(cess_percent || 0),
 
       brand_id ? Number(brand_id) : null,
-      tags ? (typeof tags === 'string' ? tags : JSON.stringify(tags)) : null,
+      tags ? (typeof tags === 'string' ? JSON.stringify(tags.split(',').map(t => t.trim()).filter(Boolean)) : JSON.stringify(tags)) : '[]',
       is_featured === 'true' || is_featured === true || false,
       is_bestseller === 'true' || is_bestseller === true || false,
       cost_price ? Number(cost_price) : null,
@@ -936,7 +936,7 @@ const finalImages = [
       id,
 
       body.brand_id ? Number(body.brand_id) : null,
-      body.tags ? (typeof body.tags === 'string' ? body.tags : JSON.stringify(body.tags)) : null,
+      body.tags ? (typeof body.tags === 'string' ? JSON.stringify(body.tags.split(',').map(t => t.trim()).filter(Boolean)) : JSON.stringify(body.tags)) : '[]',
       body.is_featured === 'true' || body.is_featured === true || false,
       body.is_bestseller === 'true' || body.is_bestseller === true || false,
       body.cost_price ? Number(body.cost_price) : null,
