@@ -1006,14 +1006,18 @@ const finalImages = [
 
 /* DELETE */
 exports.remove = async (req,res)=>{
+  try {
+    await pool.query(`
+      UPDATE products
+      SET status='inactive'
+      WHERE id=$1
+    `,[req.params.id])
 
-  await pool.query(`
-    UPDATE products
-    SET status='deleted'
-    WHERE id=$1
-  `,[req.params.id])
-
-  res.json({ success:true })
+    res.json({ success:true })
+  } catch (err) {
+    console.error('[Delete Product]', err)
+    res.status(500).json({ success: false, message: 'Delete failed' })
+  }
 }
 
 
