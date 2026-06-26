@@ -219,6 +219,10 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
           })
 
+        } else if (typeof v === 'object' && v !== null) {
+
+          data.append(k, JSON.stringify(v))
+
         } else {
 
           data.append(k, String(v))
