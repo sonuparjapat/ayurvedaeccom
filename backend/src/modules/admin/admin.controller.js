@@ -619,7 +619,12 @@ if (req.files?.length) {
       Number(cess_percent || 0),
 
       brand_id ? Number(brand_id) : null,
-      tags ? (typeof tags === 'string' ? JSON.stringify(tags.split(',').map(t => t.trim()).filter(Boolean)) : JSON.stringify(tags)) : '[]',
+      (() => {
+        if (!tags) return '[]'
+        if (typeof tags !== 'string') return JSON.stringify(tags)
+        try { const parsed = JSON.parse(tags); if (Array.isArray(parsed)) return JSON.stringify(parsed) } catch {}
+        return JSON.stringify(tags.split(',').map(t => t.trim()).filter(Boolean))
+      })(),
       is_featured === 'true' || is_featured === true || false,
       is_bestseller === 'true' || is_bestseller === true || false,
       cost_price ? Number(cost_price) : null,
@@ -936,7 +941,12 @@ const finalImages = [
       id,
 
       body.brand_id ? Number(body.brand_id) : null,
-      body.tags ? (typeof body.tags === 'string' ? JSON.stringify(body.tags.split(',').map(t => t.trim()).filter(Boolean)) : JSON.stringify(body.tags)) : '[]',
+      (() => {
+        if (!body.tags) return '[]'
+        if (typeof body.tags !== 'string') return JSON.stringify(body.tags)
+        try { const parsed = JSON.parse(body.tags); if (Array.isArray(parsed)) return JSON.stringify(parsed) } catch {}
+        return JSON.stringify(body.tags.split(',').map(t => t.trim()).filter(Boolean))
+      })(),
       body.is_featured === 'true' || body.is_featured === true || false,
       body.is_bestseller === 'true' || body.is_bestseller === true || false,
       body.cost_price ? Number(body.cost_price) : null,
