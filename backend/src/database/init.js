@@ -1048,6 +1048,12 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_next ON subscriptions(status, next_order_date) WHERE status = 'active'`);
 
+    /* ================= COMPANY POLICY PAGES ================= */
+    await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS privacy_policy TEXT`);
+    await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS terms_conditions TEXT`);
+    await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS shipping_policy TEXT`);
+    await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS return_policy TEXT`);
+
     /* ================= NEWSLETTER SUBSCRIBERS ================= */
     await client.query(`
       CREATE TABLE IF NOT EXISTS newsletter_subscribers (

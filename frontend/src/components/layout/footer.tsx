@@ -15,7 +15,9 @@ import { useAuth } from '@/context/auth-context'
 const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
 
 export function Footer() {
-  const { categoriesdata } = useAuth()
+  const { categoriesdata, companydata } = useAuth()
+  const company = (companydata as any)?.[0] || {}
+  const socialLinks = company.social_links || {}
   const [email, setEmail] = useState('')
   const [subscribing, setSubscribing] = useState(false)
 
@@ -95,10 +97,16 @@ export function Footer() {
                 100% organic, lab-tested, farm-direct. Ancient wisdom for modern health.
               </p>
               <div className="flex gap-3">
-                {[Facebook, Instagram, Twitter, Youtube].map((Icon, i) => (
-                  <button key={i} className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-emerald-700 flex items-center justify-center transition">
-                    <Icon size={16} className="text-gray-400 hover:text-white" />
-                  </button>
+                {[
+                  { Icon: Facebook, url: socialLinks.facebook, label: 'Facebook' },
+                  { Icon: Instagram, url: socialLinks.instagram, label: 'Instagram' },
+                  { Icon: Twitter, url: socialLinks.twitter, label: 'Twitter' },
+                  { Icon: Youtube, url: socialLinks.youtube, label: 'YouTube' },
+                ].filter(s => s.url).map((s, i) => (
+                  <a key={i} href={s.url} target="_blank" rel="noreferrer" aria-label={s.label}
+                    className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-emerald-700 flex items-center justify-center transition">
+                    <s.Icon size={16} className="text-gray-400" />
+                  </a>
                 ))}
               </div>
             </div>
@@ -141,17 +149,21 @@ export function Footer() {
             <div>
               <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-5">Contact Us</h4>
               <div className="space-y-3">
-                <a href="mailto:support@oroganix.com" className="flex items-center gap-3 text-gray-300 hover:text-emerald-400 transition text-sm">
-                  <Mail size={15} className="text-emerald-500 shrink-0" />
-                  support@oroganix.com
-                </a>
-                <a href="tel:+919876543210" className="flex items-center gap-3 text-gray-300 hover:text-emerald-400 transition text-sm">
-                  <Phone size={15} className="text-emerald-500 shrink-0" />
-                  +91 98765 43210
-                </a>
+                {company.email && (
+                  <a href={`mailto:${company.email}`} className="flex items-center gap-3 text-gray-300 hover:text-emerald-400 transition text-sm">
+                    <Mail size={15} className="text-emerald-500 shrink-0" />
+                    {company.email}
+                  </a>
+                )}
+                {company.phone && (
+                  <a href={`tel:${company.phone}`} className="flex items-center gap-3 text-gray-300 hover:text-emerald-400 transition text-sm">
+                    <Phone size={15} className="text-emerald-500 shrink-0" />
+                    {company.phone}
+                  </a>
+                )}
                 <div className="flex items-start gap-3 text-gray-300 text-sm">
                   <MapPin size={15} className="text-emerald-500 shrink-0 mt-0.5" />
-                  India
+                  {company.city ? `${company.city}, ${company.state || ''} ${company.country || ''}`.trim() : 'India'}
                 </div>
               </div>
 
@@ -173,7 +185,7 @@ export function Footer() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-3">
             <p className="text-gray-500 text-xs">
-              © {new Date().getFullYear()} Oroganix. All rights reserved.
+              © {new Date().getFullYear()} {company.company_name || 'Oroganix'}. All rights reserved.
             </p>
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <span>🌿 100% Organic</span>

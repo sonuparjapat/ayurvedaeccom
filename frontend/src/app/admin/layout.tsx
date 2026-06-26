@@ -30,6 +30,7 @@ import {
   Code2,
   RotateCcw,
   Eye,
+  Mail,
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
@@ -257,6 +258,10 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/push-notifications" icon={<Bell size={18} />}>
             Push Notifications
+          </MenuItem>
+
+          <MenuItem href="/admin/newsletter" icon={<Mail size={18} />}>
+            Newsletter
           </MenuItem>
 
           <MenuItem href="/admin/abandoned-carts" icon={<ShoppingCart size={18} />}>

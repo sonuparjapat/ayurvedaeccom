@@ -17,6 +17,10 @@ export default function CompanyPage() {
     city: '',
     state: '',
     country: '',
+    privacy_policy: '',
+    terms_conditions: '',
+    shipping_policy: '',
+    return_policy: '',
   }
 
   const [data, setData] = useState<any[]>([])
@@ -68,6 +72,10 @@ export default function CompanyPage() {
       city: row.city || '',
       state: row.state || '',
       country: row.country || '',
+      privacy_policy: row.privacy_policy || '',
+      terms_conditions: row.terms_conditions || '',
+      shipping_policy: row.shipping_policy || '',
+      return_policy: row.return_policy || '',
     })
     setOpen(true)
   }
@@ -269,6 +277,51 @@ export default function CompanyPage() {
               setForm({ ...form, country: e.target.value })
             }
           />
+
+          {/* Policy Fields */}
+          <div className="border-t pt-4 mt-2">
+            <p className="text-xs text-gray-500 mb-3 font-semibold">Policy Pages (supports HTML content)</p>
+
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Privacy Policy</label>
+            <textarea
+              placeholder="Enter privacy policy content (HTML supported)"
+              className="border p-2 rounded-lg w-full min-h-30 text-sm"
+              value={form.privacy_policy}
+              onChange={(e) =>
+                setForm({ ...form, privacy_policy: e.target.value })
+              }
+            />
+
+            <label className="text-sm font-medium text-gray-700 mb-1 block mt-3">Terms & Conditions</label>
+            <textarea
+              placeholder="Enter terms & conditions content (HTML supported)"
+              className="border p-2 rounded-lg w-full min-h-30 text-sm"
+              value={form.terms_conditions}
+              onChange={(e) =>
+                setForm({ ...form, terms_conditions: e.target.value })
+              }
+            />
+
+            <label className="text-sm font-medium text-gray-700 mb-1 block mt-3">Shipping Policy</label>
+            <textarea
+              placeholder="Enter shipping policy content (HTML supported)"
+              className="border p-2 rounded-lg w-full min-h-30 text-sm"
+              value={form.shipping_policy}
+              onChange={(e) =>
+                setForm({ ...form, shipping_policy: e.target.value })
+              }
+            />
+
+            <label className="text-sm font-medium text-gray-700 mb-1 block mt-3">Return Policy</label>
+            <textarea
+              placeholder="Enter return policy content (HTML supported)"
+              className="border p-2 rounded-lg w-full min-h-30 text-sm"
+              value={form.return_policy}
+              onChange={(e) =>
+                setForm({ ...form, return_policy: e.target.value })
+              }
+            />
+          </div>
 
         </div>
       </AppModal>
