@@ -1776,12 +1776,13 @@ exports.getAbandonedCarts = async (req, res) => {
     const r = await pool.query(
       `SELECT c.user_id, u.name, u.email,
         COUNT(c.id) AS item_count,
-        SUM(c.price * c.quantity) AS cart_value,
-        MAX(c.updated_at) AS last_updated
+        SUM(p.price * c.quantity) AS cart_value,
+        MAX(c.created_at) AS last_updated
        FROM cart c
        JOIN users u ON u.id = c.user_id
-       WHERE c.updated_at < NOW() - INTERVAL '1 hour'
-         AND c.updated_at > NOW() - INTERVAL '48 hours'
+       JOIN products p ON p.id = c.product_id
+       WHERE c.created_at < NOW() - INTERVAL '1 hour'
+         AND c.created_at > NOW() - INTERVAL '48 hours'
          AND c.user_id NOT IN (
            SELECT DISTINCT user_id FROM orders WHERE created_at > NOW() - INTERVAL '2 hours'
          )

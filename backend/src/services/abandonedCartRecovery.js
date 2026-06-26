@@ -14,15 +14,15 @@ module.exports = async function runAbandonedCartRecovery() {
     const result = await pool.query(
       `SELECT DISTINCT c.user_id, u.email, u.name,
         JSON_AGG(JSON_BUILD_OBJECT(
-          'product_id', c.product_id, 'name', p.name, 'price', c.price,
+          'product_id', c.product_id, 'name', p.name, 'price', p.price,
           'quantity', c.quantity, 'image', p.images[1]
         )) AS items,
         COUNT(c.id) AS item_count
        FROM cart c
        JOIN users u ON u.id = c.user_id
        JOIN products p ON p.id = c.product_id
-       WHERE c.updated_at < NOW() - INTERVAL '1 hour'
-         AND c.updated_at > NOW() - INTERVAL '48 hours'
+       WHERE c.created_at < NOW() - INTERVAL '1 hour'
+         AND c.created_at > NOW() - INTERVAL '48 hours'
          AND c.user_id NOT IN (
            SELECT DISTINCT user_id FROM orders
            WHERE created_at > NOW() - INTERVAL '2 hours'
