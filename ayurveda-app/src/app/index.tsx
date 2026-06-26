@@ -315,7 +315,7 @@ function CategoryCard({ item, index }: { item: any; index: number }) {
       <AnimPressable
         onPressIn={() => { scale.value = withSpring(0.95, { damping: 15 }) }}
         onPressOut={() => { scale.value = withSpring(1, { damping: 12 }) }}
-        onPress={() => router.push(`/category/${item.id}`)}
+        onPress={() => router.push(`/category/${item.slug || item.id}`)}
         style={[ss.catCard, { borderColor: theme.ring + '60' }]}
       >
         <LinearGradient colors={theme.grad} style={ss.catBar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />

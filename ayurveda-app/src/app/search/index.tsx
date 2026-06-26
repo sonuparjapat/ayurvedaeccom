@@ -99,7 +99,7 @@ export default function SearchScreen() {
     Keyboard.dismiss()
     saveRecent(item.name)
     if (item._type === 'category') {
-      router.push(`/category/${item.id}`)
+      router.push(`/category/${item.slug || item.id}`)
     } else {
       router.push(`/product/${item.slug || item.id}`)
     }
