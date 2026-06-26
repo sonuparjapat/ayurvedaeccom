@@ -68,18 +68,24 @@ exports.getAllPublic = async (req, res) => {
       values.push(category)
       i++
     }
-     if (category_id) {
-      // Include products from this category AND all its descendant subcategories
-      where += ` AND category_id IN (
-        WITH RECURSIVE cat_tree AS (
-          SELECT id FROM categories WHERE id = $${i}
-          UNION ALL
-          SELECT c.id FROM categories c JOIN cat_tree ct ON c.parent_id = ct.id
-        )
-        SELECT id FROM cat_tree
-      )`
-      values.push(category_id)
-      i++
+     if (category_id || req.query.category_slug) {
+      let resolvedCatId = category_id
+      if (!resolvedCatId && req.query.category_slug) {
+        const slugLookup = await pool.query('SELECT id FROM categories WHERE slug=$1 LIMIT 1', [req.query.category_slug])
+        resolvedCatId = slugLookup.rows[0]?.id
+      }
+      if (resolvedCatId) {
+        where += ` AND category_id IN (
+          WITH RECURSIVE cat_tree AS (
+            SELECT id FROM categories WHERE id = $${i}
+            UNION ALL
+            SELECT c.id FROM categories c JOIN cat_tree ct ON c.parent_id = ct.id
+          )
+          SELECT id FROM cat_tree
+        )`
+        values.push(resolvedCatId)
+        i++
+      }
     }
 
     if (brand) {

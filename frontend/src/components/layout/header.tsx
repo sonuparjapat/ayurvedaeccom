@@ -855,7 +855,7 @@ const {
                             key={`${item._type}-${item.id}`}
                             className="search-result-item"
                             onClick={() => {
-                              router.push(item._type === 'category' ? `/category/${item.id}` : `/product/${item.slug || item.id}`)
+                              router.push(item._type === 'category' ? `/category/${item.slug || item.id}` : `/product/${item.slug || item.id}`)
                               setSearchQuery('')
                               setSearchResults([])
                               setShowResults(false)
@@ -976,23 +976,24 @@ const {
             {/* Desktop Nav */}
             <nav className="header-nav nav-desktop">
               <div className="nav-inner">
-                {categoriesdata?.rows?.map((cat: any) => (
+                {categoriesdata?.rows
+                  ?.filter((cat: any) => !cat.parent_id && cat.is_active !== false)
+                  ?.slice(0, 8)
+                  ?.map((cat: any) => (
                   <Link
                     key={cat?.id}
-                    href={`/category/${cat?.id}`}
+                    href={`/category/${cat?.slug || cat?.id}`}
                     className="nav-link"
                   >
                     {cat?.name}
                   </Link>
                 ))}
+                <Link href="/products" className="nav-link">All Products</Link>
                 <Link href="/blog" className="nav-link">
                   Blog
                   <span className="nav-new-badge">New</span>
                 </Link>
                 <Link href="/about" className="nav-link">About Us</Link>
-                <Link href="/offers" className="nav-link special">
-                  ✦ Offers
-                </Link>
               </div>
             </nav>
  
@@ -1032,10 +1033,12 @@ const {
                   {/* Categories */}
                   <div className="mobile-nav-section">
                     <div className="mobile-section-label">Shop by Category</div>
-                    {categoriesdata?.rows?.map((cat: any) => (
+                    {categoriesdata?.rows
+                      ?.filter((cat: any) => !cat.parent_id && cat.is_active !== false)
+                      ?.map((cat: any) => (
                       <Link
-                        key={cat?.name}
-                        href={`/category/${cat?.id}`}
+                        key={cat?.id}
+                        href={`/category/${cat?.slug || cat?.id}`}
                         onClick={() => setIsMenuOpen(false)}
                         className="mobile-nav-link"
                       >
@@ -1043,6 +1046,9 @@ const {
                         <ChevronDown size={14} style={{ transform: 'rotate(-90deg)', opacity: 0.4, flexShrink: 0 }} />
                       </Link>
                     ))}
+                    <Link href="/products" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
+                      <span>All Products</span>
+                    </Link>
                   </div>
  
                   <div className="mobile-divider" />
@@ -1056,8 +1062,8 @@ const {
                     <Link href="/about" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
                       <span>About Us</span>
                     </Link>
-                    <Link href="/offers" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link special">
-                      <span>✦ Offers & Deals</span>
+                    <Link href="/contact" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
+                      <span>Contact Us</span>
                     </Link>
                   </div>
 
@@ -1185,7 +1191,7 @@ const {
                             key={`${item._type}-${item.id}`}
                             className="search-result-item"
                             onClick={() => {
-                              router.push(item._type === 'category' ? `/category/${item.id}` : `/product/${item.slug || item.id}`)
+                              router.push(item._type === 'category' ? `/category/${item.slug || item.id}` : `/product/${item.slug || item.id}`)
                               setIsSearchOpen(false)
                               setSearchQuery('')
                               setSearchResults([])

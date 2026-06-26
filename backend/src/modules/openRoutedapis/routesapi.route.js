@@ -8,6 +8,7 @@ const upload = require("../../config/multer");
 
 router.get('/categories', categoryCtrl.getCategories)
 router.get('/categories/tree', categoryCtrl.getCategoryTree)
+router.get('/categories/slug/:slug', categoryCtrl.getCategoryBySlug)
 router.get('/brands', categoryCtrl.getPublicBrands)
 router.get('/categories/:id', categoryCtrl.getCategoryById)
 

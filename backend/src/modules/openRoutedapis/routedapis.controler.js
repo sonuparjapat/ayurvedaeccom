@@ -46,10 +46,15 @@ exports.getCategories = async (req, res) => {
     parentFilter = ' AND c.parent_id IS NULL';
     countParentFilter = ' AND parent_id IS NULL';
   } else if (parent_id) {
+    let resolvedParentId = parent_id;
+    if (!/^\d+$/.test(String(parent_id))) {
+      const slugLookup = await pool.query('SELECT id FROM categories WHERE slug=$1 LIMIT 1', [parent_id]);
+      resolvedParentId = slugLookup.rows[0]?.id || parent_id;
+    }
     parentFilter = ` AND c.parent_id = $${paramIdx}`;
     countParentFilter = ` AND parent_id = $2`;
-    countParams.push(parent_id);
-    queryParams.push(parent_id);
+    countParams.push(resolvedParentId);
+    queryParams.push(resolvedParentId);
     paramIdx++;
   }
 
@@ -153,10 +158,11 @@ exports.getCategoryById = async (req, res) => {
 
     const { id } = req.params;
 
-    if (!id || isNaN(id)) {
+    if (!id) {
       return sendError(res, 400, "Invalid category id");
     }
 
+    const isNumeric = /^\d+$/.test(id);
 
     const result = await pool.query(
       `
@@ -176,9 +182,9 @@ exports.getCategoryById = async (req, res) => {
         is_featured,
         banner_url
       FROM categories
-      WHERE id = $1
+      WHERE ${isNumeric ? 'id = $1' : 'slug = $1'}
       `,
-      [id]
+      [isNumeric ? Number(id) : id]
     );
 
 
@@ -615,6 +621,37 @@ exports.getCategoryTree = async (req, res) => {
   } catch (err) {
     console.error("Category Tree Error:", err);
     return sendError(res, 500, "Failed to fetch category tree");
+  }
+};
+
+/* ================= GET CATEGORY BY SLUG ================= */
+
+exports.getCategoryBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    if (!slug) return sendError(res, 400, "Slug required");
+
+    const result = await pool.query(
+      `SELECT id, name, slug, parent_id, level, sort_order, gst_percent, hsn_code, cess_percent,
+              color_class, image_url, banner_url, description, is_active, is_featured
+       FROM categories WHERE slug = $1`,
+      [slug]
+    );
+
+    if (!result.rows.length) return sendError(res, 404, "Category not found");
+
+    const category = result.rows[0];
+
+    const subcategories = await pool.query(
+      `SELECT id, name, slug, image_url, sort_order FROM categories
+       WHERE parent_id = $1 AND is_active = TRUE ORDER BY sort_order`,
+      [category.id]
+    );
+
+    return sendSuccess(res, { ...category, subcategories: subcategories.rows });
+  } catch (err) {
+    console.error("Get Category By Slug Error:", err);
+    return sendError(res, 500, "Fetch failed");
   }
 };
 
