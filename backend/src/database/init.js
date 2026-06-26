@@ -151,6 +151,23 @@ await client.query(`
   )
 `);
 
+    /* ================= BRANDS (must be before products — FK reference) ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS brands (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(150) NOT NULL UNIQUE,
+        slug VARCHAR(150) UNIQUE NOT NULL,
+        logo_url TEXT DEFAULT NULL,
+        description TEXT DEFAULT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        sort_order INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_brands_slug ON brands(slug)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_brands_active ON brands(is_active, sort_order)`);
+
     /* ================= PRODUCTS ================= */
     await client.query(`
       CREATE TABLE IF NOT EXISTS products (
@@ -894,23 +911,6 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_support_msgs_ticket ON support_messages(ticket_id, created_at)`);
-
-    /* ================= BRANDS ================= */
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS brands (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(150) NOT NULL UNIQUE,
-        slug VARCHAR(150) UNIQUE NOT NULL,
-        logo_url TEXT DEFAULT NULL,
-        description TEXT DEFAULT NULL,
-        is_active BOOLEAN DEFAULT TRUE,
-        sort_order INT DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_brands_slug ON brands(slug)`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_brands_active ON brands(is_active, sort_order)`);
 
     /* ================= CATEGORY INDEXES ================= */
     await client.query(`CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)`);
