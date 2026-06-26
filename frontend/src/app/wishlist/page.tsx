@@ -344,7 +344,7 @@ export default function WishlistPage() {
                     </button>
 
                     {/* Image */}
-                    <Link href={`/product/${product.id}`} style={{ display: "block" }}>
+                    <Link href={`/product/${product.slug || product.id}`} style={{ display: "block" }}>
                       <div style={s.imgBox} className="wl-imgBox">
                         <img
                           src={getImage(product.images)}
@@ -383,7 +383,7 @@ export default function WishlistPage() {
                         )}
                       </div>
 
-                      <Link href={`/product/${product.id}`} style={{ textDecoration: "none" }}>
+                      <Link href={`/product/${product.slug || product.id}`} style={{ textDecoration: "none" }}>
                         <h3 style={s.cardTitle} className="wl-cardTitle">{product.name}</h3>
                       </Link>
 
@@ -411,7 +411,7 @@ export default function WishlistPage() {
 
                       {/* Actions */}
                       <div style={s.actions}>
-                        <Link href={`/product/${product.id}`} style={{ flex: "0 0 auto" }}>
+                        <Link href={`/product/${product.slug || product.id}`} style={{ flex: "0 0 auto" }}>
                           <button style={s.viewBtn2} className="wl-viewBtn">
                             <Eye style={{ width: 14, height: 14 }} />
                           </button>
@@ -448,7 +448,7 @@ export default function WishlistPage() {
                     className="wl-card"
                   >
                     {/* Image */}
-                    <Link href={`/product/${product.id}`} style={{ flexShrink: 0 }}>
+                    <Link href={`/product/${product.slug || product.id}`} style={{ flexShrink: 0 }}>
                       <div style={s.listImgBox} className="wl-imgBox">
                         <img src={getImage(product.images)} alt={product.name} style={s.listImg} className="wl-img" />
                         {disc && !isOutOfStock && (
@@ -471,7 +471,7 @@ export default function WishlistPage() {
                         </button>
                       </div>
 
-                      <Link href={`/product/${product.id}`} style={{ textDecoration: "none" }}>
+                      <Link href={`/product/${product.slug || product.id}`} style={{ textDecoration: "none" }}>
                         <h3 style={s.listTitle} className="wl-cardTitle">{product.name}</h3>
                       </Link>
 
@@ -489,7 +489,7 @@ export default function WishlistPage() {
                         </div>
 
                         <div style={s.actions}>
-                          <Link href={`/product/${product.id}`}><button style={s.viewBtn2} className="wl-viewBtn"><Eye style={{ width: 14, height: 14 }} /></button></Link>
+                          <Link href={`/product/${product.slug || product.id}`}><button style={s.viewBtn2} className="wl-viewBtn"><Eye style={{ width: 14, height: 14 }} /></button></Link>
                           {isOutOfStock ? (
                             <button style={{ ...s.cartBtn, ...s.cartBtnDisabled }} disabled>Out of Stock</button>
                           ) : inCart ? (

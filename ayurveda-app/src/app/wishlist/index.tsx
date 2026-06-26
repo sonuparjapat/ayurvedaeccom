@@ -128,7 +128,7 @@ export default function WishlistScreen() {
         layout={Layout.springify()}
         style={[ss.card, isRemoving && { opacity: 0.5 }]}
       >
-        <TouchableOpacity onPress={() => router.push(`/product/${p.id}`)} activeOpacity={0.9} style={{ flex: 1 }}>
+        <TouchableOpacity onPress={() => router.push(`/product/${(p as any).slug || p.id}`)} activeOpacity={0.9} style={{ flex: 1 }}>
           {/* Image */}
           <View style={ss.imgWrap}>
             {img ? (

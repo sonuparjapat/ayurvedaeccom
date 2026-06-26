@@ -855,7 +855,7 @@ const {
                             key={`${item._type}-${item.id}`}
                             className="search-result-item"
                             onClick={() => {
-                              router.push(item._type === 'category' ? `/category/${item.id}` : `/product/${item.id}`)
+                              router.push(item._type === 'category' ? `/category/${item.id}` : `/product/${item.slug || item.id}`)
                               setSearchQuery('')
                               setSearchResults([])
                               setShowResults(false)
@@ -1185,7 +1185,7 @@ const {
                             key={`${item._type}-${item.id}`}
                             className="search-result-item"
                             onClick={() => {
-                              router.push(item._type === 'category' ? `/category/${item.id}` : `/product/${item.id}`)
+                              router.push(item._type === 'category' ? `/category/${item.id}` : `/product/${item.slug || item.id}`)
                               setIsSearchOpen(false)
                               setSearchQuery('')
                               setSearchResults([])

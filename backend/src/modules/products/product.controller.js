@@ -171,14 +171,14 @@ exports.getAllPublic = async (req, res) => {
 
 exports.getsingleproduct=async(req,res)=>{
   const {id}=req.params
-  console.log(id,"id coming")
 try{
+const isNumeric = /^\d+$/.test(id)
 const data= await pool.query(
   `SELECT p.*, b.name AS brand_display_name, b.slug AS brand_slug, b.logo_url AS brand_logo_url
    FROM products p
    LEFT JOIN brands b ON p.brand_id = b.id
-   WHERE p.id=$1`,
-  [id]
+   WHERE ${isNumeric ? 'p.id=$1' : 'p.slug=$1'}`,
+  [isNumeric ? Number(id) : id]
 )
 if(data?.rows?.length>=1){
   res?.status(200).json({data:data?.rows[0],status:200})

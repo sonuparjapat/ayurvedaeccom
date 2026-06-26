@@ -685,7 +685,7 @@ export default function CategoryPage() {
           {/* Image */}
           <div
             className="relative h-56 overflow-hidden bg-gray-50 cursor-pointer"
-            onClick={() => router.push(`/product/${p.id}`)}
+            onClick={() => router.push(`/product/${p.slug || p.id}`)}
             onMouseEnter={() => p.images.length > 1 && setImgIdx(1)}
             onMouseLeave={() => setImgIdx(0)}
           >
@@ -719,7 +719,7 @@ export default function CategoryPage() {
                 )}
               </button>
               <button
-               onClick={() => router.push(`/product/${p.id}`)}
+               onClick={() => router.push(`/product/${p.slug || p.id}`)}
                 // onClick={(e) => { e.stopPropagation(); setQuickViewProduct(p) }}
                 className="w-8 h-8 rounded-full bg-white text-gray-400 hover:text-emerald-600 hover:scale-110 flex items-center justify-center shadow-md transition-all opacity-0 group-hover:opacity-100"
               >
@@ -736,7 +736,7 @@ export default function CategoryPage() {
             <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">{p.category_name}</p>
             <h3
               className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 cursor-pointer hover:text-emerald-700 transition-colors mb-1"
-              onClick={() => router.push(`/product/${p.id}`)}
+              onClick={() => router.push(`/product/${p.slug || p.id}`)}
             >
               {p.name}
             </h3>
@@ -804,7 +804,7 @@ export default function CategoryPage() {
           {/* Image */}
           <div
             className="relative w-32 sm:w-44 h-32 sm:h-44 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 cursor-pointer"
-            onClick={() => router.push(`/product/${p.id}`)}
+            onClick={() => router.push(`/product/${p.slug || p.id}`)}
           >
             <img src={getImageUrl(p.images)} alt={p.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
             {outOfStock && (
@@ -823,7 +823,7 @@ export default function CategoryPage() {
               <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">{p.category_name}</p>
               <h3
                 className="font-bold text-gray-900 text-base leading-snug cursor-pointer hover:text-emerald-700 transition-colors mb-1"
-                onClick={() => router.push(`/product/${p.id}`)}
+                onClick={() => router.push(`/product/${p.slug || p.id}`)}
               >
                 {p.name}
               </h3>

@@ -413,7 +413,7 @@ function ProductCard({ item, index }: { item: Product; index: number }) {
       <AnimPressable
         onPressIn={() => { scale.value = withSpring(0.96, { damping: 15 }) }}
         onPressOut={() => { scale.value = withSpring(1, { damping: 12 }) }}
-        onPress={() => router.push(`/product/${item.id}`)}
+        onPress={() => router.push(`/product/${(item as any).slug || item.id}`)}
         style={ss.prodCard}
       >
         <View style={ss.prodImgWrap}>

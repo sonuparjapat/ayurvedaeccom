@@ -86,6 +86,10 @@ interface Product {
   max_order_qty?: number
   is_returnable?: boolean
   sort_order?: number
+  faqs?: { question: string; answer: string }[]
+  barcode?: string
+  sku?: string
+  sale_price?: string
 }
 
 
@@ -409,14 +413,16 @@ const addToCart = async () => {
               image: product.images,
               description: product.meta_description || product.shortdescription,
               sku: product.sku,
-              brand: { '@type': 'Brand', name: process.env.NEXT_PUBLIC_APP_NAME || 'AyurVeda Desi Foods' },
+              brand: { '@type': 'Brand', name: product.brand_display_name || product.brand || process.env.NEXT_PUBLIC_APP_NAME || 'Oroganix' },
+              ...(product.barcode ? { gtin: product.barcode } : {}),
+              ...(product.weight_grams ? { weight: { '@type': 'QuantitativeValue', value: product.weight_grams, unitCode: 'GRM' } } : {}),
               offers: {
                 '@type': 'Offer',
                 url: typeof window !== 'undefined' ? window.location.href : '',
                 priceCurrency: 'INR',
                 price: product.sale_price || product.price,
                 availability: product.inventory > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-                seller: { '@type': 'Organization', name: process.env.NEXT_PUBLIC_APP_NAME || 'AyurVeda Desi Foods' }
+                seller: { '@type': 'Organization', name: process.env.NEXT_PUBLIC_APP_NAME || 'Oroganix' }
               },
               aggregateRating: Number(product.averagerating) > 0 ? {
                 '@type': 'AggregateRating',
@@ -444,6 +450,27 @@ const addToCart = async () => {
             })
           }}
         />
+
+        {/* FAQ Schema */}
+        {product.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                '@context': 'https://schema.org',
+                '@type': 'FAQPage',
+                mainEntity: product.faqs.map((faq: any) => ({
+                  '@type': 'Question',
+                  name: faq.question,
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: faq.answer,
+                  },
+                })),
+              }),
+            }}
+          />
+        )}
 
       </Head>
 
