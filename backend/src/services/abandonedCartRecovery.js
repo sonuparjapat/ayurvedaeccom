@@ -9,7 +9,7 @@ module.exports = async function runAbandonedCartRecovery() {
   lastRun = now
 
   try {
-    // console.log("HII")
+    // console.log("HI")
     // Find carts updated > 1 hour ago with items but user has no order in last 2 hours
     const result = await pool.query(
       `SELECT DISTINCT c.user_id, u.email, u.name,

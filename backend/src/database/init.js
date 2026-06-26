@@ -124,6 +124,10 @@ await client.query(`
   CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
+    slug VARCHAR(150),
+    parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    level INTEGER DEFAULT 0,
+    sort_order INTEGER DEFAULT 0,
 
     gst_percent NUMERIC(5,2) DEFAULT 18
       CHECK (gst_percent >= 0),
@@ -133,12 +137,14 @@ await client.query(`
 
     color_class VARCHAR(100) DEFAULT NULL,
     image_url TEXT DEFAULT NULL,
+    banner_url TEXT DEFAULT NULL,
     description TEXT DEFAULT NULL,
 
     meta_title VARCHAR(150) DEFAULT NULL,
     meta_description TEXT DEFAULT NULL,
 
     is_active BOOLEAN DEFAULT TRUE,
+    is_featured BOOLEAN DEFAULT FALSE,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -677,7 +683,11 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
         sku VARCHAR(100),
         price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
         compareprice NUMERIC(10,2),
+        cost_price NUMERIC(10,2) DEFAULT NULL,
         inventory INT DEFAULT 0 CHECK (inventory >= 0),
+        weight_grams NUMERIC(10,2) DEFAULT NULL,
+        barcode VARCHAR(100) DEFAULT NULL,
+        image_url TEXT DEFAULT NULL,
         attributes JSONB DEFAULT '{}',
         sort_order INT DEFAULT 0,
         is_active BOOLEAN DEFAULT TRUE,
@@ -902,20 +912,9 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`CREATE INDEX IF NOT EXISTS idx_brands_slug ON brands(slug)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_brands_active ON brands(is_active, sort_order)`);
 
-    /* ================= CATEGORY HIERARCHY + SEO ================= */
-    await client.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL`);
-    await client.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS slug VARCHAR(150)`);
-    await client.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 0`);
-    await client.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0`);
-    await client.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE`);
-    await client.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS banner_url TEXT DEFAULT NULL`);
+    /* ================= CATEGORY INDEXES ================= */
     await client.query(`CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_categories_sort ON categories(sort_order)`);
-    // backfill slugs for existing categories that have none
-    await client.query(`
-      UPDATE categories SET slug = LOWER(REGEXP_REPLACE(name, '[^a-zA-Z0-9]+', '-', 'g')) || '-' || id
-      WHERE slug IS NULL
-    `);
 
     /* ================= PRODUCT INDEXES ================= */
     await client.query(`CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand_id)`);
@@ -947,11 +946,8 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_related_products_product ON related_products(product_id)`);
 
-    /* ================= VARIANT ENHANCEMENTS ================= */
-    await client.query(`ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10,2) DEFAULT NULL`);
-    await client.query(`ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS weight_grams NUMERIC(10,2) DEFAULT NULL`);
-    await client.query(`ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS barcode VARCHAR(100) DEFAULT NULL`);
-    await client.query(`ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT NULL`);
+    /* ================= VARIANT INDEXES ================= */
+    /* variant columns (cost_price, weight_grams, barcode, image_url) now in CREATE TABLE */
 
     /* ================= VISITOR ANALYTICS ================= */
     await client.query(`
