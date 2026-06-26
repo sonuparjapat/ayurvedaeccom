@@ -274,7 +274,7 @@ export default function AdminPincodesPage() {
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5">
               <h2 className="text-lg font-bold text-white">

@@ -216,7 +216,7 @@ export default function AdminCoupons() {
           onClose={closeModal}
           title={editData ? 'Edit Coupon' : 'Add Coupon'}
           description="Coupon codes give customers a discount at checkout"
-          width="max-w-lg"
+          width="max-w-2xl"
           footer={
             <div className="flex justify-end gap-3">
               <button onClick={closeModal} disabled={saving} className="px-4 py-2 rounded-lg border border-slate-600 text-slate-400">Cancel</button>

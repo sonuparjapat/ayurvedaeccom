@@ -233,7 +233,7 @@ export default function AdminBanners() {
           onClose={closeModal}
           title={editData ? 'Edit Banner' : 'Add Banner'}
           description="Banners appear as slides in the hero carousel on the home page"
-          width="max-w-xl"
+          width="max-w-2xl"
           footer={
             <div className="flex justify-end gap-3">
               <button onClick={closeModal} disabled={saving} className="px-4 py-2 rounded-lg border border-slate-600 text-slate-400">Cancel</button>

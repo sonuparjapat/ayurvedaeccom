@@ -537,7 +537,7 @@ const columns = [
           onClose={closeModal}
           title={editData ? 'Edit Category' : 'Add Category'}
           description="Create and manage categories"
-          width="max-w-md"
+          width="max-w-2xl"
           footer={
 
             <div className="flex justify-end gap-3">

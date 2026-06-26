@@ -19,7 +19,7 @@ export default function AppModal({
   title,
   description,
   footer,
-  width = 'max-w-xl',
+  width = 'max-w-2xl',
   children,
 }: Props) {
 
@@ -169,10 +169,11 @@ export default function AppModal({
 
       <div
         className={`
-          bg-white rounded-xl
+          bg-white rounded-2xl
           w-full ${width}
-          max-h-[90vh]
+          max-h-[85vh]
           flex flex-col
+          mx-4
         `}
         style={modalStyle}
       >
