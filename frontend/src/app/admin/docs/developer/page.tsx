@@ -1095,8 +1095,17 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
           <Code>{`// Database: blog_posts (title, slug, excerpt, content, cover_image, category, tags, status, views_count)
 // Backend: /api/blog/public (GET list), /api/blog/public/:slug (GET + view count++)
 //          /api/blog/admin (CRUD with cover image upload to S3)
-// Admin: /admin/blog — CRUD with AppModal
+//
+// Admin: /admin/blog — CRUD with WYSIWYG rich text editor
+//   Editor: components/editor/RichTextEditor.tsx (contentEditable-based)
+//   Features: Bold, Italic, Underline, Strikethrough, Headings (H1-H4),
+//     Bullet/Numbered lists, Text alignment, Text color, Insert link/image,
+//     Blockquote, Code block, Horizontal rule, Undo/Redo, Clear formatting
+//   No external dependencies — uses browser native execCommand
+//
 // Web: /blog (listing with category filter) + /blog/[slug] (full post with HTML content)
+// Mobile: /blog (listing with FlatList) + /blog/[slug] (post detail with share)
+// SEO: Article JSON-LD schema on blog posts, sitemap includes blog URLs
 // Features: auto-slug, SEO meta, draft/published/archived, view counting`}</Code>
           <H3>Product bundles</H3>
           <Code>{`// Database: product_bundles + bundle_products (many-to-many)

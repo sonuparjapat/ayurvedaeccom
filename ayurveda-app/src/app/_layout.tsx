@@ -61,6 +61,8 @@ function Inner() {
       <Stack.Screen name="auth/index" />
       <Stack.Screen name="search/index" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
       <Stack.Screen name="support/index" options={{ presentation: 'card' }} />
+      <Stack.Screen name="blog/index" options={{ presentation: 'card' }} />
+      <Stack.Screen name="blog/[slug]" options={{ presentation: 'card' }} />
     </Stack>
   )
 }
