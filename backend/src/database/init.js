@@ -534,7 +534,7 @@ await client.query(`CREATE INDEX IF NOT EXISTS idx_admin_logs_admin
 ON admin_logs(admin_id)`);
 
 // clenaup queue
-await pool.query(`CREATE TABLE IF NOT EXISTS file_cleanup_queue (
+await client.query(`CREATE TABLE IF NOT EXISTS file_cleanup_queue (
   id SERIAL PRIMARY KEY,
 
   file_url TEXT NOT NULL,
