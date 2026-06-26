@@ -12,33 +12,64 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com'
+
 export const metadata: Metadata = {
-  title: "AyurVeda Desi Foods - Premium Ayurvedic & Traditional Indian Products",
-  description:
-    "Discover authentic Ayurvedic herbs, premium dry fruits, dehydrated foods, and fresh tofu. Bringing ancient wisdom to modern wellness with 100% natural products.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Oroganix - Premium Ayurvedic & Organic Products | Buy Natural Herbs Online",
+    template: "%s | Oroganix",
+  },
+  description: "Shop authentic Ayurvedic herbs, organic supplements, premium dry fruits, and natural wellness products. 100% organic, lab-tested, farm-direct. Free delivery above ₹499.",
   keywords: [
+    "Ayurvedic products online",
+    "buy organic herbs India",
+    "natural supplements",
     "Ayurveda",
-    "Desi Foods",
-    "Dry Fruits",
-    "Herbs",
-    "Tofu",
-    "Natural Products",
-    "Indian Traditional",
-    "Wellness",
+    "organic dry fruits",
+    "herbal remedies",
+    "Oroganix",
+    "triphala",
+    "ashwagandha",
+    "wellness products",
+    "FSSAI certified",
+    "lab tested herbs",
   ],
-  authors: [{ name: "AyurVeda Desi Foods" }],
+  authors: [{ name: "Oroganix" }],
+  creator: "Oroganix",
+  publisher: "Oroganix",
   icons: {
     icon: "/logo.svg",
   },
+  alternates: {
+    canonical: SITE_URL,
+  },
   openGraph: {
-    title: "AyurVeda Desi Foods - Authentic Indian Wellness",
-    description: "Premium Ayurvedic products and traditional Indian foods",
+    title: "Oroganix - Premium Ayurvedic & Organic Products",
+    description: "Shop authentic Ayurvedic herbs, organic supplements, and natural wellness products. 100% organic, lab-tested, farm-direct.",
     type: "website",
+    siteName: "Oroganix",
+    locale: "en_IN",
+    url: SITE_URL,
   },
   twitter: {
     card: "summary_large_image",
-    title: "AyurVeda Desi Foods",
-    description: "Authentic Ayurvedic products and traditional Indian foods",
+    title: "Oroganix - Premium Ayurvedic Products",
+    description: "Shop authentic Ayurvedic herbs and organic wellness products. 100% natural, lab-tested.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || undefined,
   },
 };
 
