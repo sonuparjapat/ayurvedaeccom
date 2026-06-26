@@ -249,43 +249,44 @@ export default function AdminVariantsPage() {
               </h2>
 
               <FormField label="Label *" hint="e.g. 500g, 1kg, Small, Large">
-                <input value={form.label} onChange={e => set('label', e.target.value)} placeholder="500g" style={inp} />
+                <input value={form.label} onChange={e => set('label', e.target.value)} placeholder="e.g. 250g Pack, 500ml Bottle, Large" style={inp} />
               </FormField>
               <FormField label="SKU">
-                <input value={form.sku} onChange={e => set('sku', e.target.value)} placeholder="SKU-001" style={inp} />
+                <input value={form.sku} onChange={e => set('sku', e.target.value)} placeholder="e.g. TRP-250G (unique code for this variant)" style={inp} />
               </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="Price (₹) *">
-                  <input type="number" value={form.price} onChange={e => set('price', e.target.value)} min={0} style={inp} />
+                  <input type="number" value={form.price} onChange={e => set('price', e.target.value)} min={0} placeholder="e.g. 299" style={inp} />
                 </FormField>
                 <FormField label="Compare Price (₹)">
-                  <input type="number" value={form.compareprice} onChange={e => set('compareprice', e.target.value)} min={0} placeholder="MRP" style={inp} />
+                  <input type="number" value={form.compareprice} onChange={e => set('compareprice', e.target.value)} min={0} placeholder="e.g. 399 (MRP, shows as strikethrough)" style={inp} />
                 </FormField>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="Cost Price (₹)">
-                  <input type="number" value={form.cost_price} onChange={e => set('cost_price', e.target.value)} min={0} placeholder="Cost" style={inp} />
+                  <input type="number" value={form.cost_price} onChange={e => set('cost_price', e.target.value)} min={0} placeholder="e.g. 150 (your cost, private)" style={inp} />
                 </FormField>
                 <FormField label="Weight (g)">
-                  <input type="number" value={form.weight_grams} onChange={e => set('weight_grams', e.target.value)} min={0} placeholder="Weight in grams" style={inp} />
+                  <input type="number" value={form.weight_grams} onChange={e => set('weight_grams', e.target.value)} min={0} placeholder="e.g. 250" style={inp} />
                 </FormField>
               </div>
               <FormField label="Barcode">
                 <input value={form.barcode} onChange={e => set('barcode', e.target.value)} placeholder="e.g. 8901234567890" style={inp} />
               </FormField>
               <FormField label="Image URL">
-                <input value={form.image_url} onChange={e => set('image_url', e.target.value)} placeholder="https://..." style={inp} />
+                <input value={form.image_url} onChange={e => set('image_url', e.target.value)} placeholder="e.g. https://s3.amazonaws.com/product-250g.jpg" style={inp} />
               </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="Inventory">
-                  <input type="number" value={form.inventory} onChange={e => set('inventory', e.target.value)} min={0} style={inp} />
+                  <input type="number" value={form.inventory} onChange={e => set('inventory', e.target.value)} min={0} placeholder="e.g. 50 (stock for this variant)" style={inp} />
                 </FormField>
                 <FormField label="Sort Order">
-                  <input type="number" value={form.sort_order} onChange={e => set('sort_order', e.target.value)} min={0} style={inp} />
+                  <input type="number" value={form.sort_order} onChange={e => set('sort_order', e.target.value)} min={0} placeholder="e.g. 0 (display order in variant selector)" style={inp} />
                 </FormField>
               </div>
               <FormField label="Attributes (JSON)" hint='e.g. {"size":"500g","unit":"grams"}'>
                 <input value={form.attributes} onChange={e => set('attributes', e.target.value)} placeholder='{"size":"500g"}' style={inp} />
+                <p className="text-xs text-gray-400 mt-1">{"JSON key-value pairs, e.g. {\"size\":\"250g\",\"color\":\"brown\"}"}</p>
               </FormField>
               <FormField label="Status">
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

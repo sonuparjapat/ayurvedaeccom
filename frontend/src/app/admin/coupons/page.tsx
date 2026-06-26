@@ -245,7 +245,7 @@ export default function AdminCoupons() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Value * {form.type === 'percent' ? '(%)' : '(₹)'}</label>
-                <input type="number" min={0} value={form.value} onChange={e => set('value', e.target.value)} className={inputCls} />
+                <input type="number" min={0} value={form.value} onChange={e => set('value', e.target.value)} placeholder="e.g. 20 (means 20% off or ₹20 off depending on type)" className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Min Order Amount (₹)</label>
@@ -267,7 +267,7 @@ export default function AdminCoupons() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Uses per User</label>
-                <input type="number" min={1} value={form.usage_per_user} onChange={e => set('usage_per_user', e.target.value)} className={inputCls} />
+                <input type="number" min={1} value={form.usage_per_user} onChange={e => set('usage_per_user', e.target.value)} placeholder="e.g. 1 (how many times one customer can use)" className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Status</label>

@@ -216,7 +216,7 @@ export default function AdminBrandsPage() {
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Sort Order</label>
               <input type="number" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
-                value={form.sort_order} onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) || 0 }))} />
+                value={form.sort_order} onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) || 0 }))} placeholder="e.g. 0 (lower = appears first in brand filter)" />
             </div>
             <div className="flex items-end pb-1">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -242,6 +242,7 @@ export default function AdminBrandsPage() {
                   if (f) { setLogoFile(f); setLogoPreview(URL.createObjectURL(f)); setRemoveLogo(false) }
                 }} />
             )}
+            <p className="text-xs text-gray-400 mt-1">PNG or JPG, recommended 200x200px. Shows on product cards.</p>
           </div>
 
           <div className="flex gap-3 pt-2">

@@ -301,6 +301,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             label="Name"
             value={form.name}
             readOnly={isView}
+            placeholder="e.g. Organic Triphala Powder"
             onChange={(v: string) => {
 
               setForm({
@@ -385,6 +386,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
   label="HSN Code"
   value={form.hsn_code}
   readOnly={isView}
+  placeholder="e.g. 30039011 (auto-filled from category)"
   onChange={(v:string)=>
     setForm({...form,hsn_code:v})
   }
@@ -433,6 +435,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             label="Tags (comma separated)"
             value={typeof form.tags === 'string' ? form.tags : (form.tags || []).join(', ')}
             readOnly={isView}
+            placeholder="e.g. bestseller, new arrival, organic, immunity"
             onChange={(v: string) => setForm({ ...form, tags: v })}
           />
 
@@ -470,9 +473,10 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
           {/* UNIT */}
           <Input
-            label="Unit"
+            label="Unit (pack size shown next to price)"
             value={form.unit}
             readOnly={isView}
+            placeholder="e.g. 50g, 100ml, 500g, 1kg, 60 tablets"
             onChange={(v: string) => setForm({ ...form, unit: v })}
           />
 
@@ -488,10 +492,11 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
         <Grid>
 
           <Input
-            label="Price"
+            label="Selling Price (₹)"
             type="number"
             value={form.price}
             readOnly={isView}
+            placeholder="e.g. 499"
             onChange={(v: string) =>
               setForm({ ...form, price: v })
             }
@@ -499,20 +504,22 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
 
           <Input
-            label="Compare Price (MRP)"
+            label="Compare Price / MRP (₹) — shows as strikethrough"
             type="number"
             value={form.compareprice}
             readOnly={isView}
+            placeholder="e.g. 699 (must be higher than selling price)"
             onChange={(v: string) =>
               setForm({ ...form, compareprice: v })
             }
           />
 
           <Input
-            label="Cost Price (your cost)"
+            label="Cost Price (₹) — private, for profit reports only"
             type="number"
             value={form.cost_price}
             readOnly={isView}
+            placeholder="e.g. 250 (never shown to customers)"
             onChange={(v: string) =>
               setForm({ ...form, cost_price: v })
             }
@@ -542,10 +549,11 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
         <Grid>
 
           <Input
-            label="Stock"
+            label="Current Stock Quantity"
             type="number"
             value={form.inventory}
             readOnly={isView}
+            placeholder="e.g. 100"
             onChange={(v: string) =>
               setForm({ ...form, inventory: v })
             }
@@ -553,34 +561,38 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
 
           <Input
-            label="SKU"
+            label="SKU (Stock Keeping Unit)"
             value={form.sku}
             readOnly={isView}
+            placeholder="e.g. TRP-500G-ORG"
             onChange={(v: string) =>
               setForm({ ...form, sku: v })
             }
           />
 
           <Input
-            label="Barcode"
+            label="Barcode (EAN/UPC)"
             value={form.barcode}
             readOnly={isView}
+            placeholder="e.g. 8901234567890"
             onChange={(v: string) => setForm({ ...form, barcode: v })}
           />
 
           <Input
-            label="Weight (grams)"
+            label="Weight (grams) — for shipping calculation"
             type="number"
             value={form.weight_grams}
             readOnly={isView}
+            placeholder="e.g. 500"
             onChange={(v: string) => setForm({ ...form, weight_grams: v })}
           />
 
           <Input
-            label="Low Stock Alert Threshold"
+            label="Low Stock Alert Threshold — notify when stock drops below"
             type="number"
             value={form.low_stock_threshold}
             readOnly={isView}
+            placeholder="e.g. 10"
             onChange={(v: string) => setForm({ ...form, low_stock_threshold: v })}
           />
 
@@ -597,18 +609,20 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
           </div>
 
           <Input
-            label="Min Order Qty"
+            label="Min Order Qty — minimum per order"
             type="number"
             value={form.min_order_qty}
             readOnly={isView}
+            placeholder="e.g. 1 (default) or 2 for bulk-only products"
             onChange={(v: string) => setForm({ ...form, min_order_qty: v })}
           />
 
           <Input
-            label="Max Order Qty"
+            label="Max Order Qty — prevent hoarding"
             type="number"
             value={form.max_order_qty}
             readOnly={isView}
+            placeholder="e.g. 100 (default) or 10 for limited items"
             onChange={(v: string) => setForm({ ...form, max_order_qty: v })}
           />
 
@@ -634,9 +648,10 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
       <Section title="Description">
 
         <TextArea
-          label="Short Description"
+          label="Short Description (shown in product cards & search)"
           value={form.shortdescription}
           readOnly={isView}
+          placeholder="e.g. Pure organic Triphala powder for digestive health. Made from Amla, Haritaki & Bibhitaki. Lab-tested, no preservatives."
           onChange={(v: string) =>
             setForm({ ...form, shortdescription: v })
           }
@@ -644,10 +659,11 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
 
         <TextArea
-          label="Long Description"
+          label="Long Description (full product page details)"
           rows={5}
           value={form.longdescription}
           readOnly={isView}
+          placeholder="e.g. Triphala is a traditional Ayurvedic formulation made from three fruits — Amla (Indian Gooseberry), Haritaki (Chebulic Myrobalan) and Bibhitaki (Belleric Myrobalan). Our Triphala powder is sourced from certified organic farms in Kerala..."
           onChange={(v: string) =>
             setForm({ ...form, longdescription: v })
           }
@@ -661,50 +677,56 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
       <Section title="Ayurvedic Details">
 
         <TextArea
-          label="Product Highlights"
+          label="Product Highlights (key selling points)"
           rows={3}
           value={form.highlights}
           readOnly={isView}
+          placeholder={"e.g.\n• 100% Certified Organic\n• Lab-tested for purity\n• No artificial preservatives\n• Sourced from Indian farms\n• GMP certified manufacturing"}
           onChange={(v: string) => setForm({ ...form, highlights: v })}
         />
 
         <TextArea
-          label="Ingredients"
+          label="Ingredients (complete list — mandatory for Ayurvedic products)"
           rows={3}
           value={form.ingredients}
           readOnly={isView}
+          placeholder={"e.g. Amla (Emblica officinalis) fruit powder, Haritaki (Terminalia chebula) fruit powder, Bibhitaki (Terminalia bellirica) fruit powder. No added colors, flavors, or preservatives."}
           onChange={(v: string) => setForm({ ...form, ingredients: v })}
         />
 
         <TextArea
-          label="Health Benefits"
+          label="Health Benefits (what the product does)"
           rows={3}
           value={form.benefits}
           readOnly={isView}
+          placeholder={"e.g.\n• Supports healthy digestion and regular bowel movement\n• Rich in Vitamin C and antioxidants\n• Helps in natural detoxification\n• Supports immune system\n• Promotes healthy skin and hair"}
           onChange={(v: string) => setForm({ ...form, benefits: v })}
         />
 
         <TextArea
-          label="Usage / Dosage Instructions"
+          label="Usage / Dosage Instructions (how to consume)"
           rows={3}
           value={form.usage_instructions}
           readOnly={isView}
+          placeholder={"e.g. Take 1-2 teaspoons (3-6g) with warm water or honey before bedtime. For best results, use regularly for at least 3 months. Consult an Ayurvedic practitioner for personalized dosage."}
           onChange={(v: string) => setForm({ ...form, usage_instructions: v })}
         />
 
         <TextArea
-          label="Storage Instructions"
+          label="Storage Instructions (how to store)"
           rows={2}
           value={form.storage_instructions}
           readOnly={isView}
+          placeholder="e.g. Store in a cool, dry place away from direct sunlight. Keep the lid tightly closed after use. Best consumed within 12 months of opening."
           onChange={(v: string) => setForm({ ...form, storage_instructions: v })}
         />
 
         <TextArea
-          label="Warnings & Precautions"
+          label="Warnings & Precautions (safety information)"
           rows={2}
           value={form.warnings}
           readOnly={isView}
+          placeholder="e.g. Not recommended for pregnant or lactating women. Consult your physician before use if on medication. Keep out of reach of children. Discontinue if any adverse reaction occurs."
           onChange={(v: string) => setForm({ ...form, warnings: v })}
         />
 
@@ -817,12 +839,14 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
       {/* MEDIA */}
 
-      <Section title="Media">
+      <Section title="Media (Video)">
+        <p className="text-xs text-gray-500 mb-2">Add a product demo or explainer video. Videos increase conversion by 20-30%.</p>
         <Grid>
           <Input
-            label="Video URL"
+            label="Video URL (YouTube or direct link)"
             value={form.video_url}
             readOnly={isView}
+            placeholder="e.g. https://www.youtube.com/watch?v=abc123"
             onChange={(v: string) => setForm({ ...form, video_url: v })}
           />
         </Grid>
@@ -832,6 +856,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
       {/* SHIPPING */}
 
       <Section title="Shipping">
+        <p className="text-xs text-gray-500 mb-2">Controls how shipping charges are calculated for this product.</p>
         <Grid>
           <div className="space-y-1">
             <label className="text-sm font-medium">Shipping Class</label>
@@ -841,10 +866,10 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
               onChange={e => setForm({ ...form, shipping_class: e.target.value })}
               className={`w-full border rounded px-3 py-2 focus:ring-2 focus:ring-emerald-500 ${isView ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
             >
-              <option value="standard">Standard</option>
-              <option value="free">Free</option>
-              <option value="heavy">Heavy</option>
-              <option value="fragile">Fragile</option>
+              <option value="standard">Standard — normal shipping charges</option>
+              <option value="free">Free — no shipping fee for this product</option>
+              <option value="heavy">Heavy — higher shipping fee (bulky items)</option>
+              <option value="fragile">Fragile — special handling fee (glass bottles etc.)</option>
             </select>
           </div>
         </Grid>
@@ -853,18 +878,21 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
       {/* COMPLIANCE */}
 
-      <Section title="Compliance">
+      <Section title="Compliance & Certifications">
+        <p className="text-xs text-gray-500 mb-2">Legal compliance fields. FSSAI is mandatory for food/supplement products in India.</p>
         <Grid>
           <Input
-            label="FSSAI Number"
+            label="FSSAI License Number"
             value={form.fssai_number}
             readOnly={isView}
+            placeholder="e.g. 10020011000123"
             onChange={(v: string) => setForm({ ...form, fssai_number: v })}
           />
           <Input
-            label="COA / Lab Report URL"
+            label="Certificate of Analysis (Lab Report URL)"
             value={form.coa_url}
             readOnly={isView}
+            placeholder="e.g. https://s3.amazonaws.com/reports/triphala-coa.pdf"
             onChange={(v: string) => setForm({ ...form, coa_url: v })}
           />
         </Grid>
@@ -873,26 +901,32 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
       {/* SPECIFICATIONS */}
       <Section title="Specifications (optional)">
-        <p className="text-xs text-gray-500 mb-2">{'Add product specifications as JSON array: [{"key":"Ingredient","value":"Amla"}, ...]'}</p>
+        <p className="text-xs text-gray-500 mb-2">{'Add product specifications as a JSON array. Example: [{"key":"Shelf Life","value":"24 months"}, {"key":"Country of Origin","value":"India"}, {"key":"Manufacturer","value":"Oroganix Pvt Ltd"}, {"key":"Certification","value":"FSSAI, GMP, Organic"}]'}</p>
         <TextArea
           label="Specifications JSON"
           rows={3}
           value={typeof form.specifications === 'string' ? form.specifications : JSON.stringify(form.specifications || [], null, 2)}
           readOnly={isView}
+          placeholder={'[{"key":"Shelf Life","value":"24 months"}, {"key":"Country of Origin","value":"India"}]'}
           onChange={(v: string) => setForm({ ...form, specifications: v })}
         />
       </Section>
 
       {/* SEO */}
-      <Section title="SEO (optional)">
+      <Section title="SEO (Search Engine Optimization)">
+        <p className="text-xs text-gray-500 mb-2">These fields improve your product's visibility on Google. Keep Meta Title under 60 characters and Meta Description under 160 characters.</p>
         <Grid>
-          <Input label="Meta Title" value={form.meta_title} readOnly={isView}
+          <Input label="Meta Title (browser tab + Google title)" value={form.meta_title} readOnly={isView}
+            placeholder="e.g. Organic Triphala Powder 500g | Oroganix"
             onChange={(v: string) => setForm({ ...form, meta_title: v })} />
-          <Input label="Meta Description" value={form.meta_description} readOnly={isView}
+          <Input label="Meta Description (Google search snippet)" value={form.meta_description} readOnly={isView}
+            placeholder="e.g. Buy pure organic Triphala powder for digestion. Lab-tested, no preservatives. Free shipping above ₹499."
             onChange={(v: string) => setForm({ ...form, meta_description: v })} />
-          <Input label="Focus Keyword" value={form.focus_keyword} readOnly={isView}
+          <Input label="Focus Keyword (primary SEO keyword)" value={form.focus_keyword} readOnly={isView}
+            placeholder="e.g. organic triphala powder"
             onChange={(v: string) => setForm({ ...form, focus_keyword: v })} />
-          <Input label="Sort Order" type="number" value={form.sort_order} readOnly={isView}
+          <Input label="Sort Order (display position: 0 = first)" type="number" value={form.sort_order} readOnly={isView}
+            placeholder="e.g. 0"
             onChange={(v: string) => setForm({ ...form, sort_order: v })} />
         </Grid>
       </Section>

@@ -262,7 +262,7 @@ export default function AdminBanners() {
               </div>
               <div>
                 <label className={labelCls}>Sort Order</label>
-                <input type="number" min={0} value={form.sort_order} onChange={e => set('sort_order', e.target.value)} className={inputCls} />
+                <input type="number" min={0} value={form.sort_order} onChange={e => set('sort_order', e.target.value)} placeholder="e.g. 0 (lower = shows first in carousel)" className={inputCls} />
               </div>
             </div>
 
@@ -301,7 +301,7 @@ export default function AdminBanners() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>CTA Button Text</label>
-                <input value={form.cta_text} onChange={e => set('cta_text', e.target.value)} maxLength={80} className={inputCls} />
+                <input value={form.cta_text} onChange={e => set('cta_text', e.target.value)} maxLength={80} placeholder="e.g. Shop Now, Explore, Buy Now" className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>CTA Link</label>

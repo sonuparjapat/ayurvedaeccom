@@ -323,7 +323,7 @@ export default function AdminBlogPage() {
             <textarea className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none resize-y font-mono" rows={10}
               value={form.content}
               onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-              placeholder="HTML content of the post..." />
+              placeholder="Write your blog post content here. HTML tags are supported for formatting (bold, lists, headings)." />
           </div>
 
           {/* Cover Image */}
@@ -342,6 +342,7 @@ export default function AdminBlogPage() {
                   if (f) { setCoverFile(f); setCoverPreview(URL.createObjectURL(f)); setRemoveCover(false) }
                 }} />
             )}
+            <p className="text-xs text-gray-400 mt-1">Recommended: 1200x600px, JPG or PNG. Shows as hero image on the blog post.</p>
           </div>
 
           {/* Category & Author */}

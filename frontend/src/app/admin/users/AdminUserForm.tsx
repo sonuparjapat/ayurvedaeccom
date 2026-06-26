@@ -190,6 +190,7 @@ useEffect(() => {
   error={errors.name}
   disabled={isView}
   onChange={handleChange}
+  placeholder="e.g. Rajesh Kumar"
 />
 
 
@@ -203,6 +204,7 @@ useEffect(() => {
           error={errors.email}
           disabled={isView || isEdit}
           onChange={handleChange}
+          placeholder="e.g. rajesh@example.com"
         />
 
 
@@ -215,6 +217,7 @@ useEffect(() => {
           error={errors.phone}
           disabled={isView}
           onChange={handleChange}
+          placeholder="e.g. +91 98765 43210"
         />
 
 

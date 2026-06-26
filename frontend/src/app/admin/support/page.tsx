@@ -314,7 +314,7 @@ export default function AdminSupportPage() {
                   <textarea
                     value={reply}
                     onChange={e => setReply(e.target.value)}
-                    placeholder="Type your reply to the customer..."
+                    placeholder="Type your response to the customer..."
                     rows={2}
                     className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(e) } }}

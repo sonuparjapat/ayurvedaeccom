@@ -595,6 +595,7 @@ const columns = [
                   <option key={c.id} value={c.id}>{'— '.repeat(c.level || 0)}{c.name}</option>
                 ))}
               </select>
+              <p className="text-xs text-gray-400 mt-1">Leave empty for top-level category. Select a parent to create a subcategory (e.g. 'Churna' under 'Digestive Care').</p>
             </div>
 
             {/* NAME */}
@@ -609,6 +610,7 @@ const columns = [
                   if (!editData) setSlug(e.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'))
                 }}
                 maxLength={50}
+                placeholder="e.g. Ayurvedic Supplements, Herbal Oils"
                 className="input"
               />
             </div>
@@ -636,6 +638,7 @@ const columns = [
                   type="number"
                   value={sortOrder}
                   onChange={e => setSortOrder(Number(e.target.value) || 0)}
+                  placeholder="e.g. 0 (lower number = shows first)"
                   className="input"
                 />
               </div>
@@ -645,6 +648,7 @@ const columns = [
                     onChange={e => setIsFeatured(e.target.checked)} />
                   <span className="text-sm font-medium">Featured</span>
                 </label>
+                <p className="text-xs text-gray-400">Featured categories appear prominently on the homepage</p>
               </div>
             </div>
 
@@ -662,6 +666,7 @@ const columns = [
                 max={100}
                 value={gstpercent}
                 onChange={e => setGstPercent(e.target.value)}
+                placeholder="e.g. 18 (auto-applies to products in this category)"
                 className="input"
               />
             </div>
@@ -674,6 +679,7 @@ const columns = [
     value={hsnCode}
     onChange={e => setHsnCode(e.target.value)}
     maxLength={30}
+    placeholder="e.g. 30039011 (tax classification code for invoices)"
     className="input"
   />
 </div>
@@ -702,6 +708,7 @@ const columns = [
     max={100}
     value={cessPercent}
     onChange={e => setCessPercent(e.target.value)}
+    placeholder="e.g. 0 (additional tax, usually 0 for Ayurvedic)"
     className="input"
   />
 </div>
@@ -717,7 +724,7 @@ const columns = [
               <input
                 value={color}
                 onChange={e => setColor(e.target.value)}
-                placeholder="bg-red-500 text-white"
+                placeholder="e.g. bg-emerald-500 (for UI styling, optional)"
                 className="input"
               />
             </div>
@@ -734,6 +741,7 @@ const columns = [
                 rows={3}
                 value={desc}
                 onChange={e => setDesc(e.target.value)}
+                placeholder="e.g. Traditional Ayurvedic supplements for immunity, digestion, and wellness"
                 className="input resize-none"
               />
             </div>

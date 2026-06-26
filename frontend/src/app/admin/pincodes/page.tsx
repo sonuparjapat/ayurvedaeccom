@@ -325,6 +325,7 @@ export default function AdminPincodesPage() {
                   onChange={e => set('delivery_days', e.target.value)}
                   min={1}
                   max={30}
+                  placeholder="e.g. 3 (estimated days to deliver to this pincode)"
                   className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
                 />
               </div>

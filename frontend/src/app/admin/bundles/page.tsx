@@ -338,6 +338,7 @@ export default function BundlesPage() {
                     })
                   }
                 />
+                <p className="text-xs text-gray-400 mt-1">Bundle display image. JPG/PNG, recommended 800x800px.</p>
                 {editing?.image_url && !form.image && (
                   <p className="text-xs text-gray-400 mt-1">
                     Current image will be kept if no new file is selected

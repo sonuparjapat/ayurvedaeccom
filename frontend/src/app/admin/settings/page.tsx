@@ -361,6 +361,7 @@ export default function AdminSettingsPage() {
             label="Key"
             value={form.key}
             disabled={mode !== 'create'}
+            placeholder="e.g. delivery_charge, platform_fee, free_delivery_limit"
             onChange={v =>
               setForm({ ...form, key: v })
             }
@@ -371,6 +372,7 @@ export default function AdminSettingsPage() {
             label="Value"
             value={form.value}
             disabled={mode === 'view'}
+            placeholder="e.g. 49 (the actual value for this setting)"
             onChange={v =>
               setForm({ ...form, value: v })
             }
@@ -391,6 +393,7 @@ export default function AdminSettingsPage() {
             label="Description"
             value={form.description}
             disabled={mode === 'view'}
+            placeholder="e.g. Flat delivery charge added to orders below free delivery limit"
             onChange={v =>
               setForm({ ...form, description: v })
             }
@@ -419,7 +422,7 @@ export default function AdminSettingsPage() {
    SMALL FIELDS
 ===================================================== */
 
-function Field({ label, value, onChange, disabled }: any) {
+function Field({ label, value, onChange, disabled, placeholder }: any) {
 
   return (
 
@@ -433,6 +436,7 @@ function Field({ label, value, onChange, disabled }: any) {
         value={value || ''}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
         className="
           w-full border rounded px-3 py-2
           focus:ring-2 focus:ring-emerald-500

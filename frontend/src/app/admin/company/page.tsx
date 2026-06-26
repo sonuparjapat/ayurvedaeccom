@@ -214,9 +214,10 @@ export default function CompanyPage() {
         }
       >
         <div className="grid gap-4">
+          <p className="text-xs text-gray-500 mb-3">Company details appear on invoices, footer, and contact pages.</p>
 
           <input
-            placeholder="Company Name *"
+            placeholder="e.g. Oroganix Pvt Ltd"
             className="border p-2 rounded-lg"
             value={form.company_name}
             onChange={(e) =>
@@ -225,7 +226,7 @@ export default function CompanyPage() {
           />
 
           <input
-            placeholder="Email"
+            placeholder="e.g. support@oroganix.com"
             className="border p-2 rounded-lg"
             value={form.email}
             onChange={(e) =>
@@ -234,7 +235,7 @@ export default function CompanyPage() {
           />
 
           <input
-            placeholder="Phone"
+            placeholder="e.g. +91 98765 43210"
             className="border p-2 rounded-lg"
             value={form.phone}
             onChange={(e) =>
@@ -243,7 +244,7 @@ export default function CompanyPage() {
           />
 
           <input
-            placeholder="City"
+            placeholder="e.g. Mumbai"
             className="border p-2 rounded-lg"
             value={form.city}
             onChange={(e) =>
@@ -252,7 +253,7 @@ export default function CompanyPage() {
           />
 
           <input
-            placeholder="State"
+            placeholder="e.g. Maharashtra"
             className="border p-2 rounded-lg"
             value={form.state}
             onChange={(e) =>
@@ -261,7 +262,7 @@ export default function CompanyPage() {
           />
 
           <input
-            placeholder="Country"
+            placeholder="e.g. India"
             className="border p-2 rounded-lg"
             value={form.country}
             onChange={(e) =>
