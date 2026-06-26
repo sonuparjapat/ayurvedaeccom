@@ -446,7 +446,7 @@ export default function UserManualPage() {
               ['Invoices', 'View and download all generated invoices.'],
               ['Analytics', 'Revenue charts (daily, weekly, monthly), order stats, product performance.'],
               ['Visitors', 'Live visitor count, total/unique page views, daily traffic chart, top pages, device breakdown (desktop/mobile/tablet), browser breakdown. Filter by 24h, 7 days, 30 days, or 90 days. Auto-refreshes every 60 seconds.'],
-              ['Blog', 'Create and manage blog posts with cover image, rich content, categories, tags, SEO meta fields. Posts can be draft, published, or archived. View count tracking.'],
+              ['Blog', 'Create and manage blog posts with a full WYSIWYG rich text editor — format text with bold, italic, headings, lists, blockquotes, code blocks, insert images and links, change text color and alignment. Upload cover images, set categories, tags, author name, and SEO meta fields. Posts can be draft, published, or archived. View count tracking. Blog is accessible on both website (/blog) and mobile app.'],
               ['Bundles', 'Create product bundles ("Buy together & save"). Set discount type (flat/percent), select products, and manage bundle images. Customers can add entire bundles to cart.'],
               ['Subscriptions', 'View all auto-reorder subscriptions. See customer, product, frequency, next order date, total orders, and status (active/paused/cancelled).'],
               ['Newsletter', 'View all newsletter subscribers with stats (total, active, unsubscribed). Search by email, filter by status, export active subscribers as CSV. Subscribers come from the footer newsletter form on the website.'],
@@ -1107,7 +1107,8 @@ export default function UserManualPage() {
               ['Support', 'Create and view support tickets. Chat with support team.'],
               ['Search', 'Full-text product search with instant autocomplete suggestions and recent search history. Results tap through to product or category.'],
               ['Wishlist', 'All saved products with add-to-cart shortcut. Pull down to refresh your saved items.'],
-              ['Auth', 'Login with email/password or OTP.'],
+              ['Auth', 'Login with email/password, OTP, or Google.'],
+              ['Blog', 'Browse blog posts with cover images, categories, and excerpts. Tap any post to read the full article with share button.'],
             ]}
           />
           <InfoBox type="tip">A persistent <strong>bottom navigation bar</strong> appears on all main screens (Home, Browse/Products, Wishlist, Account) so you can switch sections without going back. It uses a frosted glass effect and highlights the active tab.</InfoBox>
