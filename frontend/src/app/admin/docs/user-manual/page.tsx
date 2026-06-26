@@ -281,6 +281,10 @@ export default function UserManualPage() {
               ['Wishlist', 'Click the heart icon on any product to save it. Access all saved items from My Account → Wishlist.'],
               ['Product Q&A', 'Scroll to the Q&A section on any product page to ask a question or read existing answers from other customers or the store team.'],
               ['Pincode Checker', 'Enter your pincode on the product page to confirm delivery availability and estimated days.'],
+              ['Product FAQs', 'Admin-written FAQs appear on product pages as collapsible questions and answers. Helps customers find answers without contacting support. Also improves SEO with Google FAQ rich snippets.'],
+              ['Newsletter', 'Subscribe to the newsletter via the footer form. Enter your email to receive updates on new products, Ayurvedic tips, and exclusive offers.'],
+              ['Policy Pages', 'Privacy Policy, Terms & Conditions, Shipping Policy, and Return Policy pages are accessible from the footer. Content is managed by admin in Company Settings.'],
+              ['SEO-friendly URLs', 'Product pages use slug-based URLs (e.g., /product/gokhru-whole-dried) instead of numeric IDs for better search engine ranking and readability.'],
             ]}
           />
           <InfoBox type="tip">Products marked <strong>Out of Stock</strong> show a "Notify Me" button. Enter your email and the system automatically emails you when the product is restocked.</InfoBox>
@@ -445,6 +449,7 @@ export default function UserManualPage() {
               ['Blog', 'Create and manage blog posts with cover image, rich content, categories, tags, SEO meta fields. Posts can be draft, published, or archived. View count tracking.'],
               ['Bundles', 'Create product bundles ("Buy together & save"). Set discount type (flat/percent), select products, and manage bundle images. Customers can add entire bundles to cart.'],
               ['Subscriptions', 'View all auto-reorder subscriptions. See customer, product, frequency, next order date, total orders, and status (active/paused/cancelled).'],
+              ['Newsletter', 'View all newsletter subscribers with stats (total, active, unsubscribed). Search by email, filter by status, export active subscribers as CSV. Subscribers come from the footer newsletter form on the website.'],
               ['Banners', 'Create homepage banner slides with images and call-to-action links.'],
               ['Coupons', 'Create discount codes (flat or percentage), set usage limits and validity.'],
               ['Flash Sales', 'Create time-limited sales with countdown timers and special prices.'],
@@ -460,7 +465,7 @@ export default function UserManualPage() {
               ['Returns', 'View return requests from customers. Approve or reject returns, credit wallet refunds, and mark refunds complete.'],
               ['Export Data', 'Download orders, users, and revenue data as CSV files.'],
               ['Settings', 'Platform configuration — delivery charges, platform fees, free delivery threshold.'],
-              ['Company', 'Update company name, address, GST number, logo, social links.'],
+              ['Company', 'Update company name, address, GST number, logo, social links, and policy pages (Privacy Policy, Terms & Conditions, Shipping Policy, Return Policy). Social links appear in the footer. Policy content supports HTML formatting.'],
               ['Logs', 'Audit trail of all admin actions.'],
               ['Jobs', 'Background task queue status and history.'],
             ]}

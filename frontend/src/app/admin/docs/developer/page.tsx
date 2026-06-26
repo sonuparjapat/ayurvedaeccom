@@ -1132,6 +1132,75 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 // Returns products where inventory <= low_stock_threshold (and > 0)
 // Also returns completely out-of-stock products (inventory <= 0)
 // Admin UI: stock-notifications page shows alerts at top with badges`}</Code>
+          <H3>Slug-based product URLs (SEO)</H3>
+          <Code>{`// Product URLs changed from /product/123 to /product/gokhru-whole-dried
+//
+// Backend: resolveProductId(idOrSlug) helper in product.controller.js + qa.controller.js
+//   - If input is numeric → use as ID directly
+//   - If input is string → SELECT id FROM products WHERE slug=$1
+//   - Used in: getsingleproduct, getRelatedProducts, getProductVariants,
+//     getRatingBreakdown, getProductReviews, addOrUpdateReview,
+//     getProductQA, askQuestion
+//
+// Frontend (web): all <Link href="/product/..."> use slug || id
+// Frontend (mobile): all router.push("/product/...") use slug || id
+// Sitemap: uses slug-based URLs for products
+// Backend single product: WHERE p.id=$1 OR p.slug=$1 (auto-detect)`}</Code>
+          <H3>Product FAQs (admin-written)</H3>
+          <Code>{`// Database: products.faqs JSONB DEFAULT '[]'
+// Format: [{"question":"Is this organic?","answer":"Yes, 100% certified."},...]
+// Admin: FAQs JSON textarea in AdminProductForm
+// Web: collapsible accordion on product detail page
+// Mobile: Q&A cards on product detail page
+// SEO: FAQPage JSON-LD schema for Google rich snippets (auto-generated from faqs field)`}</Code>
+          <H3>Newsletter subscription system</H3>
+          <Code>{`// Database: newsletter_subscribers (email UNIQUE, is_active, subscribed_at)
+// Public API:
+//   POST /api/newsletter/subscribe — validates email, handles re-subscribe
+//   POST /api/newsletter/unsubscribe — soft-deactivate
+// Admin API:
+//   GET /api/newsletter/admin — paginated list with status filter
+//   GET /api/newsletter/admin/export — CSV download of active subscribers
+//   DELETE /api/newsletter/admin/:id — hard delete
+// Frontend: footer newsletter form connected to API with toast feedback
+// Admin: /admin/newsletter — stats, search, filter, export, delete`}</Code>
+          <H3>Policy pages (dynamic from company settings)</H3>
+          <Code>{`// Database: company_settings columns:
+//   privacy_policy TEXT, terms_conditions TEXT, shipping_policy TEXT, return_policy TEXT
+// Admin: Company page → Policy Pages section with 4 HTML textareas
+// Frontend pages:
+//   /privacy — renders privacy_policy from company data
+//   /terms — renders terms_conditions
+//   /shipping — renders shipping_policy
+//   /returns — renders return_policy
+// All render HTML via dangerouslySetInnerHTML with "Coming soon" fallback`}</Code>
+          <H3>Dynamic footer</H3>
+          <Code>{`// Footer pulls all data from API (not hardcoded):
+//   Categories: from auth context categoriesdata (top-level only, slug links)
+//   Social links: from company_settings.social_links JSONB
+//   Contact: from company_settings.email, phone, city, state, country
+//   Company name: from company_settings.company_name
+//   Newsletter: POST /api/newsletter/subscribe with email validation`}</Code>
+          <H3>SEO implementation</H3>
+          <Code>{`// Root layout (layout.tsx):
+//   metadataBase, title template "%s | Oroganix", OG image, Twitter card
+//   robots directive with googleBot max-image-preview
+// Product layout:
+//   generateMetadata with meta_title, meta_description, focus_keyword, canonical
+// Product page:
+//   JSON-LD: Product schema (brand, gtin, weight, offers, aggregateRating)
+//   JSON-LD: BreadcrumbList
+//   JSON-LD: FAQPage (from product.faqs)
+// Homepage:
+//   JSON-LD: Organization (name, logo, contactPoint)
+//   JSON-LD: WebSite with SearchAction
+// Category page:
+//   JSON-LD: CollectionPage, dynamic document.title
+// Blog post:
+//   JSON-LD: Article (headline, author, publisher, dates)
+// Sitemap (sitemap.ts):
+//   Products (slug URLs), Categories (slug), Blog posts, Static pages
+// robots.ts: disallow /admin/, /checkout, /api/, /account`}</Code>
         </Section>
 
         {/* ═══ DEPLOY ═══ */}
