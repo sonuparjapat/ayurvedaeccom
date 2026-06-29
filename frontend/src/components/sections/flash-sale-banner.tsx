@@ -90,11 +90,11 @@ export function FlashSaleBanner() {
                 const stockLeft = Math.max(0, (p.stock_limit || 999) - (p.sold_count || 0))
                 const pctSold = p.stock_limit ? Math.min(100, Math.round(((p.sold_count || 0) / p.stock_limit) * 100)) : 0
                 return (
-                  <Link key={p.product_id} href={`/product/${p.product_id}`}
+                  <Link key={p.product_id} href={`/product/${(p as any).slug || p.product_id}`}
                     className="shrink-0 w-36 bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow">
                     <div className="relative h-32 w-full bg-gray-50">
                       {p.image ? (
-                        <Image src={p.image} alt={p.product_name} fill className="object-cover" />
+                        <img src={p.image} alt={p.product_name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-orange-50 text-orange-300 text-3xl">⚡</div>
                       )}

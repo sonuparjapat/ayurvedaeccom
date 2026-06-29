@@ -670,7 +670,7 @@ function FlashSaleSection({ sale }: { sale: any }) {
           {(sale.products || []).map((p: any) => {
             const pctSold = p.stock_limit ? Math.min(100, Math.round(((p.sold_count || 0) / p.stock_limit) * 100)) : 0
             return (
-              <TouchableOpacity key={p.product_id} onPress={() => router.push(`/product/${p.product_id}`)} activeOpacity={0.9}
+              <TouchableOpacity key={p.product_id} onPress={() => router.push(`/product/${p.slug || p.product_id}`)} activeOpacity={0.9}
                 style={{ width: 130, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden' }}>
                 {p.image ? (
                   <ExpoImage source={{ uri: p.image }} style={{ width: 130, height: 110 }} contentFit="cover" transition={200} />

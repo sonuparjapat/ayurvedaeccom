@@ -237,6 +237,10 @@ export default function ProductDetailScreen() {
   // Related products
   const [relatedProducts, setRelatedProducts] = useState<any[]>([])
 
+  // Flash sale
+  const [flashPrice, setFlashPrice] = useState<number | null>(null)
+  const [flashDiscount, setFlashDiscount] = useState(0)
+
   // Pincode check
   const [pincode, setPincode] = useState('')
   const [pincodeResult, setPincodeResult] = useState<any>(null)
@@ -261,6 +265,13 @@ export default function ProductDetailScreen() {
     api.get(`/shop/variants/${id}`).then(r => setVariants(r.data?.variants || [])).catch(() => {})
     api.get(`/shop/related/${id}`).then(r => setRelatedProducts(r.data?.products || [])).catch(() => {})
     api.get(`/qa/product/${id}`).then(r => setQuestions(r.data?.questions || [])).catch(() => {})
+    api.get('/flash-sales/active').then(r => {
+      const sales = r.data?.sales || []
+      for (const sale of sales) {
+        const sp = (sale.products || []).find((p: any) => String(p.product_id) === String(id) || p.slug === id)
+        if (sp) { setFlashPrice(Number(sp.flash_price)); setFlashDiscount(Number(sp.discount_percent || 0)); break }
+      }
+    }).catch(() => {})
     // recently-viewed logged inside fetchProduct after product loads
   }, [id])
 
@@ -302,7 +313,7 @@ export default function ProductDetailScreen() {
   }
 
   const effectiveInventory = selectedVariant ? selectedVariant.inventory : product?.inventory ?? 0
-  const effectivePrice = selectedVariant ? selectedVariant.price : product?.price ?? '0'
+  const effectivePrice = flashPrice ?? (selectedVariant ? selectedVariant.price : product?.price ?? '0')
 
   const handleAddCart = async () => {
     // If already in cart, navigate there instead of re-adding
@@ -501,11 +512,18 @@ export default function ProductDetailScreen() {
             )}
           </View>
 
+          {/* Flash Sale Badge */}
+          {flashPrice != null && (
+            <View style={{ backgroundColor: '#dc2626', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, alignSelf: 'flex-start' }}>
+              <Text style={{ fontSize: 14 }}>⚡</Text>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: '#fff' }}>Flash Sale — {flashDiscount}% OFF</Text>
+            </View>
+          )}
           {/* Price */}
           <View style={ss.priceRow}>
             <Text style={ss.price}>₹{effectivePrice}</Text>
             {product.unit && <Text style={{ fontFamily: Fonts.regular, fontSize: 13, color: Colors.textDim, alignSelf: 'flex-end', marginBottom: 4 }}>({product.unit})</Text>}
-            {product.compareprice && <Text style={ss.mrp}>₹{product.compareprice}</Text>}
+            {(flashPrice != null || product.compareprice) && <Text style={ss.mrp}>₹{flashPrice != null ? product.price : product.compareprice}</Text>}
             {disc != null && disc > 0 && (
               <View style={ss.savePill}>
                 <Text style={ss.saveText}>🎉 Save {disc}%</Text>

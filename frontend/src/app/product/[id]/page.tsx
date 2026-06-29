@@ -186,7 +186,7 @@ const handlepagechage=(page:number)=>{
     axios.get('/flash-sales/active').then((r) => {
       const sales = r.data?.sales || []
       for (const sale of sales) {
-        const sp = (sale.products || []).find((p: any) => String(p.product_id) === String(id))
+        const sp = (sale.products || []).find((p: any) => String(p.product_id) === String(id) || p.slug === id)
         if (sp) {
           setFlashSaleInfo({ flash_price: sp.flash_price, ends_at: sale.ends_at, title: sale.title, discount_percent: sp.discount_percent })
           break
