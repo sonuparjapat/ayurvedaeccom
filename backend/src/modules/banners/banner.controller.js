@@ -1,4 +1,5 @@
 const pool = require('../../config/db');
+const { uploadImageToAWS, deleteFromAWS } = require('../../utils/awsImageUpload');
 
 /* ─── PUBLIC: active banners for home carousel ───────────────────────────── */
 
@@ -42,13 +43,16 @@ exports.adminList = async (req, res) => {
 
 exports.adminCreate = async (req, res) => {
   try {
-    const { tag, title, subtitle, image_url, bg_color1, bg_color2, cta_text, cta_link, sort_order } = req.body;
+    const { tag, title, subtitle, bg_color1, bg_color2, cta_text, cta_link, sort_order } = req.body;
     if (!title) return res.status(400).json({ success: false, message: 'title is required' });
+
+    let image_url = req.body.image_url || null;
+    if (req.file) image_url = await uploadImageToAWS(req.file, 'banners');
 
     const result = await pool.query(`
       INSERT INTO banners (tag, title, subtitle, image_url, bg_color1, bg_color2, cta_text, cta_link, sort_order)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *
-    `, [tag || null, title, subtitle || null, image_url || null,
+    `, [tag || null, title, subtitle || null, image_url,
         bg_color1 || '#1a3a22', bg_color2 || '#0d1f15',
         cta_text || 'Explore Products', cta_link || '/products', sort_order || 0]);
 
@@ -63,7 +67,14 @@ exports.adminCreate = async (req, res) => {
 exports.adminUpdate = async (req, res) => {
   try {
     const { id } = req.params;
-    const { tag, title, subtitle, image_url, bg_color1, bg_color2, cta_text, cta_link, sort_order, is_active } = req.body;
+    const { tag, title, subtitle, bg_color1, bg_color2, cta_text, cta_link, sort_order, is_active } = req.body;
+
+    let image_url = req.body.image_url || null;
+    if (req.file) {
+      const old = await pool.query('SELECT image_url FROM banners WHERE id=$1', [id]);
+      if (old.rows[0]?.image_url) await deleteFromAWS(old.rows[0].image_url).catch(() => {});
+      image_url = await uploadImageToAWS(req.file, 'banners');
+    }
 
     const result = await pool.query(`
       UPDATE banners SET

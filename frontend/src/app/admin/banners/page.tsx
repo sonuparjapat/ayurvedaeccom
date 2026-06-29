@@ -40,6 +40,9 @@ export default function AdminBanners() {
   const [editData, setEditData] = useState<Banner | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ ...EMPTY })
+  const [imageMode, setImageMode] = useState<'upload' | 'url'>('upload')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
@@ -61,6 +64,8 @@ export default function AdminBanners() {
   const openCreate = () => {
     setEditData(null)
     setForm({ ...EMPTY, sort_order: banners.length })
+    setImageFile(null)
+    setImagePreview(null)
     setOpenModal(true)
   }
 
@@ -72,6 +77,8 @@ export default function AdminBanners() {
       cta_text: row.cta_text, cta_link: row.cta_link,
       sort_order: row.sort_order, is_active: row.is_active,
     })
+    setImageFile(null)
+    setImagePreview(row.image_url || null)
     setOpenModal(true)
   }
 
@@ -93,20 +100,40 @@ export default function AdminBanners() {
     if (err) return toast.error(err)
     try {
       setSaving(true)
-      const payload = {
-        ...form,
-        tag: form.tag || null,
-        subtitle: form.subtitle || null,
-        image_url: form.image_url || null,
-        sort_order: Number(form.sort_order),
-      }
-      if (editData) {
-        await axios.put(`/banners/admin/${editData.id}`, payload)
-        toast.success('Banner updated')
+
+      if (imageFile) {
+        const fd = new FormData()
+        fd.append('image', imageFile)
+        fd.append('tag', form.tag || '')
+        fd.append('title', form.title)
+        fd.append('subtitle', form.subtitle || '')
+        fd.append('bg_color1', form.bg_color1)
+        fd.append('bg_color2', form.bg_color2)
+        fd.append('cta_text', form.cta_text)
+        fd.append('cta_link', form.cta_link)
+        fd.append('sort_order', String(form.sort_order))
+        fd.append('is_active', String(form.is_active))
+
+        if (editData) {
+          await axios.put(`/banners/admin/${editData.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+        } else {
+          await axios.post('/banners/admin', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+        }
       } else {
-        await axios.post('/banners/admin', payload)
-        toast.success('Banner created')
+        const payload = {
+          ...form,
+          tag: form.tag || null,
+          subtitle: form.subtitle || null,
+          image_url: form.image_url || null,
+          sort_order: Number(form.sort_order),
+        }
+        if (editData) {
+          await axios.put(`/banners/admin/${editData.id}`, payload)
+        } else {
+          await axios.post('/banners/admin', payload)
+        }
       }
+      toast.success(editData ? 'Banner updated' : 'Banner created')
       closeModal()
       load()
     } catch (err: any) {
@@ -277,8 +304,29 @@ export default function AdminBanners() {
             </div>
 
             <div>
-              <label className={labelCls}>Image URL <span className="normal-case text-slate-500 font-normal">(optional overlay)</span></label>
-              <input value={form.image_url} onChange={e => set('image_url', e.target.value)} placeholder="https://..." className={inputCls} />
+              <label className={labelCls}>Banner Image</label>
+              <div className="flex gap-2 mb-2">
+                <button type="button" onClick={() => setImageMode('upload')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium ${imageMode === 'upload' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'}`}>Upload File</button>
+                <button type="button" onClick={() => setImageMode('url')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium ${imageMode === 'url' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'}`}>Paste URL</button>
+              </div>
+              {imageMode === 'upload' ? (
+                <input type="file" accept="image/*" className={inputCls}
+                  onChange={e => {
+                    const f = e.target.files?.[0]
+                    if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)) }
+                  }} />
+              ) : (
+                <input value={form.image_url} onChange={e => { set('image_url', e.target.value); setImagePreview(e.target.value) }} placeholder="https://your-image-url.com/banner.jpg" className={inputCls} />
+              )}
+              {(imagePreview || form.image_url) && (
+                <div className="mt-2 relative inline-block">
+                  <img src={imagePreview || form.image_url} alt="Preview" className="h-20 rounded-lg border object-cover" />
+                  <button type="button" onClick={() => { setImagePreview(null); setImageFile(null); set('image_url', '') }}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center">×</button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
