@@ -171,6 +171,27 @@ if (addr.pincode) {
       throw new Error("Cart is empty");
     }
 
+    /* ================= FLASH SALE PRICE MAP ================= */
+
+    let flashPriceMap = {}
+    try {
+      const flashRes = await client.query(`
+        SELECT fsp.product_id,
+          COALESCE(fsp.special_price,
+            CASE WHEN fs.discount_type = 'percent'
+              THEN p.price * (1 - fs.discount_value/100)
+              ELSE p.price - fs.discount_value
+            END
+          ) AS flash_price
+        FROM flash_sale_products fsp
+        JOIN flash_sales fs ON fs.id = fsp.flash_sale_id
+        JOIN products p ON p.id = fsp.product_id
+        WHERE fs.is_active = TRUE AND fs.starts_at <= NOW() AND fs.ends_at > NOW()
+          AND (fsp.stock_limit IS NULL OR fsp.sold_count < fsp.stock_limit)
+      `)
+      flashRes.rows.forEach(r => { flashPriceMap[r.product_id] = parseFloat(r.flash_price) })
+    } catch {}
+
     /* ================= CALCULATION ================= */
 
     let subtotal = 0;
@@ -186,7 +207,9 @@ if (addr.pincode) {
         throw new Error("Some items are out of stock");
       }
 
-      const price = Number(item.effective_price);
+      const regularPrice = Number(item.effective_price);
+      const flashPrice = flashPriceMap[item.product_id];
+      const price = flashPrice != null && flashPrice < regularPrice ? flashPrice : regularPrice;
       const qty = Number(item.quantity);
       const gst = Number(item.gst_percent || 0);
 

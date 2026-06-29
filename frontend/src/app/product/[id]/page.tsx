@@ -738,9 +738,16 @@ const addToCart = async () => {
               )}
 
               {/* TAGS */}
-              {product.tags && product.tags.length > 0 && (
+              {product.tags && product.tags.length > 0 && (() => {
+                let cleanTags = product.tags
+                if (typeof cleanTags === 'string') try { cleanTags = JSON.parse(cleanTags) } catch { cleanTags = [] }
+                if (Array.isArray(cleanTags) && cleanTags.length === 1 && typeof cleanTags[0] === 'string' && cleanTags[0].startsWith('[')) {
+                  try { cleanTags = JSON.parse(cleanTags[0]) } catch {}
+                }
+                cleanTags = (Array.isArray(cleanTags) ? cleanTags : []).map((t: any) => String(t).replace(/^["'\[\]]+|["'\[\]]+$/g, '').trim()).filter(Boolean)
+                return cleanTags.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {product.tags.map((tag, i) => (
+                  {cleanTags.map((tag: string, i: number) => (
                     <span
                       key={i}
                       className="text-xs font-medium px-3 py-1 rounded-full bg-stone-100 text-stone-600 border border-stone-200"
@@ -749,7 +756,7 @@ const addToCart = async () => {
                     </span>
                   ))}
                 </div>
-              )}
+              ) : null})()}
 
               {/* STOCK */}
 

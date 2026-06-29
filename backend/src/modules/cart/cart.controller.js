@@ -178,6 +178,9 @@ exports.getCart = async (req, res) => {
       pv.compareprice as variant_compareprice,
       pv.inventory as variant_inventory,
       pv.attributes as variant_attributes,
+      p.unit,
+      p.min_order_qty,
+      p.max_order_qty,
       COALESCE(pv.price, p.price) as effective_price,
       COALESCE(pv.compareprice, p.compareprice) as effective_compareprice,
       COALESCE(pv.inventory, p.inventory) as effective_inventory
@@ -209,22 +212,53 @@ exports.getCart = async (req, res) => {
       );
     }
 
-    const items = data.rows.map((r) => ({
-      cart_item_id: r.cart_item_id,
-      product_id: r.product_id,
-      variant_id: r.variant_id,
-      variant_label: r.variant_label,
-      variant_attributes: r.variant_attributes,
-      name: r.name,
-      price: parseFloat(r.effective_price),
-      compareprice: r.effective_compareprice ? parseFloat(r.effective_compareprice) : null,
-      images: r.images,
-      inventory: parseInt(r.effective_inventory),
-      gst_percent: r.gst_percent,
-      category_name: r.category_name,
-      category_id: r.category_id,
-      quantity: r.quantity,
-    }));
+    // Check active flash sales for price override
+    let flashPriceMap = {}
+    try {
+      const flashRes = await pool.query(`
+        SELECT fsp.product_id,
+          COALESCE(fsp.special_price,
+            CASE WHEN fs.discount_type = 'percent'
+              THEN p.price * (1 - fs.discount_value/100)
+              ELSE p.price - fs.discount_value
+            END
+          ) AS flash_price
+        FROM flash_sale_products fsp
+        JOIN flash_sales fs ON fs.id = fsp.flash_sale_id
+        JOIN products p ON p.id = fsp.product_id
+        WHERE fs.is_active = TRUE AND fs.starts_at <= NOW() AND fs.ends_at > NOW()
+          AND (fsp.stock_limit IS NULL OR fsp.sold_count < fsp.stock_limit)
+      `)
+      flashRes.rows.forEach(r => { flashPriceMap[r.product_id] = parseFloat(r.flash_price) })
+    } catch {}
+
+    const items = data.rows.map((r) => {
+      const regularPrice = parseFloat(r.effective_price)
+      const flashPrice = flashPriceMap[r.product_id]
+      const finalPrice = flashPrice != null && flashPrice < regularPrice ? flashPrice : regularPrice
+
+      return {
+        cart_item_id: r.cart_item_id,
+        product_id: r.product_id,
+        variant_id: r.variant_id,
+        variant_label: r.variant_label,
+        variant_attributes: r.variant_attributes,
+        name: r.name,
+        price: finalPrice,
+        original_price: regularPrice,
+        compareprice: r.effective_compareprice ? parseFloat(r.effective_compareprice) : null,
+        is_flash_sale: flashPrice != null && flashPrice < regularPrice,
+        images: r.images,
+        inventory: parseInt(r.effective_inventory),
+        gst_percent: r.gst_percent,
+        category_name: r.category_name,
+        category_id: r.category_id,
+        quantity: r.quantity,
+        unit: r.unit || null,
+        min_order_qty: r.min_order_qty || 1,
+        max_order_qty: r.max_order_qty || 100,
+      }
+    });
 
     const subtotal = items.reduce((a, b) => a + b.price * b.quantity, 0);
     res.json({ success: true, items, subtotal });
