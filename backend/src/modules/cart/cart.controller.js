@@ -305,7 +305,7 @@ exports.updateCartQty = async (req, res) => {
 
     if (userId) {
       await pool.query(
-        `UPDATE cart SET quantity=$1, updated_at=NOW()
+        `UPDATE cart SET quantity=$1
          WHERE user_id=$2 AND product_id=$3
          AND (variant_id=$4 OR (variant_id IS NULL AND $4::int IS NULL))`,
         [qty, userId, productId, vid]
