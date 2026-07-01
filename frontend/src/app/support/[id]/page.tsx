@@ -36,7 +36,7 @@ const statusColor: Record<string, string> = {
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const { loginuserdata } = useAuth() as any
+  const { loginuserdata, setOpenauth } = useAuth() as any
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,7 +55,7 @@ export default function TicketDetailPage() {
   }
 
   useEffect(() => {
-    if (!loginuserdata) { router.push('/login'); return }
+    if (!loginuserdata) { setOpenauth(true); return }
     load()
   }, [id, loginuserdata])
 

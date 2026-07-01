@@ -104,14 +104,22 @@ function CartItem({ item, onUpdate, onRemove, updating }: {
       <View style={{ flex: 1 }}>
         <Text style={ss.cartName} numberOfLines={2}>{item.name}</Text>
 
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
           <Text style={ss.cartPrice}>₹{item.price}</Text>
+          {(item as any).original_price && (item as any).original_price > item.price && (
+            <Text style={{ fontSize: 12, color: '#9ca3af', textDecorationLine: 'line-through' }}>₹{(item as any).original_price}</Text>
+          )}
           {disc && (
             <View style={ss.discPill}>
               <Text style={ss.discPillText}>{disc}% OFF</Text>
             </View>
           )}
         </View>
+        {(item as any).is_flash_sale && (
+          <View style={{ backgroundColor: '#fef2f2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start', marginBottom: 6 }}>
+            <Text style={{ fontSize: 10, fontFamily: 'DMSans_700Bold', color: '#dc2626' }}>⚡ Flash Sale Price</Text>
+          </View>
+        )}
 
         <View style={ss.qtyRow}>
           <TouchableOpacity

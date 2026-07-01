@@ -1,11 +1,14 @@
 name: EAS Android Build
 
 on:
-  # Runs every night at 5:00 AM IST (11:30 PM UTC) — lowest EAS queue time
-  schedule:
-    - cron: '30 23 * * *'
+  # Trigger only when ayurveda-app code is pushed — saves free-tier build quota
+  push:
+    branches:
+      - main
+    paths:
+      - 'ayurveda-app/**'
 
-  # Also allows manual trigger from GitHub UI → Actions tab
+  # Manual trigger from GitHub UI → Actions tab
   workflow_dispatch:
     inputs:
       profile:

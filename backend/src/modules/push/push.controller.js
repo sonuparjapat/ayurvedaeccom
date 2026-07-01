@@ -4,9 +4,9 @@ const { broadcastAll, broadcastSegment, savePushToken } = require('../../service
 /* Save token from mobile app */
 exports.saveToken = async (req, res) => {
   try {
-    const { token, deviceType } = req.body
+    const { token, device_type, deviceType } = req.body
     if (!token) return res.status(400).json({ message: 'Token required' })
-    await savePushToken(req.user.id, token, deviceType || 'mobile')
+    await savePushToken(req.user.id, token, device_type || deviceType || 'mobile')
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ message: 'Server error' })

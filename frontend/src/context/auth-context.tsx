@@ -601,7 +601,7 @@ setCartData({
 });
         setTotalCartProducts(0)
 
-        router.push("/auth")
+        router.push("/")
 }else{
   router.push("/adminauth")}
         setLoginUserdata(null)

@@ -41,7 +41,7 @@ const StatusIcon = ({ status }: { status: string }) => {
 
 export default function SupportPage() {
   const router = useRouter()
-  const { loginuserdata } = useAuth() as any
+  const { loginuserdata, setOpenauth } = useAuth() as any
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -60,7 +60,7 @@ export default function SupportPage() {
   }
 
   useEffect(() => {
-    if (!loginuserdata) { router.push('/login'); return }
+    if (!loginuserdata) { setOpenauth(true); return }
     load()
   }, [loginuserdata, filterStatus])
 

@@ -203,12 +203,18 @@ export default function CartPage() {
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                     {/* Price */}
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 17, fontWeight: 700, color: '#1a3a2a' }}>₹{(item.price * item.quantity).toFixed(2)}</span>
-                      {item.compareprice && (
+                      {(item as any).original_price && (item as any).original_price > item.price && (
+                        <span style={{ fontSize: 12, color: '#999', textDecoration: 'line-through' }}>₹{((item as any).original_price * item.quantity).toFixed(2)}</span>
+                      )}
+                      {!((item as any).original_price && (item as any).original_price > item.price) && item.compareprice && item.compareprice > item.price && (
                         <span style={{ fontSize: 12, color: '#999', textDecoration: 'line-through' }}>₹{(item.compareprice * item.quantity).toFixed(2)}</span>
                       )}
                       <span style={{ fontSize: 11, color: '#888' }}>₹{item.price}/ea</span>
+                      {(item as any).is_flash_sale && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', padding: '2px 8px', borderRadius: 6 }}>⚡ Flash Sale</span>
+                      )}
                     </div>
 
                     {/* Qty controls */}

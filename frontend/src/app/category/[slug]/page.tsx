@@ -282,7 +282,8 @@ export default function CategoryPage() {
     getwishlist,
     fetchCart,
     cartdata,
-    handleCart
+    handleCart,
+    setOpenauth,
   } = useAuth()
 
   /* ---------- STATE ---------- */
@@ -438,7 +439,7 @@ export default function CategoryPage() {
   /* ================= ACTIONS ================= */
 
   const toggleWishlist = async (pid: number) => {
-    if (!loginuserdata?.id) { notify.error('Please login to save items'); router.push('/auth'); return }
+    if (!loginuserdata?.id) { setOpenauth(true); return }
     try {
       setWishLoading(p => ({ ...p, [pid]: true }))
       await axios.post('/shop/wishlist', { productId: pid })
