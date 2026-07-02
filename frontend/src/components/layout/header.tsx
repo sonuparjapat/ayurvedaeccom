@@ -75,6 +75,17 @@ const {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  // Close search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !(searchRef.current as any).contains(e.target)) {
+        setShowResults(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
  
   const searchProducts = async (query) => {
     if (!query.trim()) {
@@ -798,11 +809,21 @@ const {
                     className="search-input"
                     placeholder="Search organic products..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setSearchQuery(val)
+                      if (!val.trim()) {
+                        setShowResults(false)
+                        setSearchResults([])
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && searchQuery.trim()) {
                         router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`)
                         setSearchQuery('')
+                        setShowResults(false)
+                      }
+                      if (e.key === 'Escape') {
                         setShowResults(false)
                       }
                     }}
@@ -1153,12 +1174,22 @@ const {
                     className="search-overlay-input"
                     placeholder="Search products..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setSearchQuery(val)
+                      if (!val.trim()) {
+                        setShowResults(false)
+                        setSearchResults([])
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && searchQuery.trim()) {
                         router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`)
                         setIsSearchOpen(false)
                         setSearchQuery('')
+                      }
+                      if (e.key === 'Escape') {
+                        setIsSearchOpen(false)
                       }
                     }}
                   />
