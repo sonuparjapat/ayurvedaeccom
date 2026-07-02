@@ -99,7 +99,7 @@ export default function AboutPage() {
   const socialEntries = Object.entries(socialLinks).filter(
     ([, url]) => typeof url === 'string' && (url as string).trim()
   )
-
+// console.log("HIii")
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
