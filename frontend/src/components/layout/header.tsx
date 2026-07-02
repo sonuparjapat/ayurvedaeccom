@@ -27,7 +27,6 @@ import axios from '@/lib/axios'
 import useDebounce from '../debounce'
  
 export function Header() {
-   const logoUrl = process.env.NEXT_PUBLIC_LOGO_URL || ''
   const router = useRouter()
 const {
   loginuserdata,
@@ -235,6 +234,18 @@ const {
   display: block;
 }
 
+.logo-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, #f7f4eb);
+  pointer-events: none;
+  z-index: 2;
+}
+
 .logo-image {
   position: absolute;
   width: 190px;
@@ -244,6 +255,7 @@ const {
   transform: translate(-50%, -50%);
   display: block;
   transition: filter 0.25s ease;
+  z-index: 1;
 }
 
 .logo-wrap:hover .logo-image {
@@ -707,13 +719,6 @@ const {
           .action-btn { width: 32px; height: 32px; }
           .top-badge:nth-child(n+2) { display: none; }
           .mobile-action-pill { font-size: 12px; padding: 0 8px; }
-.logo-image {
-  height: 40px;
-  width: 40px;
-  transform: scale(2.8);
-  
-
-}
         }
 
         @media (min-width: 769px) {
@@ -772,7 +777,7 @@ const {
               >
              <Link href="/" className="logo-wrap">
   <img
-    src={logoUrl}
+    src={(companydata as any)?.[0]?.logo_url || process.env.NEXT_PUBLIC_LOGO_URL || ''}
     alt="Oroganix"
     className="logo-image"
   />

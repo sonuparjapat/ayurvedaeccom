@@ -3,66 +3,56 @@ const pool = require('../../config/db');
 /* ================= CREATE ================= */
 exports.createCompany = async (req, res) => {
   const client = await pool.connect();
-
   try {
     const {
-      company_name,
-      email,
-      phone,
-      website,
-      gst_number,
-      address_line1,
-      city,
-      state,
-      country,
-      pincode,
-      extra_data,
+      company_name, email, phone, website, gst_number,
+      address_line1, city, state, country, pincode,
+      support_email, social_links, extra_data,
+      privacy_policy, terms_conditions, shipping_policy, return_policy,
     } = req.body;
 
     if (!company_name) {
-      return res.status(400).json({
-        success: false,
-        message: "Company name is required"
-      });
+      return res.status(400).json({ success: false, message: "Company name is required" });
+    }
+
+    let logo_url = req.body.logo_url || null;
+    if (req.file) {
+      const { uploadImageToAWS } = require('../../utils/awsImageUpload');
+      logo_url = await uploadImageToAWS(req.file, 'company');
+    }
+
+    let parsedSocial = {};
+    if (social_links) {
+      try { parsedSocial = typeof social_links === 'string' ? JSON.parse(social_links) : social_links; } catch {}
     }
 
     await client.query("BEGIN");
 
     const result = await client.query(
       `INSERT INTO company_settings
-      (company_name, email, phone, website, gst_number,
-       address_line1, city, state, country, pincode, extra_data)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      (company_name, email, phone, website, gst_number, address_line1, city, state, country,
+       pincode, support_email, logo_url, social_links, extra_data,
+       privacy_policy, terms_conditions, shipping_policy, return_policy)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
       RETURNING *`,
       [
         company_name,
-        email || null,
-        phone || null,
-        website || null,
-        gst_number || null,
-        address_line1 || null,
-        city || null,
-        state || null,
-        country || null,
-        pincode || null,
-        extra_data || {}
+        email || null, phone || null, website || null, gst_number || null,
+        address_line1 || null, city || null, state || null, country || null,
+        pincode || null, support_email || null, logo_url,
+        JSON.stringify(parsedSocial), extra_data ? JSON.stringify(extra_data) : '{}',
+        privacy_policy || null, terms_conditions || null,
+        shipping_policy || null, return_policy || null,
       ]
     );
 
     await client.query("COMMIT");
-
-    res.status(201).json({
-      success: true,
-      data: result.rows[0]
-    });
+    res.status(201).json({ success: true, data: result.rows[0] });
 
   } catch (error) {
     await client.query("ROLLBACK");
     console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error"
-    });
+    res.status(500).json({ success: false, message: "Internal server error" });
   } finally {
     client.release();
   }
@@ -131,36 +121,38 @@ exports.updateCompany = async (req, res) => {
   try {
     const id = req.params.id;
 
-    const existing = await pool.query(
-      `SELECT * FROM company_settings WHERE id=$1`,
-      [id]
-    );
+    const existing = await pool.query(`SELECT * FROM company_settings WHERE id=$1`, [id]);
+    if (!existing.rows.length) return res.status(404).json({ success: false, message: 'Company not found' });
 
-    if (!existing.rows.length) {
-      return res.status(404).json({
-        success: false,
-        message: "Company not found"
-      });
+    const body = { ...req.body };
+
+    // Handle logo file upload
+    if (req.file) {
+      const { uploadImageToAWS } = require('../../utils/awsImageUpload');
+      body.logo_url = await uploadImageToAWS(req.file, 'company');
     }
 
-    const fields = Object.keys(req.body);
-    const values = Object.values(req.body);
+    // Parse social_links if sent as string
+    if (body.social_links && typeof body.social_links === 'string') {
+      try { body.social_links = JSON.parse(body.social_links); } catch { delete body.social_links; }
+    }
 
-    const setQuery = fields
-      .map((field, index) => `${field}=$${index + 1}`)
-      .join(',');
+    const fields = Object.keys(body);
+    const values = Object.values(body).map((v, i) => {
+      if (fields[i] === 'social_links') return typeof v === 'object' ? JSON.stringify(v) : v;
+      return v;
+    });
+
+    const setQuery = fields.map((f, i) => `${f}=$${i + 1}`).join(', ');
 
     const result = await pool.query(
-      `UPDATE company_settings
-       SET ${setQuery}, updated_at=NOW()
-       WHERE id=$${fields.length + 1}
-       RETURNING *`,
+      `UPDATE company_settings SET ${setQuery}, updated_at=NOW() WHERE id=$${fields.length + 1} RETURNING *`,
       [...values, id]
     );
 
     res.json({ success: true, data: result.rows[0] });
-
   } catch (error) {
+    console.error(error);
     res.status(500).json({ success: false });
   }
 };

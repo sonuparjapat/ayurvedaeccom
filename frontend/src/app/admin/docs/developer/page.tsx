@@ -324,7 +324,7 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
               ['order_status_logs', 'id (serial)', 'order_id, old_status, new_status, new_label, old_label, note, changed_by, created_at', 'Full timeline history per order'],
               ['admin_logs', 'id (serial)', 'admin_id, action, entity_type, entity_id, details (JSON), ip_address, created_at', 'Audit trail'],
               ['settings', 'id (serial)', 'key, value', 'Key-value store for platform config'],
-              ['company', 'id (serial)', 'name, address, gst_number, logo_url, phone, email, website', 'Appears on invoices'],
+              ['company_settings', 'id (serial)', 'company_name, email, support_email, phone, website, gst_number, address_line1, city, state, country, pincode, logo_url, social_links (JSONB: facebook/instagram/twitter/youtube), privacy_policy, terms_conditions, shipping_policy, return_policy, is_active, extra_data (JSONB)', 'Single-row table. logo_url is uploaded to S3 via multer. social_links is a JSONB column. companydata[0] is loaded globally in the auth context and used by the web header, footer, and exposed via GET /company.'],
             ]}
           />
 

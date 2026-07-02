@@ -470,7 +470,7 @@ export default function UserManualPage() {
               ['Returns', 'View return requests from customers. Approve or reject returns, credit wallet refunds, and mark refunds complete.'],
               ['Export Data', 'Download orders, users, and revenue data as CSV files.'],
               ['Settings', 'Platform configuration — delivery charges, platform fees, free delivery threshold.'],
-              ['Company', 'Update company name, address, GST number, logo, social links, and policy pages (Privacy Policy, Terms & Conditions, Shipping Policy, Return Policy). Social links appear in the footer. Policy content supports HTML formatting.'],
+              ['Company', 'Manage all company branding and info. Upload your website logo (file upload or URL) — the logo appears in the web header, footer, and mobile app. Fill in company name, GST, primary email, support email, phone, website, and full address. Add Facebook, Instagram, Twitter, and YouTube links — they show in the footer. All four policy pages (Privacy, Terms, Shipping, Return) are edited here. Save once to update across the entire storefront.'],
               ['Logs', 'Audit trail of all admin actions.'],
               ['Jobs', 'Background task queue status and history.'],
             ]}
