@@ -841,12 +841,15 @@ await api.post('/push/push-token', { token, platform: 'android' | 'ios' })
           <H3>BottomNav shared component</H3>
           <Code>{`// ayurveda-app/src/components/BottomNav.tsx
 // Usage: <BottomNav active="/products" />
-// Renders absolute-positioned bar at bottom of screen
-// Uses BlurView + LinearGradient, Shadows.sm (NOT Shadows.card — doesn't exist)
+// Reads user and cartCount from useStore() internally — no props needed for auth state
+// Shows user avatar with initials + green online dot when logged in
+// Shows 👤 icon with orange "Login" badge when NOT logged in
+// Animated sliding pill indicator (LinearGradient) under active tab
+// BlurView (iOS) + frosted white tint (Android) glass morphism background
 // Tabs: Home (/), Browse (/products), Wishlist (/wishlist), Account (/account)
-// Add to any main screen; set paddingBottom: 90 on FlatList to avoid overlap
-// All main screens (index, products, wishlist, account, search) use the SAME shared component
-// Previously index.tsx had an inline duplicate — removed; all screens now import the shared one`}</Code>
+// Logout: navigates to / BEFORE setUser(null) to prevent NotLoggedIn flash
+// (tabs)/ folder in app dir is intentionally empty — old structure, kept for Expo Router compat
+// Auth screen: auth/index.tsx — always slide_from_right animation via _layout.tsx`}</Code>
           <H3>Real-time order updates (Socket.io on mobile)</H3>
           <Code>{`// ayurveda-app/src/hooks/useOrderSocket.ts
 // Called from _layout.tsx Inner component — active for entire app session

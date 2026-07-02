@@ -47,7 +47,6 @@ function Inner() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
-      <Stack.Screen name="(tabs)" />
       <Stack.Screen name="product/[id]" options={{ presentation: 'card' }} />
       <Stack.Screen name="category/[id]" options={{ presentation: 'card' }} />
       <Stack.Screen name="order/[id]" options={{ presentation: 'card' }} />
@@ -58,7 +57,7 @@ function Inner() {
       <Stack.Screen name="account/index" />
       <Stack.Screen name="account/wallet" options={{ presentation: 'card' }} />
       <Stack.Screen name="account/notifications" options={{ presentation: 'card' }} />
-      <Stack.Screen name="auth/index" />
+      <Stack.Screen name="auth/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />
       <Stack.Screen name="search/index" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
       <Stack.Screen name="support/index" options={{ presentation: 'card' }} />
       <Stack.Screen name="blog/index" options={{ presentation: 'card' }} />

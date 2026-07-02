@@ -105,10 +105,26 @@ const SECTIONS: TestSection[] = [
       {
         id: 'auth-5', title: 'Logout', severity: 'critical',
         steps: [
-          'Login → click avatar/menu → Logout',
+          'Mobile: Account tab → scroll down → Sign Out → confirm',
+          'Web: Header → Logout button',
+          'After logout: verify you land on HOME page — NOT on a login/auth screen',
+          'Verify bottom nav Account tab now shows 👤 icon with orange "Login" badge',
+          'Verify cart count is cleared',
         ],
-        expected: 'Session cleared. Redirected to home page (/). Cart, wishlist cleared from UI.',
+        expected: 'Session cleared. Redirected to home page. Cart cleared. No old login screen shown. Mobile: Account tab avatar disappears, replaced with 👤 + Login badge.',
         where: 'Web & Mobile.',
+      },
+      {
+        id: 'auth-5b', title: 'Mobile Bottom Nav Login State', severity: 'high',
+        steps: [
+          'Open app while NOT logged in',
+          'Check bottom nav Account tab — should show 👤 with orange "Login" badge above it',
+          'Login → check Account tab again — should show your initials in a circle avatar with green dot',
+          'Account tab label should show your first name when logged in',
+          'Active tab should show green pill indicator at the top of the tab',
+        ],
+        expected: 'Clear visual difference between logged-in (avatar + initials + green dot + first name) and logged-out (👤 + orange Login badge) states in the bottom nav.',
+        where: 'Mobile: bottom nav bar.',
       },
       {
         id: 'auth-6', title: 'Admin Login', severity: 'critical',

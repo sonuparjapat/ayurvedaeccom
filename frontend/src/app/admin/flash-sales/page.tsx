@@ -41,9 +41,15 @@ export default function FlashSalesPage() {
   const openCreate = () => { setEditing(null); setForm(empty); setBannerFile(null); setBannerPreview(null); setShowForm(true) }
   const openEdit = async (sale: any) => {
     const r = await axios.get(`/flash-sales/admin/${sale.id}`)
-    setEditing(r.data.sale)
-    setForm({ ...r.data.sale, products: r.data.sale.products || [] })
-    setBannerPreview(r.data.sale.banner_image || null)
+    const s = r.data.sale
+    setEditing(s)
+    setForm({
+      ...s,
+      starts_at: toLocalInput(s.starts_at),
+      ends_at: toLocalInput(s.ends_at),
+      products: s.products || []
+    })
+    setBannerPreview(s.banner_image || null)
     setBannerFile(null)
     setShowForm(true)
   }
@@ -58,15 +64,15 @@ export default function FlashSalesPage() {
         fd.append('description', form.description || '')
         fd.append('discount_type', form.discount_type)
         fd.append('discount_value', String(form.discount_value))
-        fd.append('starts_at', form.starts_at)
-        fd.append('ends_at', form.ends_at)
+        fd.append('starts_at', toUTC(form.starts_at))
+        fd.append('ends_at', toUTC(form.ends_at))
         if (form.max_uses) fd.append('max_uses', String(form.max_uses))
         fd.append('is_active', String(form.is_active))
         fd.append('products', JSON.stringify(form.products))
         if (editing) await axios.put(`/flash-sales/admin/${editing.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
         else await axios.post('/flash-sales/admin', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       } else {
-        const payload = { ...form }
+        const payload = { ...form, starts_at: toUTC(form.starts_at), ends_at: toUTC(form.ends_at) }
         if (editing) await axios.put(`/flash-sales/admin/${editing.id}`, payload)
         else await axios.post('/flash-sales/admin', payload)
       }
@@ -93,7 +99,17 @@ export default function FlashSalesPage() {
     }
   }
 
-  const formatDate = (d: string) => d ? new Date(d).toLocaleString('en-IN') : '—'
+  // Convert UTC ISO string → "YYYY-MM-DDTHH:mm" in user's local timezone (for datetime-local input)
+  const toLocalInput = (utcStr: string) => {
+    if (!utcStr) return ''
+    const d = new Date(utcStr)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+  // Convert datetime-local value (local time) → UTC ISO string for API
+  const toUTC = (localStr: string) => localStr ? new Date(localStr).toISOString() : ''
+
+  const formatDate = (d: string) => d ? new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true }) : '—'
   const isActive = (sale: any) => sale.is_active && new Date(sale.starts_at) <= new Date() && new Date(sale.ends_at) > new Date()
 
   return (
@@ -160,12 +176,12 @@ export default function FlashSalesPage() {
                 <input type="number" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.discount_value} onChange={e => setForm({...form, discount_value: e.target.value})} placeholder="e.g. 20" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Starts At *</label>
-                <input type="datetime-local" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.starts_at?.slice(0,16)} onChange={e => setForm({...form, starts_at: e.target.value})} />
+                <label className="text-xs font-semibold text-gray-500 uppercase">Starts At * <span className="normal-case font-normal text-gray-400">(your local time / IST)</span></label>
+                <input type="datetime-local" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.starts_at} onChange={e => setForm({...form, starts_at: e.target.value})} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Ends At *</label>
-                <input type="datetime-local" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.ends_at?.slice(0,16)} onChange={e => setForm({...form, ends_at: e.target.value})} />
+                <label className="text-xs font-semibold text-gray-500 uppercase">Ends At * <span className="normal-case font-normal text-gray-400">(your local time / IST)</span></label>
+                <input type="datetime-local" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.ends_at} onChange={e => setForm({...form, ends_at: e.target.value})} />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase">Max Uses (optional)</label>

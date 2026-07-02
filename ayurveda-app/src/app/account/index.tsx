@@ -321,10 +321,12 @@ export default function AccountScreen() {
           try { await api.post('/users/logout') } catch { }
           await AsyncStorage.removeItem('auth_token')
           await AsyncStorage.removeItem('user')
-          setUser(null)
+          await AsyncStorage.removeItem('stored_user')
           setCartData({ items: [], subtotal: 0, totalItems: 0 })
-          setLoggingOut(false)
+          // Navigate FIRST before clearing user to avoid showing NotLoggedIn briefly
           router.replace('/')
+          setUser(null)
+          setLoggingOut(false)
         },
       },
     ])
