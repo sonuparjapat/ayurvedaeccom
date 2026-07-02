@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Zap, AlertTriangle } from 'lucide-react'
 import axiosInstance from '@/lib/axios'
-import { io, Socket } from 'socket.io-client'
+import { io } from 'socket.io-client'
 
 interface FlashProduct {
   product_id: number
@@ -60,7 +60,6 @@ function Countdown({ endsAt }: { endsAt: string }) {
 export function FlashSaleBanner() {
   const [sales, setSales] = useState<FlashSale[]>([])
   const [loading, setLoading] = useState(true)
-  const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
     axiosInstance.get('/flash-sales/active')
@@ -74,7 +73,6 @@ export function FlashSaleBanner() {
     const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
       transports: ['websocket', 'polling'],
     })
-    socketRef.current = socket
 
     // Live sold_count update for a product's progress bar
     socket.on('flash_product_update', ({ saleId, productId, soldCount }: {

@@ -437,10 +437,12 @@ if (addr.pincode) {
       ]);
     }
 
-    /* ================= UPDATE FLASH SALE COUNTS ================= */
+    /* ================= UPDATE FLASH SALE COUNTS (DB only — emit AFTER commit) ================= */
+
+    // Collect socket events to fire after COMMIT so clients never see pre-commit state
+    const pendingSocketEvents = []
 
     try {
-      const { emitToAll } = require('../../socket')
       const flashSaleIdsUsed = new Set()
 
       for (const item of cart) {
@@ -456,19 +458,17 @@ if (addr.pincode) {
         )
         const pr = updProd.rows[0]
         if (pr) {
-          // Broadcast live sold_count so all clients update their progress bars
-          emitToAll('flash_product_update', {
+          pendingSocketEvents.push(['flash_product_update', {
             saleId: flashSaleId,
             productId: item.product_id,
             soldCount: pr.sold_count,
             stockLimit: pr.stock_limit,
-          })
-          // If this product's stock is now exhausted, broadcast that too
+          }])
           if (pr.stock_limit && pr.sold_count >= pr.stock_limit) {
-            emitToAll('flash_product_sold_out', {
+            pendingSocketEvents.push(['flash_product_sold_out', {
               saleId: flashSaleId,
               productId: item.product_id,
-            })
+            }])
           }
         }
       }
@@ -481,11 +481,10 @@ if (addr.pincode) {
         )
         const sr = updSale.rows[0]
         if (sr && sr.max_uses && sr.uses_count >= sr.max_uses) {
-          // Broadcast that this entire sale is exhausted
-          emitToAll('flash_sale_exhausted', {
+          pendingSocketEvents.push(['flash_sale_exhausted', {
             saleId,
             title: sr.title,
-          })
+          }])
         }
       }
     } catch (flashErr) {
@@ -555,6 +554,14 @@ if (addr.pincode) {
     }
 
     await client.query("COMMIT");
+
+    /* ================= FIRE SOCKET EVENTS (after commit — data is now visible) ================= */
+    try {
+      const { emitToAll } = require('../../socket')
+      for (const [event, payload] of pendingSocketEvents) {
+        emitToAll(event, payload)
+      }
+    } catch (_) {}
 
     /* ================= NOTIFY ADMIN (real-time) ================= */
     try {

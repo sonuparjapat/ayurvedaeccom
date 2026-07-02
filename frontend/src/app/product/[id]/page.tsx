@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { io, Socket } from 'socket.io-client'
+import { useEffect, useState } from 'react'
+import { io } from 'socket.io-client'
 import { useParams, useRouter } from 'next/navigation'
 import Head from 'next/head'
 import Link from 'next/link'
