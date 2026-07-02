@@ -686,6 +686,94 @@ const {
           -webkit-overflow-scrolling: touch;
         }
  
+        /* ── Sign In button (logged out) ── */
+        .signin-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          height: 36px;
+          padding: 0 16px;
+          border-radius: 100px;
+          border: 1.5px solid var(--brand-sage);
+          background: transparent;
+          color: var(--brand-forest);
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+          white-space: nowrap;
+          flex-shrink: 0;
+          letter-spacing: 0.01em;
+        }
+        .signin-btn:hover {
+          background: var(--brand-forest);
+          color: white;
+          border-color: var(--brand-forest);
+          box-shadow: 0 4px 14px rgba(26,58,42,0.22);
+        }
+
+        /* ── User avatar pill (logged in) ── */
+        .user-avatar-btn {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          height: 36px;
+          padding: 2px 10px 2px 3px;
+          border-radius: 100px;
+          border: 1.5px solid rgba(74,124,94,0.25);
+          background: var(--brand-mint);
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+          text-decoration: none;
+          color: var(--brand-forest);
+          flex-shrink: 0;
+        }
+        .user-avatar-btn:hover {
+          background: #d4edde;
+          border-color: var(--brand-sage);
+          box-shadow: 0 2px 10px rgba(74,124,94,0.18);
+        }
+        .avatar-circle {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, var(--brand-sage) 0%, var(--brand-forest) 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          flex-shrink: 0;
+        }
+        .avatar-initials {
+          font-size: 11px;
+          font-weight: 700;
+          color: white;
+          letter-spacing: 0.03em;
+          font-family: 'DM Sans', sans-serif;
+          line-height: 1;
+          user-select: none;
+        }
+        .avatar-online-dot {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #22c55e;
+          border: 1.5px solid white;
+        }
+        .user-first-name {
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--brand-forest);
+          max-width: 88px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
         /* ── Breakpoints ── */
 
         /* Large desktop */
@@ -719,6 +807,11 @@ const {
           .top-bar { padding: 6px 0; }
           .top-badge { font-size: 10px; padding: 2px 7px; }
           .logo-wrap { width: 128px; height: 40px; }
+          /* Sign In & avatar — mobile: compact icon-only */
+          .signin-btn { padding: 0 10px; gap: 4px; height: 34px; font-size: 12px; }
+          .signin-label { display: none; }
+          .user-avatar-btn { padding: 2px 8px 2px 3px; gap: 5px; height: 34px; }
+          .user-first-name { display: none; }
         }
 
         /* Very small phones */
@@ -938,27 +1031,34 @@ const {
 
                 <div className="divider-v desktop-only" />
  
-                {/* Account */}
+                {/* Account — clearly shows login state */}
                 {loginuserdata?.id ? (
                   <>
-                    <Link href="/account" className="action-btn" aria-label="Account">
-                      <User size={18} />
+                    <Link href="/account" className="user-avatar-btn" aria-label="Account">
+                      <div className="avatar-circle">
+                        <span className="avatar-initials">
+                          {(loginuserdata.name || loginuserdata.email || 'U')
+                            .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+                        </span>
+                        <span className="avatar-online-dot" />
+                      </div>
+                      <span className="user-first-name desktop-only">
+                        {loginuserdata.name?.split(' ')[0] || 'Account'}
+                      </span>
                     </Link>
-                    <button className="action-btn desktop-only" onClick={handleLogout} aria-label="Logout">
-                      <LogOut size={18} />
+                    <button className="action-btn desktop-only" onClick={handleLogout} aria-label="Logout" title="Logout">
+                      <LogOut size={16} />
                     </button>
                   </>
                 ) : (
-                <button
-  className="action-btn"
-  aria-label="Login"
-  onClick={() => {
-    setAuthMode('login')
-    setOpenauth(true)
-  }}
->
-  <User size={18} />
-</button>
+                  <button
+                    className="signin-btn"
+                    aria-label="Sign In"
+                    onClick={() => { setAuthMode('login'); setOpenauth(true) }}
+                  >
+                    <User size={14} />
+                    <span className="signin-label">Sign In</span>
+                  </button>
                 )}
  
                 {/* Cart */}
