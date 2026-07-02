@@ -677,14 +677,7 @@ const {
         /* Tablet */
         @media (max-width: 1023px) and (min-width: 769px) {
           .search-desktop { max-width: 340px; margin: 0 12px; }
-          .logo-image {
-  height: 52px;
-  width: 52px;
-  transform: scale(2.8);
-  // transform-origin: center;
-    transform-origin: left center;
-  margin-left: 20px;
-}
+          .logo-wrap { width: 148px; height: 46px; }
         }
 
         /* Mobile hide/show rules */
@@ -703,14 +696,7 @@ const {
           .divider-v { display: none; }
           .top-bar { padding: 6px 0; }
           .top-badge { font-size: 10px; padding: 2px 7px; }
-.logo-image {
-  height: 52px;
-  width: 52px;
-  transform: scale(2.8);
-  // transform-origin: center;
-    transform-origin: left center;
-  margin-left: 40px;
-}
+          .logo-wrap { width: 128px; height: 40px; }
         }
 
         /* Very small phones */
