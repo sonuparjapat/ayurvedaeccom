@@ -174,9 +174,10 @@ if (addr.pincode) {
     /* ================= FLASH SALE PRICE MAP ================= */
 
     let flashPriceMap = {}
+    let flashSaleIdMap = {}  // product_id → flash_sale_id (for tracking)
     try {
       const flashRes = await client.query(`
-        SELECT fsp.product_id,
+        SELECT fsp.product_id, fs.id AS flash_sale_id,
           COALESCE(fsp.special_price,
             CASE WHEN fs.discount_type = 'percent'
               THEN p.price * (1 - fs.discount_value/100)
@@ -187,9 +188,13 @@ if (addr.pincode) {
         JOIN flash_sales fs ON fs.id = fsp.flash_sale_id
         JOIN products p ON p.id = fsp.product_id
         WHERE fs.is_active = TRUE AND fs.starts_at <= NOW() AND fs.ends_at > NOW()
+          AND (fs.max_uses IS NULL OR fs.uses_count < fs.max_uses)
           AND (fsp.stock_limit IS NULL OR fsp.sold_count < fsp.stock_limit)
       `)
-      flashRes.rows.forEach(r => { flashPriceMap[r.product_id] = parseFloat(r.flash_price) })
+      flashRes.rows.forEach(r => {
+        flashPriceMap[r.product_id] = parseFloat(r.flash_price)
+        flashSaleIdMap[r.product_id] = r.flash_sale_id
+      })
     } catch {}
 
     /* ================= CALCULATION ================= */
@@ -412,7 +417,10 @@ if (addr.pincode) {
 
     for (const item of cart) {
 
-      const price = Number(item.effective_price);
+      const regularPrice = Number(item.effective_price);
+      const flashPrice = flashPriceMap[item.product_id]
+      // Use flash price when it's cheaper (flash sale applies to this product)
+      const price = (flashPrice != null && flashPrice < regularPrice) ? flashPrice : regularPrice
       const qty = Number(item.quantity);
 
       await client.query(`
@@ -427,6 +435,30 @@ if (addr.pincode) {
         qty,
         price,
       ]);
+    }
+
+    /* ================= UPDATE FLASH SALE COUNTS ================= */
+
+    try {
+      const flashSaleIdsUsed = new Set()
+      for (const item of cart) {
+        const flashSaleId = flashSaleIdMap[item.product_id]
+        if (flashSaleId) {
+          flashSaleIdsUsed.add(flashSaleId)
+          await client.query(
+            `UPDATE flash_sale_products SET sold_count = sold_count + $1 WHERE flash_sale_id = $2 AND product_id = $3`,
+            [item.quantity, flashSaleId, item.product_id]
+          )
+        }
+      }
+      for (const saleId of flashSaleIdsUsed) {
+        await client.query(
+          `UPDATE flash_sales SET uses_count = uses_count + 1 WHERE id = $1`,
+          [saleId]
+        )
+      }
+    } catch (flashErr) {
+      console.error('Flash sale count update failed (non-fatal):', flashErr.message)
     }
 
     /* ================= COD STOCK DEDUCTION ================= */

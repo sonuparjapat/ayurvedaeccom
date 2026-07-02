@@ -659,9 +659,11 @@ export default function UserManualPage() {
               <div className="space-y-2 mt-2">
                 <Step num={1} title="Admin → Flash Sales → Create">Set title, start/end time, and discount type (flat or percentage).</Step>
                 <Step num={2} title="Add Products">Select which products are included in the flash sale. Set a special price per product.</Step>
-                <Step num={3} title="Set Stock Limit (Optional)">Limit how many units can be sold at the flash sale price.</Step>
-                <Step num={4} title="Activate">Set is_active to true. The banner automatically appears on the homepage.</Step>
+                <Step num={3} title="Set Stock Limit (Optional)">Limit how many units of each product can be sold at the flash price. Once reached, that product charges the regular price.</Step>
+                <Step num={4} title="Set Max Uses (Optional)">Maximum total number of orders that can receive the flash sale discount. Example: Max Uses = 2 means only 2 orders (across all customers) get the discounted price. After 2 orders, the sale stops applying — even if the sale is still active. Leave blank for unlimited orders.</Step>
+                <Step num={5} title="Activate">Set is_active to true. The banner automatically appears on the homepage.</Step>
               </div>
+              <p className="text-sm text-gray-500 mt-2">The <strong>"Used:"</strong> count on the flash sales list shows how many orders have already used the sale. When it reaches Max Uses, the discount stops automatically.</p>
             </div>
             <div>
               <p className="font-semibold text-sm text-gray-800 mb-2">Banners</p>

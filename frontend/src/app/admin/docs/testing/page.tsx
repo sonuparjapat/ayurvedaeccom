@@ -609,6 +609,37 @@ const SECTIONS: TestSection[] = [
         expected: 'Flash price no longer applied. Regular price shown. No "⚡" badge.',
         where: 'Web & Mobile: product detail.',
       },
+      {
+        id: 'flash-6', title: 'Max Uses Enforcement', severity: 'critical',
+        steps: [
+          'Admin → Flash Sales → Create sale with Max Uses = 2',
+          'Add a product with Stock Limit = 3',
+          'Place 2 orders with that product at flash price',
+          'Try placing a 3rd order',
+        ],
+        expected: 'First 2 orders get flash sale price. After 2 orders, flash sale no longer applies — 3rd order charged at regular price. Admin shows "Used: 2 / 2".',
+        where: 'Web & Mobile: Cart → Checkout. Admin: /admin/flash-sales.',
+      },
+      {
+        id: 'flash-7', title: 'Per-Product Stock Limit', severity: 'high',
+        steps: [
+          'Create flash sale with product Stock Limit = 1',
+          'Place an order for 1 unit at flash price',
+          'Add same product to cart again → checkout',
+        ],
+        expected: 'First order gets flash price. Second order: flash price not applied (stock_limit reached). Progress bar in admin shows 1/1 sold.',
+        where: 'Web & Mobile: Cart → Checkout. Admin: flash sale product row.',
+      },
+      {
+        id: 'flash-8', title: 'Flash Sale used_count increments', severity: 'high',
+        steps: [
+          'Admin → Flash Sales → note current "Used:" count',
+          'Place one order that uses the flash sale',
+          'Refresh Admin → Flash Sales',
+        ],
+        expected: '"Used:" count increases by 1 after each order. sold_count on each product increases by qty ordered.',
+        where: 'Admin: /admin/flash-sales.',
+      },
     ],
   },
 

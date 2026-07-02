@@ -294,8 +294,8 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
             headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
             rows={[
               ['banners', 'id (serial)', 'title, subtitle, image_url, link_url, cta_text, sort_order, is_active', 'Homepage carousel slides'],
-              ['flash_sales', 'id (serial)', 'title, start_time, end_time, discount_type, discount_value, is_active', ''],
-              ['flash_sale_products', 'id (serial)', 'flash_sale_id, product_id, special_price, stock_limit, sold_count', ''],
+              ['flash_sales', 'id (serial)', 'title, starts_at, ends_at, discount_type, discount_value, is_active, max_uses, uses_count', 'max_uses = total orders cap; uses_count incremented on each order. Both enforced at checkout.'],
+              ['flash_sale_products', 'id (serial)', 'flash_sale_id, product_id, special_price, stock_limit, sold_count', 'sold_count incremented per qty ordered; stops applying flash price when sold_count ≥ stock_limit'],
               ['product_variants', 'id (serial)', 'product_id, name, value, price, stock_quantity, sku', 'e.g., name=Size value=500g'],
               ['stock_notifications', 'id (serial)', 'product_id, email, notified_at', '"Notify Me" signups for out-of-stock'],
               ['push_notification_tokens', 'id (serial)', 'user_id, token, platform (ios/android)', 'Expo push tokens'],
