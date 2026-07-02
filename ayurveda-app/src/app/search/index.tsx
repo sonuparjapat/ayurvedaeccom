@@ -80,7 +80,11 @@ export default function SearchScreen() {
       const res = await api.get(`/shop/search/suggestions?q=${encodeURIComponent(q)}`)
       const data = res.data
       const cats: Suggestion[] = (data.categories || []).map((c: any) => ({ ...c, _type: 'category' as const }))
-      const prods: Suggestion[] = (data.products || []).map((p: any) => ({ ...p, _type: 'product' as const }))
+      const prods: Suggestion[] = (data.products || []).map((p: any) => ({
+        ...p,
+        image: Array.isArray(p.images) ? p.images[0] : (p.image || null),
+        _type: 'product' as const,
+      }))
       setSuggestions([...cats, ...prods])
     } catch {
       setSuggestions([])

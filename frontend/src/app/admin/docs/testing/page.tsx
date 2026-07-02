@@ -280,11 +280,16 @@ const SECTIONS: TestSection[] = [
       {
         id: 'prod-6', title: 'Product Search', severity: 'critical',
         steps: [
-          'Web: use top search bar → type product name',
-          'Mobile: use search icon → type product name',
+          'Web: type at least 2 characters in header search bar',
+          'Verify: dropdown shows matching products AND matching categories',
+          'Click a product result → should land on correct product page',
+          'Click a category result → should land on correct category page',
+          'Mobile: tap search icon → type keyword → verify suggestions appear',
+          'Mobile: tap a product → verify navigation to product screen',
+          'Test with product name, category name, and a tag keyword',
         ],
-        expected: 'Matching products appear in real time. Clicking result goes to product page.',
-        where: 'Web: header search | Mobile: Search screen.',
+        expected: 'Matching products (up to 8) and categories (up to 4) appear within 400 ms. Images, names, and prices display correctly. Navigation works for both product and category results.',
+        where: 'Web: header search dropdown | Mobile: Search screen (search icon in bottom nav).',
       },
       {
         id: 'prod-7', title: 'Product Tags Display', severity: 'medium',

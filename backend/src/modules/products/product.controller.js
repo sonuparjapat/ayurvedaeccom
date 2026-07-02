@@ -1116,36 +1116,39 @@ exports.getCart = async (req, res) => {
 exports.searchSuggestions = async (req, res) => {
   try {
     const q = (req.query.q || '').trim()
-    if (!q || q.length < 2) return res.json({ suggestions: [] })
+    if (!q || q.length < 2) return res.json({ products: [], categories: [] })
 
     const [products, categories] = await Promise.all([
       pool.query(`
-        SELECT id, name, price, images, category_name, averagerating
+        SELECT id, name, slug, price, compareprice, images, category_name, averagerating
         FROM products
-        WHERE status = 'active' AND name ILIKE $1
-        ORDER BY averagerating DESC, reviewcount DESC
-        LIMIT 6
+        WHERE status = 'active' AND (name ILIKE $1 OR category_name ILIKE $1 OR tags::text ILIKE $1)
+        ORDER BY averagerating DESC NULLS LAST, reviewcount DESC NULLS LAST
+        LIMIT 8
       `, [`%${q}%`]),
       pool.query(`
-        SELECT id, name, image_url FROM categories
+        SELECT id, name, slug, image_url FROM categories
         WHERE is_active = TRUE AND name ILIKE $1
-        LIMIT 3
+        LIMIT 4
       `, [`%${q}%`]),
     ])
 
     res.json({
-      suggestions: {
-        products: products.rows.map(p => ({
-          id: p.id, name: p.name, price: p.price,
-          image: p.images?.[0] || null, category: p.category_name,
-          rating: p.averagerating,
-        })),
-        categories: categories.rows,
-      }
+      products: products.rows.map(p => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        price: p.price,
+        compareprice: p.compareprice,
+        images: p.images || [],
+        category_name: p.category_name,
+        rating: p.averagerating,
+      })),
+      categories: categories.rows,
     })
   } catch (err) {
     console.error('[SEARCH SUGGESTIONS]', err)
-    res.status(500).json({ suggestions: { products: [], categories: [] } })
+    res.status(500).json({ products: [], categories: [] })
   }
 }
 

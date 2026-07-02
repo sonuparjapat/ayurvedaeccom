@@ -404,7 +404,7 @@ Token location: Authorization: Bearer <token>  (HTTP header)
                 ['GET', '/public', 'public', 'List all active products. Supports ?category=&search=&page=&limit=&sort='],
                 ['GET', '/public/:id', 'public', 'Get single product details including images, variants, avg rating.'],
                 ['GET', '/categories', 'public', 'List all active categories.'],
-                ['GET', '/search/suggestions', 'public', 'Autocomplete suggestions. ?q=keyword'],
+                ['GET', '/search/suggestions', 'public', 'Autocomplete. ?q=keyword (min 2 chars). Returns { products: [...], categories: [...] } (flat, NOT wrapped in suggestions{}). Products include: id, name, slug, price, compareprice, images[], category_name. Searches name, category_name, and tags columns.'],
                 ['GET', '/related/:id', 'public', 'Related products by category.'],
                 ['GET', '/variants/:id', 'public', 'All variants for a product.'],
                 ['GET', '/rating/:id', 'public', 'Rating breakdown (star distribution).'],
