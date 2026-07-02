@@ -231,9 +231,20 @@ const {
   flex-shrink: 0;
   width: 168px;
   height: 52px;
-  border-radius: 6px;
   text-decoration: none;
   display: block;
+}
+
+.logo-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, #f7f4eb);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .logo-image {
@@ -245,6 +256,7 @@ const {
   transform: translate(-50%, -50%);
   display: block;
   transition: filter 0.25s ease;
+  z-index: 1;
 }
 
 .logo-wrap:hover .logo-image {

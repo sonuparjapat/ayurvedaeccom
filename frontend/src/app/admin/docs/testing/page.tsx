@@ -88,17 +88,7 @@ const SECTIONS: TestSection[] = [
         where: 'Web header & Mobile Profile tab.',
       },
       {
-        id: 'auth-3', title: 'Google Sign-In (Web)', severity: 'high',
-        steps: [
-          'Click Login → slide-in sheet opens',
-          'Click "Continue with Google"',
-          'Select Google account',
-        ],
-        expected: 'OAuth popup → user logged in → sheet closes.',
-        where: 'Web app only.',
-      },
-      {
-        id: 'auth-4', title: 'Auth Sheet Trigger from Wishlist', severity: 'high',
+        id: 'auth-3', title: 'Auth Sheet Trigger from Wishlist', severity: 'high',
         steps: [
           'Logout → go to any category page',
           'Click heart icon on any product without logging in',
@@ -107,13 +97,13 @@ const SECTIONS: TestSection[] = [
         where: 'Web: category/product pages.',
       },
       {
-        id: 'auth-5', title: 'Auth Sheet Trigger from Support', severity: 'high',
+        id: 'auth-4', title: 'Auth Sheet Trigger from Support', severity: 'high',
         steps: ['Logout → go to /support page'],
         expected: 'Auth slide-in sheet opens automatically. Does NOT redirect to /login.',
         where: 'Web: /support page.',
       },
       {
-        id: 'auth-6', title: 'Logout', severity: 'critical',
+        id: 'auth-5', title: 'Logout', severity: 'critical',
         steps: [
           'Login → click avatar/menu → Logout',
         ],
@@ -121,7 +111,7 @@ const SECTIONS: TestSection[] = [
         where: 'Web & Mobile.',
       },
       {
-        id: 'auth-7', title: 'Admin Login', severity: 'critical',
+        id: 'auth-6', title: 'Admin Login', severity: 'critical',
         steps: [
           'Go to /auth → enter admin email + password',
           'Click Login',
@@ -1303,6 +1293,92 @@ const SECTIONS: TestSection[] = [
 const NAV_SECTIONS = SECTIONS.map(s => ({ id: s.id, label: s.label, icon: s.icon, color: s.color }))
 
 /* ═══════════════════════════════════════════════
+   PLANNED / NOT YET IMPLEMENTED FEATURES
+═══════════════════════════════════════════════ */
+
+interface PlannedFeature {
+  title: string
+  description: string
+  platforms: string[]
+  priority: 'high' | 'medium' | 'low'
+}
+
+const PLANNED_FEATURES: PlannedFeature[] = [
+  {
+    title: 'Google Sign-In (OAuth)',
+    description: 'Allow users to register and login using their Google account via OAuth 2.0. The "Continue with Google" button on the auth slide-in sheet. After auth, user profile is auto-filled from Google account.',
+    platforms: ['Web App', 'Mobile App'],
+    priority: 'high',
+  },
+  {
+    title: 'Mobile App: Biometric / PIN Login',
+    description: 'After first login, allow users to authenticate on mobile using fingerprint, Face ID, or a 4-digit PIN for faster re-login without typing password.',
+    platforms: ['Mobile App'],
+    priority: 'medium',
+  },
+  {
+    title: 'Product Comparison',
+    description: 'Allow users to select 2–4 products and compare them side-by-side (price, specifications, ingredients, ratings).',
+    platforms: ['Web App'],
+    priority: 'medium',
+  },
+  {
+    title: 'Loyalty / Reward Points System',
+    description: 'Earn points on every purchase, review written, or referral. Points redeemable as wallet balance on next order. Admin controls earn rate and redemption value.',
+    platforms: ['Web App', 'Mobile App', 'Admin'],
+    priority: 'high',
+  },
+  {
+    title: 'Referral System',
+    description: 'Every user gets a unique referral code. When a new user signs up using this code and makes their first purchase, both parties earn wallet credits.',
+    platforms: ['Web App', 'Mobile App', 'Admin'],
+    priority: 'medium',
+  },
+  {
+    title: 'Product Q&A on Mobile',
+    description: 'Currently Q&A is only on web product pages. Mobile app should also allow users to ask and view answered questions on the product detail screen.',
+    platforms: ['Mobile App'],
+    priority: 'medium',
+  },
+  {
+    title: 'Order Cancellation by User',
+    description: 'Allow users to cancel their own order within a configurable time window (e.g., 30 minutes or before "Processing" status). Admin can configure the cancellation window.',
+    platforms: ['Web App', 'Mobile App'],
+    priority: 'high',
+  },
+  {
+    title: 'Live Order Tracking (Map)',
+    description: 'Real-time delivery tracking on a map using the courier partner\'s tracking API. Show delivery person location on the user\'s order detail page.',
+    platforms: ['Web App', 'Mobile App'],
+    priority: 'low',
+  },
+  {
+    title: 'Product Subscription / Auto-Refill',
+    description: 'Let users subscribe to a product (e.g., order every 30 days). Auto-create orders on schedule. Admin can view and manage all subscriptions.',
+    platforms: ['Web App', 'Mobile App', 'Admin'],
+    priority: 'medium',
+  },
+  {
+    title: 'Admin: Automated Email Campaigns',
+    description: 'Send scheduled email campaigns to newsletter subscribers (new products, seasonal offers). WYSIWYG email template builder in admin. Track open/click rates.',
+    platforms: ['Admin'],
+    priority: 'medium',
+  },
+  {
+    title: 'Multi-Currency / Multi-Language',
+    description: 'Support for USD, EUR alongside INR. Interface language switching (English, Hindi). Price display based on user location.',
+    platforms: ['Web App', 'Mobile App'],
+    priority: 'low',
+  },
+  {
+    title: 'WhatsApp Order Notifications',
+    description: 'Send order confirmation and status update messages via WhatsApp Business API in addition to email and push notifications.',
+    platforms: ['Backend'],
+    priority: 'high',
+  },
+]
+
+/* ═══════════════════════════════════════════════
    COMPONENTS
 ═══════════════════════════════════════════════ */
 
@@ -1580,6 +1656,43 @@ export default function TestingGuidePage() {
             </div>
           ) : (
             filteredSections.map(sec => <SectionBlock key={sec.id} sec={sec} />)
+          )}
+
+          {/* ── Planned Features ── */}
+          {!search && platformFilter === 'all' && severityFilter === 'all' && (
+            <section className="mb-8">
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-dashed border-amber-200">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-50">
+                  <AlertCircle size={18} className="text-amber-500" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">Planned / Not Yet Implemented</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">These features are not built yet — listed here for future development reference</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {PLANNED_FEATURES.map((f, i) => (
+                  <div key={i} className="border border-dashed border-amber-200 rounded-xl p-4 bg-amber-50/40">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="font-semibold text-gray-800 text-sm">{f.title}</p>
+                      <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        f.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                        f.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-500'
+                      }`}>
+                        {f.priority.charAt(0).toUpperCase() + f.priority.slice(1)} priority
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed mb-2">{f.description}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {f.platforms.map(p => (
+                        <span key={p} className="px-2 py-0.5 rounded-full text-xs bg-white border border-amber-200 text-amber-700 font-medium">{p}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
         </div>
       </div>
