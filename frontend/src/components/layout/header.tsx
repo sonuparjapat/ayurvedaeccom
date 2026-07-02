@@ -229,38 +229,25 @@ const {
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
-  width: 168px;
-  height: 52px;
+  width: 170px;
+  height: 50px;
   text-decoration: none;
   display: block;
 }
 
-.logo-wrap::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 18px;
-  height: 100%;
-  background: linear-gradient(to right, transparent, #f7f4eb);
-  pointer-events: none;
-  z-index: 2;
-}
-
 .logo-image {
   position: absolute;
-  width: 285px;
+  width: 190px;
   height: auto;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   display: block;
   transition: filter 0.25s ease;
-  z-index: 1;
 }
 
 .logo-wrap:hover .logo-image {
-  filter: drop-shadow(0 4px 10px rgba(26,58,42,0.15));
+  filter: drop-shadow(0 3px 8px rgba(26,58,42,0.15));
 }
         /* ── Desktop Search ── */
         .search-desktop {

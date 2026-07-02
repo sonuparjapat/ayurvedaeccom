@@ -13,7 +13,7 @@ import { useStore } from '../../store'
 import { Image as ExpoImage } from 'expo-image'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
 
-const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
+const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/mainayurvedalogo.png'
 
 const { width: W } = Dimensions.get('window')
 type Mode = 'login' | 'register' | 'otp' | 'mobileOtp' | 'forgot' | 'verifySent'
@@ -259,10 +259,10 @@ export default function AuthScreen() {
 
             {/* Brand */}
             <Animated.View entering={FadeIn.delay(80)} style={ss.brandRow}>
-              <View style={{ width: 180, height: 58, overflow: 'hidden', borderRadius: 10 }}>
+              <View style={{ width: 200, height: 58, overflow: 'hidden', borderRadius: 10, backgroundColor: '#fff' }}>
                 <ExpoImage
                   source={{ uri: LOGO_URL }}
-                  style={{ width: 306, height: 204, marginLeft: -63, marginTop: -73 }}
+                  style={{ width: 222, height: 62, marginLeft: -11, marginTop: -2 }}
                   contentFit="fill"
                   transition={200}
                 />

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
-const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
+const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/mainayurvedalogo.png'
 
 export function Footer() {
   const { categoriesdata, companydata } = useAuth()
@@ -90,18 +90,11 @@ export function Footer() {
             {/* Company */}
             <div className="lg:col-span-1">
               <div className="flex items-center gap-3 mb-4">
-                <div style={{ position: 'relative', overflow: 'hidden', width: 168, height: 50, borderRadius: 8, background: 'rgba(255,255,255,0.95)' }}>
+                <div style={{ position: 'relative', overflow: 'hidden', width: 170, height: 50, borderRadius: 8, background: '#fff' }}>
                   <img
                     src={LOGO_URL}
                     alt="Oroganix"
-                    style={{
-                      position: 'absolute',
-                      width: 285,
-                      height: 'auto',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                    }}
+                    style={{ position: 'absolute', width: 190, height: 'auto', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
                   />
                 </div>
               </div>

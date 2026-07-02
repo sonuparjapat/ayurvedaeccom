@@ -95,18 +95,11 @@ export default function AdminLayout({
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
 
           <Link href="/admin/dashboard" className="flex items-center gap-3">
-            <div style={{ position: 'relative', overflow: 'hidden', width: 168, height: 46, borderRadius: 8, background: 'rgba(255,255,255,0.95)', flexShrink: 0 }}>
+            <div style={{ position: 'relative', overflow: 'hidden', width: 170, height: 48, borderRadius: 8, background: '#fff', flexShrink: 0 }}>
               <img
-                src="https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png"
+                src="https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/mainayurvedalogo.png"
                 alt="Oroganix"
-                style={{
-                  position: 'absolute',
-                  width: 285,
-                  height: 'auto',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                }}
+                style={{ position: 'absolute', width: 190, height: 'auto', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
               />
             </div>
           </Link>

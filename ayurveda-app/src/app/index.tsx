@@ -22,7 +22,7 @@ import api from '../api/axios'
 import { getGuestSession } from '../utils/guestSession'
 import { Colors, Fonts, CATEGORY_THEMES, Shadows, Radius } from '../constants/theme'
 
-const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
+const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/mainayurvedalogo.png'
 
 const { width: W, height: H } = Dimensions.get('window')
 const AnimPressable = Animated.createAnimatedComponent(Pressable)
@@ -121,10 +121,10 @@ function TopBar({ cartCount, user, defaultAddr }: { cartCount: number; user: any
         activeOpacity={user ? 0.7 : 1}
         onPress={() => user && router.push('/account')}
       >
-        <View style={{ width: 155, height: 50, overflow: 'hidden', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.93)' }}>
+        <View style={{ width: 160, height: 46, overflow: 'hidden', borderRadius: 8, backgroundColor: '#fff' }}>
           <ExpoImage
             source={{ uri: LOGO_URL }}
-            style={{ width: 263, height: 175, marginLeft: -54, marginTop: -62 }}
+            style={{ width: 178, height: 50, marginLeft: -9, marginTop: -2 }}
             contentFit="fill"
             transition={200}
           />
@@ -841,10 +841,10 @@ export default function HomeScreen() {
       <Animated.View style={[ss.floatHeader, { paddingTop: insets.top }, headerStyle]} pointerEvents="none">
         <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={{ paddingHorizontal: 20, paddingVertical: 10 }}>
-          <View style={{ width: 132, height: 42, overflow: 'hidden', borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.92)' }}>
+          <View style={{ width: 140, height: 40, overflow: 'hidden', borderRadius: 6, backgroundColor: '#fff' }}>
             <ExpoImage
               source={{ uri: LOGO_URL }}
-              style={{ width: 224, height: 149, marginLeft: -46, marginTop: -53 }}
+              style={{ width: 156, height: 44, marginLeft: -8, marginTop: -2 }}
               contentFit="fill"
               transition={200}
             />
