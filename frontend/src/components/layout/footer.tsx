@@ -90,7 +90,20 @@ export function Footer() {
             {/* Company */}
             <div className="lg:col-span-1">
               <div className="flex items-center gap-3 mb-4">
-                <img src={LOGO_URL} alt="Oroganix" className="h-10 object-contain" />
+                <div style={{ position: 'relative', overflow: 'hidden', width: 168, height: 50, borderRadius: 8, background: 'rgba(255,255,255,0.95)' }}>
+                  <img
+                    src={LOGO_URL}
+                    alt="Oroganix"
+                    style={{
+                      position: 'absolute',
+                      width: 285,
+                      height: 'auto',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                  />
+                </div>
               </div>
               <p className="text-gray-400 text-sm mb-6 leading-relaxed">
                 Premium Ayurvedic herbs, organic supplements, and natural wellness products.

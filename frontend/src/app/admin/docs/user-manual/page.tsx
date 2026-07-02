@@ -210,6 +210,11 @@ export default function UserManualPage() {
           <InfoBox type="tip">
             <strong>Who should read this?</strong> This manual is written for anyone — a new admin, a customer service representative, a store owner, or even a new customer wanting to understand all platform features.
           </InfoBox>
+          <InfoBox type="info">
+            <strong>Testing Guide available:</strong> A full end-to-end QA testing guide covering Admin, Web App, and Mobile is available at{' '}
+            <a href="/admin/docs/testing" className="underline font-semibold">Admin → Documentation → Testing Guide</a>.
+            It lists every feature's test steps and expected results.
+          </InfoBox>
         </Section>
 
         {/* ═══ 2. CUSTOMER JOURNEY ═══ */}

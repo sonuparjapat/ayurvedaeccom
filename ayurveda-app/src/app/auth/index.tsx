@@ -259,7 +259,14 @@ export default function AuthScreen() {
 
             {/* Brand */}
             <Animated.View entering={FadeIn.delay(80)} style={ss.brandRow}>
-              <ExpoImage source={{ uri: LOGO_URL }} style={{ width: 140, height: 40 }} contentFit="contain" transition={200} />
+              <View style={{ width: 180, height: 58, overflow: 'hidden', borderRadius: 10 }}>
+                <ExpoImage
+                  source={{ uri: LOGO_URL }}
+                  style={{ width: 306, height: 204, marginLeft: -63, marginTop: -73 }}
+                  contentFit="fill"
+                  transition={200}
+                />
+              </View>
             </Animated.View>
 
             {/* Heading */}

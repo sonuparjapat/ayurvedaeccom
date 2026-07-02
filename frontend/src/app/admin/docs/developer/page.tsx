@@ -168,6 +168,13 @@ export default function DeveloperDocsPage() {
           </div>
         </div>
 
+        {/* ═══ TESTING GUIDE NOTICE ═══ */}
+        <InfoBox type="tip">
+          <strong>Testing Guide:</strong> A full QA test plan covering Admin, Web App, and Mobile App is available at{' '}
+          <a href="/admin/docs/testing" className="underline font-semibold">Admin → Documentation → Testing Guide</a>.
+          Use it before every release to verify all critical flows end-to-end.
+        </InfoBox>
+
         {/* ═══ ARCHITECTURE ═══ */}
         <Section id="arch" title="Architecture Overview" icon={Layers}>
           <Code>{`

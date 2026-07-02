@@ -31,6 +31,7 @@ import {
   RotateCcw,
   Eye,
   Mail,
+  FlaskConical,
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
@@ -94,11 +95,20 @@ export default function AdminLayout({
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
 
           <Link href="/admin/dashboard" className="flex items-center gap-3">
-            <img
-              src="https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png"
-              alt="Oroganix"
-              style={{ height: 36, objectFit: 'contain' }}
-            />
+            <div style={{ position: 'relative', overflow: 'hidden', width: 168, height: 46, borderRadius: 8, background: 'rgba(255,255,255,0.95)', flexShrink: 0 }}>
+              <img
+                src="https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png"
+                alt="Oroganix"
+                style={{
+                  position: 'absolute',
+                  width: 285,
+                  height: 'auto',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                }}
+              />
+            </div>
           </Link>
 
           {/* Close (Mobile) */}
@@ -314,6 +324,10 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/docs/developer" icon={<Code2 size={18} />}>
             Developer Docs
+          </MenuItem>
+
+          <MenuItem href="/admin/docs/testing" icon={<FlaskConical size={18} />}>
+            Testing Guide
           </MenuItem>
 
         </nav>

@@ -226,28 +226,29 @@ const {
  
     /* ── Logo ── */
 .logo-wrap {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
+  position: relative;
+  overflow: hidden;
   flex-shrink: 0;
-  min-width: 0;
-  padding: 2px 0;
+  width: 168px;
+  height: 52px;
+  border-radius: 6px;
+  text-decoration: none;
+  display: block;
 }
 
 .logo-image {
-  height: 60px;
-  width: 60px;
-  object-fit: cover;
-  object-position: center;
+  position: absolute;
+  width: 285px;
+  height: auto;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: block;
-  mix-blend-mode: multiply;
-  transform: scale(2.8);
-  transform-origin: center;
   transition: filter 0.25s ease;
 }
 
 .logo-wrap:hover .logo-image {
-  filter: drop-shadow(0 6px 14px rgba(26,58,42,0.12));
+  filter: drop-shadow(0 4px 10px rgba(26,58,42,0.15));
 }
         /* ── Desktop Search ── */
         .search-desktop {

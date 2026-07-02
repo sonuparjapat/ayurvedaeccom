@@ -1,0 +1,1588 @@
+'use client'
+
+import { useState } from 'react'
+import {
+  FlaskConical, ShoppingCart, Package, Users, BarChart3, Tag, Zap, Image,
+  MessageSquare, Bell, Wallet, Star, MapPin, CreditCard, Truck,
+  Settings, Shield, Search, Heart, RotateCcw, Download, ChevronRight,
+  CheckCircle, AlertCircle, Info, BookOpen, Smartphone, Monitor,
+  Globe, Lock, RefreshCw, Mail, Eye, Code2, FileText, Database,
+  Home, Filter, ToggleLeft, Upload, Layers, PenTool, Percent,
+  UserCheck, ClipboardList, XCircle, PhoneCall
+} from 'lucide-react'
+
+/* ═══════════════════════════════════════════════
+   TYPES
+═══════════════════════════════════════════════ */
+
+type Platform = 'admin' | 'web' | 'mobile' | 'all'
+type Severity = 'critical' | 'high' | 'medium' | 'low'
+
+interface TestCase {
+  id: string
+  title: string
+  steps: string[]
+  expected: string
+  where?: string
+  severity: Severity
+}
+
+interface TestSection {
+  id: string
+  label: string
+  icon: any
+  platform: Platform[]
+  color: string
+  cases: TestCase[]
+}
+
+/* ═══════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════ */
+
+const platformLabel: Record<Platform, { label: string; color: string }> = {
+  admin:  { label: 'Admin',  color: '#6366f1' },
+  web:    { label: 'Web App',color: '#0ea5e9' },
+  mobile: { label: 'Mobile', color: '#10b981' },
+  all:    { label: 'All',    color: '#f59e0b' },
+}
+
+const severityLabel: Record<Severity, { label: string; bg: string; text: string }> = {
+  critical: { label: 'Critical', bg: '#fef2f2', text: '#dc2626' },
+  high:     { label: 'High',     bg: '#fff7ed', text: '#ea580c' },
+  medium:   { label: 'Medium',   bg: '#fefce8', text: '#ca8a04' },
+  low:      { label: 'Low',      bg: '#f0fdf4', text: '#16a34a' },
+}
+
+/* ═══════════════════════════════════════════════
+   ALL TEST SECTIONS
+═══════════════════════════════════════════════ */
+
+const SECTIONS: TestSection[] = [
+
+  /* ── 1. AUTH ── */
+  {
+    id: 'auth', label: 'Authentication & Login', icon: Lock,
+    platform: ['web', 'mobile'], color: '#6366f1',
+    cases: [
+      {
+        id: 'auth-1', title: 'Email + Password Registration', severity: 'critical',
+        steps: [
+          'Go to web app → click Login button (top-right)',
+          'Auth slide-in sheet opens from the right side',
+          'Click "Sign Up" tab → fill Name, Email, Password',
+          'Submit → OTP sent to email',
+          'Enter OTP → account created',
+        ],
+        expected: 'Account created, user logged in, header shows user name/avatar. Auth sheet closes automatically.',
+        where: 'Web: top-right header. Mobile: Profile tab.',
+      },
+      {
+        id: 'auth-2', title: 'Email + Password Login', severity: 'critical',
+        steps: [
+          'Click Login → slide-in sheet opens',
+          'Enter registered email + password',
+          'Click Login',
+        ],
+        expected: 'User is logged in. Header updates (avatar, name). Wishlist, cart count refresh.',
+        where: 'Web header & Mobile Profile tab.',
+      },
+      {
+        id: 'auth-3', title: 'Google Sign-In (Web)', severity: 'high',
+        steps: [
+          'Click Login → slide-in sheet opens',
+          'Click "Continue with Google"',
+          'Select Google account',
+        ],
+        expected: 'OAuth popup → user logged in → sheet closes.',
+        where: 'Web app only.',
+      },
+      {
+        id: 'auth-4', title: 'Auth Sheet Trigger from Wishlist', severity: 'high',
+        steps: [
+          'Logout → go to any category page',
+          'Click heart icon on any product without logging in',
+        ],
+        expected: 'Auth slide-in sheet opens from the right. Does NOT navigate to /auth page.',
+        where: 'Web: category/product pages.',
+      },
+      {
+        id: 'auth-5', title: 'Auth Sheet Trigger from Support', severity: 'high',
+        steps: ['Logout → go to /support page'],
+        expected: 'Auth slide-in sheet opens automatically. Does NOT redirect to /login.',
+        where: 'Web: /support page.',
+      },
+      {
+        id: 'auth-6', title: 'Logout', severity: 'critical',
+        steps: [
+          'Login → click avatar/menu → Logout',
+        ],
+        expected: 'Session cleared. Redirected to home page (/). Cart, wishlist cleared from UI.',
+        where: 'Web & Mobile.',
+      },
+      {
+        id: 'auth-7', title: 'Admin Login', severity: 'critical',
+        steps: [
+          'Go to /auth → enter admin email + password',
+          'Click Login',
+        ],
+        expected: 'Redirected to /admin/dashboard.',
+        where: 'Admin panel.',
+      },
+    ],
+  },
+
+  /* ── 2. CATEGORIES ── */
+  {
+    id: 'categories', label: 'Category Management', icon: Layers,
+    platform: ['admin', 'web', 'mobile'], color: '#0ea5e9',
+    cases: [
+      {
+        id: 'cat-1', title: 'Create Parent Category', severity: 'critical',
+        steps: [
+          'Admin → Categories → Add Category',
+          'Fill Name, Slug, Description',
+          'Leave Parent Category empty (top-level)',
+          'Set GST Rate (e.g. 18%)',
+          'Upload image → Save',
+        ],
+        expected: 'Category appears in listing with no parent. Shows in web header nav and mobile home screen categories.',
+        where: 'Admin: /admin/categories | Web: header nav | Mobile: Home screen.',
+      },
+      {
+        id: 'cat-2', title: 'Create Sub-Category', severity: 'high',
+        steps: [
+          'Admin → Categories → Add Category',
+          'Fill Name, select a Parent Category from dropdown',
+          'Save',
+        ],
+        expected: 'Sub-category created. Visible under parent. Not shown in web header (only parent categories shown there).',
+        where: 'Admin: category list.',
+      },
+      {
+        id: 'cat-3', title: 'Category Page (Web)', severity: 'critical',
+        steps: [
+          'Click any category in web header or footer',
+          'URL should be /category/[slug]',
+        ],
+        expected: 'Products listed. Includes products from ALL child categories (recursive). Filters work.',
+        where: 'Web: /category/[slug].',
+      },
+      {
+        id: 'cat-4', title: 'Category Page (Mobile)', severity: 'high',
+        steps: [
+          'Open mobile app → tap a category on Home',
+          'Or tap filter on product list',
+        ],
+        expected: 'Products from that category load. Sub-category products included.',
+        where: 'Mobile: Product list screen.',
+      },
+      {
+        id: 'cat-5', title: 'Edit / Delete Category', severity: 'medium',
+        steps: [
+          'Admin → Categories → Edit button',
+          'Change name/slug → Save',
+          'Try Delete on a category with no products',
+        ],
+        expected: 'Changes reflect on web & mobile after save.',
+        where: 'Admin only.',
+      },
+    ],
+  },
+
+  /* ── 3. BRANDS ── */
+  {
+    id: 'brands', label: 'Brand Management', icon: Tag,
+    platform: ['admin', 'web'], color: '#8b5cf6',
+    cases: [
+      {
+        id: 'brand-1', title: 'Create Brand with Logo', severity: 'high',
+        steps: [
+          'Admin → Brands → Add Brand',
+          'Fill Name, Description',
+          'Upload logo image from local file',
+          'Set Sort Order → Save',
+        ],
+        expected: 'Brand created. Logo visible in brand list. Brand available in product creation dropdown.',
+        where: 'Admin: /admin/brands.',
+      },
+      {
+        id: 'brand-2', title: 'Brand Listing & Search', severity: 'medium',
+        steps: [
+          'Admin → Brands',
+          'Type in search box',
+        ],
+        expected: 'List filters in real time. Pagination works.',
+        where: 'Admin: /admin/brands.',
+      },
+      {
+        id: 'brand-3', title: 'Brand on Product', severity: 'medium',
+        steps: [
+          'Create/edit a product → select Brand from dropdown',
+          'Save → view product on web app',
+        ],
+        expected: 'Brand name visible on product detail page.',
+        where: 'Web: product detail page.',
+      },
+    ],
+  },
+
+  /* ── 4. PRODUCTS ── */
+  {
+    id: 'products', label: 'Product Management', icon: Package,
+    platform: ['admin', 'web', 'mobile'], color: '#f59e0b',
+    cases: [
+      {
+        id: 'prod-1', title: 'Create Full Product', severity: 'critical',
+        steps: [
+          'Admin → Products → Add Product',
+          'Fill: Name, Slug, Description, Price, Compare Price, SKU',
+          'Select Category (with child allowed), Brand',
+          'Set Stock Qty, Unit (e.g. 500g)',
+          'Add Tags (comma separated), Highlights, Ingredients, Benefits',
+          'Add Usage Instructions, Storage, Warnings',
+          'Fill SEO: Meta Title, Meta Description, Focus Keyword',
+          'Add FAQs (JSON or WYSIWYG)',
+          'Set Min/Max Order Qty',
+          'Upload product images',
+          'Set Status = Active → Save',
+        ],
+        expected: 'Product visible in admin list AND on web app product page AND mobile app.',
+        where: 'Admin: /admin/products | Web: /product/[slug] | Mobile: Product screen.',
+      },
+      {
+        id: 'prod-2', title: 'Product Page URL (Slug)', severity: 'critical',
+        steps: [
+          'After creating product, note the slug',
+          'Navigate to /product/[slug] on web',
+          'Also try /product/[numeric-id] on web',
+        ],
+        expected: 'Both slug and numeric ID URLs work. Canonical URL shows slug-based URL.',
+        where: 'Web: /product/[slug] and /product/[id].',
+      },
+      {
+        id: 'prod-3', title: 'Product Images', severity: 'high',
+        steps: [
+          'Admin → Edit product → upload 3+ images from local',
+          'Check the product page on web',
+        ],
+        expected: 'All images shown in gallery. Thumbnails clickable. Main image swaps. S3 URLs working.',
+        where: 'Web & Mobile: product detail.',
+      },
+      {
+        id: 'prod-4', title: 'Product Status (Active/Inactive)', severity: 'high',
+        steps: [
+          'Admin → set product Status = Inactive → Save',
+          'Try accessing product URL on web',
+        ],
+        expected: 'Inactive product NOT visible in product listing. Direct URL may show 404 or redirect.',
+        where: 'Web & Mobile.',
+      },
+      {
+        id: 'prod-5', title: 'Deactivate / Soft-Delete Product', severity: 'high',
+        steps: [
+          'Admin → Products → click Delete icon on a product',
+          'Confirm deletion',
+        ],
+        expected: 'Product status set to "inactive" (NOT deleted from DB). Product disappears from listing.',
+        where: 'Admin: /admin/products.',
+      },
+      {
+        id: 'prod-6', title: 'Product Search', severity: 'critical',
+        steps: [
+          'Web: use top search bar → type product name',
+          'Mobile: use search icon → type product name',
+        ],
+        expected: 'Matching products appear in real time. Clicking result goes to product page.',
+        where: 'Web: header search | Mobile: Search screen.',
+      },
+      {
+        id: 'prod-7', title: 'Product Tags Display', severity: 'medium',
+        steps: [
+          'Admin: add tags "ashwagandha, organic, vegan" → Save',
+          'View product on web app',
+        ],
+        expected: 'Tags displayed as pills on product page. No double quotes or brackets visible.',
+        where: 'Web: /product/[slug].',
+      },
+      {
+        id: 'prod-8', title: 'FAQs on Product Page', severity: 'medium',
+        steps: [
+          'Admin → Edit product → add FAQs in JSON format or WYSIWYG',
+          'Save → open product on web',
+        ],
+        expected: 'FAQ accordion visible on product page. Structured data (JSON-LD FAQPage) present in page source.',
+        where: 'Web: /product/[slug] → view source → search FAQPage.',
+      },
+      {
+        id: 'prod-9', title: 'Related Products', severity: 'low',
+        steps: [
+          'View any product that has related products set in admin',
+        ],
+        expected: '"Related Products" section visible at bottom of product page.',
+        where: 'Web & Mobile: product detail.',
+      },
+    ],
+  },
+
+  /* ── 5. VARIANTS ── */
+  {
+    id: 'variants', label: 'Product Variants', icon: ToggleLeft,
+    platform: ['admin', 'web', 'mobile'], color: '#06b6d4',
+    cases: [
+      {
+        id: 'var-1', title: 'Create Variant for Product', severity: 'high',
+        steps: [
+          'Admin → Variants → Add Variant',
+          'Select Product, set Variant Name (e.g. "500g"), Price, Stock',
+          'Save',
+        ],
+        expected: 'Variant appears on product page as a selectable option.',
+        where: 'Web & Mobile: product detail.',
+      },
+      {
+        id: 'var-2', title: 'Price Changes on Variant Select', severity: 'high',
+        steps: [
+          'Web: open product page → click a variant option',
+        ],
+        expected: 'Price on page updates to variant price. Cart adds the selected variant.',
+        where: 'Web & Mobile: product page.',
+      },
+    ],
+  },
+
+  /* ── 6. CART ── */
+  {
+    id: 'cart', label: 'Cart & Quantity', icon: ShoppingCart,
+    platform: ['web', 'mobile'], color: '#f97316',
+    cases: [
+      {
+        id: 'cart-1', title: 'Add to Cart', severity: 'critical',
+        steps: [
+          'Open any active product → click "Add to Cart"',
+          'Go to /cart (web) or Cart tab (mobile)',
+        ],
+        expected: 'Product appears in cart. Qty = 1. Price shown correctly.',
+        where: 'Web: /cart | Mobile: Cart tab.',
+      },
+      {
+        id: 'cart-2', title: 'Update Cart Quantity', severity: 'critical',
+        steps: [
+          'Cart page → click + button to increase qty',
+          'Click − to decrease',
+        ],
+        expected: 'Qty updates. Total price recalculates. No server error. No "updated_at" column error in backend.',
+        where: 'Web & Mobile: Cart page.',
+      },
+      {
+        id: 'cart-3', title: 'Flash Sale Price in Cart', severity: 'critical',
+        steps: [
+          'Create a flash sale on a product (Admin)',
+          'Add that product to cart',
+          'Check cart',
+        ],
+        expected: 'Cart shows flash sale price (lower price). "⚡ Flash Sale" badge visible. Original price struck through.',
+        where: 'Web: /cart | Mobile: Cart tab.',
+      },
+      {
+        id: 'cart-4', title: 'Min/Max Order Quantity', severity: 'medium',
+        steps: [
+          'Set min_order_qty=2, max_order_qty=5 on a product (Admin)',
+          'Try to add 1 qty → cart should enforce min',
+          'Try to set qty to 10 → cart should enforce max',
+        ],
+        expected: 'Qty cannot go below min or above max.',
+        where: 'Web & Mobile: Cart.',
+      },
+      {
+        id: 'cart-5', title: 'Remove Item from Cart', severity: 'high',
+        steps: [
+          'Cart page → click Remove/Trash icon',
+        ],
+        expected: 'Item removed instantly. Cart total updates.',
+        where: 'Web & Mobile: Cart.',
+      },
+      {
+        id: 'cart-6', title: 'Apply Coupon', severity: 'critical',
+        steps: [
+          'Admin → Coupons → create a coupon (e.g. SAVE10, 10% off, min order 200)',
+          'Web → go to cart → enter coupon code → Apply',
+        ],
+        expected: 'Discount applied to cart total. Coupon name + discount amount shown.',
+        where: 'Web & Mobile: Cart/Checkout.',
+      },
+    ],
+  },
+
+  /* ── 7. CHECKOUT & ORDERS ── */
+  {
+    id: 'checkout', label: 'Checkout & Order Placement', icon: CreditCard,
+    platform: ['web', 'mobile'], color: '#dc2626',
+    cases: [
+      {
+        id: 'ord-1', title: 'Place COD Order', severity: 'critical',
+        steps: [
+          'Add product to cart → Proceed to Checkout',
+          'Fill/Select delivery address',
+          'Choose "Cash on Delivery"',
+          'Confirm order',
+        ],
+        expected: 'Order created. Invoice number generated. Order visible in /orders (web) and Admin → Orders.',
+        where: 'Web & Mobile: Checkout → Order success page.',
+      },
+      {
+        id: 'ord-2', title: 'Place Razorpay Order', severity: 'critical',
+        steps: [
+          'Add product → Checkout → choose "Online Payment"',
+          'Razorpay modal opens',
+          'Use test card: 4111 1111 1111 1111, CVV 123, any future date',
+          'Complete payment',
+        ],
+        expected: 'Payment successful. Order created with payment_status = paid. Redirected to order success.',
+        where: 'Web & Mobile: Checkout.',
+      },
+      {
+        id: 'ord-3', title: 'Flash Price Applied to Order', severity: 'critical',
+        steps: [
+          'Active flash sale on product',
+          'Add to cart → checkout → place order',
+          'Check order in Admin',
+        ],
+        expected: 'Order total uses flash sale price (NOT regular price). Discount visible on invoice.',
+        where: 'Admin: /admin/orders/[id] | Web: /orders.',
+      },
+      {
+        id: 'ord-4', title: 'Pincode Serviceability Check', severity: 'high',
+        steps: [
+          'Admin → Pincodes → add/remove a pincode',
+          'Web checkout → enter that pincode in address',
+        ],
+        expected: 'Serviceable pincode: delivery option shows. Non-serviceable: error message shown.',
+        where: 'Web & Mobile: Checkout address step.',
+      },
+      {
+        id: 'ord-5', title: 'Order Listing (User)', severity: 'high',
+        steps: [
+          'Login → go to /orders (web) or Profile → Orders (mobile)',
+        ],
+        expected: 'All user orders listed with status, amount, date. Clickable to see details.',
+        where: 'Web: /orders | Mobile: Profile → Orders.',
+      },
+    ],
+  },
+
+  /* ── 8. ADMIN ORDERS ── */
+  {
+    id: 'admin-orders', label: 'Admin: Order Management', icon: Truck,
+    platform: ['admin'], color: '#7c3aed',
+    cases: [
+      {
+        id: 'adord-1', title: 'View All Orders', severity: 'critical',
+        steps: [
+          'Admin → Orders',
+          'Check listing: invoice no, customer name, amount, status',
+        ],
+        expected: 'Orders listed with filters (status, date). Pagination works.',
+        where: 'Admin: /admin/orders.',
+      },
+      {
+        id: 'adord-2', title: 'Update Order Status', severity: 'critical',
+        steps: [
+          'Admin → Orders → click an order',
+          'Change status to "Processing" → "Shipped" → "Delivered"',
+        ],
+        expected: 'Status updated. Customer gets push notification on mobile (if token registered). Status log entry created.',
+        where: 'Admin: order detail.',
+      },
+      {
+        id: 'adord-3', title: 'Add Tracking Number', severity: 'high',
+        steps: [
+          'Admin → order detail → enter Tracking Number + Courier Name → Save',
+        ],
+        expected: 'Tracking info visible on user\'s order detail page.',
+        where: 'Web & Mobile: /orders/[id].',
+      },
+      {
+        id: 'adord-4', title: 'Generate Invoice', severity: 'high',
+        steps: [
+          'Admin → Invoices OR order detail → Download Invoice',
+        ],
+        expected: 'PDF invoice generated with company info, products, GST breakup.',
+        where: 'Admin: /admin/invoices.',
+      },
+      {
+        id: 'adord-5', title: 'Filter Orders by Status/Date', severity: 'medium',
+        steps: [
+          'Admin → Orders → use status filter dropdown',
+          'Use date range filter',
+        ],
+        expected: 'List updates correctly. Count matches filter.',
+        where: 'Admin: /admin/orders.',
+      },
+    ],
+  },
+
+  /* ── 9. RETURNS ── */
+  {
+    id: 'returns', label: 'Returns & Refunds', icon: RotateCcw,
+    platform: ['admin', 'web', 'mobile'], color: '#ef4444',
+    cases: [
+      {
+        id: 'ret-1', title: 'User Initiates Return', severity: 'high',
+        steps: [
+          'Login → go to a delivered order',
+          'Click "Return" → fill reason → submit',
+        ],
+        expected: 'Return request created. Visible in Admin → Returns.',
+        where: 'Web & Mobile: Order detail.',
+      },
+      {
+        id: 'ret-2', title: 'Admin Approves/Rejects Return', severity: 'high',
+        steps: [
+          'Admin → Returns → select a return request',
+          'Click Approve or Reject',
+        ],
+        expected: 'Return status updated. If approved: refund initiated (wallet/original payment). User notified.',
+        where: 'Admin: /admin/returns.',
+      },
+    ],
+  },
+
+  /* ── 10. FLASH SALES ── */
+  {
+    id: 'flash', label: 'Flash Sales', icon: Zap,
+    platform: ['admin', 'web', 'mobile'], color: '#f59e0b',
+    cases: [
+      {
+        id: 'flash-1', title: 'Create Flash Sale', severity: 'critical',
+        steps: [
+          'Admin → Flash Sales → Add Flash Sale',
+          'Set Name, Start Date, End Date',
+          'Upload banner image (file OR URL)',
+          'Add products with Discount Type (% or flat) + Discount Value',
+          'Set Status = Active → Save',
+        ],
+        expected: 'Flash sale active. Banner appears on web home page. Flash price shown on product pages.',
+        where: 'Web: home page banner | Mobile: Home → Flash Sale section.',
+      },
+      {
+        id: 'flash-2', title: 'Flash Sale Price on Product Page', severity: 'critical',
+        steps: [
+          'Open a product that is in an active flash sale',
+        ],
+        expected: '⚡ "Flash Sale" badge visible. Flash price shown. Original price struck-through. Countdown timer if applicable.',
+        where: 'Web: /product/[slug] | Mobile: Product screen.',
+      },
+      {
+        id: 'flash-3', title: 'Flash Sale Banner Image', severity: 'high',
+        steps: [
+          'Admin → Flash Sales → edit a sale → upload banner image',
+          'Check web home page',
+        ],
+        expected: 'Banner image shows correctly. Clicking banner takes to flash sale product.',
+        where: 'Web: home page.',
+      },
+      {
+        id: 'flash-4', title: 'Offers Page', severity: 'medium',
+        steps: [
+          'Web → navigate to /offers',
+        ],
+        expected: 'Shows all active flash sales with countdown timers. Shows all active coupons (copyable). Shows bundles.',
+        where: 'Web: /offers.',
+      },
+      {
+        id: 'flash-5', title: 'Expired Flash Sale', severity: 'medium',
+        steps: [
+          'Set end date to past → check product page',
+        ],
+        expected: 'Flash price no longer applied. Regular price shown. No "⚡" badge.',
+        where: 'Web & Mobile: product detail.',
+      },
+    ],
+  },
+
+  /* ── 11. COUPONS ── */
+  {
+    id: 'coupons', label: 'Coupons', icon: Percent,
+    platform: ['admin', 'web', 'mobile'], color: '#10b981',
+    cases: [
+      {
+        id: 'coup-1', title: 'Create Percentage Coupon', severity: 'critical',
+        steps: [
+          'Admin → Coupons → Add Coupon',
+          'Type = Percentage, Value = 15, Min Order = 500',
+          'Set code = SAVE15, expiry date in future',
+          'Status = Active → Save',
+        ],
+        expected: 'Coupon in list. Apply SAVE15 at checkout with cart > ₹500 → 15% discount applied.',
+        where: 'Admin: /admin/coupons | Web & Mobile: Cart.',
+      },
+      {
+        id: 'coup-2', title: 'Create Flat Discount Coupon', severity: 'high',
+        steps: [
+          'Admin → Coupons → flat discount ₹50 off, min order ₹200',
+        ],
+        expected: 'At checkout with cart > ₹200 → ₹50 deducted from total.',
+        where: 'Web & Mobile: Cart/Checkout.',
+      },
+      {
+        id: 'coup-3', title: 'Invalid / Expired Coupon', severity: 'high',
+        steps: [
+          'Set coupon expiry to past',
+          'Try applying at checkout',
+        ],
+        expected: 'Error message: "Coupon expired" or "Invalid coupon code". Discount NOT applied.',
+        where: 'Web & Mobile: Cart.',
+      },
+      {
+        id: 'coup-4', title: 'Copy Coupon from Offers Page', severity: 'medium',
+        steps: [
+          'Web → /offers → click "Copy" on a coupon',
+        ],
+        expected: 'Coupon code copied to clipboard. Toast confirms.',
+        where: 'Web: /offers.',
+      },
+    ],
+  },
+
+  /* ── 12. BUNDLES ── */
+  {
+    id: 'bundles', label: 'Product Bundles', icon: Package,
+    platform: ['admin', 'web'], color: '#8b5cf6',
+    cases: [
+      {
+        id: 'bun-1', title: 'Create Bundle', severity: 'medium',
+        steps: [
+          'Admin → Bundles → Add Bundle',
+          'Select 2+ products, set bundle price (lower than sum)',
+          'Save',
+        ],
+        expected: 'Bundle appears on /offers page and optionally on product pages.',
+        where: 'Web: /offers.',
+      },
+    ],
+  },
+
+  /* ── 13. BANNERS ── */
+  {
+    id: 'banners', label: 'Banners', icon: Image,
+    platform: ['admin', 'web'], color: '#0ea5e9',
+    cases: [
+      {
+        id: 'ban-1', title: 'Create Banner (File Upload)', severity: 'high',
+        steps: [
+          'Admin → Banners → Add Banner',
+          'Toggle to "Upload File" mode → select image from local',
+          'Set link URL, position, sort order → Save',
+        ],
+        expected: 'Banner uploaded to S3. Image visible in banner list. Shows on home page in correct position.',
+        where: 'Web: home page.',
+      },
+      {
+        id: 'ban-2', title: 'Create Banner (URL)', severity: 'medium',
+        steps: [
+          'Admin → Banners → Add Banner',
+          'Toggle to "URL" mode → paste image URL → Save',
+        ],
+        expected: 'Banner created with URL. Displays on home page.',
+        where: 'Web: home page.',
+      },
+      {
+        id: 'ban-3', title: 'Banner Order / Visibility', severity: 'medium',
+        steps: [
+          'Set sort_order on multiple banners',
+          'Toggle active/inactive on a banner',
+        ],
+        expected: 'Banners show in correct order. Inactive banners not shown on home.',
+        where: 'Web: home page.',
+      },
+    ],
+  },
+
+  /* ── 14. BLOG ── */
+  {
+    id: 'blog', label: 'Blog', icon: PenTool,
+    platform: ['admin', 'web', 'mobile'], color: '#14b8a6',
+    cases: [
+      {
+        id: 'blog-1', title: 'Create Blog Post (WYSIWYG)', severity: 'high',
+        steps: [
+          'Admin → Blog → Add Post',
+          'Enter Title, Slug, Cover Image URL',
+          'Use rich text editor: add H2, bold, bullet list, image',
+          'Set Category, Tags, Published = true → Save',
+        ],
+        expected: 'Post saved. Visible at /blog (web) and Blog tab (mobile).',
+        where: 'Web: /blog | Mobile: Blog screen.',
+      },
+      {
+        id: 'blog-2', title: 'Blog Post Detail', severity: 'high',
+        steps: [
+          'Web → /blog → click a post',
+          'Mobile → Blog → tap a post',
+        ],
+        expected: 'Full content rendered. Rich text formatting visible (bold, headings, lists). Share button (mobile).',
+        where: 'Web: /blog/[slug] | Mobile: Blog detail.',
+      },
+      {
+        id: 'blog-3', title: 'Blog SEO', severity: 'medium',
+        steps: [
+          'View source of /blog/[slug]',
+          'Check for: title, meta description, OG image, canonical',
+        ],
+        expected: 'All SEO meta tags present.',
+        where: 'Web: page source.',
+      },
+    ],
+  },
+
+  /* ── 15. REVIEWS & RATINGS ── */
+  {
+    id: 'reviews', label: 'Reviews & Ratings', icon: Star,
+    platform: ['admin', 'web', 'mobile'], color: '#f59e0b',
+    cases: [
+      {
+        id: 'rev-1', title: 'User Submits Review', severity: 'critical',
+        steps: [
+          'Login → go to a product you purchased',
+          'Scroll to Reviews section',
+          'Select star rating, write review, submit',
+        ],
+        expected: 'Review submitted. If auto-approved: visible immediately. If moderation: pending in admin.',
+        where: 'Web & Mobile: product detail.',
+      },
+      {
+        id: 'rev-2', title: 'Admin Approves Review', severity: 'high',
+        steps: [
+          'Admin → Reviews → find pending review → Approve',
+        ],
+        expected: 'Review now visible on product page. Rating average updates.',
+        where: 'Admin: /admin/reviews.',
+      },
+      {
+        id: 'rev-3', title: 'Rating Breakdown Display', severity: 'medium',
+        steps: [
+          'Web → product page → scroll to Ratings section',
+        ],
+        expected: '5-star breakdown bars shown (5★ 4★ 3★ 2★ 1★). Average rating number. Total review count.',
+        where: 'Web: product detail.',
+      },
+      {
+        id: 'rev-4', title: 'Review on Mobile', severity: 'high',
+        steps: [
+          'Mobile → product detail → scroll to reviews',
+          'Tap "Write Review" → rate → submit',
+        ],
+        expected: 'Review submitted. UI updates (pending or live based on moderation setting).',
+        where: 'Mobile: Product screen.',
+      },
+    ],
+  },
+
+  /* ── 16. Q&A ── */
+  {
+    id: 'qa', label: 'Q&A (Questions & Answers)', icon: MessageSquare,
+    platform: ['admin', 'web'], color: '#6366f1',
+    cases: [
+      {
+        id: 'qa-1', title: 'User Asks a Question', severity: 'medium',
+        steps: [
+          'Web → product page → Q&A section → type question → submit',
+        ],
+        expected: 'Question submitted. Pending in admin.',
+        where: 'Web: product detail.',
+      },
+      {
+        id: 'qa-2', title: 'Admin Answers / Moderates Q&A', severity: 'medium',
+        steps: [
+          'Admin → Q&A Moderation → find question → type answer → Approve',
+        ],
+        expected: 'Q&A visible on product page with admin answer.',
+        where: 'Admin: /admin/qa | Web: product detail.',
+      },
+    ],
+  },
+
+  /* ── 17. WISHLIST ── */
+  {
+    id: 'wishlist', label: 'Wishlist', icon: Heart,
+    platform: ['web', 'mobile'], color: '#ec4899',
+    cases: [
+      {
+        id: 'wish-1', title: 'Add to Wishlist (Logged In)', severity: 'high',
+        steps: [
+          'Login → product page → click heart icon',
+        ],
+        expected: 'Heart turns filled/red. Product added to /wishlist.',
+        where: 'Web: /wishlist | Mobile: Wishlist tab.',
+      },
+      {
+        id: 'wish-2', title: 'Add to Wishlist (Guest)', severity: 'high',
+        steps: [
+          'Logout → click heart on any product',
+        ],
+        expected: 'Auth slide-in sheet opens (NOT redirect to /auth page).',
+        where: 'Web: any product/category page.',
+      },
+      {
+        id: 'wish-3', title: 'Remove from Wishlist', severity: 'medium',
+        steps: [
+          'Wishlist page → click heart again or Remove button',
+        ],
+        expected: 'Product removed from wishlist. List updates.',
+        where: 'Web & Mobile: Wishlist page/tab.',
+      },
+    ],
+  },
+
+  /* ── 18. WALLET ── */
+  {
+    id: 'wallet', label: 'Wallet & Loyalty Points', icon: Wallet,
+    platform: ['admin', 'web', 'mobile'], color: '#10b981',
+    cases: [
+      {
+        id: 'wal-1', title: 'Admin Credits Wallet', severity: 'high',
+        steps: [
+          'Admin → Wallet & Credits → select user → Add Credits',
+          'Enter amount + reason → Confirm',
+        ],
+        expected: 'Wallet balance updated for user. Transaction logged.',
+        where: 'Admin: /admin/wallet.',
+      },
+      {
+        id: 'wal-2', title: 'User Sees Wallet Balance', severity: 'high',
+        steps: [
+          'Login → go to /wallet (web) or Profile → Wallet (mobile)',
+        ],
+        expected: 'Current balance shown. Transaction history visible.',
+        where: 'Web & Mobile: Wallet.',
+      },
+      {
+        id: 'wal-3', title: 'Apply Wallet at Checkout', severity: 'high',
+        steps: [
+          'Cart with items → Checkout → toggle "Use Wallet Balance"',
+        ],
+        expected: 'Wallet amount deducted from order total. Order created with correct total.',
+        where: 'Web & Mobile: Checkout.',
+      },
+    ],
+  },
+
+  /* ── 19. SUPPORT TICKETS ── */
+  {
+    id: 'support', label: 'Support Tickets', icon: PhoneCall,
+    platform: ['admin', 'web', 'mobile'], color: '#0ea5e9',
+    cases: [
+      {
+        id: 'sup-1', title: 'Create Support Ticket', severity: 'high',
+        steps: [
+          'Web → /support → New Ticket',
+          'Fill Subject, Category (General/Order/Payment etc.), Priority, Message',
+          'Submit',
+        ],
+        expected: 'Ticket created. Redirected to ticket detail page with real-time chat.',
+        where: 'Web: /support.',
+      },
+      {
+        id: 'sup-2', title: 'Real-time Chat in Ticket', severity: 'high',
+        steps: [
+          'Open a ticket on web → type reply → send',
+          'Admin → Support → open same ticket → reply',
+        ],
+        expected: 'Messages appear in real-time on both sides (Socket.io). No page refresh needed.',
+        where: 'Web: /support/[id] | Admin: /admin/support.',
+      },
+      {
+        id: 'sup-3', title: 'Close Ticket', severity: 'medium',
+        steps: [
+          'Web → ticket detail → click "Close" button',
+        ],
+        expected: 'Ticket status = closed. Reply box disabled. "This ticket is closed" message shown.',
+        where: 'Web: /support/[id].',
+      },
+      {
+        id: 'sup-4', title: 'Admin Views All Tickets', severity: 'high',
+        steps: [
+          'Admin → Support → view all tickets with filters',
+        ],
+        expected: 'All tickets listed. Status filter works. Can reply and change status.',
+        where: 'Admin: /admin/support.',
+      },
+    ],
+  },
+
+  /* ── 20. PUSH NOTIFICATIONS ── */
+  {
+    id: 'push', label: 'Push Notifications', icon: Bell,
+    platform: ['admin', 'mobile'], color: '#f97316',
+    cases: [
+      {
+        id: 'push-1', title: 'Device Token Registration', severity: 'critical',
+        steps: [
+          'Install PRODUCTION BUILD of app on device (not Expo Go)',
+          'Login to account',
+          'Allow notification permission when prompted',
+          'Admin → Push Notifications → check stats',
+        ],
+        expected: 'Admin shows 1 device, 1 user. Token saved to push_tokens table.',
+        where: 'Admin: /admin/push-notifications.',
+      },
+      {
+        id: 'push-2', title: 'Admin Broadcasts Push Notification', severity: 'high',
+        steps: [
+          'Admin → Push Notifications → Broadcast',
+          'Enter Title, Body → Send',
+        ],
+        expected: 'All registered devices receive push notification. Notification shows in device tray.',
+        where: 'Mobile: device notification tray.',
+      },
+      {
+        id: 'push-3', title: 'Order Status Push Notification', severity: 'high',
+        steps: [
+          'Admin → update an order status (e.g. to Shipped)',
+        ],
+        expected: 'Customer gets push notification on mobile with order status update.',
+        where: 'Mobile: notification tray.',
+      },
+      {
+        id: 'push-4', title: 'User Notifications Inbox (Web)', severity: 'medium',
+        steps: [
+          'Login → web → click bell icon or /notifications',
+        ],
+        expected: 'Last 50 order status updates shown as notification list.',
+        where: 'Web: notifications page.',
+      },
+    ],
+  },
+
+  /* ── 21. NEWSLETTER ── */
+  {
+    id: 'newsletter', label: 'Newsletter', icon: Mail,
+    platform: ['admin', 'web'], color: '#8b5cf6',
+    cases: [
+      {
+        id: 'news-1', title: 'Subscribe via Footer', severity: 'high',
+        steps: [
+          'Web → scroll to footer → enter email → click Subscribe',
+        ],
+        expected: 'Success toast shown. Email added to newsletter_subscribers table.',
+        where: 'Web: footer.',
+      },
+      {
+        id: 'news-2', title: 'Duplicate Email Subscription', severity: 'medium',
+        steps: [
+          'Subscribe with an already-subscribed email',
+        ],
+        expected: 'Message: "Already subscribed" or similar. No duplicate entry created.',
+        where: 'Web: footer.',
+      },
+      {
+        id: 'news-3', title: 'Admin Views Subscribers', severity: 'medium',
+        steps: [
+          'Admin → Newsletter',
+        ],
+        expected: 'Subscriber list with emails and dates. Count shown.',
+        where: 'Admin: /admin/newsletter.',
+      },
+    ],
+  },
+
+  /* ── 22. ANALYTICS & VISITORS ── */
+  {
+    id: 'analytics', label: 'Analytics & Visitors', icon: BarChart3,
+    platform: ['admin'], color: '#0ea5e9',
+    cases: [
+      {
+        id: 'ana-1', title: 'Dashboard Stats', severity: 'high',
+        steps: [
+          'Admin → Dashboard',
+          'Check: Total Orders, Revenue, Users, Products, Pending Orders',
+        ],
+        expected: 'Numbers match real data. Charts render. No "NaN" or broken values.',
+        where: 'Admin: /admin/dashboard.',
+      },
+      {
+        id: 'ana-2', title: 'Analytics Charts', severity: 'medium',
+        steps: [
+          'Admin → Analytics',
+          'Check revenue over time, order counts, top products',
+        ],
+        expected: 'Charts load. Date range filter works.',
+        where: 'Admin: /admin/analytics.',
+      },
+      {
+        id: 'ana-3', title: 'Page Visitors Tracking', severity: 'low',
+        steps: [
+          'Visit several web pages',
+          'Admin → Visitors → check page view counts',
+        ],
+        expected: 'Page views recorded. Top visited pages shown.',
+        where: 'Admin: /admin/visitors.',
+      },
+    ],
+  },
+
+  /* ── 23. SEO ── */
+  {
+    id: 'seo', label: 'SEO & Meta Tags', icon: Globe,
+    platform: ['web'], color: '#14b8a6',
+    cases: [
+      {
+        id: 'seo-1', title: 'Product Page Meta Tags', severity: 'high',
+        steps: [
+          'Open any product page on web',
+          'Right-click → View Source OR use browser DevTools → Elements → <head>',
+          'Check: <title>, meta description, og:title, og:image, canonical',
+        ],
+        expected: 'Title = product meta_title or name. Description = meta_description. Canonical = /product/[slug]. OG image = product image.',
+        where: 'Web: /product/[slug].',
+      },
+      {
+        id: 'seo-2', title: 'Sitemap', severity: 'medium',
+        steps: [
+          'Visit /sitemap.xml on web app',
+        ],
+        expected: 'All active products listed with slug URLs. Blog posts listed. Categories listed.',
+        where: 'Web: /sitemap.xml.',
+      },
+      {
+        id: 'seo-3', title: 'Product JSON-LD Schema', severity: 'medium',
+        steps: [
+          'View source of product page → search for "application/ld+json"',
+        ],
+        expected: 'Product schema with name, price, availability, rating. FAQPage schema if FAQs exist.',
+        where: 'Web: product detail source.',
+      },
+    ],
+  },
+
+  /* ── 24. USERS ADMIN ── */
+  {
+    id: 'users-admin', label: 'Admin: User Management', icon: Users,
+    platform: ['admin'], color: '#6366f1',
+    cases: [
+      {
+        id: 'usr-1', title: 'View User List', severity: 'high',
+        steps: [
+          'Admin → Users',
+        ],
+        expected: 'All registered users listed. Search/filter works. Email verified status shown.',
+        where: 'Admin: /admin/users.',
+      },
+      {
+        id: 'usr-2', title: 'View User Details / Orders', severity: 'medium',
+        steps: [
+          'Admin → Users → click a user',
+        ],
+        expected: 'User profile, order history, wallet balance visible.',
+        where: 'Admin: /admin/users.',
+      },
+      {
+        id: 'usr-3', title: 'Block / Unblock User', severity: 'medium',
+        steps: [
+          'Admin → Users → toggle block on a user',
+          'That user tries to login',
+        ],
+        expected: 'Blocked user cannot login. Gets "Account blocked" error.',
+        where: 'Admin: /admin/users.',
+      },
+    ],
+  },
+
+  /* ── 25. COMPANY SETTINGS ── */
+  {
+    id: 'company', label: 'Company Settings', icon: Settings,
+    platform: ['admin', 'web'], color: '#64748b',
+    cases: [
+      {
+        id: 'comp-1', title: 'Update Company Info', severity: 'high',
+        steps: [
+          'Admin → Company → fill: Name, Email, Phone, Address, GST No',
+          'Add Social Links (Facebook, Instagram, Twitter, YouTube)',
+          'Save',
+        ],
+        expected: 'Footer on web shows updated contact info and social links. Invoices show updated company name/GST.',
+        where: 'Web: footer | Admin: invoices.',
+      },
+      {
+        id: 'comp-2', title: 'Social Links in Footer', severity: 'medium',
+        steps: [
+          'After saving company social links',
+          'Web → scroll to footer',
+        ],
+        expected: 'Social icons (FB, IG, Twitter, YouTube) appear in footer. Only filled ones show.',
+        where: 'Web: footer.',
+      },
+    ],
+  },
+
+  /* ── 26. BULK OPERATIONS ── */
+  {
+    id: 'bulk', label: 'Bulk Product Operations', icon: Upload,
+    platform: ['admin'], color: '#0ea5e9',
+    cases: [
+      {
+        id: 'bulk-1', title: 'Bulk Upload Products (CSV)', severity: 'high',
+        steps: [
+          'Admin → Bulk Upload → download template',
+          'Fill CSV with product data',
+          'Upload CSV → submit',
+        ],
+        expected: 'Products imported. Import history shows success/failure counts.',
+        where: 'Admin: /admin/products/bulk-upload.',
+      },
+      {
+        id: 'bulk-2', title: 'Bulk Price Update', severity: 'high',
+        steps: [
+          'Admin → Bulk Price → select multiple products → set new price',
+        ],
+        expected: 'Prices updated for selected products. Changes visible on product pages.',
+        where: 'Admin: /admin/products/bulk-price.',
+      },
+      {
+        id: 'bulk-3', title: 'Bulk Stock Update', severity: 'high',
+        steps: [
+          'Admin → Bulk Stock → update stock qty for multiple products',
+        ],
+        expected: 'Stock values updated. Out-of-stock products show appropriate status.',
+        where: 'Admin: /admin/products/bulk-stock.',
+      },
+      {
+        id: 'bulk-4', title: 'Bulk Status Change', severity: 'medium',
+        steps: [
+          'Admin → Bulk Status → select products → set to Inactive',
+        ],
+        expected: 'Selected products become inactive. Disappear from storefront.',
+        where: 'Admin: /admin/products/bulk-status.',
+      },
+    ],
+  },
+
+  /* ── 27. MOBILE APP SPECIFIC ── */
+  {
+    id: 'mobile', label: 'Mobile App Specific', icon: Smartphone,
+    platform: ['mobile'], color: '#10b981',
+    cases: [
+      {
+        id: 'mob-1', title: 'App Launch & Home Screen', severity: 'critical',
+        steps: [
+          'Install production APK on device',
+          'Open app',
+        ],
+        expected: 'Home screen loads: featured products, categories, flash sale section. No blank screen. No crash.',
+        where: 'Mobile: Home screen.',
+      },
+      {
+        id: 'mob-2', title: 'Slow Server Recovery', severity: 'high',
+        steps: [
+          'Open app while backend is starting (slow server)',
+          'Home page shows loading',
+          'Wait or pull-to-refresh',
+        ],
+        expected: 'Data loads eventually. Pull-to-refresh works. No permanent blank screen.',
+        where: 'Mobile: Home screen.',
+      },
+      {
+        id: 'mob-3', title: 'Product Navigation via Slug', severity: 'high',
+        steps: [
+          'Mobile: tap any product (from home, search, category)',
+        ],
+        expected: 'Product screen loads using slug or ID. Flash price shown if active. Wishlist heart uses correct product ID.',
+        where: 'Mobile: Product screen.',
+      },
+      {
+        id: 'mob-4', title: 'Recently Viewed Products', severity: 'medium',
+        steps: [
+          'View 3+ products on mobile',
+          'Go to Home or Profile',
+        ],
+        expected: '"Recently Viewed" section shows last viewed products.',
+        where: 'Mobile: Home.',
+      },
+      {
+        id: 'mob-5', title: 'Haptic Feedback', severity: 'low',
+        steps: [
+          'Tap buttons in the app on a real device',
+        ],
+        expected: 'Subtle haptic vibration on button taps. No crash on web/Expo Go.',
+        where: 'Mobile: throughout app.',
+      },
+      {
+        id: 'mob-6', title: 'Razorpay Payment (Mobile)', severity: 'critical',
+        steps: [
+          'Add product → checkout → online payment',
+          'Razorpay native sheet opens',
+          'Complete payment with test card',
+        ],
+        expected: 'Payment processed. Order created. Success screen shown.',
+        where: 'Mobile: Checkout.',
+      },
+    ],
+  },
+
+  /* ── 28. ABANDONED CARTS ── */
+  {
+    id: 'abandoned', label: 'Abandoned Carts', icon: ShoppingCart,
+    platform: ['admin'], color: '#f97316',
+    cases: [
+      {
+        id: 'abn-1', title: 'View Abandoned Carts', severity: 'medium',
+        steps: [
+          'User adds items to cart → does NOT checkout → leaves',
+          'Admin → Abandoned Carts',
+        ],
+        expected: 'Cart shown in abandoned list with user details and items.',
+        where: 'Admin: /admin/abandoned-carts.',
+      },
+      {
+        id: 'abn-2', title: 'Abandoned Cart Recovery Email', severity: 'medium',
+        steps: [
+          'Admin → Abandoned Carts → trigger recovery email',
+        ],
+        expected: 'Recovery email sent to user with cart items.',
+        where: 'Admin: /admin/abandoned-carts.',
+      },
+    ],
+  },
+
+  /* ── 29. EXPORT ── */
+  {
+    id: 'export', label: 'Data Export', icon: Download,
+    platform: ['admin'], color: '#64748b',
+    cases: [
+      {
+        id: 'exp-1', title: 'Export Orders CSV', severity: 'medium',
+        steps: [
+          'Admin → Export → select Orders → choose date range → Export',
+        ],
+        expected: 'CSV file downloaded with all order data in the date range.',
+        where: 'Admin: /admin/export.',
+      },
+      {
+        id: 'exp-2', title: 'Export Products CSV', severity: 'medium',
+        steps: [
+          'Admin → Export → select Products → Export',
+        ],
+        expected: 'CSV with all product fields downloaded.',
+        where: 'Admin: /admin/export.',
+      },
+    ],
+  },
+
+  /* ── 30. STOCK ALERTS ── */
+  {
+    id: 'stock', label: 'Stock Notifications', icon: Bell,
+    platform: ['admin', 'web'], color: '#ef4444',
+    cases: [
+      {
+        id: 'stk-1', title: 'User Requests Stock Alert', severity: 'medium',
+        steps: [
+          'Web → product that is out of stock',
+          'Click "Notify Me" → enter email',
+        ],
+        expected: 'Email registered for stock alert. Appears in Admin → Stock Alerts.',
+        where: 'Web: product detail | Admin: /admin/stock-notifications.',
+      },
+      {
+        id: 'stk-2', title: 'Admin Restocks & Alerts Send', severity: 'medium',
+        steps: [
+          'Admin → update stock of out-of-stock product to > 0',
+        ],
+        expected: 'Email notification sent to all registered users for that product.',
+        where: 'Admin: /admin/stock-notifications.',
+      },
+    ],
+  },
+
+]
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR NAV DATA
+═══════════════════════════════════════════════ */
+
+const NAV_SECTIONS = SECTIONS.map(s => ({ id: s.id, label: s.label, icon: s.icon, color: s.color }))
+
+/* ═══════════════════════════════════════════════
+   COMPONENTS
+═══════════════════════════════════════════════ */
+
+function PlatformBadge({ p }: { p: Platform }) {
+  const info = platformLabel[p]
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+      style={{ background: info.color + '18', color: info.color }}>
+      {p === 'admin' && <Shield size={10} className="mr-1" />}
+      {p === 'web' && <Monitor size={10} className="mr-1" />}
+      {p === 'mobile' && <Smartphone size={10} className="mr-1" />}
+      {p === 'all' && <Globe size={10} className="mr-1" />}
+      {info.label}
+    </span>
+  )
+}
+
+function SeverityBadge({ s }: { s: Severity }) {
+  const info = severityLabel[s]
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+      style={{ background: info.bg, color: info.text }}>
+      {s === 'critical' && <XCircle size={10} className="mr-1" />}
+      {s === 'high' && <AlertCircle size={10} className="mr-1" />}
+      {s === 'medium' && <Info size={10} className="mr-1" />}
+      {s === 'low' && <CheckCircle size={10} className="mr-1" />}
+      {info.label}
+    </span>
+  )
+}
+
+function TestCard({ tc }: { tc: TestCase }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border border-gray-100 rounded-xl overflow-hidden hover:border-gray-200 transition">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition text-left"
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 shrink-0">
+            <span className="text-xs font-bold text-gray-500">{tc.id.split('-')[1]}</span>
+          </div>
+          <span className="font-medium text-gray-800 text-sm truncate">{tc.title}</span>
+          <SeverityBadge s={tc.severity} />
+        </div>
+        <ChevronRight size={16} className={`text-gray-400 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 pt-1 bg-gray-50 border-t border-gray-100 space-y-3">
+          {tc.where && (
+            <div className="flex items-start gap-2">
+              <MapPin size={13} className="text-indigo-500 mt-0.5 shrink-0" />
+              <span className="text-xs text-indigo-700 font-medium">{tc.where}</span>
+            </div>
+          )}
+
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Steps to Test</p>
+            <ol className="space-y-1.5">
+              {tc.steps.map((step, i) => (
+                <li key={i} className="flex gap-2 text-sm text-gray-700">
+                  <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="flex items-start gap-2 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+            <CheckCircle size={14} className="text-emerald-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-emerald-700 mb-0.5">Expected Result</p>
+              <p className="text-sm text-emerald-800">{tc.expected}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SectionBlock({ sec }: { sec: TestSection }) {
+  const Icon = sec.icon
+  const total = sec.cases.length
+  const critical = sec.cases.filter(c => c.severity === 'critical').length
+  return (
+    <section id={sec.id} className="mb-12 scroll-mt-6">
+      <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b-2"
+        style={{ borderColor: sec.color + '30' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: sec.color + '18' }}>
+            <Icon size={18} style={{ color: sec.color }} />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">{sec.label}</h2>
+            <div className="flex items-center gap-2 mt-0.5">
+              {sec.platform.map(p => <PlatformBadge key={p} p={p} />)}
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-3 text-xs text-right">
+          <div className="bg-gray-100 px-2.5 py-1 rounded-lg">
+            <span className="font-bold text-gray-700">{total}</span>
+            <span className="text-gray-500 ml-1">tests</span>
+          </div>
+          {critical > 0 && (
+            <div className="bg-red-50 px-2.5 py-1 rounded-lg">
+              <span className="font-bold text-red-600">{critical}</span>
+              <span className="text-red-400 ml-1">critical</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="space-y-2">
+        {sec.cases.map(tc => <TestCard key={tc.id} tc={tc} />)}
+      </div>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE
+═══════════════════════════════════════════════ */
+
+export default function TestingGuidePage() {
+  const [search, setSearch] = useState('')
+  const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all')
+  const [severityFilter, setSeverityFilter] = useState<Severity | 'all'>('all')
+  const [activeSection, setActiveSection] = useState('')
+
+  const totalTests = SECTIONS.reduce((a, s) => a + s.cases.length, 0)
+  const totalCritical = SECTIONS.reduce((a, s) => a + s.cases.filter(c => c.severity === 'critical').length, 0)
+
+  const filteredSections = SECTIONS.map(sec => ({
+    ...sec,
+    cases: sec.cases.filter(tc => {
+      const matchSearch = !search || tc.title.toLowerCase().includes(search.toLowerCase()) ||
+        tc.steps.some(s => s.toLowerCase().includes(search.toLowerCase())) ||
+        tc.expected.toLowerCase().includes(search.toLowerCase())
+      const matchPlatform = platformFilter === 'all' || sec.platform.includes(platformFilter as Platform)
+      const matchSeverity = severityFilter === 'all' || tc.severity === severityFilter
+      return matchSearch && matchPlatform && matchSeverity
+    }),
+  })).filter(sec => sec.cases.length > 0)
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-rose-600 via-pink-600 to-purple-700 rounded-2xl p-6 text-white shadow-lg mb-6">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+            <FlaskConical size={24} />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">Full System Testing Guide</h1>
+            <p className="text-white/80 text-sm mt-1">
+              End-to-end test cases for Admin Panel · Web App · Mobile App
+            </p>
+            <div className="flex gap-4 mt-3">
+              <div className="bg-white/15 rounded-xl px-3 py-1.5 text-sm">
+                <span className="font-bold">{totalTests}</span> Total Test Cases
+              </div>
+              <div className="bg-white/15 rounded-xl px-3 py-1.5 text-sm">
+                <span className="font-bold">{totalCritical}</span> Critical
+              </div>
+              <div className="bg-white/15 rounded-xl px-3 py-1.5 text-sm">
+                <span className="font-bold">{SECTIONS.length}</span> Modules
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6 shadow-sm">
+        <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Priority Levels</p>
+        <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <span className="text-sm text-gray-700"><strong>Critical</strong> — Must work before any release</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-orange-500" />
+            <span className="text-sm text-gray-700"><strong>High</strong> — Core functionality, test every sprint</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-yellow-500" />
+            <span className="text-sm text-gray-700"><strong>Medium</strong> — Important but not blocking</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-sm text-gray-700"><strong>Low</strong> — Nice-to-have, test when time allows</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-6">
+        {/* Sidebar Nav */}
+        <aside className="hidden xl:block w-56 shrink-0">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sticky top-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase px-2 mb-2">Jump To</p>
+            <nav className="space-y-0.5">
+              {NAV_SECTIONS.map(n => {
+                const Icon = n.icon
+                return (
+                  <a
+                    key={n.id}
+                    href={`#${n.id}`}
+                    onClick={() => setActiveSection(n.id)}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition ${activeSection === n.id ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    <Icon size={13} style={{ color: n.color }} />
+                    <span className="truncate">{n.label}</span>
+                  </a>
+                )
+              })}
+            </nav>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          {/* Filters */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-6">
+            <div className="flex flex-wrap gap-3">
+              {/* Search */}
+              <div className="relative flex-1 min-w-48">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  placeholder="Search test cases..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+
+              {/* Platform filter */}
+              <div className="flex gap-1">
+                {(['all', 'admin', 'web', 'mobile'] as const).map(p => (
+                  <button key={p}
+                    onClick={() => setPlatformFilter(p)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${platformFilter === p ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}>
+                    {p === 'all' ? 'All Platforms' : p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Severity filter */}
+              <div className="flex gap-1">
+                {(['all', 'critical', 'high', 'medium', 'low'] as const).map(s => (
+                  <button key={s}
+                    onClick={() => setSeverityFilter(s)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${severityFilter === s ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-gray-600 border-gray-200 hover:border-rose-300'}`}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {(search || platformFilter !== 'all' || severityFilter !== 'all') && (
+              <p className="text-xs text-gray-500 mt-2">
+                Showing {filteredSections.reduce((a, s) => a + s.cases.length, 0)} test cases
+                {search && ` matching "${search}"`}
+              </p>
+            )}
+          </div>
+
+          {/* Test Sections */}
+          {filteredSections.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center text-gray-400">
+              <FlaskConical size={36} className="mx-auto mb-3 opacity-30" />
+              <p>No test cases match your filter.</p>
+            </div>
+          ) : (
+            filteredSections.map(sec => <SectionBlock key={sec.id} sec={sec} />)
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
