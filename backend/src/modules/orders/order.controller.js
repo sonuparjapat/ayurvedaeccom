@@ -440,22 +440,53 @@ if (addr.pincode) {
     /* ================= UPDATE FLASH SALE COUNTS ================= */
 
     try {
+      const { emitToAll } = require('../../socket')
       const flashSaleIdsUsed = new Set()
+
       for (const item of cart) {
         const flashSaleId = flashSaleIdMap[item.product_id]
-        if (flashSaleId) {
-          flashSaleIdsUsed.add(flashSaleId)
-          await client.query(
-            `UPDATE flash_sale_products SET sold_count = sold_count + $1 WHERE flash_sale_id = $2 AND product_id = $3`,
-            [item.quantity, flashSaleId, item.product_id]
-          )
+        if (!flashSaleId) continue
+        flashSaleIdsUsed.add(flashSaleId)
+
+        const updProd = await client.query(
+          `UPDATE flash_sale_products SET sold_count = sold_count + $1
+           WHERE flash_sale_id = $2 AND product_id = $3
+           RETURNING sold_count, stock_limit`,
+          [item.quantity, flashSaleId, item.product_id]
+        )
+        const pr = updProd.rows[0]
+        if (pr) {
+          // Broadcast live sold_count so all clients update their progress bars
+          emitToAll('flash_product_update', {
+            saleId: flashSaleId,
+            productId: item.product_id,
+            soldCount: pr.sold_count,
+            stockLimit: pr.stock_limit,
+          })
+          // If this product's stock is now exhausted, broadcast that too
+          if (pr.stock_limit && pr.sold_count >= pr.stock_limit) {
+            emitToAll('flash_product_sold_out', {
+              saleId: flashSaleId,
+              productId: item.product_id,
+            })
+          }
         }
       }
+
       for (const saleId of flashSaleIdsUsed) {
-        await client.query(
-          `UPDATE flash_sales SET uses_count = uses_count + 1 WHERE id = $1`,
+        const updSale = await client.query(
+          `UPDATE flash_sales SET uses_count = uses_count + 1 WHERE id = $1
+           RETURNING uses_count, max_uses, title`,
           [saleId]
         )
+        const sr = updSale.rows[0]
+        if (sr && sr.max_uses && sr.uses_count >= sr.max_uses) {
+          // Broadcast that this entire sale is exhausted
+          emitToAll('flash_sale_exhausted', {
+            saleId,
+            title: sr.title,
+          })
+        }
       }
     } catch (flashErr) {
       console.error('Flash sale count update failed (non-fatal):', flashErr.message)

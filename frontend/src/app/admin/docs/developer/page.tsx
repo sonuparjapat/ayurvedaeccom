@@ -532,7 +532,7 @@ Token location: Authorization: Bearer <token>  (HTTP header)
 
         {/* ═══ SOCKETS ═══ */}
         <Section id="sockets" title="Socket.io Events" icon={Zap}>
-          <InfoBox type="info">Socket.io server is initialised in <code>backend/src/socket.js</code>. The singleton pattern allows any controller to call <code>emitToUser()</code>, <code>emitToAdmin()</code>, or <code>emitToTicket()</code>.</InfoBox>
+          <InfoBox type="info">Socket.io server is initialised in <code>backend/src/socket.js</code>. The singleton pattern allows any controller to call <code>emitToUser()</code>, <code>emitToAdmin()</code>, <code>emitToTicket()</code>, or <code>emitToAll()</code>.</InfoBox>
           <Code>{`// backend/src/socket.js — Singleton
 const { Server } = require('socket.io')
 let io = null
@@ -550,7 +550,8 @@ function initSocket(httpServer) {
 // helpers
 emitToUser(userId, event, data)     // sends to room user_{userId}
 emitToAdmin(event, data)            // sends to room admin_room
-emitToTicket(ticketId, event, data) // sends to room ticket_{id}`}</Code>
+emitToTicket(ticketId, event, data) // sends to room ticket_{id}
+emitToAll(event, data)              // broadcasts to ALL connected clients (flash sale etc.)`}</Code>
 
           <H3>Events Reference</H3>
           <Table
@@ -566,8 +567,26 @@ emitToTicket(ticketId, event, data) // sends to room ticket_{id}`}</Code>
               ['new_message', 'Server → ticket_{id}', 'ticket_{id}', '{ id, sender_type, message, created_at }', 'Any reply to ticket'],
               ['ticket_status_updated', 'Server → user_{id}', 'user_{userId}', '{ ticket_id, status }', 'Admin changes ticket status'],
               ['admin_replied', 'Server → user_{id}', 'user_{userId}', '{ ticket_id, subject }', 'Admin sends message'],
+              ['flash_product_update', 'Server → ALL', 'broadcast', '{ saleId, productId, soldCount, stockLimit }', 'After each order — live sold_count for progress bars'],
+              ['flash_product_sold_out', 'Server → ALL', 'broadcast', '{ saleId, productId }', 'When a product hits its stock_limit in the flash sale'],
+              ['flash_sale_exhausted', 'Server → ALL', 'broadcast', '{ saleId, title }', 'When flash sale uses_count reaches max_uses'],
             ]}
           />
+
+          <H3>Flash Sale Real-Time Flow</H3>
+          <InfoBox type="warning">Flash sale exhaustion events are broadcast to ALL clients so no user sees a stale discounted price after the sale is fully claimed.</InfoBox>
+          <Code>{`// FlashSaleBanner, product page, mobile home — all listen for these:
+socket.on('flash_product_update', ({ saleId, productId, soldCount }) => {
+  // Update sold_count in local state → progress bar animates live
+})
+socket.on('flash_product_sold_out', ({ saleId, productId }) => {
+  // Mark that product as sold out → show "Sold Out" overlay
+})
+socket.on('flash_sale_exhausted', ({ saleId, title }) => {
+  // Mark entire sale as exhausted → show grey "Sale Fully Claimed" overlay
+  // On product page: remove flash price, show regular price
+  // useOrderSocket: shows toast warning if user has items in cart
+})`}</Code>
 
           <H3>Frontend Usage</H3>
           <Code>{`// frontend/src/hooks/useOrderSocket.ts
@@ -579,6 +598,8 @@ export function useOrderSocket(userId) {
     socket.emit('join_user', userId)
     socket.on('order_status_updated', (data) => toast.success(...))
     socket.on('admin_replied', (data) => toast.info(...))
+    socket.on('flash_sale_exhausted', (data) => toast.warning(...))
+    socket.on('flash_product_sold_out', (data) => toast.info(...))
     return () => socket.disconnect()
   }, [userId])
 }`}</Code>

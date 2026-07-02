@@ -38,6 +38,33 @@ export function useOrderSocket(userId: number | string | undefined) {
       })
     })
 
+    // Flash sale exhausted — warn if user might have flash-priced items in cart
+    socket.on('flash_sale_exhausted', (data: { saleId: number; title: string }) => {
+      toast(
+        `⚠️ "${data.title}" flash sale is fully claimed! If you have items in your cart from this sale, regular prices now apply.`,
+        {
+          duration: 8000,
+          style: {
+            background: '#fff7ed',
+            border: '1px solid #f97316',
+            color: '#7c2d12',
+            fontWeight: 500,
+            maxWidth: 380,
+          },
+          icon: '🔥',
+        }
+      )
+    })
+
+    // A specific flash product's stock ran out
+    socket.on('flash_product_sold_out', (data: { saleId: number; productId: number }) => {
+      toast('A flash sale product just sold out at the discounted price.', {
+        duration: 5000,
+        style: { background: '#fef2f2', border: '1px solid #ef4444', color: '#7f1d1d' },
+        icon: '⚡',
+      })
+    })
+
     return () => {
       socket.disconnect()
     }

@@ -55,4 +55,8 @@ function emitToTicket(ticketId, event, data) {
   if (io) io.to(`ticket_${ticketId}`).emit(event, data);
 }
 
-module.exports = { initSocket, getIO, emitToUser, emitToAdmin, emitToTicket };
+function emitToAll(event, data) {
+  if (io) io.emit(event, data);
+}
+
+module.exports = { initSocket, getIO, emitToUser, emitToAdmin, emitToTicket, emitToAll };

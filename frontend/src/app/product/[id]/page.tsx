@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { io, Socket } from 'socket.io-client'
 import { useParams, useRouter } from 'next/navigation'
 import Head from 'next/head'
 import Link from 'next/link'
@@ -151,7 +152,7 @@ export default function ProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState<any[]>([])
 
   // Flash sale
-  const [flashSaleInfo, setFlashSaleInfo] = useState<{ flash_price: number; ends_at: string; title: string; discount_percent: number } | null>(null)
+  const [flashSaleInfo, setFlashSaleInfo] = useState<{ flash_price: number; ends_at: string; title: string; discount_percent: number; saleId: number } | null>(null)
  const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
   } = useAuth()
 const handlepagechage=(page:number)=>{
@@ -188,7 +189,7 @@ const handlepagechage=(page:number)=>{
       for (const sale of sales) {
         const sp = (sale.products || []).find((p: any) => String(p.product_id) === String(id) || p.slug === id)
         if (sp) {
-          setFlashSaleInfo({ flash_price: sp.flash_price, ends_at: sale.ends_at, title: sale.title, discount_percent: sp.discount_percent })
+          setFlashSaleInfo({ flash_price: sp.flash_price, ends_at: sale.ends_at, title: sale.title, discount_percent: sp.discount_percent, saleId: sale.id })
           break
         }
       }
@@ -199,7 +200,36 @@ const handlepagechage=(page:number)=>{
     }
   }, [id])
 
-    const fetchProduct = async () => {
+  // Real-time flash sale exhaustion listener
+  useEffect(() => {
+    const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
+      transports: ['websocket', 'polling'],
+    })
+
+    socket.on('flash_sale_exhausted', ({ saleId }: { saleId: number }) => {
+      setFlashSaleInfo(prev => (prev?.saleId === saleId ? null : prev))
+      toast('⚠️ This flash sale has been fully claimed. Regular prices now apply.', {
+        duration: 7000,
+        style: { background: '#fff7ed', border: '1px solid #f97316', color: '#7c2d12' },
+        icon: '🔥',
+      })
+    })
+
+    socket.on('flash_product_sold_out', ({ saleId, productId }: { saleId: number; productId: number }) => {
+      if (String(productId) === String(id)) {
+        setFlashSaleInfo(prev => (prev?.saleId === saleId ? null : prev))
+        toast('⚡ Flash sale stock for this product has sold out. Regular price now applies.', {
+          duration: 7000,
+          style: { background: '#fef2f2', border: '1px solid #ef4444', color: '#7f1d1d' },
+          icon: '⚡',
+        })
+      }
+    })
+
+    return () => { socket.disconnect() }
+  }, [id])
+
+  const fetchProduct = async () => {
 
     try {
 

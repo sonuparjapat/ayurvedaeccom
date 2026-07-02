@@ -639,14 +639,15 @@ function ProductCardSkeleton() {
 // ─── FLASH SALE ──────────────────────────────────────────────────────────────
 function FlashSaleSection({ sale }: { sale: any }) {
   const [secs, setSecs] = useState(() => Math.max(0, Math.floor((new Date(sale.ends_at).getTime() - Date.now()) / 1000)))
+  const isExhausted = !!sale.exhausted
 
   useEffect(() => {
-    if (secs <= 0) return
+    if (secs <= 0 || isExhausted) return
     const t = setInterval(() => setSecs(s => s <= 1 ? 0 : s - 1), 1000)
     return () => clearInterval(t)
-  }, [sale.ends_at])
+  }, [sale.ends_at, isExhausted])
 
-  if (secs <= 0) return null
+  if (secs <= 0 && !isExhausted) return null
 
   const h = Math.floor(secs / 3600)
   const m = Math.floor((secs % 3600) / 60)
@@ -655,59 +656,101 @@ function FlashSaleSection({ sale }: { sale: any }) {
 
   return (
     <Animated.View entering={FadeInDown.delay(250).duration(500)} style={{ marginHorizontal: 16, marginBottom: 12 }}>
-      <LinearGradient colors={['#dc2626', '#ea580c', '#d97706']} style={{ borderRadius: 18, overflow: 'hidden' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+      <LinearGradient
+        colors={isExhausted ? ['#4b5563', '#6b7280', '#9ca3af'] : ['#dc2626', '#ea580c', '#d97706']}
+        style={{ borderRadius: 18, overflow: 'hidden' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+
+        {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 16 }}>⚡</Text>
+            <Text style={{ fontSize: 16 }}>{isExhausted ? '⚠️' : '⚡'}</Text>
             <Text style={{ fontFamily: Fonts.bold, fontSize: 15, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>{sale.title}</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Ends in </Text>
-            {[pad(h), pad(m), pad(s)].map((v, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 13 }}>:</Text>}
-                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2 }}>
-                  <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#fff' }}>{v}</Text>
-                </View>
-              </React.Fragment>
-            ))}
-          </View>
+          {isExhausted ? (
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 11, color: '#fff' }}>SOLD OUT</Text>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Ends in </Text>
+              {[pad(h), pad(m), pad(s)].map((v, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 13 }}>:</Text>}
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2 }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#fff' }}>{v}</Text>
+                  </View>
+                </React.Fragment>
+              ))}
+            </View>
+          )}
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 14, paddingBottom: 14 }}>
-          {(sale.products || []).map((p: any) => {
-            const pctSold = p.stock_limit ? Math.min(100, Math.round(((p.sold_count || 0) / p.stock_limit) * 100)) : 0
-            return (
-              <TouchableOpacity key={p.product_id} onPress={() => router.push(`/product/${p.slug || p.product_id}`)} activeOpacity={0.9}
-                style={{ width: 130, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden' }}>
-                {p.image ? (
-                  <ExpoImage source={{ uri: p.image }} style={{ width: 130, height: 110 }} contentFit="cover" transition={200} />
-                ) : (
-                  <View style={{ width: 130, height: 110, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 30 }}>⚡</Text>
-                  </View>
-                )}
-                <View style={{ padding: 8 }}>
-                  <Text style={{ fontFamily: Fonts.medium, fontSize: 11, color: Colors.forest }} numberOfLines={1}>{p.product_name}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 3 }}>
-                    <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: '#dc2626' }}>₹{p.flash_price}</Text>
-                    <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: Colors.textDim, textDecorationLine: 'line-through' }}>₹{p.original_price}</Text>
-                  </View>
-                  <View style={{ backgroundColor: '#fee2e2', borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1, alignSelf: 'flex-start', marginTop: 3 }}>
-                    <Text style={{ fontFamily: Fonts.bold, fontSize: 9, color: '#dc2626' }}>{p.discount_percent}% OFF</Text>
-                  </View>
-                  {p.stock_limit > 0 && (
-                    <View style={{ marginTop: 5 }}>
-                      <View style={{ height: 4, backgroundColor: '#fee2e2', borderRadius: 2 }}>
-                        <View style={{ height: 4, backgroundColor: '#dc2626', borderRadius: 2, width: `${pctSold}%` as any }} />
-                      </View>
-                      <Text style={{ fontFamily: Fonts.regular, fontSize: 8, color: Colors.textDim, marginTop: 2 }}>{pctSold}% sold</Text>
+
+        {/* Exhausted message */}
+        {isExhausted && (
+          <View style={{ marginHorizontal: 14, marginBottom: 14, backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 12, padding: 14, alignItems: 'center' }}>
+            <Text style={{ fontFamily: Fonts.bold, fontSize: 15, color: '#fff', textAlign: 'center' }}>🎉 Sale Fully Claimed!</Text>
+            <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 4, textAlign: 'center' }}>
+              All discounts for this sale have been used up. Regular prices apply.
+            </Text>
+          </View>
+        )}
+
+        {/* Products — greyed out when exhausted */}
+        {!isExhausted && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 14, paddingBottom: 14 }}>
+            {(sale.products || []).map((p: any) => {
+              const pctSold = p.stock_limit ? Math.min(100, Math.round(((p.sold_count || 0) / p.stock_limit) * 100)) : 0
+              const productSoldOut = p.stock_limit > 0 && (p.sold_count || 0) >= p.stock_limit
+              return (
+                <TouchableOpacity key={p.product_id} onPress={() => router.push(`/product/${p.slug || p.product_id}`)} activeOpacity={0.9}
+                  style={{ width: 130, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', opacity: productSoldOut ? 0.6 : 1 }}>
+                  {p.image ? (
+                    <ExpoImage source={{ uri: p.image }} style={{ width: 130, height: 110 }} contentFit="cover" transition={200} />
+                  ) : (
+                    <View style={{ width: 130, height: 110, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 30 }}>⚡</Text>
                     </View>
                   )}
-                </View>
-              </TouchableOpacity>
-            )
-          })}
-        </ScrollView>
+                  {productSoldOut && (
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', borderRadius: 14 }}>
+                      <View style={{ backgroundColor: '#111', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: '#fff' }}>SOLD OUT</Text>
+                      </View>
+                    </View>
+                  )}
+                  <View style={{ padding: 8 }}>
+                    <Text style={{ fontFamily: Fonts.medium, fontSize: 11, color: Colors.forest }} numberOfLines={1}>{p.product_name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 3 }}>
+                      {productSoldOut ? (
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: '#6b7280' }}>₹{p.original_price}</Text>
+                      ) : (
+                        <>
+                          <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: '#dc2626' }}>₹{p.flash_price}</Text>
+                          <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: Colors.textDim, textDecorationLine: 'line-through' }}>₹{p.original_price}</Text>
+                        </>
+                      )}
+                    </View>
+                    {!productSoldOut && (
+                      <View style={{ backgroundColor: '#fee2e2', borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1, alignSelf: 'flex-start', marginTop: 3 }}>
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 9, color: '#dc2626' }}>{p.discount_percent}% OFF</Text>
+                      </View>
+                    )}
+                    {p.stock_limit > 0 && (
+                      <View style={{ marginTop: 5 }}>
+                        <View style={{ height: 4, backgroundColor: '#fee2e2', borderRadius: 2 }}>
+                          <View style={{ height: 4, backgroundColor: productSoldOut ? '#9ca3af' : '#dc2626', borderRadius: 2, width: `${pctSold}%` as any }} />
+                        </View>
+                        <Text style={{ fontFamily: Fonts.regular, fontSize: 8, color: Colors.textDim, marginTop: 2 }}>
+                          {productSoldOut ? '🔴 Sold out' : `${pctSold}% sold`}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )
+            })}
+          </ScrollView>
+        )}
       </LinearGradient>
     </Animated.View>
   )
@@ -754,6 +797,35 @@ export default function HomeScreen() {
       const sales = r.data?.sales || []
       if (sales.length) setFlashSale(sales[0])
     }).catch(() => {})
+  }, [])
+
+  // Real-time flash sale socket updates
+  useEffect(() => {
+    let socket: any = null
+    import('socket.io-client').then(({ io }) => {
+      const API = (process.env.EXPO_PUBLIC_API_URL || 'https://api.oroganix.com').replace('/api', '')
+      socket = io(API, { transports: ['websocket', 'polling'] })
+
+      socket.on('flash_product_update', ({ saleId, productId, soldCount }: any) => {
+        setFlashSale((prev: any) => {
+          if (!prev || prev.id !== saleId) return prev
+          return { ...prev, products: prev.products.map((p: any) => p.product_id === productId ? { ...p, sold_count: soldCount } : p) }
+        })
+      })
+
+      socket.on('flash_product_sold_out', ({ saleId, productId }: any) => {
+        setFlashSale((prev: any) => {
+          if (!prev || prev.id !== saleId) return prev
+          return { ...prev, products: prev.products.map((p: any) => p.product_id === productId ? { ...p, sold_count: p.stock_limit } : p) }
+        })
+      })
+
+      socket.on('flash_sale_exhausted', ({ saleId }: any) => {
+        setFlashSale((prev: any) => prev?.id === saleId ? { ...prev, exhausted: true } : prev)
+      })
+    }).catch(() => {})
+
+    return () => { socket?.disconnect() }
   }, [])
 
   // Featured products with auto-retry for cold-start servers
