@@ -3,7 +3,8 @@ const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 
 const path = require("path")
-const crypto = require("crypto")           // ✅ For verification token
+const crypto = require("crypto")
+const axios = require("axios")
 
 const mailer = require("../../config/mail")
 
@@ -1484,21 +1485,51 @@ exports.resetPassword = async (req, res) => {
 
 exports.googleLogin = async (req, res) => {
   try {
-    const { id_token, name, email, photo } = req.body
-    if (!email) return res.status(400).json({ success: false, message: 'Email required' })
+    const { id_token } = req.body
+    if (!id_token) return res.status(400).json({ success: false, message: 'id_token required' })
 
-    const cleanEmail = email.trim().toLowerCase()
-    const cleanName = name?.trim() || cleanEmail.split('@')[0]
+    // ── Step 1: Verify the token with Google's servers ──
+    // We never trust name/email from the frontend — always get them from Google directly.
+    let tokenInfo
+    try {
+      const r = await axios.get(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(id_token)}`,
+        { timeout: 5000 }
+      )
+      tokenInfo = r.data
+    } catch {
+      return res.status(401).json({ success: false, message: 'Invalid Google token — verification failed' })
+    }
 
-    let user = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [cleanEmail])
+    // ── Step 2: Confirm the token belongs to OUR app (audience check) ──
+    // If GOOGLE_CLIENT_ID is set in .env, the aud claim must match it.
+    const clientId = process.env.GOOGLE_CLIENT_ID
+    if (clientId && tokenInfo.aud !== clientId) {
+      console.warn('[Google Login] aud mismatch:', tokenInfo.aud, '!=', clientId)
+      return res.status(401).json({ success: false, message: 'Token was not issued for this application' })
+    }
 
-    if (user.rows.length) {
-      user = user.rows[0]
+    // ── Step 3: Email must be verified by Google ──
+    if (!tokenInfo.email_verified || tokenInfo.email_verified === 'false') {
+      return res.status(401).json({ success: false, message: 'Google account email is not verified' })
+    }
+
+    const cleanEmail = tokenInfo.email.trim().toLowerCase()
+    const cleanName = (tokenInfo.name || tokenInfo.given_name || cleanEmail.split('@')[0]).trim()
+
+    // ── Step 4: Find or create the user ──
+    let user
+    const existing = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1', [cleanEmail])
+
+    if (existing.rows.length) {
+      user = existing.rows[0]
+      // Auto-verify if they're logging in via Google
       if (!user.is_verified) {
         await pool.query('UPDATE users SET is_verified = TRUE WHERE id = $1', [user.id])
         user.is_verified = true
       }
     } else {
+      // New user — create with random password (they'll use Google to sign in)
       const hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10)
       const referralCode = crypto.randomBytes(4).toString('hex').toUpperCase()
       const result = await pool.query(
@@ -1509,6 +1540,7 @@ exports.googleLogin = async (req, res) => {
       user = result.rows[0]
     }
 
+    // ── Step 5: Issue your own JWT ──
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET || 'secret',
