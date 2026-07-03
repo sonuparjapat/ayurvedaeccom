@@ -435,6 +435,25 @@ await client.query(`
       )
     `);
 
+    /* ================= DEFAULT LOYALTY SETTINGS ================= */
+    // INSERT ... ON CONFLICT DO NOTHING so existing admin values are never overwritten
+    const defaultSettings = [
+      ['loyalty_enabled',           'true',   'boolean', 'Enable or disable the loyalty points program'],
+      ['wallet_enabled',            'true',   'boolean', 'Enable or disable the store wallet feature'],
+      ['loyalty_earn_rate',         '0.1',    'number',  'Points earned per ₹1 spent (0.1 = 1 pt per ₹10)'],
+      ['loyalty_redeem_rate',       '0.1',    'number',  'Rupee value of each loyalty point (0.1 = 10 pts = ₹1)'],
+      ['loyalty_min_redeem_points', '50',     'number',  'Minimum points required before redemption is allowed'],
+      ['loyalty_max_redeem_percent','20',     'number',  'Maximum % of order total that can be paid via loyalty points'],
+    ]
+    for (const [key, value, type, description] of defaultSettings) {
+      await client.query(
+        `INSERT INTO app_settings (key, value, type, description)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (key) DO NOTHING`,
+        [key, value, type, description]
+      )
+    }
+
     /* ================= INVOICES ================= */
     await client.query(`
       CREATE TABLE IF NOT EXISTS invoices (

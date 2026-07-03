@@ -9,6 +9,7 @@ const {
 } = require("../../utils/orderMail");
 const { emitToUser, emitToAdmin } = require('../../socket');
 const { createNotification } = require('../../services/notification.service');
+const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
 const {
   uploadImageToAWS,
   deleteFromAWS
@@ -1414,20 +1415,26 @@ if (currentStatus == 3&&(!order.courier_name || !order.tracking_number)) {
     /* ================= LOYALTY POINTS ON DELIVERY (status→5) ================= */
     if (status === 5) {
       try {
-        const orderRow = await client.query(`SELECT user_id, total_amount FROM orders WHERE id=$1`, [id])
-        if (orderRow.rows.length) {
-          const { user_id, total_amount } = orderRow.rows[0]
-          const points = Math.floor(Number(total_amount) / 10)
-          if (points > 0) {
-            await client.query(
-              `INSERT INTO loyalty_points (user_id, points, type, source, order_id, description)
-               VALUES ($1, $2, 'earn', 'order', $3, $4)`,
-              [user_id, points, id, `Earned on order #${id}`]
-            )
-            await client.query(
-              `UPDATE users SET loyalty_points_balance = COALESCE(loyalty_points_balance,0) + $1 WHERE id=$2`,
-              [points, user_id]
-            )
+        const loyaltyConfig = await getLoyaltySettings()
+        if (loyaltyConfig.loyalty_enabled) {
+          const orderRow = await client.query(`SELECT user_id, grand_total, total_amount FROM orders WHERE id=$1`, [id])
+          if (orderRow.rows.length) {
+            const { user_id, grand_total, total_amount } = orderRow.rows[0]
+            // Use grand_total (amount actually paid) for earn calculation
+            const amountPaid = Number(grand_total || total_amount || 0)
+            // earnRate = points per ₹1 (e.g. 0.1 = 1 pt per ₹10)
+            const points = Math.floor(amountPaid * loyaltyConfig.loyalty_earn_rate)
+            if (points > 0) {
+              await client.query(
+                `INSERT INTO loyalty_points (user_id, points, type, source, order_id, description)
+                 VALUES ($1, $2, 'earn', 'order', $3, $4)`,
+                [user_id, points, id, `Earned on order #${id} (₹${amountPaid.toFixed(2)} × ${loyaltyConfig.loyalty_earn_rate} = ${points} pts)`]
+              )
+              await client.query(
+                `UPDATE users SET loyalty_points_balance = COALESCE(loyalty_points_balance,0) + $1 WHERE id=$2`,
+                [points, user_id]
+              )
+            }
           }
         }
       } catch (lpErr) {

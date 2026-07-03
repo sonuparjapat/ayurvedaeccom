@@ -195,6 +195,14 @@ useEffect(() => {
 
 function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; onMount: () => void }) {
   useEffect(() => { onMount() }, [])
+  const [tab, setTab] = useState<'wallet' | 'loyalty'>('wallet')
+  const [loyaltyConfig, setLoyaltyConfig] = useState<any>({ loyalty_redeem_rate: 0.1, loyalty_min_redeem_points: 50 })
+
+  useEffect(() => {
+    axios.get('/wallet/settings')
+      .then(r => { if (r.data?.settings) setLoyaltyConfig(r.data.settings) })
+      .catch(() => {})
+  }, [])
 
   if (loading) return (
     <div className="flex justify-center py-20">
@@ -204,6 +212,12 @@ function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; on
 
   const balance = Number(data?.balance || 0)
   const loyaltyBalance = Number(data?.loyalty_balance || 0)
+  const earnRate = Number(loyaltyConfig?.loyalty_earn_rate || 0.1)
+  const redeemRate = Number(loyaltyConfig?.loyalty_redeem_rate || 0.1)
+  const minRedeemPts = Number(loyaltyConfig?.loyalty_min_redeem_points || 50)
+  const ptsPerRupee = redeemRate > 0 ? Math.round(1 / redeemRate) : 10
+  const rupeePerPtEarned = earnRate > 0 ? Math.round(1 / earnRate) : 10
+  const loyaltyValueInRupees = +(loyaltyBalance * redeemRate).toFixed(2)
   const transactions: any[] = data?.transactions || []
   const loyalty: any[] = data?.loyalty || []
 
@@ -211,68 +225,139 @@ function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; on
     <div className="space-y-5">
       <h2 className="font-bold text-gray-900 text-lg">Wallet & Loyalty Points</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-gradient-to-br from-violet-600 to-purple-500 rounded-2xl p-5 text-white relative overflow-hidden">
-          <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full" />
-          <p className="text-xs font-bold uppercase tracking-widest text-purple-200 mb-2">Store Wallet</p>
-          <p className="text-4xl font-black">₹{balance.toFixed(2)}</p>
-          <p className="text-xs text-purple-200 mt-1">Available balance</p>
+      {/* Balance Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Wallet */}
+        <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-violet-600 via-purple-600 to-purple-800 p-5 text-white shadow-lg">
+          <div className="absolute -right-8 -top-8 w-36 h-36 bg-white/10 rounded-full" />
+          <div className="absolute -right-2 bottom-0 w-24 h-24 bg-white/5 rounded-full" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <Wallet size={15} />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-widest text-purple-200">Store Wallet</span>
+            </div>
+            <p className="text-4xl font-black tracking-tight">₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+            <p className="text-xs text-purple-200 mt-1">Available balance</p>
+            {balance > 0 && (
+              <div className="mt-4 bg-white/15 rounded-xl px-3 py-2 inline-flex items-center gap-2">
+                <span className="text-xs text-purple-100">💡 Use at checkout to save instantly</span>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="bg-gradient-to-br from-amber-500 to-orange-400 rounded-2xl p-5 text-white relative overflow-hidden">
-          <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full" />
-          <p className="text-xs font-bold uppercase tracking-widest text-amber-100 mb-2">Loyalty Points</p>
-          <p className="text-4xl font-black">{loyaltyBalance}</p>
-          <p className="text-xs text-amber-100 mt-1">Redeemable points</p>
+
+        {/* Loyalty */}
+        <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-amber-500 via-orange-500 to-orange-600 p-5 text-white shadow-lg">
+          <div className="absolute -right-8 -top-8 w-36 h-36 bg-white/10 rounded-full" />
+          <div className="absolute -right-2 bottom-0 w-24 h-24 bg-white/5 rounded-full" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <Star size={15} />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-widest text-amber-100">Loyalty Points</span>
+            </div>
+            <p className="text-4xl font-black tracking-tight">{loyaltyBalance.toLocaleString()}</p>
+            <p className="text-xs text-amber-100 mt-1">Redeemable points</p>
+            {loyaltyBalance > 0 && (
+              <div className="mt-4 bg-white/15 rounded-xl px-3 py-2 inline-flex items-center gap-2">
+                <span className="text-xs text-amber-100">= ₹{loyaltyValueInRupees} off at checkout ({ptsPerRupee} pts = ₹1)</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {transactions.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-800">Wallet Transactions</h3>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {transactions.map((t: any, i: number) => (
-              <div key={i} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800 capitalize">{t.source || t.description}</p>
-                  <p className="text-xs text-gray-400">{new Date(t.created_at).toLocaleDateString('en-IN')}</p>
-                </div>
-                <span className={`text-sm font-bold ${t.type === 'credit' ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {t.type === 'credit' ? '+' : '-'}₹{Number(t.amount).toFixed(2)}
-                </span>
+      {/* How it works */}
+      <div className="bg-white border border-gray-100 rounded-2xl p-5">
+        <h3 className="text-sm font-bold text-gray-700 mb-3">How it works</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { icon: '🛍️', title: 'Shop & Earn', desc: `Get 1 loyalty point for every ₹${rupeePerPtEarned} spent on delivered orders` },
+            { icon: '💳', title: 'Redeem Points', desc: `${ptsPerRupee} points = ₹1 discount. Apply at checkout anytime${minRedeemPts > 0 ? ` (min ${minRedeemPts} pts)` : ''}` },
+            { icon: '🎁', title: 'Wallet Credits', desc: 'Admin may credit your wallet for refunds or special offers' },
+          ].map(item => (
+            <div key={item.title} className="flex gap-3 p-3 bg-gray-50 rounded-xl">
+              <span className="text-xl shrink-0">{item.icon}</span>
+              <div>
+                <p className="text-xs font-bold text-gray-800">{item.title}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
-      {loyalty.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-800">Points History</h3>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {loyalty.map((l: any, i: number) => (
-              <div key={i} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800 capitalize">{l.source || l.description}</p>
-                  <p className="text-xs text-gray-400">{new Date(l.created_at).toLocaleDateString('en-IN')}</p>
-                </div>
-                <span className={`text-sm font-bold ${l.type === 'earn' ? 'text-amber-600' : 'text-red-500'}`}>
-                  {l.type === 'earn' ? '+' : '-'}{l.points} pts
-                </span>
-              </div>
+      {/* Tabs */}
+      {(transactions.length > 0 || loyalty.length > 0) && (
+        <>
+          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+            {(['wallet', 'loyalty'] as const).map(t => (
+              <button key={t} onClick={() => setTab(t)}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === t ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                {t === 'wallet' ? `💳 Transactions (${transactions.length})` : `⭐ Points History (${loyalty.length})`}
+              </button>
             ))}
           </div>
-        </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            {tab === 'wallet' ? (
+              transactions.length === 0 ? (
+                <div className="py-12 text-center text-gray-400">No wallet transactions yet</div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {transactions.map((t: any, i: number) => {
+                    const isCredit = t.type === 'credit' || t.type === 'refund' || t.type === 'cashback'
+                    return (
+                      <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isCredit ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                          <span className="text-base">{isCredit ? '⬇️' : '⬆️'}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{t.description || (isCredit ? 'Wallet credited' : 'Wallet debited')}</p>
+                          <p className="text-xs text-gray-400 mt-0.5 capitalize">{t.source} · {new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                        <span className={`text-sm font-black shrink-0 ${isCredit ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {isCredit ? '+' : '-'}₹{Number(t.amount).toFixed(2)}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            ) : (
+              loyalty.length === 0 ? (
+                <div className="py-12 text-center text-gray-400">No loyalty points history yet</div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {loyalty.map((l: any, i: number) => (
+                    <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${l.type === 'earn' ? 'bg-amber-50' : 'bg-red-50'}`}>
+                        <span className="text-base">{l.type === 'earn' ? '⭐' : '🔻'}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{l.description || (l.type === 'earn' ? 'Points earned' : 'Points redeemed')}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 capitalize">{l.source} · {new Date(l.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                      </div>
+                      <span className={`text-sm font-black shrink-0 ${l.type === 'earn' ? 'text-amber-600' : 'text-red-500'}`}>
+                        {l.type === 'earn' ? '+' : '-'}{l.points} pts
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+        </>
       )}
 
       {!transactions.length && !loyalty.length && (
         <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center">
           <Wallet size={40} className="text-gray-200 mx-auto mb-3" />
-          <p className="font-semibold text-gray-500">No transactions yet</p>
-          <p className="text-xs text-gray-400 mt-1">Wallet credits and loyalty points will appear here</p>
+          <p className="font-semibold text-gray-500">No activity yet</p>
+          <p className="text-xs text-gray-400 mt-1">Place an order to start earning loyalty points</p>
         </div>
       )}
     </div>
@@ -608,7 +693,7 @@ const handleSaveAddress = async (data: any) => {
     { href: '/account?tab=addresses', tab: 'addresses', icon: MapPin, label: 'Addresses' },
     { href: '/wishlist', tab: 'wishlist', icon: Heart, label: 'Wishlist' },
     { href: '/account?tab=wallet', tab: 'wallet', icon: Wallet, label: 'Wallet & Points' },
-    { href: '/account?tab=payment', tab: 'payment', icon: CreditCard, label: 'Payment Methods' },
+    // Payment Methods — disabled until Razorpay tokenization is activated
     { href: '/account?tab=settings', tab: 'settings', icon: Settings, label: 'Settings' },
   ]
 

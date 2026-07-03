@@ -2,6 +2,7 @@ const pool = require("../../config/db");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const { emitToAdmin } = require('../../socket');
+const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
 
 /* ================= RAZORPAY ================= */
 
@@ -298,23 +299,31 @@ if (addr.pincode) {
       await client.query('UPDATE coupons SET used_count = used_count + 1, updated_at = NOW() WHERE id = $1', [c.id]);
     }
 
+    /* ================= LOYALTY / WALLET SETTINGS ================= */
+    const loyaltyConfig = await getLoyaltySettings();
+
     /* ================= WALLET DISCOUNT ================= */
     let walletDiscountApplied = 0;
     let loyaltyDiscountApplied = 0;
     let loyaltyPointsDeducted = 0;
 
-    if (requestedWalletDiscount && Number(requestedWalletDiscount) > 0) {
+    if (loyaltyConfig.wallet_enabled && requestedWalletDiscount && Number(requestedWalletDiscount) > 0) {
       const walletRes = await client.query(`SELECT wallet_balance FROM users WHERE id=$1 FOR UPDATE`, [userId]);
       const currentBalance = Number(walletRes.rows[0]?.wallet_balance || 0);
       walletDiscountApplied = Math.min(Number(requestedWalletDiscount), currentBalance, total);
     }
 
-    if (requestedLoyaltyDiscount && Number(requestedLoyaltyDiscount) > 0) {
+    if (loyaltyConfig.loyalty_enabled && requestedLoyaltyDiscount && Number(requestedLoyaltyDiscount) > 0) {
       const loyaltyRes = await client.query(`SELECT loyalty_points_balance FROM users WHERE id=$1 FOR UPDATE`, [userId]);
       const pts = Number(loyaltyRes.rows[0]?.loyalty_points_balance || 0);
-      const maxDiscount = +(pts * 0.1).toFixed(2);
+      // redeemRate = ₹ per point; maxRedeemPercent limits how much of the order can be covered
+      const redeemRate = loyaltyConfig.loyalty_redeem_rate;
+      const maxByPercent = +(total * loyaltyConfig.loyalty_max_redeem_percent / 100).toFixed(2);
+      const maxByPoints = +(pts * redeemRate).toFixed(2);
+      const maxDiscount = Math.min(maxByPoints, maxByPercent);
       loyaltyDiscountApplied = Math.min(Number(requestedLoyaltyDiscount), maxDiscount, total - walletDiscountApplied);
-      loyaltyPointsDeducted = Math.ceil(loyaltyDiscountApplied * 10);
+      // points to deduct = discount / redeemRate (rounded up)
+      loyaltyPointsDeducted = Math.ceil(loyaltyDiscountApplied / redeemRate);
     }
 
     const finalTotal = Math.max(0, total - walletDiscountApplied - loyaltyDiscountApplied);
