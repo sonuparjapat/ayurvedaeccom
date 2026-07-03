@@ -8,6 +8,7 @@ const {
   sendOrderStatusMail
 } = require("../../utils/orderMail");
 const { emitToUser, emitToAdmin } = require('../../socket');
+const { createNotification } = require('../../services/notification.service');
 const {
   uploadImageToAWS,
   deleteFromAWS
@@ -1506,11 +1507,19 @@ if (currentStatus == 3&&(!order.courier_name || !order.tracking_number)) {
       if (userRes.rows.length) {
         const { user_id, email, name } = userRes.rows[0];
         await sendOrderStatusMail({ email, name, orderId: id, status });
+        const statusLabel = orderstatus[status] || String(status)
         emitToUser(user_id, 'order_status_updated', {
           order_id: id,
           status,
-          status_label: orderstatus[status] || String(status),
+          status_label: statusLabel,
         });
+        createNotification(
+          user_id,
+          'order_update',
+          `Order #${id} — ${statusLabel}`,
+          `Your order status has been updated to: ${statusLabel}`,
+          { order_id: id, status }
+        );
       }
     } catch (mailErr) {
       console.log("Order mail/socket failed:", mailErr.message);

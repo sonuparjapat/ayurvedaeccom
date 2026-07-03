@@ -1,6 +1,6 @@
 const pool = require('../../config/db')
 const { broadcastAll, broadcastSegment, savePushToken } = require('../../services/pushNotification')
-const { emitToAdmin } = require('../../socket')
+const { emitToAdmin, emitToAll } = require('../../socket')
 
 /* Save token from mobile app */
 exports.saveToken = async (req, res) => {
@@ -28,10 +28,12 @@ exports.adminBroadcast = async (req, res) => {
       `INSERT INTO push_notification_logs (title, body, sent_to, sent_by) VALUES ($1,$2,$3,$4)`,
       [title, body, result.sent, req.user.id]
     )
-    // Emit real-time event to admin room so the history updates without page refresh
+    // Notify admin panel that broadcast completed (for history + stats)
     emitToAdmin('push_broadcast_complete', {
       title, body, sent: result.sent, time: new Date().toISOString()
     })
+    // Notify all connected web users so their notification bell updates live
+    emitToAll('new_broadcast', { title, body, created_at: new Date().toISOString() })
     res.json({ success: true, ...result })
   } catch (err) {
     res.status(500).json({ message: 'Broadcast failed' })

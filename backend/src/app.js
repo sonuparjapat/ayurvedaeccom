@@ -28,6 +28,7 @@ const bundleRoutes = require('./modules/bundles/bundle.routes');
 const blogRoutes = require('./modules/blog/blog.routes');
 const subscriptionRoutes = require('./modules/subscriptions/subscription.routes');
 const newsletterRoutes = require('./modules/newsletter/newsletter.routes');
+const notificationsRoutes = require('./modules/notifications/notifications.routes');
 
 const app = express();
 
@@ -116,6 +117,7 @@ app.use('/api/bundles', bundleRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 
 /* ================= EXPORT ================= */

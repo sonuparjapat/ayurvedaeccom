@@ -1,5 +1,6 @@
 const pool = require('../../config/db');
 const { emitToTicket, emitToAdmin, emitToUser } = require('../../socket');
+const { createNotification } = require('../../services/notification.service');
 
 /* ── USER: list own tickets ── */
 exports.myTickets = async (req, res) => {
@@ -157,6 +158,8 @@ exports.adminUpdateTicket = async (req, res) => {
     const t = (await pool.query(`UPDATE support_tickets SET ${fields.join(',')} WHERE id=$${i} RETURNING user_id`, vals)).rows[0];
     if (t?.user_id && status) {
       emitToUser(t.user_id, 'ticket_status_updated', { ticket_id: parseInt(id), status });
+      const label = status.replace(/_/g, ' ')
+      createNotification(t.user_id, 'ticket_status', `Support ticket #${id} — ${label}`, `Your support ticket status has been updated to: ${label}`, { ticket_id: parseInt(id), status })
     }
     res.json({ success: true });
   } catch (e) {
@@ -184,7 +187,10 @@ exports.adminReply = async (req, res) => {
     const admin = (await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id])).rows[0];
     const fullMsg = { ...msg, sender_name: admin?.name || 'Support Team' };
     emitToTicket(id, 'new_message', fullMsg);
-    if (ticket.user_id) emitToUser(ticket.user_id, 'admin_replied', { ticket_id: parseInt(id), subject: ticket.subject });
+    if (ticket.user_id) {
+      emitToUser(ticket.user_id, 'admin_replied', { ticket_id: parseInt(id), subject: ticket.subject });
+      createNotification(ticket.user_id, 'support_reply', `Support replied: ${ticket.subject}`, message.trim(), { ticket_id: parseInt(id) })
+    }
     res.json({ success: true, message: fullMsg });
   } catch (e) {
     console.error(e);

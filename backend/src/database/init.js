@@ -875,6 +875,22 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
       )
     `);
 
+    /* ================= USER NOTIFICATIONS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_notifications (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(50) NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT,
+        data JSONB DEFAULT '{}',
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_user_notif_user ON user_notifications(user_id, is_read)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_user_notif_created ON user_notifications(user_id, created_at DESC)`);
+
     /* ================= REFERRALS ================= */
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);

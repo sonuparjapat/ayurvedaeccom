@@ -1,6 +1,7 @@
 'use client'
- 
-import { useState, useEffect, useRef } from 'react'
+
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { io, Socket } from 'socket.io-client'
 import Link from 'next/link'
 import { CartSheet } from '@/components/cart/cart-sheet'
 import {
@@ -46,22 +47,32 @@ const {
   const [searchLoading, setSearchLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [notifCount, setNotifCount] = useState(0)
-
-
+  const notifSocketRef = useRef<Socket | null>(null)
 
   const searchRef = useRef(null)
- 
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Fetch real unread count from new notifications API
   useEffect(() => {
-    if (!loginuserdata?.id) return
-    axios.get('/push/notifications')
-      .then(r => setNotifCount((r.data.notifications || []).length))
+    if (!loginuserdata?.id) { setNotifCount(0); return }
+    axios.get('/notifications/unread-count')
+      .then(r => setNotifCount(r.data.count || 0))
       .catch(() => {})
+
+    // WebSocket — bump badge whenever a new notification or broadcast arrives
+    const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
+      transports: ['websocket', 'polling'],
+    })
+    notifSocketRef.current = socket
+    socket.on('connect', () => socket.emit('join_user', loginuserdata.id))
+    socket.on('new_notification', () => setNotifCount(c => c + 1))
+    socket.on('new_broadcast', () => setNotifCount(c => c + 1))
+    return () => { socket.disconnect() }
   }, [loginuserdata?.id])
 
   // Close menu on resize to desktop
