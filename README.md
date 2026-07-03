@@ -63,7 +63,15 @@ All notifications (order updates, support replies, admin broadcasts) are deliver
 2. **Database** (`user_notifications` table) — persistent history per user
 3. **Expo Push Notifications** — mobile push (requires production/EAS build, not Expo Go)
 
-Both web and mobile have a unified **Notification Center** with tabs for personal notifications and admin announcements.
+Both web and mobile have a unified **Notification Center** (`/notifications`) with:
+- Tabs: All Activity (personal) | Announcements (admin broadcasts)
+- Filters: by type (Orders, Support, Ticket, Announcement), read status (All/Unread/Read), date range
+- Pagination (web) / infinite scroll load-more (mobile)
+- Date grouping (Today / Yesterday / date)
+- Unread indicators — blue left border + dot per card
+- Mark single read on click, Mark all read button
+- WebSocket real-time: new notifications prepend without refresh
+- Navbar + Footer on web; safe-area-aware header on mobile
 
 ---
 
