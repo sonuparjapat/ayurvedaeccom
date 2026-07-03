@@ -863,6 +863,18 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
       )
     `);
 
+    /* ================= PUSH NOTIFICATION LOGS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS push_notification_logs (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        sent_to INTEGER DEFAULT 0,
+        sent_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     /* ================= REFERRALS ================= */
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);

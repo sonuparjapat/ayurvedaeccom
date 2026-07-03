@@ -8,5 +8,6 @@ router.post('/token', auth, ctrl.saveToken)
 router.get('/notifications', auth, ctrl.userNotifications)
 router.post('/admin/broadcast', auth, admin, ctrl.adminBroadcast)
 router.get('/admin/stats', auth, admin, ctrl.adminStats)
+router.get('/admin/history', auth, admin, ctrl.adminHistory)
 
 module.exports = router

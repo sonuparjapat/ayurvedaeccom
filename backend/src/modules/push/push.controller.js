@@ -1,5 +1,6 @@
 const pool = require('../../config/db')
 const { broadcastAll, broadcastSegment, savePushToken } = require('../../services/pushNotification')
+const { emitToAdmin } = require('../../socket')
 
 /* Save token from mobile app */
 exports.saveToken = async (req, res) => {
@@ -7,6 +8,9 @@ exports.saveToken = async (req, res) => {
     const { token, device_type, deviceType } = req.body
     if (!token) return res.status(400).json({ message: 'Token required' })
     await savePushToken(req.user.id, token, device_type || deviceType || 'mobile')
+    // Push updated stats to admin in real-time so the count reflects immediately
+    const r = await pool.query(`SELECT COUNT(*) AS total_tokens, COUNT(DISTINCT user_id) AS total_users FROM push_tokens`)
+    emitToAdmin('push_stats_updated', r.rows[0])
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ message: 'Server error' })
@@ -19,6 +23,15 @@ exports.adminBroadcast = async (req, res) => {
     const { title, body, data } = req.body
     if (!title || !body) return res.status(400).json({ message: 'Title and body required' })
     const result = await broadcastAll(title, body, data || {})
+    // Persist to log table
+    await pool.query(
+      `INSERT INTO push_notification_logs (title, body, sent_to, sent_by) VALUES ($1,$2,$3,$4)`,
+      [title, body, result.sent, req.user.id]
+    )
+    // Emit real-time event to admin room so the history updates without page refresh
+    emitToAdmin('push_broadcast_complete', {
+      title, body, sent: result.sent, time: new Date().toISOString()
+    })
     res.json({ success: true, ...result })
   } catch (err) {
     res.status(500).json({ message: 'Broadcast failed' })
@@ -35,7 +48,24 @@ exports.adminStats = async (req, res) => {
   }
 }
 
-/* User notifications inbox — last 30 order status events */
+/* Admin: get broadcast history (persisted in DB) */
+exports.adminHistory = async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT pnl.id, pnl.title, pnl.body, pnl.sent_to, pnl.created_at,
+              u.name AS sent_by_name
+       FROM push_notification_logs pnl
+       LEFT JOIN users u ON u.id = pnl.sent_by
+       ORDER BY pnl.created_at DESC
+       LIMIT 50`
+    )
+    res.json({ history: r.rows })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+/* User notifications inbox — last 50 order status events */
 exports.userNotifications = async (req, res) => {
   try {
     const userId = req.user.id
