@@ -3,17 +3,24 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   Alert, Dimensions, KeyboardAvoidingView, Platform, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator,
 } from 'react-native'
 import Animated, { FadeIn, FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import * as Google from 'expo-auth-session/providers/google'
+import * as WebBrowser from 'expo-web-browser'
+import { makeRedirectUri } from 'expo-auth-session'
 import api from '../../api/axios'
 import { useStore } from '../../store'
 import { Image as ExpoImage } from 'expo-image'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
 
-const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/mainayurvedalogo.png'
+// Required: completes the auth session when the app is brought back from the browser
+WebBrowser.maybeCompleteAuthSession()
+
+const LOGO_LOCAL = require('@/assets/images/oroganix-logo.png')
 
 const { width: W } = Dimensions.get('window')
 type Mode = 'login' | 'register' | 'otp' | 'mobileOtp' | 'forgot' | 'verifySent'
@@ -104,6 +111,78 @@ export default function AuthScreen() {
   const [otpForm, setOtpForm] = useState({ identifier: '', otp: '' })
   const [mobileForm, setMobileForm] = useState({ phone: '', otp: '' })
   const [forgotEmail, setForgotEmail] = useState('')
+  const [googleLoading, setGoogleLoading] = useState(false)
+
+  // ── Google Sign-In ──
+  // expo-auth-session handles the OAuth flow:
+  // 1. Opens Google's sign-in page in the system browser
+  // 2. User picks their account
+  // 3. Google redirects back to the app with an id_token
+  // 4. We send the id_token to our backend which verifies it with Google
+  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    // When you create an iOS client in Google Console, add it here:
+    // iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    scopes: ['openid', 'profile', 'email'],
+  })
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const idToken = googleResponse.authentication?.idToken
+      if (idToken) {
+        handleGoogleLogin(idToken)
+      } else {
+        // Fallback if id_token not in auth response — get it via access token
+        const accessToken = googleResponse.authentication?.accessToken
+        if (accessToken) fetchGoogleUserAndLogin(accessToken)
+        else Alert.alert('Google Sign-In', 'Could not retrieve identity token. Please try again.')
+      }
+    } else if (googleResponse?.type === 'error') {
+      Alert.alert('Google Sign-In Failed', googleResponse.error?.message || 'Please try again.')
+    }
+    // type === 'dismiss' means user cancelled — no alert needed
+  }, [googleResponse])
+
+  const handleGoogleLogin = async (idToken: string) => {
+    setGoogleLoading(true)
+    try {
+      const res = await api.post('/users/google-login', { id_token: idToken })
+      if (res.data?.token) await AsyncStorage.setItem('auth_token', res.data.token)
+      await afterLogin(res.data.user, res.data)
+    } catch (e: any) {
+      Alert.alert('Login Failed', e?.response?.data?.message || 'Google login failed. Please try again.')
+    } finally { setGoogleLoading(false) }
+  }
+
+  // Fallback: when id_token not present in auth response, fetch user info via access token
+  const fetchGoogleUserAndLogin = async (accessToken: string) => {
+    setGoogleLoading(true)
+    try {
+      // Exchange access token for an id_token via Google's tokeninfo endpoint
+      const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`)
+      const info = await r.json()
+      if (info.email) {
+        // The tokeninfo response doesn't give id_token, but our backend can work
+        // with the access token to look up user — use a userinfo approach instead
+        const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        })
+        const user = await userRes.json()
+        if (!user.email) throw new Error('Could not get email from Google')
+        // For this fallback, we send userinfo directly — backend has a fallback endpoint
+        const res = await api.post('/users/google-login-userinfo', {
+          email: user.email,
+          name: user.name,
+          email_verified: user.email_verified,
+        })
+        if (res.data?.token) await AsyncStorage.setItem('auth_token', res.data.token)
+        await afterLogin(res.data.user, res.data)
+      }
+    } catch (e: any) {
+      Alert.alert('Login Failed', 'Google login failed. Please try email/password login.')
+    } finally { setGoogleLoading(false) }
+  }
 
   useEffect(() => {
     if (otpTimer <= 0) return
@@ -260,10 +339,9 @@ export default function AuthScreen() {
             {/* Brand */}
             <Animated.View entering={FadeIn.delay(80)} style={ss.brandRow}>
               <ExpoImage
-                source={{ uri: LOGO_URL }}
-                style={{ width: 160, height: 46 }}
+                source={LOGO_LOCAL}
+                style={{ width: 160, height: 46, backgroundColor: 'transparent' }}
                 contentFit="contain"
-                transition={200}
               />
             </Animated.View>
 
@@ -321,13 +399,25 @@ export default function AuthScreen() {
                   <View style={ss.divLine} />
                 </View>
                 <TouchableOpacity
-                  onPress={async () => {
-                    Alert.alert('Google Login', 'Google Sign-In requires a production build with proper OAuth credentials configured. Use email/password or OTP login for now.')
-                  }}
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, backgroundColor: '#fff', marginBottom: 12 }}
+                  onPress={() => googlePromptAsync()}
+                  disabled={!googleRequest || googleLoading || loading}
+                  style={[
+                    ss.googleBtn,
+                    (!googleRequest || googleLoading) && { opacity: 0.55 }
+                  ]}
+                  activeOpacity={0.82}
                 >
-                  <Text style={{ fontSize: 18 }}>G</Text>
-                  <Text style={{ fontFamily: Fonts.medium, fontSize: 14, color: Colors.forest }}>Continue with Google</Text>
+                  {googleLoading ? (
+                    <ActivityIndicator size="small" color={Colors.forest} />
+                  ) : (
+                    <>
+                      {/* Google "G" SVG logo in Text form */}
+                      <View style={ss.googleLogo}>
+                        <Text style={{ fontSize: 15, fontFamily: Fonts.bold, color: '#4285F4' }}>G</Text>
+                      </View>
+                      <Text style={ss.googleBtnText}>Continue with Google</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
                 <SecondaryBtn label="Create new account →" onPress={() => setMode('register')} />
                 <View style={ss.trustRow}>
@@ -491,4 +581,8 @@ const ss = StyleSheet.create({
   successOrb: { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center', marginBottom: 22, borderWidth: 1.5, borderColor: '#bbf7d0' },
   successTitle: { fontFamily: Fonts.displayBold, fontSize: 26, color: Colors.forest, marginBottom: 10, textAlign: 'center' },
   successSub: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.textDim, textAlign: 'center', lineHeight: 23, marginBottom: 28 },
+
+  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: '#fff', marginBottom: 12, minHeight: 52, ...Shadows.sm },
+  googleLogo: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#f1f3f4', alignItems: 'center', justifyContent: 'center' },
+  googleBtnText: { fontFamily: Fonts.medium, fontSize: 14, color: Colors.forest },
 })

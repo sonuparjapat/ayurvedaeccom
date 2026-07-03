@@ -21,13 +21,16 @@ export default function WalletScreen() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'wallet' | 'loyalty'>('wallet')
+  const [cfg, setCfg] = useState({ loyalty_earn_rate: 0.1, loyalty_redeem_rate: 0.1, loyalty_min_redeem_points: 50, loyalty_max_redeem_percent: 20 })
 
   useEffect(() => {
-    api.get('/wallet')
-      .then(r => setData(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    api.get('/wallet').then(r => setData(r.data)).catch(() => {}).finally(() => setLoading(false))
+    api.get('/wallet/settings').then(r => { if (r.data?.settings) setCfg(r.data.settings) }).catch(() => {})
   }, [])
+
+  const ptsPerRupee = cfg.loyalty_earn_rate > 0 ? Math.round(1 / cfg.loyalty_earn_rate) : 10
+  const rupeePerPt = cfg.loyalty_redeem_rate || 0.1
+  const ptsFor1Rupee = rupeePerPt > 0 ? Math.round(1 / rupeePerPt) : 10
 
   const balance = Number(data?.wallet_balance ?? 0)
   const points  = Number(data?.loyalty_points ?? 0)
@@ -61,6 +64,24 @@ export default function WalletScreen() {
         {/* Info */}
         <View style={s.infoBanner}>
           <Text style={s.infoText}>💡 Use wallet balance at checkout to save on your orders</Text>
+        </View>
+
+        {/* How it works */}
+        <View style={s.howSection}>
+          <Text style={s.howTitle}>How it works</Text>
+          <View style={s.howRow}>
+            {[
+              { emoji: '🛍️', label: 'Shop & Earn', desc: `₹${ptsPerRupee} spent = 1 point` },
+              { emoji: '💳', label: 'Redeem', desc: `${ptsFor1Rupee} pts = ₹1 off` },
+              { emoji: '📦', label: 'Min Redeem', desc: `${cfg.loyalty_min_redeem_points} pts minimum` },
+            ].map((item, i) => (
+              <View key={i} style={s.howCard}>
+                <Text style={s.howEmoji}>{item.emoji}</Text>
+                <Text style={s.howCardTitle}>{item.label}</Text>
+                <Text style={s.howCardDesc}>{item.desc}</Text>
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* Tabs */}
@@ -151,6 +172,13 @@ const s = StyleSheet.create({
   pointsText: { fontFamily: Fonts.medium, fontSize: 13, color: '#fff' },
   infoBanner: { marginHorizontal: 16, backgroundColor: '#d1fae5', borderRadius: 12, padding: 12, marginBottom: 16 },
   infoText: { fontFamily: Fonts.regular, fontSize: 13, color: '#065f46' },
+  howSection: { marginHorizontal: 16, marginBottom: 16 },
+  howTitle: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest, marginBottom: 10 },
+  howRow: { flexDirection: 'row', gap: 8 },
+  howCard: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 12, alignItems: 'center', ...Shadows.sm },
+  howEmoji: { fontSize: 22, marginBottom: 6 },
+  howCardTitle: { fontFamily: Fonts.bold, fontSize: 11, color: Colors.forest, textAlign: 'center', marginBottom: 2 },
+  howCardDesc: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.darkDim, textAlign: 'center' },
   tabRow: { flexDirection: 'row', marginHorizontal: 16, backgroundColor: '#f3f4f6', borderRadius: 12, padding: 4, marginBottom: 16 },
   tabBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
   tabBtnActive: { backgroundColor: '#fff', ...Shadows.sm },

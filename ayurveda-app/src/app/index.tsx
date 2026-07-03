@@ -22,7 +22,7 @@ import api from '../api/axios'
 import { getGuestSession } from '../utils/guestSession'
 import { Colors, Fonts, CATEGORY_THEMES, Shadows, Radius } from '../constants/theme'
 
-const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/mainayurvedalogo.png'
+const LOGO_LOCAL = require('@/assets/images/oroganix-logo.png')
 
 const { width: W, height: H } = Dimensions.get('window')
 const AnimPressable = Animated.createAnimatedComponent(Pressable)
@@ -122,10 +122,9 @@ function TopBar({ cartCount, user, defaultAddr }: { cartCount: number; user: any
         onPress={() => user && router.push('/account')}
       >
         <ExpoImage
-          source={{ uri: LOGO_URL }}
-          style={{ width: 120, height: 34 }}
+          source={LOGO_LOCAL}
+          style={{ width: 120, height: 34, backgroundColor: 'transparent' }}
           contentFit="contain"
-          transition={200}
         />
         {user ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
@@ -912,10 +911,9 @@ export default function HomeScreen() {
         <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={{ paddingHorizontal: 20, paddingVertical: 10 }}>
           <ExpoImage
-            source={{ uri: LOGO_URL }}
-            style={{ width: 110, height: 30 }}
+            source={LOGO_LOCAL}
+            style={{ width: 110, height: 30, backgroundColor: 'transparent' }}
             contentFit="contain"
-            transition={200}
           />
         </View>
       </Animated.View>
