@@ -32,6 +32,7 @@ import {
   Eye,
   Mail,
   FlaskConical,
+  Receipt,
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
@@ -146,6 +147,12 @@ export default function AdminLayout({
   icon={<List size={18} />}
 >
   Logs
+</MenuItem>
+<MenuItem
+  href="/admin/price-logs"
+  icon={<Receipt size={18} />}
+>
+  Price Logs
 </MenuItem>
 <MenuItem
   href="/admin/products/bulk-status"

@@ -1714,6 +1714,156 @@ exports.adminDeletePincode = async (req, res) => {
 }
 
 /* ═══════════════════════════════════════════════════════
+   PRICE AUDIT LOGS — ADMIN VIEW
+═══════════════════════════════════════════════════════ */
+
+exports.adminGetPriceLogs = async (req, res) => {
+  try {
+    const {
+      page = 1, limit = 25,
+      search = '',
+      reason_type = '',
+      date_from = '',
+      date_to = '',
+    } = req.query
+
+    const offset = (Number(page) - 1) * Number(limit)
+    const conditions = []
+    const params = []
+
+    if (search) {
+      params.push(`%${search}%`)
+      const n = params.length
+      conditions.push(
+        `(pl.user_name ILIKE $${n} OR pl.user_email ILIKE $${n} OR pl.user_phone ILIKE $${n}
+          OR pl.product_name ILIKE $${n} OR pl.coupon_code ILIKE $${n}
+          OR pl.order_id::text = $${params.length + 1})`
+      )
+      params.push(search.replace(/\D/g, '') || '0')
+    }
+
+    if (reason_type) {
+      params.push(reason_type)
+      conditions.push(`pl.reason_type = $${params.length}`)
+    }
+
+    if (date_from) {
+      params.push(date_from)
+      conditions.push(`pl.created_at >= $${params.length}::date`)
+    }
+
+    if (date_to) {
+      params.push(date_to)
+      conditions.push(`pl.created_at < ($${params.length}::date + INTERVAL '1 day')`)
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+
+    const [dataRes, countRes, statsRes, summaryRes] = await Promise.all([
+      pool.query(
+        `SELECT pl.*, fs.title AS flash_sale_title
+         FROM price_logs pl
+         LEFT JOIN flash_sales fs ON fs.id = pl.flash_sale_id
+         ${where}
+         ORDER BY pl.created_at DESC
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, Number(limit), offset]
+      ),
+      pool.query(
+        `SELECT COUNT(*) FROM price_logs pl ${where}`,
+        params
+      ),
+      pool.query(
+        `SELECT reason_type,
+                COUNT(*) AS count,
+                COALESCE(SUM(total_savings), 0) AS total_savings
+         FROM price_logs pl ${where}
+         GROUP BY reason_type`,
+        params
+      ),
+      pool.query(
+        `SELECT COALESCE(SUM(total_savings), 0) AS grand_total_savings,
+                COUNT(DISTINCT order_id) AS affected_orders,
+                COUNT(DISTINCT user_id) AS affected_users
+         FROM price_logs pl ${where}`,
+        params
+      ),
+    ])
+
+    res.json({
+      success: true,
+      logs: dataRes.rows,
+      total: Number(countRes.rows[0].count),
+      stats: statsRes.rows,
+      summary: summaryRes.rows[0],
+    })
+  } catch (err) {
+    console.error('Price logs error:', err)
+    res.status(500).json({ success: false, message: 'Failed to load price logs' })
+  }
+}
+
+exports.adminBulkUploadPincodes = async (req, res) => {
+  const client = await pool.connect()
+  try {
+    const { rows } = req.body
+    if (!Array.isArray(rows) || !rows.length)
+      return res.status(400).json({ success: false, message: 'No rows provided' })
+
+    const results = { inserted: 0, updated: 0, errors: [] }
+
+    await client.query('BEGIN')
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i]
+      const pincode = String(r.pincode || '').trim()
+      const city    = String(r.city    || '').trim()
+      const state   = String(r.state   || '').trim()
+      const days    = parseInt(r.delivery_days) || 3
+      const rawActive = String(r.is_active || 'true').toLowerCase()
+      const isActive  = rawActive === 'false' || rawActive === '0' || rawActive === 'no' ? false : true
+
+      if (!/^\d{6}$/.test(pincode)) {
+        results.errors.push({ row: i + 2, pincode: pincode || '(empty)', reason: 'Invalid pincode — must be exactly 6 digits' })
+        continue
+      }
+      if (!city) {
+        results.errors.push({ row: i + 2, pincode, reason: 'City is required' })
+        continue
+      }
+      if (isNaN(days) || days < 1 || days > 30) {
+        results.errors.push({ row: i + 2, pincode, reason: `delivery_days must be 1–30 (got: ${r.delivery_days})` })
+        continue
+      }
+
+      const existing = await client.query('SELECT id FROM serviceable_pincodes WHERE pincode=$1', [pincode])
+      if (existing.rows.length) {
+        await client.query(
+          `UPDATE serviceable_pincodes SET city=$1, state=$2, delivery_days=$3, is_active=$4 WHERE pincode=$5`,
+          [city, state || null, days, isActive, pincode]
+        )
+        results.updated++
+      } else {
+        await client.query(
+          `INSERT INTO serviceable_pincodes (pincode, city, state, delivery_days, is_active) VALUES ($1,$2,$3,$4,$5)`,
+          [pincode, city, state || null, days, isActive]
+        )
+        results.inserted++
+      }
+    }
+
+    await client.query('COMMIT')
+    res.json({ success: true, ...results })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    console.error('Bulk pincode upload error:', err)
+    res.status(500).json({ success: false, message: 'Bulk upload failed' })
+  } finally {
+    client.release()
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
    STOCK NOTIFICATIONS — ADMIN VIEW
 ═══════════════════════════════════════════════════════ */
 

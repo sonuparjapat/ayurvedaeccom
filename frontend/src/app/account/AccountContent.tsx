@@ -320,6 +320,11 @@ export default function AccountContent() {
     newArrivals: false,
   })
 
+  /* delete account modal */
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
   /* ===== MODAL ===== */
 
   const [openModal, setOpenModal] = useState(false)
@@ -1162,28 +1167,13 @@ const handleSaveAddress = async (data: any) => {
                           </div>
                           <Download size={15} className="text-gray-300 group-hover:text-gray-500" />
                         </button>
-                        <button 
-  onClick={async () => {
-
-    if (!confirm("Delete account permanently?")) return;
-
-    try {
-
-      await deleteAccount();
-
-      notify.success("Account deleted");
-
-      window.location.href = "/";
-
-    } catch {
-      notify.error("Delete failed");
-    }
-
-  }}
- className="w-full flex items-center justify-between p-4 rounded-xl border border-red-100 hover:bg-red-50 transition-all text-left group">
+                        <button
+                          onClick={() => { setDeleteConfirmText(''); setShowDeleteModal(true) }}
+                          className="w-full flex items-center justify-between p-4 rounded-xl border border-red-100 hover:bg-red-50 transition-all text-left group"
+                        >
                           <div>
                             <p className="text-sm font-semibold text-red-600">Delete Account</p>
-                            <p className="text-xs text-red-400">Permanently delete your account and data</p>
+                            <p className="text-xs text-red-400">Deactivate your account and all associated data</p>
                           </div>
                           <Trash2 size={15} className="text-red-300 group-hover:text-red-500" />
                         </button>
@@ -1200,6 +1190,73 @@ const handleSaveAddress = async (data: any) => {
       </main>
 
       <Footer />
+
+      {/* ================= DELETE ACCOUNT MODAL ================= */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-red-600 px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Trash2 size={20} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-white font-bold text-lg">Delete Account</h2>
+                  <p className="text-red-100 text-sm">This action cannot be undone</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+                <p className="text-sm font-semibold text-red-800">What happens when you delete your account:</p>
+                <ul className="text-xs text-red-700 space-y-1 list-disc list-inside">
+                  <li>Your account will be permanently deactivated</li>
+                  <li>You will lose access to your order history</li>
+                  <li>Your saved addresses and wishlist will be removed</li>
+                  <li>Any remaining wallet balance will be forfeited</li>
+                </ul>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Type <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-red-600">DELETE</span> to confirm
+                </label>
+                <input
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type DELETE here"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none transition font-mono"
+                />
+              </div>
+            </div>
+            <div className="px-6 pb-6 flex items-center gap-3">
+              <button
+                onClick={async () => {
+                  if (deleteConfirmText !== 'DELETE') return
+                  setDeleteLoading(true)
+                  try {
+                    await deleteAccount()
+                    notify.success('Account deleted')
+                    window.location.href = '/'
+                  } catch {
+                    notify.error('Delete failed — please try again')
+                    setDeleteLoading(false)
+                  }
+                }}
+                disabled={deleteConfirmText !== 'DELETE' || deleteLoading}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition"
+              >
+                {deleteLoading ? 'Deleting...' : 'Yes, Delete My Account'}
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= ORDER DETAIL MODAL ================= */}
       <AppModal

@@ -121,14 +121,12 @@ function TopBar({ cartCount, user, defaultAddr }: { cartCount: number; user: any
         activeOpacity={user ? 0.7 : 1}
         onPress={() => user && router.push('/account')}
       >
-        <View style={{ width: 160, height: 46, overflow: 'hidden', borderRadius: 8, backgroundColor: '#fff' }}>
-          <ExpoImage
-            source={{ uri: LOGO_URL }}
-            style={{ width: 178, height: 50, marginLeft: -9, marginTop: -2 }}
-            contentFit="fill"
-            transition={200}
-          />
-        </View>
+        <ExpoImage
+          source={{ uri: LOGO_URL }}
+          style={{ width: 120, height: 34 }}
+          contentFit="contain"
+          transition={200}
+        />
         {user ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
             <Text style={ss.deliverPin}>📍</Text>
@@ -913,14 +911,12 @@ export default function HomeScreen() {
       <Animated.View style={[ss.floatHeader, { paddingTop: insets.top }, headerStyle]} pointerEvents="none">
         <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={{ paddingHorizontal: 20, paddingVertical: 10 }}>
-          <View style={{ width: 140, height: 40, overflow: 'hidden', borderRadius: 6, backgroundColor: '#fff' }}>
-            <ExpoImage
-              source={{ uri: LOGO_URL }}
-              style={{ width: 156, height: 44, marginLeft: -8, marginTop: -2 }}
-              contentFit="fill"
-              transition={200}
-            />
-          </View>
+          <ExpoImage
+            source={{ uri: LOGO_URL }}
+            style={{ width: 110, height: 30 }}
+            contentFit="contain"
+            transition={200}
+          />
         </View>
       </Animated.View>
 

@@ -174,9 +174,13 @@ router.post('/variants/:productId', auth, admin, controller.adminCreateVariant)
 router.put('/variants/:id', auth, admin, controller.adminUpdateVariant)
 router.delete('/variants/:id', auth, admin, controller.adminDeleteVariant)
 
+/* ─── PRICE AUDIT LOGS ─── */
+router.get('/price-logs', auth, admin, controller.adminGetPriceLogs)
+
 /* ─── PINCODE SERVICEABILITY ADMIN ─── */
 router.get('/pincodes', auth, admin, controller.adminListPincodes)
 router.post('/pincodes', auth, admin, controller.adminCreatePincode)
+router.post('/pincodes/bulk', auth, admin, controller.adminBulkUploadPincodes)
 router.put('/pincodes/:id', auth, admin, controller.adminUpdatePincode)
 router.delete('/pincodes/:id', auth, admin, controller.adminDeletePincode)
 

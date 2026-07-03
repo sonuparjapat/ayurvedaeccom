@@ -1065,6 +1065,34 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscribers(email)`);
 
+    /* ================= PRICE AUDIT LOGS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS price_logs (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        user_name TEXT,
+        user_email TEXT,
+        user_phone TEXT,
+        product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+        product_name TEXT,
+        original_price NUMERIC(10,2),
+        paid_price NUMERIC(10,2),
+        quantity INTEGER DEFAULT 1,
+        savings_per_item NUMERIC(10,2) DEFAULT 0,
+        total_savings NUMERIC(10,2) DEFAULT 0,
+        reason_type VARCHAR(30) NOT NULL,
+        reason_detail TEXT,
+        flash_sale_id INTEGER REFERENCES flash_sales(id) ON DELETE SET NULL,
+        coupon_code TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_price_logs_order ON price_logs(order_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_price_logs_user ON price_logs(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_price_logs_reason ON price_logs(reason_type)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_price_logs_created ON price_logs(created_at DESC)`);
+
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

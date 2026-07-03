@@ -151,6 +151,7 @@ if (addr.pincode) {
         c.product_id,
         c.variant_id,
         c.quantity,
+        p.name                                AS product_name,
         p.gst_percent,
         p.status,
         COALESCE(pv.price, p.price)           AS effective_price,
@@ -435,6 +436,78 @@ if (addr.pincode) {
         qty,
         price,
       ]);
+    }
+
+    /* ================= PRICE AUDIT LOG ================= */
+    try {
+      const userRow = await client.query(
+        `SELECT name, email, phone FROM users WHERE id=$1`, [userId]
+      )
+      const u = userRow.rows[0] || {}
+
+      // One log row per item that received a flash sale discount
+      for (const item of cart) {
+        const regularPrice = Number(item.effective_price)
+        const flashPrice   = flashPriceMap[item.product_id]
+        if (flashPrice != null && flashPrice < regularPrice) {
+          const savingsPerItem = +(regularPrice - flashPrice).toFixed(2)
+          const qty            = Number(item.quantity)
+          const fsId           = flashSaleIdMap[item.product_id] || null
+          await client.query(
+            `INSERT INTO price_logs
+               (order_id, user_id, user_name, user_email, user_phone,
+                product_id, product_name, original_price, paid_price, quantity,
+                savings_per_item, total_savings, reason_type, reason_detail, flash_sale_id)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'flash_sale',$13,$14)`,
+            [
+              orderId, userId, u.name || null, u.email || null, u.phone || null,
+              item.product_id, item.product_name || null,
+              regularPrice, flashPrice, qty,
+              savingsPerItem, +(savingsPerItem * qty).toFixed(2),
+              `Flash Sale ID:${fsId}`, fsId
+            ]
+          )
+        }
+      }
+
+      // Coupon discount — one row per order
+      if (appliedCouponId && discountAmount > 0) {
+        await client.query(
+          `INSERT INTO price_logs
+             (order_id, user_id, user_name, user_email, user_phone,
+              total_savings, reason_type, reason_detail, coupon_code)
+           VALUES ($1,$2,$3,$4,$5,$6,'coupon',$7,$8)`,
+          [orderId, userId, u.name || null, u.email || null, u.phone || null,
+           discountAmount, `Coupon: ${appliedCouponCode}`, appliedCouponCode]
+        )
+      }
+
+      // Wallet discount — one row per order
+      if (walletDiscountApplied > 0) {
+        await client.query(
+          `INSERT INTO price_logs
+             (order_id, user_id, user_name, user_email, user_phone,
+              total_savings, reason_type, reason_detail)
+           VALUES ($1,$2,$3,$4,$5,$6,'wallet',$7)`,
+          [orderId, userId, u.name || null, u.email || null, u.phone || null,
+           walletDiscountApplied, `Wallet credit applied on order #${orderId}`]
+        )
+      }
+
+      // Loyalty points discount — one row per order
+      if (loyaltyDiscountApplied > 0) {
+        await client.query(
+          `INSERT INTO price_logs
+             (order_id, user_id, user_name, user_email, user_phone,
+              total_savings, reason_type, reason_detail)
+           VALUES ($1,$2,$3,$4,$5,$6,'loyalty_points',$7)`,
+          [orderId, userId, u.name || null, u.email || null, u.phone || null,
+           loyaltyDiscountApplied,
+           `Loyalty points redeemed (${loyaltyPointsDeducted} pts) on order #${orderId}`]
+        )
+      }
+    } catch (logErr) {
+      console.error('Price log write failed (non-fatal):', logErr.message)
     }
 
     /* ================= UPDATE FLASH SALE COUNTS (DB only — emit AFTER commit) ================= */

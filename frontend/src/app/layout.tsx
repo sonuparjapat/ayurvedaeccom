@@ -39,7 +39,12 @@ export const metadata: Metadata = {
   creator: "Oroganix",
   publisher: "Oroganix",
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/mainayurvedalogo.png", type: "image/png", sizes: "64x64" },
+    ],
+    shortcut: "/logo.svg",
+    apple: "https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/mainayurvedalogo.png",
   },
   alternates: {
     canonical: SITE_URL,
