@@ -258,40 +258,27 @@ const {
     /* ── Logo ── */
 .logo-wrap {
   position: relative;
-  overflow: hidden;
   flex-shrink: 0;
-  width: 170px;
-  height: 50px;
+  width: auto;
+  height: 52px;
   text-decoration: none;
-  display: block;
-}
-
-.logo-wrap::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 20px;
-  height: 100%;
-  background: linear-gradient(to right, transparent, #f7f4eb);
-  pointer-events: none;
-  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
 }
 
 .logo-image {
-  position: absolute;
-  width: 190px;
-  height: auto;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  height: 44px;
+  width: auto;
+  max-width: 200px;
   display: block;
-  transition: filter 0.25s ease;
-  z-index: 1;
+  object-fit: contain;
+  transition: filter 0.25s ease, transform 0.25s ease;
 }
 
 .logo-wrap:hover .logo-image {
-  filter: drop-shadow(0 3px 8px rgba(26,58,42,0.15));
+  filter: drop-shadow(0 3px 10px rgba(26,58,42,0.18));
+  transform: scale(1.02);
 }
         /* ── Desktop Search ── */
         .search-desktop {
@@ -856,7 +843,7 @@ const {
         /* Tablet */
         @media (max-width: 1023px) and (min-width: 769px) {
           .search-desktop { max-width: 340px; margin: 0 12px; }
-          .logo-wrap { width: 148px; height: 46px; }
+          .logo-image { height: 40px; max-width: 180px; }
         }
 
         /* Mobile hide/show rules */
@@ -875,7 +862,7 @@ const {
           .divider-v { display: none; }
           .top-bar { padding: 6px 0; }
           .top-badge { font-size: 10px; padding: 2px 7px; }
-          .logo-wrap { width: 128px; height: 40px; }
+          .logo-image { height: 36px; max-width: 160px; }
           /* Sign In & avatar — mobile: compact icon-only */
           .signin-btn { padding: 0 10px; gap: 4px; height: 34px; font-size: 12px; }
           .signin-label { display: none; }
@@ -888,6 +875,7 @@ const {
           .logo-sub { display: none; }
           .logo-title { font-size: 16px; }
           .logo-icon { width: 32px; height: 32px; min-width: 32px; }
+          .logo-image { height: 30px; max-width: 140px; }
           .header-main-row { gap: 4px; }
           .action-btn { width: 32px; height: 32px; }
           .top-badge:nth-child(n+2) { display: none; }
