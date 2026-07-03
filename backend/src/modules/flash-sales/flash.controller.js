@@ -9,6 +9,7 @@ exports.getActiveFlashSales = async (req, res) => {
         EXTRACT(EPOCH FROM (fs.ends_at - NOW()))::int AS seconds_remaining
        FROM flash_sales fs
        WHERE fs.is_active = TRUE AND fs.starts_at <= NOW() AND fs.ends_at > NOW()
+         AND (fs.max_uses IS NULL OR fs.uses_count < fs.max_uses)
        ORDER BY fs.ends_at ASC`
     )
     if (!salesRes.rows.length) return res.json({ sales: [] })
@@ -23,10 +24,14 @@ exports.getActiveFlashSales = async (req, res) => {
                     ELSE p.price - $3::numeric
                   END
                 ) AS flash_price,
-                CASE WHEN p.compareprice > 0 AND p.compareprice > p.price
-                  THEN ROUND(((p.compareprice - COALESCE(fsp.special_price, p.price)) / p.compareprice * 100))
-                  ELSE 0
-                END AS discount_percent
+                ROUND((
+                  p.price - COALESCE(fsp.special_price,
+                    CASE WHEN $2 = 'percent'
+                      THEN p.price * (1 - $3::numeric/100)
+                      ELSE p.price - $3::numeric
+                    END
+                  )
+                ) / NULLIF(p.price, 0) * 100) AS discount_percent
          FROM flash_sale_products fsp
          JOIN products p ON p.id = fsp.product_id
          WHERE fsp.flash_sale_id = $1 AND p.status = 'active'
@@ -38,8 +43,8 @@ exports.getActiveFlashSales = async (req, res) => {
         product_id: p.product_id,
         product_name: p.name,
         image: p.images?.[0] || null,
-        flash_price: Number(p.special_price || p.flash_price || p.price),
-        original_price: Number(p.compareprice || p.price),
+        flash_price: Number(p.flash_price || p.price),
+        original_price: Number(p.price),
         discount_percent: Number(p.discount_percent || 0),
         stock_limit: p.stock_limit,
         sold_count: p.sold_count || 0,

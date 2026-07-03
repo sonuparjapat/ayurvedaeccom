@@ -227,6 +227,7 @@ exports.getCart = async (req, res) => {
         JOIN flash_sales fs ON fs.id = fsp.flash_sale_id
         JOIN products p ON p.id = fsp.product_id
         WHERE fs.is_active = TRUE AND fs.starts_at <= NOW() AND fs.ends_at > NOW()
+          AND (fs.max_uses IS NULL OR fs.uses_count < fs.max_uses)
           AND (fsp.stock_limit IS NULL OR fsp.sold_count < fsp.stock_limit)
       `)
       flashRes.rows.forEach(r => { flashPriceMap[r.product_id] = parseFloat(r.flash_price) })
