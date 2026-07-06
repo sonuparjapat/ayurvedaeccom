@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
@@ -64,7 +64,7 @@ export default function AdminStockNotificationsPage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <h1 className="text-xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
                 <Bell className="text-purple-600" size={30} />
                 Stock Notifications
               </h1>

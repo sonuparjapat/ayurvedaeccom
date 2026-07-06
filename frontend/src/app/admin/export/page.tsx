@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import axios from '@/lib/axios'
@@ -41,7 +41,7 @@ export default function ExportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
+    <div className="space-y-6">
       <div className="bg-white rounded-2xl p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Download className="text-emerald-500" size={22} /> Export Data</h1>
         <p className="text-gray-500 text-sm mt-1">Download CSV reports for orders, users, and revenue</p>

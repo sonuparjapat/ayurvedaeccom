@@ -157,9 +157,9 @@ export default function AdminSupportPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] gap-0 -m-6">
-      {/* Ticket List Panel */}
-      <div className="w-80 flex-shrink-0 bg-white border-r flex flex-col">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-64px)] gap-0 -m-6">
+      {/* Ticket List Panel — hidden on mobile when a ticket is open */}
+      <div className={`${selected ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0 bg-white border-r flex-col`}>
         {/* Header */}
         <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-3">
@@ -241,8 +241,8 @@ export default function AdminSupportPage() {
         <div className="p-3 border-t text-xs text-gray-500 text-center">{total} total tickets</div>
       </div>
 
-      {/* Detail / Chat Panel */}
-      <div className="flex-1 flex flex-col bg-gray-50">
+      {/* Detail / Chat Panel — hidden on mobile when no ticket selected */}
+      <div className={`${!selected ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-gray-50`}>
         {!selected ? (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-3">
             <MessageSquare size={48} className="opacity-20" />
@@ -252,32 +252,39 @@ export default function AdminSupportPage() {
           <>
             {/* Ticket Info Header */}
             <div className="bg-white border-b p-4">
-              <div className="flex items-start justify-between gap-4">
+              {/* Back button — mobile only */}
+              <button
+                onClick={() => setSelected(null)}
+                className="md:hidden flex items-center gap-1 text-sm text-green-600 font-medium mb-3"
+              >
+                ← Back to tickets
+              </button>
+              <div className="flex flex-col gap-3">
                 <div>
                   <h3 className="font-semibold text-gray-800">{selected.subject}</h3>
                   <p className="text-sm text-gray-500 mt-0.5">
                     From: <strong>{selected.user_name}</strong> ({selected.user_email}) · #{selected.id}
                   </p>
                 </div>
-                {/* Quick Update */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Quick Update — wraps on mobile */}
+                <div className="flex flex-wrap items-center gap-2">
                   <select
                     value={ticketStatus}
                     onChange={e => setTicketStatus(e.target.value)}
-                    className="border border-gray-200 rounded-lg text-sm px-2 py-1.5 focus:outline-none"
+                    className="flex-1 min-w-30 border border-gray-200 rounded-lg text-sm px-2 py-1.5 focus:outline-none"
                   >
                     {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                   </select>
                   <select
                     value={ticketPriority}
                     onChange={e => setTicketPriority(e.target.value)}
-                    className="border border-gray-200 rounded-lg text-sm px-2 py-1.5 focus:outline-none"
+                    className="flex-1 min-w-25 border border-gray-200 rounded-lg text-sm px-2 py-1.5 focus:outline-none"
                   >
                     {priorityOptions.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                   <button
                     onClick={updateTicket}
-                    className="bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-green-700"
+                    className="bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-green-700 whitespace-nowrap"
                   >
                     Update
                   </button>

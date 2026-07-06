@@ -132,12 +132,12 @@ export default function AdminUsers() {
 
   return (
 
-    <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
+    <div className="space-y-6">
 
 
       {/* HEADER */}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
 
         <div>
 
@@ -158,12 +158,7 @@ export default function AdminUsers() {
             setFormMode("create")
             setShowForm(true)
           }}
-          className="
-            flex items-center gap-2
-            bg-indigo-600 text-white
-            px-4 py-2 rounded-lg
-            hover:bg-indigo-700
-          "
+          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
         >
 
           <Plus size={18} />
@@ -176,7 +171,7 @@ export default function AdminUsers() {
 
       {/* SEARCH */}
 
-      <div className="relative w-72">
+      <div className="relative w-full md:w-72">
 
         <Search
           size={16}

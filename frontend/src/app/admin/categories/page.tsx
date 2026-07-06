@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
@@ -416,7 +416,7 @@ const columns = [
         <div className="flex flex-col md:flex-row
         md:items-center md:justify-between gap-4">
 
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-xl md:text-3xl font-bold">
             Category Management
           </h1>
 

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import axios from '@/lib/axios'
@@ -244,7 +244,7 @@ export default function AdminCoupons() {
         {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Coupon Management</h1>
+            <h1 className="text-xl md:text-3xl font-bold">Coupon Management</h1>
             <p className="text-slate-400 text-sm mt-1">Create global or user-specific discount coupons</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">

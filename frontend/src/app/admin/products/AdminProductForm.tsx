@@ -776,7 +776,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
         {form.images.length > 0 && (
 
-          <div className="grid grid-cols-4 gap-3 mt-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
 
             {form.images.map((file: any, i: number) => {
 

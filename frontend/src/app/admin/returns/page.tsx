@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
@@ -92,9 +92,9 @@ export default function AdminReturnsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm flex items-center justify-between">
+      <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <RotateCcw className="text-orange-500" size={22} /> Returns Management

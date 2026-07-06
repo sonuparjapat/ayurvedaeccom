@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
@@ -43,7 +43,7 @@ export default function AdminReviewsPage() {
   ))
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
+    <div className="space-y-6">
       <div className="bg-white rounded-2xl p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Star className="text-amber-400 fill-amber-400" size={22} /> Reviews Moderation</h1>
         <p className="text-gray-500 text-sm mt-1">Approve, reject or delete customer reviews</p>

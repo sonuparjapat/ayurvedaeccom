@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
@@ -109,7 +109,7 @@ export default function CompanyPage() {
   const currentLogo = logoPreview || form.logo_url || FALLBACK_LOGO
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-2xl p-6 text-white shadow-lg">
         <div className="flex items-center justify-between flex-wrap gap-4">

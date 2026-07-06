@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import axios from '@/lib/axios'
@@ -254,7 +254,7 @@ export default function AdminPincodesPage() {
   const invalidCount = bulkParsed.filter(r => !r._valid).length
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6 space-y-6">
+    <div className="space-y-6">
 
       {/* Header */}
       <div className="bg-linear-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 shadow-lg">

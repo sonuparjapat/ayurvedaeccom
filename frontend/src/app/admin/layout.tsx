@@ -358,7 +358,7 @@ export default function AdminLayout({
 
         {/* ================= TOP BAR ================= */}
 
-        <header className="h-16 bg-white border-b flex items-center justify-between px-6 w-full shrink-0">
+        <header className="h-16 bg-white border-b flex items-center justify-between px-3 md:px-6 w-full shrink-0">
 
           <div className="flex items-center gap-3">
 
@@ -377,7 +377,7 @@ export default function AdminLayout({
           </div>
 
 
-          <p className="text-sm text-gray-500">
+          <p className="hidden sm:block text-sm text-gray-500">
             Welcome, Admin
           </p>
 

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import axios from '@/lib/axios'
@@ -181,7 +181,7 @@ export default function PriceLogsPage() {
   const getStat = (type: string) => stats.find(s => s.reason_type === type)
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6 space-y-6">
+    <div className="space-y-6">
 
       {/* ── Page Header ── */}
       <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl p-6 shadow-lg">

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
@@ -115,8 +115,8 @@ export default function FlashSalesPage() {
   const isActive = (sale: any) => sale.is_active && new Date(sale.starts_at) <= new Date() && new Date(sale.ends_at) > new Date()
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
-      <div className="bg-white rounded-2xl p-6 shadow-sm flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Zap className="text-amber-500" size={22} /> Flash Sales</h1>
           <p className="text-gray-500 text-sm mt-1">Create limited-time offers with countdown timers</p>

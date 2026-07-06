@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
@@ -384,7 +384,7 @@ export default function AdminWalletPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6 space-y-6">
+    <div className="space-y-6">
 
       {/* Header */}
       <div className="bg-linear-to-r from-purple-600 to-violet-600 rounded-2xl p-6 shadow-lg">

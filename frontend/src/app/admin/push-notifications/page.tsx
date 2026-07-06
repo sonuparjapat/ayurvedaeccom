@@ -69,10 +69,10 @@ export default function PushNotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
-      <div className="bg-white rounded-2xl p-6 shadow-sm flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Bell className="text-blue-500" size={22} /> Push Notifications
           </h1>
           <p className="text-gray-500 text-sm mt-1">Broadcast notifications to all app users</p>
@@ -161,7 +161,7 @@ export default function PushNotificationsPage() {
               <p>No notifications sent yet</p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-130 overflow-y-auto pr-1">
               {history.map((h, i) => (
                 <div key={i} className="border border-gray-100 rounded-xl p-3">
                   <div className="flex items-start justify-between gap-2">

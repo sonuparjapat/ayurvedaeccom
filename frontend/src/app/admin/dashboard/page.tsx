@@ -432,7 +432,7 @@ function StatCard({ title, value, icon, bg }: any) {
                 {title}
               </p>
 
-              <p className="text-base sm:text-lg font-bold">
+              <p className="text-sm sm:text-base font-bold break-all">
                 {value}
               </p>
 

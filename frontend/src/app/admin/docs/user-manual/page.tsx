@@ -126,17 +126,29 @@ function StatusBadge({ label, color }: { label: string; color: string }) {
 
 export default function UserManualPage() {
   const [activeSection, setActiveSection] = useState('intro')
+  const [tocOpen, setTocOpen] = useState(false)
 
   const scrollTo = (id: string) => {
     setActiveSection(id)
+    setTocOpen(false)
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (
-    <div className="flex gap-0 -m-6 min-h-screen bg-gray-50">
+    <div className="flex flex-col md:flex-row gap-0 -m-6 min-h-screen bg-gray-50">
+
+      {/* ── Mobile TOC toggle bar ── */}
+      <div className="md:hidden flex items-center justify-between bg-white border-b px-4 py-2.5 sticky top-0 z-10">
+        <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <BookOpen size={15} className="text-green-600" /> User Manual
+        </div>
+        <button onClick={() => setTocOpen(o => !o)} className="text-xs text-green-600 font-semibold border border-green-200 rounded-lg px-3 py-1.5">
+          {tocOpen ? 'Close' : 'Contents'}
+        </button>
+      </div>
 
       {/* ── Left TOC ── */}
-      <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 sticky top-0 h-screen overflow-y-auto">
+      <aside className={`${tocOpen ? 'flex' : 'hidden'} md:flex w-full md:w-64 shrink-0 bg-white border-r border-gray-200 md:sticky md:top-0 md:h-screen overflow-y-auto flex-col`}>
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <BookOpen size={18} className="text-green-600" />

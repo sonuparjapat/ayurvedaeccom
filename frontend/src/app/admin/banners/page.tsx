@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
@@ -218,7 +218,7 @@ export default function AdminBanners() {
         {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Banner Management</h1>
+            <h1 className="text-xl md:text-3xl font-bold">Banner Management</h1>
             <p className="text-slate-400 text-sm mt-1">Manage hero carousel banners for home page</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">

@@ -597,20 +597,20 @@ const generateInvoice = async () => {
 
   return (
 
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+    <div className="bg-linear-to-br from-gray-50 via-blue-50 to-purple-50">
 
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="space-y-6">
 
 
         {/* HEADER */}
 
-        <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+        <div className="bg-white rounded-2xl shadow-lg p-5 md:p-8 border border-gray-100">
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-4">
 
             <div>
 
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent">
+              <h1 className="text-2xl md:text-4xl font-bold bg-linear-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent">
                 Orders Management
               </h1>
 
@@ -624,21 +624,11 @@ const generateInvoice = async () => {
             <button
               onClick={load}
               disabled={loading}
-              className="
-                flex items-center gap-2
-                px-6 py-3
-                bg-gradient-to-r from-blue-600 to-purple-600
-                hover:from-blue-700 hover:to-purple-700
-                text-white rounded-xl
-                transition-all duration-200
-                shadow-md hover:shadow-lg
-                font-medium
-                disabled:opacity-50
-              "
+              className="flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all duration-200 shadow-md hover:shadow-lg font-medium disabled:opacity-50"
             >
 
               <RefreshCw
-                className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}
+                className={`w-4 h-4 md:w-5 md:h-5 ${loading ? 'animate-spin' : ''}`}
               />
 
               {loading ? 'Refreshing...' : 'Refresh'}
