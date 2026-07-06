@@ -45,7 +45,7 @@ async function addToCartApi(productId: number) {
   const payload: any = { productId, quantity: 1 }
   let sessionId: string | null = null
   if (!user?.id) {
-    // getGuestSession creates a new session if one doesn't exist yet
+    // getGuestSesssion creates a new session if one doesn't exist yet
     sessionId = await getGuestSession()
     if (sessionId) payload.sessionId = sessionId
   }
