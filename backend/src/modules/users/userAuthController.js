@@ -1553,6 +1553,13 @@ exports.googleLogin = async (req, res) => {
       { expiresIn: '30d' }
     )
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    })
+
     res.json({
       success: true,
       token,
@@ -1602,6 +1609,14 @@ exports.googleLoginUserinfo = async (req, res) => {
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '30d' }
     )
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    })
+
     res.json({
       success: true, token,
       user: { id: user.id, name: user.name, email: user.email, role: user.role, is_verified: user.is_verified, phone: user.phone },

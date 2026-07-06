@@ -1161,11 +1161,13 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 //     Verifies token with Google tokeninfo API
 //     Audience check: GOOGLE_CLIENT_ID OR GOOGLE_ANDROID_CLIENT_ID (both allowed)
 //     Find-or-create user; stores google_id (sub claim)
-//     Auto-verifies email; returns JWT
+//     Auto-verifies email; sets httpOnly 'token' cookie; returns JWT
 //   POST /api/users/google-login-userinfo — mobile fallback (no id_token)
 //     Body: { email, name, email_verified }
 //     Trusted path: Google userinfo already fetched on device
-//     Find-or-create user; returns JWT
+//     Find-or-create user; sets httpOnly 'token' cookie; returns JWT
+//   IMPORTANT: Both endpoints set res.cookie('token') — same as email/OTP login.
+//     Frontend must NOT manually set any cookie after these calls.
 //
 // Web: Google One Tap via accounts.google.com/gsi/client
 //   Layout: loads GSI script; AuthSheet has "Continue with Google" button

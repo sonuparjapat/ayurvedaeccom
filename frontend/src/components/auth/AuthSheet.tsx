@@ -408,9 +408,7 @@ export function AuthSheet() {
     try {
       setLoading(true)
       const res = await axios.post('/users/google-login', { id_token: response.credential })
-      if (res.data?.token) {
-        document.cookie = `auth_token=${res.data.token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`
-      }
+      // Backend sets the httpOnly 'token' cookie on this response — no manual cookie needed
       await login(res.data.user)
       toast.success('Welcome 🌿')
       handlePostLogin()

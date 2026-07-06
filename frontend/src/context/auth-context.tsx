@@ -446,15 +446,18 @@ shipping_address:order.shipping_address,
   /* ======================
      Load User
   ====================== */
-const getintdata=async()=>{
+const getintdata=async(user?: User)=>{
   try{
     await getsettings()
-const res=await axios.get('/admin/status_codes')
-if(res?.status==200){
-  setStatusList(res?.data?.data)
-}else{
-  setStatusList([])
-}
+    // /admin/status_codes is an admin-only endpoint — skip for regular customers
+    if(user?.role !== 3){
+      const res=await axios.get('/admin/status_codes')
+      if(res?.status==200){
+        setStatusList(res?.data?.data)
+      }else{
+        setStatusList([])
+      }
+    }
   }catch(err:any){
     console.log("something went wrong please try after some time")
   }
@@ -550,7 +553,7 @@ const handleCart = (value: boolean) => {
   ====================== */
 
 const login = async (data: User) => {
-  await getintdata();
+  await getintdata(data);
 
   setLoginUserdata(data);
 
