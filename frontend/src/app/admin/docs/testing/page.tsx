@@ -127,6 +127,26 @@ const SECTIONS: TestSection[] = [
         where: 'Mobile: bottom nav bar.',
       },
       {
+        id: 'auth-5c', title: 'Google OAuth Login — New User', severity: 'critical',
+        steps: [
+          'Web: Open /auth → click "Continue with Google" → pick a Gmail account NOT previously registered',
+          'Mobile: Open auth screen → tap "Continue with Google" → pick a Gmail account NOT previously registered',
+          'Verify login succeeds without any extra steps or email prompts',
+        ],
+        expected: 'Account auto-created. User logged in immediately. No "email is required" error. JWT stored. Profile shows Google account name.',
+        where: 'Web & Mobile.',
+      },
+      {
+        id: 'auth-5d', title: 'Google OAuth Login — Existing User', severity: 'high',
+        steps: [
+          'Register a user via email+password first',
+          'Log out → click "Continue with Google" using the SAME email as that account',
+          'Verify login merges to the existing account (same user ID, same orders)',
+        ],
+        expected: 'Existing account found and logged in. No duplicate user created. is_verified set to true.',
+        where: 'Web & Mobile.',
+      },
+      {
         id: 'auth-6', title: 'Admin Login', severity: 'critical',
         steps: [
           'Go to /auth → enter admin email + password',
@@ -649,40 +669,55 @@ const SECTIONS: TestSection[] = [
     platform: ['admin', 'web', 'mobile'], color: '#10b981',
     cases: [
       {
-        id: 'coup-1', title: 'Create Percentage Coupon', severity: 'critical',
+        id: 'coup-1', title: 'Create Global Percentage Coupon', severity: 'critical',
         steps: [
           'Admin → Coupons → Add Coupon',
+          'Leave "For User" empty (global coupon)',
           'Type = Percentage, Value = 15, Min Order = 500',
-          'Set code = SAVE15, expiry date in future',
-          'Status = Active → Save',
+          'Set code = SAVE15, expiry date in future, Status = Active → Save',
+          'Go to checkout with cart < ₹500 → verify locked chip shows "Add ₹X more to unlock"',
+          'Add items to reach ₹500 → verify chip becomes clickable → click chip → verify 15% discount',
         ],
-        expected: 'Coupon in list. Apply SAVE15 at checkout with cart > ₹500 → 15% discount applied.',
-        where: 'Admin: /admin/coupons | Web & Mobile: Cart.',
+        expected: 'Chip state changes as cart total crosses min_order threshold. Discount applied correctly.',
+        where: 'Admin: /admin/coupons | Web & Mobile: Checkout.',
       },
       {
-        id: 'coup-2', title: 'Create Flat Discount Coupon', severity: 'high',
+        id: 'coup-2', title: 'User-Specific Coupon', severity: 'critical',
+        steps: [
+          'Admin → Coupons → Add Coupon → search a specific user by email in "For User" field',
+          'Create coupon VIPUSER50, flat ₹50 off, assign to that user',
+          'Log in as that user → checkout → verify VIPUSER50 chip appears and applies',
+          'Log in as a different user → verify VIPUSER50 chip does NOT appear',
+          'Try typing VIPUSER50 as another user → verify error "not valid for your account"',
+        ],
+        expected: 'User-specific coupons are visible and usable only by the assigned user.',
+        where: 'Admin: /admin/coupons | Web & Mobile: Checkout.',
+      },
+      {
+        id: 'coup-3', title: 'Create Flat Discount Coupon', severity: 'high',
         steps: [
           'Admin → Coupons → flat discount ₹50 off, min order ₹200',
         ],
         expected: 'At checkout with cart > ₹200 → ₹50 deducted from total.',
-        where: 'Web & Mobile: Cart/Checkout.',
+        where: 'Web & Mobile: Checkout.',
       },
       {
-        id: 'coup-3', title: 'Invalid / Expired Coupon', severity: 'high',
+        id: 'coup-4', title: 'Invalid / Expired Coupon', severity: 'high',
         steps: [
           'Set coupon expiry to past',
           'Try applying at checkout',
         ],
         expected: 'Error message: "Coupon expired" or "Invalid coupon code". Discount NOT applied.',
-        where: 'Web & Mobile: Cart.',
+        where: 'Web & Mobile: Checkout.',
       },
       {
-        id: 'coup-4', title: 'Copy Coupon from Offers Page', severity: 'medium',
+        id: 'coup-5', title: 'One Coupon Per Order', severity: 'high',
         steps: [
-          'Web → /offers → click "Copy" on a coupon',
+          'Apply one coupon at checkout',
+          'Try to apply another coupon before the first is removed',
         ],
-        expected: 'Coupon code copied to clipboard. Toast confirms.',
-        where: 'Web: /offers.',
+        expected: 'Only one coupon can be active at a time. Must remove current coupon before applying another.',
+        where: 'Web & Mobile: Checkout.',
       },
     ],
   },
@@ -961,13 +996,14 @@ const SECTIONS: TestSection[] = [
       {
         id: 'push-1', title: 'Device Token Registration', severity: 'critical',
         steps: [
-          'Install PRODUCTION BUILD of app on device (not Expo Go)',
-          'Login to account',
-          'Allow notification permission when prompted',
+          '⚠️ Push tokens DO NOT register in Expo Go — must use a development or production build',
+          'Build with: eas build --profile development (dev) or eas build --profile production',
+          'Or run locally: npx expo run:android / npx expo run:ios',
+          'Login to account → allow notification permission when prompted',
           'Admin → Push Notifications → check stats',
         ],
-        expected: 'Admin shows 1 device, 1 user. Token saved to push_tokens table.',
-        where: 'Admin: /admin/push-notifications.',
+        expected: 'Admin shows 1 device, 1 user. Token saved to push_tokens table. If using Expo Go, 0 devices is expected (not a bug).',
+        where: 'Admin: /admin/push-notifications. Requires native build.',
       },
       {
         id: 'push-2', title: 'Admin Broadcasts Push Notification', severity: 'high',
@@ -1005,9 +1041,9 @@ const SECTIONS: TestSection[] = [
       {
         id: 'news-1', title: 'Subscribe via Footer', severity: 'high',
         steps: [
-          'Web → scroll to footer → enter email → click Subscribe',
+          'Web → scroll to footer → enter a NEW email → click Subscribe',
         ],
-        expected: 'Success toast shown. Email added to newsletter_subscribers table.',
+        expected: 'Success toast shown. Email added to newsletter_subscribers. Welcome email received in inbox.',
         where: 'Web: footer.',
       },
       {
@@ -1015,16 +1051,44 @@ const SECTIONS: TestSection[] = [
         steps: [
           'Subscribe with an already-subscribed email',
         ],
-        expected: 'Message: "Already subscribed" or similar. No duplicate entry created.',
+        expected: 'Message: "Already subscribed". No duplicate created.',
         where: 'Web: footer.',
       },
       {
-        id: 'news-3', title: 'Admin Views Subscribers', severity: 'medium',
+        id: 'news-3', title: 'Re-subscribe after Unsubscribe', severity: 'medium',
         steps: [
-          'Admin → Newsletter',
+          'POST /api/newsletter/unsubscribe with email',
+          'Subscribe again with same email from footer',
         ],
-        expected: 'Subscriber list with emails and dates. Count shown.',
+        expected: 'is_active set back to TRUE. Welcome back email received.',
+        where: 'Web: footer.',
+      },
+      {
+        id: 'news-4', title: 'Send Custom Campaign', severity: 'critical',
+        steps: [
+          'Admin → Newsletter → Send Campaign → select Custom Message',
+          'Fill Subject, Message Body, optional CTA → click Send',
+        ],
+        expected: 'Campaign email received by all active subscribers. Success toast shows count sent.',
         where: 'Admin: /admin/newsletter.',
+      },
+      {
+        id: 'news-5', title: 'Send Coupon Campaign', severity: 'critical',
+        steps: [
+          'Admin → Newsletter → Send Campaign → select Coupon Campaign',
+          'Enter a valid coupon code (e.g. SAVE20), set discount type and value → Send',
+        ],
+        expected: 'Email with coupon code card received. Discount and expiry shown correctly.',
+        where: 'Admin: /admin/newsletter.',
+      },
+      {
+        id: 'news-6', title: 'Flash Sale Auto-Notify', severity: 'high',
+        steps: [
+          'Admin → Flash Sales → Create new sale',
+          'Check "Notify newsletter subscribers" → Save',
+        ],
+        expected: 'Flash sale announcement email sent to all active subscribers. Subject shows discount % and sale title.',
+        where: 'Admin: /admin/flash-sales.',
       },
     ],
   },
@@ -1357,12 +1421,6 @@ interface PlannedFeature {
 
 const PLANNED_FEATURES: PlannedFeature[] = [
   {
-    title: 'Google Sign-In (OAuth)',
-    description: 'Allow users to register and login using their Google account via OAuth 2.0. The "Continue with Google" button on the auth slide-in sheet. After auth, user profile is auto-filled from Google account.',
-    platforms: ['Web App', 'Mobile App'],
-    priority: 'high',
-  },
-  {
     title: 'Mobile App: Biometric / PIN Login',
     description: 'After first login, allow users to authenticate on mobile using fingerprint, Face ID, or a 4-digit PIN for faster re-login without typing password.',
     platforms: ['Mobile App'],
@@ -1411,8 +1469,8 @@ const PLANNED_FEATURES: PlannedFeature[] = [
     priority: 'medium',
   },
   {
-    title: 'Admin: Automated Email Campaigns',
-    description: 'Send scheduled email campaigns to newsletter subscribers (new products, seasonal offers). WYSIWYG email template builder in admin. Track open/click rates.',
+    title: 'Admin: Scheduled Email Campaigns + Open/Click Tracking',
+    description: 'Schedule campaigns for future dates (e.g., send on Friday at 10am). Track open rates and click rates per campaign using Brevo webhooks. Currently campaigns send immediately — scheduling and analytics are the remaining enhancements.',
     platforms: ['Admin'],
     priority: 'medium',
   },

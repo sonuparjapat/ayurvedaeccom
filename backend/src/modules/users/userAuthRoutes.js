@@ -16,6 +16,7 @@ router.post("/register", controller.userRegister);
 
 router.post("/login", controller.userLogin)
 router.post("/google-login", controller.googleLogin)
+router.post("/google-login-userinfo", controller.googleLoginUserinfo)
 
 router.post("/logout",controller.logout)
 router.post("/verify-email", controller.verifyEmail)

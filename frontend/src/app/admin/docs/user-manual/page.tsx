@@ -454,10 +454,10 @@ export default function UserManualPage() {
               ['Blog', 'Create and manage blog posts with a full WYSIWYG rich text editor — format text with bold, italic, headings, lists, blockquotes, code blocks, insert images and links, change text color and alignment. Upload cover images, set categories, tags, author name, and SEO meta fields. Posts can be draft, published, or archived. View count tracking. Blog is accessible on both website (/blog) and mobile app.'],
               ['Bundles', 'Create product bundles ("Buy together & save"). Set discount type (flat/percent), select products, and manage bundle images. Customers can add entire bundles to cart.'],
               ['Subscriptions', 'View all auto-reorder subscriptions. See customer, product, frequency, next order date, total orders, and status (active/paused/cancelled).'],
-              ['Newsletter', 'View all newsletter subscribers with stats (total, active, unsubscribed). Search by email, filter by status, export active subscribers as CSV. Subscribers come from the footer newsletter form on the website.'],
+              ['Newsletter', 'View all newsletter subscribers (total, active, unsubscribed). Search, filter, export CSV. Send email campaigns directly — choose Custom Message (subject + body + optional CTA button) or Coupon Campaign (share a coupon code with discount details). A welcome email is automatically sent when someone subscribes. Flash sale creation auto-notifies subscribers when "Notify subscribers" is checked.'],
               ['Banners', 'Create homepage banner slides with images and call-to-action links.'],
-              ['Coupons', 'Create discount codes (flat or percentage), set usage limits and validity.'],
-              ['Flash Sales', 'Create time-limited sales with countdown timers and special prices.'],
+              ['Coupons', 'Create global or user-specific discount codes (flat ₹ or % off). Search by user name/email to assign a coupon to a specific customer — only that user will see and can apply it. Leave the user field empty for a coupon available to all users. Set per-user usage limit, total usage cap, min order, max discount cap, and validity dates. At checkout, customers see their available coupons as chips; coupons with an unmet min order appear locked with an "Add ₹X more to unlock" hint. Works on web and mobile app.'],
+              ['Flash Sales', 'Create time-limited sales with countdown timers and special prices. Check "Notify newsletter subscribers" when creating a sale to instantly email all active subscribers about the offer.'],
               ['Variants', 'Manage product variants (e.g., 250g / 500g / 1kg packs).'],
               ['Pincodes', 'Add serviceable delivery pincodes with delivery day estimates. Stats show total, active, and inactive pincodes at a glance.'],
               ['Stock Alerts', 'View customers who requested "Notify me" for out-of-stock products.'],
@@ -642,14 +642,15 @@ export default function UserManualPage() {
               <Table
                 headers={['Field', 'Description']}
                 rows={[
-                  ['Code', 'The coupon code customers enter (e.g., SAVE20). Case-insensitive.'],
+                  ['Code', 'The coupon code customers enter (e.g., SAVE20). Case-insensitive, stored in uppercase.'],
                   ['Type', 'Flat (₹ off) or Percent (% off).'],
                   ['Value', 'Amount of discount (e.g., 50 for ₹50 off, or 20 for 20% off).'],
-                  ['Min Order', 'Minimum cart value required to use this coupon.'],
+                  ['For User', 'Optional — assign to a specific customer by searching their name or email. Leave empty for all users.'],
+                  ['Min Order', 'Minimum cart value required to use this coupon. Customers see a "Add ₹X more to unlock" hint if not met.'],
                   ['Max Discount', 'For percent coupons: caps the maximum ₹ discount. (e.g., max ₹200 even if 30% is more)'],
-                  ['Usage Limit', 'Total number of times this coupon can be used across all customers.'],
+                  ['Usage Limit', 'Total number of times this coupon can be used across all customers (0 = unlimited).'],
                   ['Per User Limit', 'How many times one customer can use this coupon (usually 1).'],
-                  ['Valid From / To', 'Date range during which the coupon is active.'],
+                  ['Valid From / To', 'Date range during which the coupon is active. Expiry date shown on coupon chip at checkout.'],
                 ]}
               />
             </div>

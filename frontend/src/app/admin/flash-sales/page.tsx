@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 
 const empty = {
   title: '', description: '', discount_type: 'percent', discount_value: '',
-  starts_at: '', ends_at: '', max_uses: '', banner_image: '', is_active: true, products: []
+  starts_at: '', ends_at: '', max_uses: '', banner_image: '', is_active: true, products: [],
+  notify_newsletter: true,
 }
 type BannerMode = 'url' | 'upload'
 
@@ -69,6 +70,7 @@ export default function FlashSalesPage() {
         if (form.max_uses) fd.append('max_uses', String(form.max_uses))
         fd.append('is_active', String(form.is_active))
         fd.append('products', JSON.stringify(form.products))
+        if (!editing) fd.append('notify_newsletter', String((form as any).notify_newsletter ?? true))
         if (editing) await axios.put(`/flash-sales/admin/${editing.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
         else await axios.post('/flash-sales/admin', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       } else {
@@ -214,9 +216,17 @@ export default function FlashSalesPage() {
                   </div>
                 )}
               </div>
-              <div className="col-span-2 flex items-center gap-2">
-                <input type="checkbox" id="is_active" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} />
-                <label htmlFor="is_active" className="text-sm font-semibold">Active</label>
+              <div className="col-span-2 flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="is_active" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} />
+                  <label htmlFor="is_active" className="text-sm font-semibold">Active</label>
+                </div>
+                {!editing && (
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="notify_newsletter" checked={(form as any).notify_newsletter} onChange={e => setForm({...form, notify_newsletter: e.target.checked} as any)} />
+                    <label htmlFor="notify_newsletter" className="text-sm font-semibold text-emerald-700">📧 Notify newsletter subscribers</label>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -283,7 +283,7 @@ export default function WishlistScreen() {
           renderItem={renderItem}
           numColumns={2}
           columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: insets.bottom + 90 }}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await fetchWishlist(1); setRefreshing(false) }} tintColor={Colors.forest} colors={[Colors.forest]} />}
           onEndReached={() => { if (!loadingMore && page < totalPages) fetchWishlist(page + 1) }}

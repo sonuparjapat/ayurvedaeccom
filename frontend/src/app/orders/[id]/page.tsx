@@ -330,9 +330,17 @@ export default function OrderDetailPage() {
             </div>
           ))}
         </div>
-        <div className="border-t border-gray-100 mt-4 pt-4 flex justify-between">
-          <span className="text-sm font-semibold text-gray-700">Total Paid</span>
-          <span className="text-lg font-bold text-gray-900">₹{Number(order.total_amount).toFixed(2)}</span>
+        <div className="border-t border-gray-100 mt-4 pt-4 space-y-2">
+          {order.coupon_code && Number(order.discount_amount) > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-green-700 font-medium">🎁 Coupon ({order.coupon_code})</span>
+              <span className="text-green-700 font-semibold">−₹{Number(order.discount_amount).toFixed(2)}</span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="text-sm font-semibold text-gray-700">Total Paid</span>
+            <span className="text-lg font-bold text-gray-900">₹{Number(order.total_amount).toFixed(2)}</span>
+          </div>
         </div>
         {/* Write Review CTA for delivered orders */}
         {order.status === 5 && (

@@ -1,14 +1,16 @@
 name: EAS Android Build
 
 on:
-  # Trigger only when ayurveda-app code is pushed — saves free-tier build quota
+  # Fires when ayurveda-app files change — but the job below checks for [build] flag.
+  # To trigger a build: include [build] anywhere in your commit message.
+  # Normal pushes (without [build]) are ignored, saving EAS free-tier quota.
   push:
     branches:
       - main
     paths:
       - 'ayurveda-app/**'
 
-  # Manual trigger from GitHub UI → Actions tab
+  # Manual trigger from GitHub UI → Actions tab (always runs regardless of flag)
   workflow_dispatch:
     inputs:
       profile:
@@ -24,6 +26,9 @@ jobs:
   build:
     name: EAS Build (Android)
     runs-on: ubuntu-latest
+    # Only run on push when commit message contains [build]
+    # workflow_dispatch always runs (github.event_name != 'push')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build]')
 
     steps:
       - name: Checkout repository

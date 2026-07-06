@@ -54,6 +54,7 @@ interface OrderDetail {
   total_amount: string; created_at: string; tracking_number?: string; shipped_at?: string
   shipping_address: any; razorpay_payment_id?: string; cancel_reason?: string; return_reason?: string
   invoice_id?: number; invoice_number?: string; invoice_date?: string; pdf_url?: string
+  coupon_code?: string; discount_amount?: string
   items: OrderItem[]
 }
 
@@ -593,6 +594,12 @@ export default function OrderDetailScreen() {
                         <View style={ss.priceRow}>
                           <Text style={ss.priceLabel}>Platform Fee</Text>
                           <Text style={ss.priceVal}>₹{(+breakup.platform_fee).toFixed(2)}</Text>
+                        </View>
+                      )}
+                      {order.coupon_code && Number(order.discount_amount) > 0 && (
+                        <View style={ss.priceRow}>
+                          <Text style={[ss.priceLabel, { color: '#6ee7b7' }]}>🎁 Coupon ({order.coupon_code})</Text>
+                          <Text style={[ss.priceVal, { color: '#6ee7b7' }]}>−₹{Number(order.discount_amount).toFixed(2)}</Text>
                         </View>
                       )}
                       <View style={ss.priceDivider} />

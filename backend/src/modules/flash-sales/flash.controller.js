@@ -1,4 +1,5 @@
 const pool = require('../../config/db')
+const { broadcastFlashSale } = require('../newsletter/newsletter.controller')
 
 /* ─── PUBLIC: active flash sales with their products ─── */
 exports.getActiveFlashSales = async (req, res) => {
@@ -99,7 +100,7 @@ exports.adminGet = async (req, res) => {
 exports.adminCreate = async (req, res) => {
   const client = await pool.connect()
   try {
-    const { title, description, discount_type, discount_value, starts_at, ends_at, max_uses } = req.body
+    const { title, description, discount_type, discount_value, starts_at, ends_at, max_uses, notify_newsletter } = req.body
     let products = req.body.products
     if (typeof products === 'string') try { products = JSON.parse(products) } catch { products = [] }
     let banner_image = req.body.banner_image || null
@@ -128,6 +129,19 @@ exports.adminCreate = async (req, res) => {
     }
 
     await client.query('COMMIT')
+
+    // auto-broadcast to newsletter subscribers if admin checked notify
+    if (notify_newsletter === true || notify_newsletter === 'true') {
+      broadcastFlashSale({
+        title: sale.title,
+        description: sale.description,
+        discountType: sale.discount_type,
+        discountValue: sale.discount_value,
+        endsAt: sale.ends_at,
+        saleUrl: `${process.env.FRONTEND_URL}/offers`,
+      }).catch(() => {})
+    }
+
     res.status(201).json({ success: true, sale })
   } catch (err) {
     await client.query('ROLLBACK')

@@ -275,7 +275,13 @@ if (addr.pincode) {
       const c = couponRes.rows[0];
       const usageOk = Number(c.usage_limit) === 0 || c.used_count < Number(c.usage_limit);
       const minOk = subtotal >= Number(c.min_order);
+      const userOk = !c.user_id || c.user_id === userId;
 
+      if (!userOk) {
+        await client.query("ROLLBACK");
+        client.release();
+        return res.status(400).json({ success: false, message: "This coupon is not valid for your account." });
+      }
       if (!usageOk) {
         await client.query("ROLLBACK");
         client.release();

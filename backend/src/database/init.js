@@ -713,6 +713,11 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS coupon_code TEXT`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10,2) DEFAULT 0`);
 
+    /* ── user-specific coupons: user_id NULL = global, set = only that user ── */
+    await client.query(`ALTER TABLE coupons ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+    /* ── coupon_uses: track which coupon was applied ── */
+    await client.query(`ALTER TABLE coupon_uses ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10,2) DEFAULT 0`);
+
     /* ================= PRODUCT VARIANTS ================= */
     await client.query(`
       CREATE TABLE IF NOT EXISTS product_variants (

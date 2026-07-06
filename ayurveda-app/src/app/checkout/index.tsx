@@ -191,13 +191,11 @@ export default function CheckoutScreen() {
     if (!user) { setAuthOpen(true); router.back(); return }
     init()
     api.get('/coupons/public').then(r => setAvailableCoupons(r.data?.coupons || [])).catch(() => {})
-    if (user) {
-      api.get('/wallet/').then(r => {
-        setWalletBalance(Number(r.data?.wallet_balance || 0))
-        setLoyaltyBalance(Number(r.data?.loyalty_points || 0))
-      }).catch(() => {})
-    }
-  }, [user])
+    api.get('/wallet/').then(r => {
+      setWalletBalance(Number(r.data?.wallet_balance || 0))
+      setLoyaltyBalance(Number(r.data?.loyalty_points || 0))
+    }).catch(() => {})
+  }, [user?.id])
 
   const init = async () => {
     setLoadingInit(true)
@@ -212,8 +210,8 @@ export default function CheckoutScreen() {
         const def = list.find(a => a.isDefault) || list[0]
         if (def) setSelectedAddr(def)
         if (list.length === 0) {
-          Alert.alert('No Address', 'Please add a delivery address first.', [
-            { text: 'Go to Account', onPress: () => router.push('/account') }
+          Alert.alert('No Address', 'Please add a delivery address to continue.', [
+            { text: 'Add Address', onPress: () => router.replace('/account?tab=Addresses') }
           ])
         }
       }
@@ -388,7 +386,7 @@ export default function CheckoutScreen() {
                   <Text style={{ fontSize: 36, marginBottom: 10 }}>📍</Text>
                   <Text style={ss.noAddrTitle}>No saved addresses</Text>
                   <Text style={ss.noAddrSub}>Please add a delivery address from your account</Text>
-                  <TouchableOpacity onPress={() => router.push('/account')} style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden' }}>
+                  <TouchableOpacity onPress={() => router.replace('/account?tab=Addresses')} style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden' }}>
                     <LinearGradient colors={[Colors.forest, Colors.moss]} style={{ paddingHorizontal: 24, paddingVertical: 12 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                       <Text style={{ color: '#fff', fontFamily: Fonts.bold }}>Add Address</Text>
                     </LinearGradient>
@@ -509,16 +507,35 @@ export default function CheckoutScreen() {
                 <Text style={ss.couponTitle}>🎁 Apply Coupon / Offer</Text>
 
                 {/* Available coupons list */}
-                {availableCoupons.length > 0 && !appliedCoupon && (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }} contentContainerStyle={{ gap: 8 }}>
-                    {availableCoupons.map((c: any) => (
-                      <TouchableOpacity key={c.id} onPress={() => { setCouponInput(c.code); setCouponError('') }} style={ss.couponChip}>
-                        <Text style={ss.couponChipCode}>{c.code}</Text>
-                        <Text style={ss.couponChipVal}>{c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                )}
+                {availableCoupons.length > 0 && !appliedCoupon && (() => {
+                  const cartBase = subtotal + tax
+                  const usable = availableCoupons.filter((c: any) => cartBase >= Number(c.min_order || 0))
+                  const locked = availableCoupons.filter((c: any) => cartBase < Number(c.min_order || 0))
+                  return (
+                    <>
+                      {usable.length > 0 && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8 }}>
+                          {usable.map((c: any) => (
+                            <TouchableOpacity key={c.id} onPress={() => { setCouponInput(c.code); setCouponError('') }} style={ss.couponChip}>
+                              <Text style={ss.couponChipCode}>{c.code}</Text>
+                              <Text style={ss.couponChipVal}>{c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`}</Text>
+                              {c.valid_to && <Text style={ss.couponChipExpiry}>Till {new Date(c.valid_to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</Text>}
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      )}
+                      {locked.map((c: any) => {
+                        const need = (Number(c.min_order) - cartBase).toFixed(2)
+                        return (
+                          <View key={c.id} style={ss.couponLocked}>
+                            <Text style={ss.couponLockedCode}>🔒 {c.code}</Text>
+                            <Text style={ss.couponLockedHint}>Add ₹{need} more · {c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`}</Text>
+                          </View>
+                        )
+                      })}
+                    </>
+                  )
+                })()}
 
                 {appliedCoupon ? (
                   <View style={ss.couponApplied}>
@@ -733,4 +750,8 @@ const ss = StyleSheet.create({
   couponChip: { backgroundColor: Colors.mint, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#bbf7d0' },
   couponChipCode: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.forest, letterSpacing: 1 },
   couponChipVal: { fontFamily: Fonts.regular, fontSize: 10, color: Colors.sage, marginTop: 2 },
+  couponChipExpiry: { fontFamily: Fonts.regular, fontSize: 9, color: Colors.textDim, marginTop: 1 },
+  couponLocked: { backgroundColor: '#fffbeb', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#fcd34d', borderStyle: 'dashed', marginBottom: 6 },
+  couponLockedCode: { fontFamily: Fonts.bold, fontSize: 12, color: '#92400e', letterSpacing: 0.5 },
+  couponLockedHint: { fontFamily: Fonts.regular, fontSize: 10, color: '#b45309', marginTop: 2 },
 })

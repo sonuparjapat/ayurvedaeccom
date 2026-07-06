@@ -250,9 +250,10 @@ EXPO_ACCESS_TOKEN=your_expo_access_token
 # Frontend URL (for CORS + email links)
 FRONTEND_URL=https://yourdomain.com
 
-# Google OAuth (optional)
+# Google OAuth — web client ID
 GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxx`}</Code>
+# Google OAuth — Android client ID (mobile app sends this as token audience)
+GOOGLE_ANDROID_CLIENT_ID=xxxxx.apps.googleusercontent.com`}</Code>
           <H3>frontend/.env.local</H3>
           <Code>{`# Points to the backend API
 NEXT_PUBLIC_API_URL=http://localhost:5000
@@ -284,8 +285,8 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
               ['review_images', 'id (serial)', 'review_id (FK), url', 'Up to 5 images per review'],
               ['wishlist', 'id (serial)', 'user_id, product_id', 'UNIQUE(user_id, product_id)'],
               ['cart_items', 'id (serial)', 'user_id, product_id, variant_id, quantity', ''],
-              ['coupons', 'id (serial)', 'code, discount_type (flat/percent), discount_value, min_order_amount, max_discount, usage_limit, per_user_limit, used_count, valid_from, valid_to, is_active', ''],
-              ['coupon_usages', 'id (serial)', 'coupon_id, user_id, order_id, used_at', 'Tracks per-user usage'],
+              ['coupons', 'id (serial)', 'code, type (flat/percent), value, min_order, max_discount, usage_limit, usage_per_user, used_count, valid_from, valid_to, is_active, user_id (nullable FK → users)', 'user_id = NULL means global coupon; set to a user ID for a personal offer only that user can apply'],
+              ['coupon_uses', 'id (serial)', 'coupon_id, user_id, order_id, discount_amount', 'Tracks per-user usage and discount amount logged per order'],
             ]}
           />
 
@@ -506,8 +507,10 @@ Token location: Authorization: Bearer <token>  (HTTP header)
               routes: [
                 ['GET', '/banners', 'public', 'Active banners for homepage carousel.'],
                 ['POST /PUT /DELETE', '/banners/*', 'admin', 'Manage banners.'],
-                ['GET', '/coupons/validate', 'auth', 'Validate coupon code at checkout.'],
-                ['POST /PUT /DELETE', '/coupons/*', 'admin', 'Manage coupons.'],
+                ['GET', '/coupons/public', 'optionalAuth', 'List active coupons for the requesting user (global + user-specific). Returns two buckets: available now, and locked (min_order not met) for "Add ₹X more" UI.'],
+                ['POST', '/coupons/apply', 'optionalAuth', 'Validate & compute discount. Enforces user_id restriction, usage limits, min_order. Returns discount + newTotal.'],
+                ['POST /PUT /DELETE', '/coupons/admin/*', 'admin', 'CRUD coupons with user_id for user-specific offers.'],
+                ['GET', '/coupons/admin/users-search', 'admin', 'Search users by name/email for coupon assignment.'],
                 ['GET', '/flash-sales/active', 'public', 'Current active flash sale with products.'],
                 ['POST /PUT /DELETE', '/flash-sales/*', 'admin', 'Manage flash sales.'],
                 ['GET', '/pincodes/check', 'public', 'Pincode serviceability check.'],
@@ -1152,15 +1155,34 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 // Status: active, paused, cancelled
 // Admin: /admin/subscriptions — view all with status filters`}</Code>
           <H3>Google social login</H3>
-          <Code>{`// Backend: POST /api/users/google-login
-//   Accepts: { email, name, id_token }
-//   Logic: find-or-create user, auto-verify, generate JWT
-//   No password needed — random hash generated for DB constraint
-// Web: Google Sign-In script loaded in layout.tsx
-//   "Continue with Google" button in AuthSheet after regular login
-//   Uses Google One Tap via accounts.google.com/gsi/client
-// Mobile: placeholder button (requires production OAuth credentials)
-// Env: NEXT_PUBLIC_GOOGLE_CLIENT_ID`}</Code>
+          <Code>{`// Backend endpoints:
+//   POST /api/users/google-login         — primary path (id_token)
+//     Body: { id_token }
+//     Verifies token with Google tokeninfo API
+//     Audience check: GOOGLE_CLIENT_ID OR GOOGLE_ANDROID_CLIENT_ID (both allowed)
+//     Find-or-create user; stores google_id (sub claim)
+//     Auto-verifies email; returns JWT
+//   POST /api/users/google-login-userinfo — mobile fallback (no id_token)
+//     Body: { email, name, email_verified }
+//     Trusted path: Google userinfo already fetched on device
+//     Find-or-create user; returns JWT
+//
+// Web: Google One Tap via accounts.google.com/gsi/client
+//   Layout: loads GSI script; AuthSheet has "Continue with Google" button
+//   Env: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+//
+// Mobile (Expo): expo-auth-session Google.useAuthRequest
+//   Uses androidClientId for Android builds (aud differs from web client id)
+//   Primary: sends id_token → /google-login
+//   Fallback: fetches /oauth2/v3/userinfo → sends to /google-login-userinfo
+//   Env: EXPO_PUBLIC_GOOGLE_CLIENT_ID, EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+//
+// Backend .env required:
+//   GOOGLE_CLIENT_ID=<web-client-id>.apps.googleusercontent.com
+//   GOOGLE_ANDROID_CLIENT_ID=<android-client-id>.apps.googleusercontent.com
+//
+// DB: users.password column receives a random bcrypt hash (never used for login)
+//     users.google_id stores Google sub claim for future linking`}</Code>
           <H3>Sitemap.xml</H3>
           <Code>{`// Backend: GET /sitemap.xml (served at root, before /api routes)
 // Auto-generates from: products (by slug), categories (by slug),
@@ -1193,17 +1215,30 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 // Web: collapsible accordion on product detail page
 // Mobile: Q&A cards on product detail page
 // SEO: FAQPage JSON-LD schema for Google rich snippets (auto-generated from faqs field)`}</Code>
-          <H3>Newsletter subscription system</H3>
+          <H3>Newsletter + Email Campaign system</H3>
           <Code>{`// Database: newsletter_subscribers (email UNIQUE, is_active, subscribed_at)
+// Email service: Brevo (sib-api-v3-sdk) via backend/src/config/mail.js
+// Templates: backend/src/utils/emailTemplates.js
+//   - newsletterWelcome({ email }) — sent on subscribe/re-subscribe
+//   - flashSaleAnnouncement({ title, discountType, discountValue, endsAt, saleUrl })
+//   - couponCampaign({ couponCode, discountType, discountValue, minOrder, validTo })
+//   - customCampaign({ subject, heading, body, ctaText, ctaUrl })
+//
 // Public API:
-//   POST /api/newsletter/subscribe — validates email, handles re-subscribe
-//   POST /api/newsletter/unsubscribe — soft-deactivate
+//   POST /api/newsletter/subscribe — validates, inserts, sends welcome email
+//   POST /api/newsletter/unsubscribe — soft-deactivate (is_active = false)
 // Admin API:
-//   GET /api/newsletter/admin — paginated list with status filter
-//   GET /api/newsletter/admin/export — CSV download of active subscribers
+//   GET    /api/newsletter/admin — paginated list with status filter
+//   GET    /api/newsletter/admin/export — CSV download of active subscribers
+//   POST   /api/newsletter/admin/send-campaign — broadcast to all active subscribers
+//          Body (type=custom): { type, subject, heading, body, ctaText, ctaUrl }
+//          Body (type=coupon): { type, couponCode, discountType, discountValue, minOrder, validTo }
 //   DELETE /api/newsletter/admin/:id — hard delete
-// Frontend: footer newsletter form connected to API with toast feedback
-// Admin: /admin/newsletter — stats, search, filter, export, delete`}</Code>
+//
+// Flash sale auto-notify: adminCreate in flash.controller.js calls broadcastFlashSale()
+//   when notify_newsletter=true is passed in the request body
+// Broadcast batches 50 emails per Brevo API call to stay within rate limits
+// Admin UI: /admin/newsletter — stats, search, filter, export, delete + Send Campaign panel`}</Code>
           <H3>Policy pages (dynamic from company settings)</H3>
           <Code>{`// Database: company_settings columns:
 //   privacy_policy TEXT, terms_conditions TEXT, shipping_policy TEXT, return_policy TEXT

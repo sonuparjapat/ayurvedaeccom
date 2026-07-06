@@ -1092,7 +1092,7 @@ const {
 
                 {/* Wallet — desktop, logged in */}
                 {loginuserdata?.id && (
-                  <Link href="/wallet" className="action-btn desktop-only" aria-label="Wallet">
+                  <Link href="/account?tab=wallet" className="action-btn desktop-only" aria-label="Wallet">
                     <Wallet size={18} />
                   </Link>
                 )}
@@ -1266,7 +1266,7 @@ const {
                       </Link>
                     )}
                     {loginuserdata?.id && (
-                      <Link href="/wallet" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
+                      <Link href="/account?tab=wallet" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
                         <span>My Wallet</span>
                         <Wallet size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
                       </Link>

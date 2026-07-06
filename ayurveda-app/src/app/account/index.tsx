@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import {
   Alert, Clipboard, Modal, Pressable, ScrollView, Share, StatusBar,
@@ -7,7 +7,7 @@ import {
 import Animated, { FadeIn, FadeInDown, FadeInRight } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import api from '../../api/axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useStore } from '../../store'
@@ -154,8 +154,12 @@ export default function AccountScreen() {
   const user = useStore(s => s.user)
   const cartCount = useStore(s => s.cartCount)
   const { setUser, setCartData } = useStore()
+  const params = useLocalSearchParams<{ tab?: string }>()
 
-  const [activeTab, setActiveTab] = useState('Profile')
+  const [activeTab, setActiveTab] = useState(() => {
+    const requested = params.tab
+    return TABS.includes(requested as string) ? (requested as string) : 'Profile'
+  })
   const [orders, setOrders] = useState<Order[]>([])
   const [addresses, setAddresses] = useState<Address[]>([])
   const [loading, setLoading] = useState(false)
@@ -407,7 +411,7 @@ export default function AccountScreen() {
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
 
         {/* ── PROFILE ── */}
         {activeTab === 'Profile' && (

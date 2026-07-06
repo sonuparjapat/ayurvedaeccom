@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import AppModal from '@/components/modal/AppModal'
 import DynamicTable from '@/components/table/table'
-import { Loader2, Plus, Search } from 'lucide-react'
+import { Loader2, Plus, Search, User, X } from 'lucide-react'
 
 interface Coupon {
   id: number
@@ -21,12 +21,17 @@ interface Coupon {
   valid_to: string | null
   description: string | null
   is_active: boolean
+  user_id: number | null
+  user_name?: string | null
+  user_email?: string | null
 }
 
-const EMPTY: Omit<Coupon, 'id' | 'used_count'> = {
+interface UserResult { id: number; name: string; email: string }
+
+const EMPTY: Omit<Coupon, 'id' | 'used_count' | 'user_name' | 'user_email'> = {
   code: '', type: 'flat', value: 0, min_order: 0, max_discount: 0,
   usage_limit: 0, usage_per_user: 1, valid_from: null, valid_to: null,
-  description: '', is_active: true,
+  description: '', is_active: true, user_id: null,
 }
 
 export default function AdminCoupons() {
@@ -42,6 +47,13 @@ export default function AdminCoupons() {
   const [saving, setSaving] = useState(false)
 
   const [form, setForm] = useState({ ...EMPTY })
+
+  // User search for user-specific coupons
+  const [userSearch, setUserSearch] = useState('')
+  const [userResults, setUserResults] = useState<UserResult[]>([])
+  const [userSearching, setUserSearching] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<UserResult | null>(null)
+  const userDebounce = useRef<ReturnType<typeof setTimeout>>()
 
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
@@ -60,9 +72,39 @@ export default function AdminCoupons() {
 
   useEffect(() => { load() }, [page, search])
 
+  const searchUsers = (q: string) => {
+    setUserSearch(q)
+    clearTimeout(userDebounce.current)
+    if (!q.trim()) { setUserResults([]); return }
+    userDebounce.current = setTimeout(async () => {
+      setUserSearching(true)
+      try {
+        const res = await axios.get('/coupons/admin/users-search', { params: { q } })
+        setUserResults(res.data.users || [])
+      } catch { } finally { setUserSearching(false) }
+    }, 350)
+  }
+
+  const selectUser = (u: UserResult) => {
+    setSelectedUser(u)
+    set('user_id', u.id)
+    setUserSearch(`${u.name} (${u.email})`)
+    setUserResults([])
+  }
+
+  const clearUser = () => {
+    setSelectedUser(null)
+    set('user_id', null)
+    setUserSearch('')
+    setUserResults([])
+  }
+
   const openCreate = () => {
     setEditData(null)
     setForm({ ...EMPTY })
+    setSelectedUser(null)
+    setUserSearch('')
+    setUserResults([])
     setOpenModal(true)
   }
 
@@ -75,7 +117,16 @@ export default function AdminCoupons() {
       valid_from: row.valid_from ? row.valid_from.slice(0, 10) : '',
       valid_to: row.valid_to ? row.valid_to.slice(0, 10) : '',
       description: row.description || '', is_active: row.is_active,
+      user_id: row.user_id || null,
     })
+    if (row.user_id && row.user_name) {
+      setSelectedUser({ id: row.user_id, name: row.user_name, email: row.user_email || '' })
+      setUserSearch(`${row.user_name} (${row.user_email})`)
+    } else {
+      setSelectedUser(null)
+      setUserSearch('')
+    }
+    setUserResults([])
     setOpenModal(true)
   }
 
@@ -84,6 +135,9 @@ export default function AdminCoupons() {
     setOpenModal(false)
     setEditData(null)
     setForm({ ...EMPTY })
+    setSelectedUser(null)
+    setUserSearch('')
+    setUserResults([])
   }
 
   const validate = () => {
@@ -110,6 +164,7 @@ export default function AdminCoupons() {
         usage_per_user: Number(form.usage_per_user),
         valid_from: form.valid_from || null,
         valid_to: form.valid_to || null,
+        user_id: form.user_id || null,
       }
       if (editData) {
         await axios.put(`/coupons/admin/${editData.id}`, payload)
@@ -146,7 +201,9 @@ export default function AdminCoupons() {
     { key: 'type', label: 'Type', align: 'center' },
     { key: 'value', label: 'Value', align: 'center' },
     { key: 'min_order', label: 'Min Order', align: 'center' },
+    { key: 'validity', label: 'Valid To', align: 'center' },
     { key: 'usage', label: 'Used / Limit', align: 'center' },
+    { key: 'for_user', label: 'For User', align: 'center' },
     { key: 'status', label: 'Status', align: 'center' },
     { key: 'actions', label: 'Actions', align: 'center' },
   ]
@@ -155,7 +212,15 @@ export default function AdminCoupons() {
     ...c,
     value: c.type === 'percent' ? `${c.value}%` : `₹${c.value}`,
     min_order: c.min_order > 0 ? `₹${c.min_order}` : '—',
+    validity: c.valid_to ? new Date(c.valid_to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '∞',
     usage: `${c.used_count} / ${c.usage_limit > 0 ? c.usage_limit : '∞'}`,
+    for_user: c.user_id ? (
+      <span title={c.user_email || ''} className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 truncate max-w-30 block">
+        👤 {c.user_name || `UID ${c.user_id}`}
+      </span>
+    ) : (
+      <span className="text-slate-500 text-xs">All users</span>
+    ),
     status: (
       <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${c.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
         {c.is_active ? 'Active' : 'Inactive'}
@@ -180,7 +245,7 @@ export default function AdminCoupons() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Coupon Management</h1>
-            <p className="text-slate-400 text-sm mt-1">Create discount coupons for customers</p>
+            <p className="text-slate-400 text-sm mt-1">Create global or user-specific discount coupons</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative w-full sm:w-auto">
@@ -228,6 +293,46 @@ export default function AdminCoupons() {
           }
         >
           <div className="space-y-4">
+
+            {/* User-specific toggle */}
+            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+              <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider mb-2 flex items-center gap-2">
+                <User size={12} /> User-Specific Coupon (optional)
+              </p>
+              <p className="text-xs text-slate-400 mb-3">Leave empty to make this coupon available to all users. Assign a user to create a personal offer.</p>
+              <div className="relative">
+                <input
+                  value={userSearch}
+                  onChange={e => searchUsers(e.target.value)}
+                  placeholder="Search user by name or email…"
+                  className={inputCls}
+                  disabled={!!selectedUser}
+                />
+                {selectedUser && (
+                  <button onClick={clearUser} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-400">
+                    <X size={14} />
+                  </button>
+                )}
+                {userSearching && <Loader2 size={12} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-slate-400" />}
+                {userResults.length > 0 && !selectedUser && (
+                  <div className="absolute z-50 mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg overflow-hidden shadow-xl">
+                    {userResults.map(u => (
+                      <button key={u.id} onClick={() => selectUser(u)} className="w-full text-left px-3 py-2 hover:bg-slate-700 transition">
+                        <p className="text-sm text-slate-100 font-medium">{u.name}</p>
+                        <p className="text-xs text-slate-400">{u.email}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedUser && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-blue-400">
+                  <User size={12} />
+                  <span>Assigned to: <strong>{selectedUser.name}</strong> ({selectedUser.email})</span>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Coupon Code *</label>
@@ -245,7 +350,7 @@ export default function AdminCoupons() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Value * {form.type === 'percent' ? '(%)' : '(₹)'}</label>
-                <input type="number" min={0} value={form.value} onChange={e => set('value', e.target.value)} placeholder="e.g. 20 (means 20% off or ₹20 off depending on type)" className={inputCls} />
+                <input type="number" min={0} value={form.value} onChange={e => set('value', e.target.value)} className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Min Order Amount (₹)</label>
@@ -267,7 +372,7 @@ export default function AdminCoupons() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Uses per User</label>
-                <input type="number" min={1} value={form.usage_per_user} onChange={e => set('usage_per_user', e.target.value)} placeholder="e.g. 1 (how many times one customer can use)" className={inputCls} />
+                <input type="number" min={1} value={form.usage_per_user} onChange={e => set('usage_per_user', e.target.value)} className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Status</label>

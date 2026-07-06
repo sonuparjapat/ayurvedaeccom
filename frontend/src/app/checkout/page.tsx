@@ -1203,20 +1203,46 @@ if (checkingAddress) {
                           🎁 Apply Coupon / Offer
                         </p>
 
-                        {availableCoupons.length > 0 && !appliedCoupon && (
-                          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 12 }}>
-                            {availableCoupons.map((c: any) => (
-                              <button
-                                key={c.id}
-                                onClick={() => { setCouponInput(c.code); setCouponError('') }}
-                                style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'white', cursor: 'pointer', textAlign: 'center' }}
-                              >
-                                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--sage)', letterSpacing: '0.08em' }}>{c.code}</p>
-                                <p style={{ fontSize: 10, color: '#999', marginTop: 2 }}>{c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`}</p>
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                        {availableCoupons.length > 0 && !appliedCoupon && (() => {
+                          const cartBase = subtotal + tax
+                          const usable = availableCoupons.filter((c: any) => cartBase >= Number(c.min_order || 0))
+                          const locked = availableCoupons.filter((c: any) => cartBase < Number(c.min_order || 0))
+                          return (
+                            <div style={{ marginBottom: 12 }}>
+                              {usable.length > 0 && (
+                                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: locked.length ? 8 : 0 }}>
+                                  {usable.map((c: any) => (
+                                    <button
+                                      key={c.id}
+                                      onClick={() => { setCouponInput(c.code); setCouponError('') }}
+                                      style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'white', cursor: 'pointer', textAlign: 'center' }}
+                                    >
+                                      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--sage)', letterSpacing: '0.08em' }}>{c.code}</p>
+                                      <p style={{ fontSize: 10, color: '#999', marginTop: 2 }}>{c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`}</p>
+                                      {c.valid_to && <p style={{ fontSize: 9, color: '#b8a898', marginTop: 1 }}>Expires {new Date(c.valid_to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              {locked.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  {locked.map((c: any) => {
+                                    const need = (Number(c.min_order) - cartBase).toFixed(2)
+                                    return (
+                                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: '#fffbeb', border: '1px dashed #fcd34d', opacity: 0.8 }}>
+                                        <div>
+                                          <p style={{ fontSize: 12, fontWeight: 700, color: '#92400e', letterSpacing: '0.08em' }}>🔒 {c.code}</p>
+                                          <p style={{ fontSize: 10, color: '#b45309', marginTop: 2 }}>Add ₹{need} more to unlock ({c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`})</p>
+                                        </div>
+                                        {c.valid_to && <p style={{ fontSize: 9, color: '#b45309' }}>Till {new Date(c.valid_to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })()}
 
                         {appliedCoupon ? (
                           <div style={{ display: 'flex', alignItems: 'center', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '12px 14px', gap: 10 }}>
