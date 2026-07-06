@@ -4,6 +4,7 @@ import {
   Alert, Clipboard, Modal, Pressable, ScrollView, Share, StatusBar,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
+import { toast } from '../../components/ui/Toast'
 import Animated, { FadeIn, FadeInDown, FadeInRight } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -228,7 +229,7 @@ export default function AccountScreen() {
   }
 
   const saveProfile = async () => {
-    if (!editForm.name || !editForm.email) { Alert.alert('Required', 'Name and email are required'); return }
+    if (!editForm.name || !editForm.email) { toast.warning('Name and email are required'); return }
     setSavingProfile(true)
     try {
       const res = await api.put('/users/profile', editForm)
@@ -238,30 +239,30 @@ export default function AccountScreen() {
       setUser(merged)
       await AsyncStorage.setItem('stored_user', JSON.stringify(merged))
       setShowEditProfile(false)
-      Alert.alert('Updated', 'Profile updated successfully')
+      toast.success('Profile updated successfully')
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to update profile')
+      toast.error(e?.response?.data?.message || 'Failed to update profile')
     } finally { setSavingProfile(false) }
   }
 
   const changePassword = async () => {
-    if (!pwdForm.oldPassword || !pwdForm.newPassword) { Alert.alert('Required', 'Fill all fields'); return }
-    if (pwdForm.newPassword !== pwdForm.confirmPassword) { Alert.alert('Mismatch', 'Passwords do not match'); return }
-    if (pwdForm.newPassword.length < 6) { Alert.alert('Too Short', 'Password must be at least 6 characters'); return }
+    if (!pwdForm.oldPassword || !pwdForm.newPassword) { toast.warning('Fill all fields'); return }
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) { toast.warning('Passwords do not match'); return }
+    if (pwdForm.newPassword.length < 6) { toast.warning('Password must be at least 6 characters'); return }
     setSavingPwd(true)
     try {
       await api.put('/users/change-password', { oldPassword: pwdForm.oldPassword, newPassword: pwdForm.newPassword })
       setShowChangePwd(false)
       setPwdForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
-      Alert.alert('Success', 'Password changed successfully')
+      toast.success('Password changed successfully')
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to change password')
+      toast.error(e?.response?.data?.message || 'Failed to change password')
     } finally { setSavingPwd(false) }
   }
 
   const addAddress = async () => {
     if (!addrForm.street || !addrForm.city || !addrForm.state || !addrForm.pincode) {
-      Alert.alert('Required', 'Please fill all fields'); return
+      toast.warning('Please fill all address fields'); return
     }
     setSavingAddr(true)
     try {
@@ -270,7 +271,7 @@ export default function AccountScreen() {
       setAddrForm({ street: '', city: '', state: '', pincode: '', type: 'Home' })
       fetchAddresses()
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to save address')
+      toast.error(e?.response?.data?.message || 'Failed to save address')
     } finally { setSavingAddr(false) }
   }
 
@@ -282,7 +283,7 @@ export default function AccountScreen() {
   const saveEditAddr = async () => {
     if (!editingAddr) return
     if (!editAddrForm.street || !editAddrForm.city || !editAddrForm.state || !editAddrForm.pincode) {
-      Alert.alert('Required', 'Please fill all fields'); return
+      toast.warning('Please fill all address fields'); return
     }
     setSavingEditAddr(true)
     try {
@@ -290,7 +291,7 @@ export default function AccountScreen() {
       setEditingAddr(null)
       fetchAddresses()
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to update address')
+      toast.error(e?.response?.data?.message || 'Failed to update address')
     } finally { setSavingEditAddr(false) }
   }
 
@@ -299,7 +300,7 @@ export default function AccountScreen() {
       await api.put(`/users/address/default/${id}`)
       fetchAddresses()
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to set default')
+      toast.error(e?.response?.data?.message || 'Failed to set default')
     }
   }
 
@@ -487,7 +488,7 @@ export default function AccountScreen() {
                     <Text style={{ fontFamily: Fonts.bold, fontSize: 16, color: Colors.forest, letterSpacing: 2, textAlign: 'center' }}>{(user as any).referral_code}</Text>
                   </View>
                   <TouchableOpacity
-                    onPress={() => { Clipboard.setString((user as any).referral_code); Alert.alert('Copied!', 'Referral code copied to clipboard.') }}
+                    onPress={() => { Clipboard.setString((user as any).referral_code); toast.success('Referral code copied!') }}
                     style={{ backgroundColor: Colors.forest, borderRadius: 10, padding: 10 }}
                   >
                     <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>Copy</Text>

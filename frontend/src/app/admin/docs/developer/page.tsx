@@ -302,7 +302,7 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
               ['push_notification_tokens', 'id (serial)', 'user_id, token, platform (ios/android)', 'Expo push tokens'],
               ['wallet_transactions', 'id (serial)', 'user_id, type (credit/debit), amount, description, order_id', ''],
               ['loyalty_transactions', 'id (serial)', 'user_id, type (earn/redeem), points, order_id, description', ''],
-              ['referrals', 'id (serial)', 'referrer_id, referred_id, status, reward_amount', ''],
+              ['referrals', 'id (serial)', 'referrer_id, referred_id, status (pending/rewarded), reward_amount, rewarded_at', 'UNIQUE(referred_id) — one referral per user. Rewarded when referred user places first order.'],
             ]}
           />
 
@@ -879,9 +879,17 @@ await api.post('/push/push-token', { token, platform: 'android' | 'ios' })
 // Called from _layout.tsx Inner component — active for entire app session
 // Connects to socket.io server (EXPO_PUBLIC_API_URL minus /api)
 // socket.emit('join_user', user.id)  → joins user_{userId} room
-// Listens for: order_status_updated → Alert.alert with status label
-//              admin_replied → Alert.alert with ticket subject
+// Listens for: order_status_updated → Alert.alert (has "View Order" nav button)
+//              admin_replied → Alert.alert (has "Open Ticket" nav button)
 // Uses dynamic import('socket.io-client') — install: npm install socket.io-client`}</Code>
+          <H3>Custom Toast system (mobile)</H3>
+          <Code>{`// ayurveda-app/src/components/ui/Toast.tsx
+// Singleton animated toast — replaces Alert.alert for non-interactive notifications
+// ToastContainer mounted in _layout.tsx outside navigation (survives screen changes)
+// Usage: toast.success/error/warning/info('message') — call from anywhere in the app
+// Spring slide-in from top, 3.5s auto-dismiss, tap to dismiss, max 3 stacked
+// Alert.alert kept only for confirmation dialogs with Cancel/action buttons:
+//   deleteAddress, handleLogout, closeTicket, No Address (with nav), socket alerts`}</Code>
           <H3>Image zoom on mobile product page</H3>
           <Code>{`// product/[id].tsx — ImageZoomModal component
 // Tap any product image → opens fullscreen Modal (black background)
@@ -923,13 +931,54 @@ Share.share({
   message: \`\${product.name} — AyurVeda Desi Foods\nCheck it out: \${API_BASE}/products/\${id}\`,
 })
 // Opens native share sheet: WhatsApp, email, SMS, copy link, etc.`}</Code>
-          <H3>Referral code card in mobile Account screen</H3>
-          <Code>{`// account/index.tsx — shown only when user.referral_code is truthy
-// Imports: Clipboard, Share from 'react-native'
-// Two action buttons:
-//   Copy → Clipboard.setString(referral_code) + Alert.alert('Copied!')
-//   Share → Share.share({ message: 'Use my code XXXX on AyurVeda Desi Foods...' })
-// Card styled with Colors.forest border, Fonts.bold code display, letter-spacing: 2`}</Code>
+          <H3>Referral system — full flow</H3>
+          <Code>{`// ── DB ──
+// users.referral_code   VARCHAR(20) UNIQUE — 8-char hex, generated at registration
+// users.referred_by     INTEGER FK → users(id) — who referred this user (NULL = no referrer)
+// users.wallet_balance  NUMERIC(10,2) — credited when referral reward fires
+// referrals table       referrer_id, referred_id, status (pending/rewarded), reward_amount, rewarded_at
+//                       UNIQUE(referred_id) — one referral per user, prevents double-tracking
+//
+// ── Registration flow ──
+// POST /api/users/register accepts optional { referralCode } in body
+//   1. Inserts new user, gets RETURNING id
+//   2. Looks up: SELECT id FROM users WHERE UPPER(referral_code) = UPPER($1) AND id != newUserId
+//   3. If referrer found: UPDATE users SET referred_by = referrerId WHERE id = newUserId
+//   4. INSERT INTO referrals (referrer_id, referred_id, status='pending') ON CONFLICT DO NOTHING
+//   Non-fatal — invalid code is silently skipped, registration always succeeds
+//
+// ── Google login flow ──
+// Frontend reads localStorage('pending_ref') set when user visited /?ref=CODE
+// Sends { id_token, referralCode } — backend tracks referral for new Google users only
+//
+// ── Reward trigger ──
+// creditReferralReward(client, userId, orderId) — called inside the DB transaction
+//   COD orders:    fires in createOrder() before COMMIT
+//   Online orders: fires in verifyPayment() before COMMIT (payment confirmed)
+//   Logic:
+//     1. Count user's orders — reward only fires on first ever order (count === 1)
+//     2. SELECT pending referral WHERE referred_id = userId AND status = 'pending'
+//     3. UPDATE users SET wallet_balance += 50 WHERE id = referrerId
+//     4. INSERT wallet_transactions (credit, source='referral')
+//     5. UPDATE referrals SET status='rewarded', reward_amount=50, rewarded_at=NOW()
+//   Reward amount: ₹50 (REFERRAL_REWARD constant in order.controller.js)
+//   Idempotent: UNIQUE(referred_id) + status check prevents double reward
+//
+// ── GET /api/users/me now returns ──
+// { id, name, email, role, phone, is_verified, referral_code, wallet_balance, referred_by, created_at }
+//
+// ── Frontend ──
+// Web registration form: optional referral code field (Gift icon)
+//   Auto-fills from ?ref= URL param or localStorage('pending_ref')
+//   Cleared from localStorage after successful registration
+// Web account page: referral code card with Copy + Share Link buttons
+//   navigator.clipboard.writeText(code) for Copy
+//   Copies full URL: window.location.origin + '/?ref=' + code for Share Link
+//
+// ── Mobile ──
+// Registration form: optional "Referral Code" field, auto-uppercased
+// Account screen: referral card with Copy (Clipboard) + Share (Share.share) buttons
+//   Card visible only when user.referral_code is truthy (returned by /users/me)`}</Code>
           <H3>Chat button deep-link fix on Order Detail (mobile)</H3>
           <Code>{`// order/[id].tsx — Chat button previously had no onPress handler (dead button)
 // Fixed: onPress={() => router.push('/support' as any)}
@@ -1173,11 +1222,12 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 //   Layout: loads GSI script; AuthSheet has "Continue with Google" button
 //   Env: NEXT_PUBLIC_GOOGLE_CLIENT_ID
 //
-// Mobile (Expo): expo-auth-session Google.useAuthRequest
-//   Uses androidClientId for Android builds (aud differs from web client id)
-//   Primary: sends id_token → /google-login
-//   Fallback: fetches /oauth2/v3/userinfo → sends to /google-login-userinfo
-//   Env: EXPO_PUBLIC_GOOGLE_CLIENT_ID, EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+// Mobile (Expo): @react-native-google-signin/google-signin (native SDK)
+//   GoogleSignin.configure({ webClientId }) called at module level in auth/index.tsx
+//   GoogleSignin.signIn() → returns { type:'success', data: { idToken } } | { type:'cancelled' }
+//   Sends idToken → /google-login (same backend endpoint as web)
+//   Android OAuth client (SHA-1 fingerprint) auto-configured from google-services.json via EAS
+//   Env: EXPO_PUBLIC_GOOGLE_CLIENT_ID (webClientId for idToken audience)
 //
 // Backend .env required:
 //   GOOGLE_CLIENT_ID=<web-client-id>.apps.googleusercontent.com

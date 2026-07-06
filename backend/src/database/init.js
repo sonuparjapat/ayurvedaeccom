@@ -919,6 +919,21 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS referrals (
+        id SERIAL PRIMARY KEY,
+        referrer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        referred_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','rewarded')),
+        reward_amount NUMERIC(10,2) DEFAULT 0,
+        rewarded_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(referred_id)
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_referrals_referred ON referrals(referred_id)`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS loyalty_points_balance INT DEFAULT 0`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS wallet_discount NUMERIC(10,2) DEFAULT 0`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS loyalty_discount NUMERIC(10,2) DEFAULT 0`);

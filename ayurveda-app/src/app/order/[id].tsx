@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { toast } from '../../components/ui/Toast'
 import {
   Alert, Dimensions, Image, Modal, Pressable, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -339,7 +340,7 @@ export default function OrderDetailScreen() {
       const res = await api.get(`/orders/${id}`)
       setOrder(res.data?.data || null)
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Order not found')
+      toast.error(e?.response?.data?.message || 'Order not found')
       router.back()
     } finally { setLoading(false) }
   }
@@ -349,11 +350,10 @@ export default function OrderDetailScreen() {
     try {
       await api.post(`/orders/${id}/cancel`, { reason })
       setShowCancel(false)
-      Alert.alert('Cancelled', 'Your order has been cancelled.', [
-        { text: 'OK', onPress: fetchOrder }
-      ])
+      toast.success('Your order has been cancelled.')
+      fetchOrder()
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Cancellation failed')
+      toast.error(e?.response?.data?.message || 'Cancellation failed')
     } finally { setActionLoading(false) }
   }
 
@@ -366,7 +366,7 @@ export default function OrderDetailScreen() {
       }
       router.push('/cart')
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Could not add items to cart')
+      toast.error(e?.response?.data?.message || 'Could not add items to cart')
     } finally { setActionLoading(false) }
   }
 
@@ -375,11 +375,10 @@ export default function OrderDetailScreen() {
     try {
       await api.post(`/orders/${id}/return`, { reason })
       setShowReturn(false)
-      Alert.alert('Return Requested', 'Your return request has been submitted. We will contact you within 24 hours.', [
-        { text: 'OK', onPress: fetchOrder }
-      ])
+      toast.success('Return request submitted. We will contact you within 24 hours.')
+      fetchOrder()
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Return request failed')
+      toast.error(e?.response?.data?.message || 'Return request failed')
     } finally { setActionLoading(false) }
   }
 
@@ -399,14 +398,15 @@ export default function OrderDetailScreen() {
               razorpay_payment_id: params.get('razorpay_payment_id'),
               razorpay_signature: params.get('razorpay_signature'),
             })
-            Alert.alert('Payment Successful', 'Your payment has been verified.', [{ text: 'OK', onPress: fetchOrder }])
+            toast.success('Payment verified successfully.')
+            fetchOrder()
           }
         }
       } else {
-        Alert.alert('Error', 'Could not get payment link')
+        toast.error('Could not get payment link')
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Payment retry failed')
+      toast.error(e?.response?.data?.message || 'Payment retry failed')
     } finally { setActionLoading(false) }
   }
 
@@ -415,7 +415,7 @@ export default function OrderDetailScreen() {
     try {
       await Linking.openURL(order.pdf_url)
     } catch {
-      Alert.alert('Error', 'Could not open invoice')
+      toast.error('Could not open invoice')
     }
   }
 

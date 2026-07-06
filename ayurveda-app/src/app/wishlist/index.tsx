@@ -4,8 +4,9 @@ import BottomNav from '../../components/BottomNav'
 import {
   ActivityIndicator, Dimensions, FlatList, RefreshControl,
   StatusBar, StyleSheet, Text, TextInput,
-  TouchableOpacity, View, Alert,
+  TouchableOpacity, View,
 } from 'react-native'
+import { toast } from '../../components/ui/Toast'
 import { Image as ExpoImage } from 'expo-image'
 import { impact, notify, Haptics } from '../../utils/haptics'
 import Animated, { FadeInDown, FadeOutRight, Layout } from 'react-native-reanimated'
@@ -89,7 +90,7 @@ export default function WishlistScreen() {
       setItems(prev => prev.filter(i => i.id !== productId))
       notify(Haptics.NotificationFeedbackType.Success)
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to remove')
+      toast.error(e?.response?.data?.message || 'Failed to remove')
       notify(Haptics.NotificationFeedbackType.Error)
     } finally { setRemovingId(null) }
   }
@@ -104,9 +105,9 @@ export default function WishlistScreen() {
       const cartItems = res.data?.items || []
       setCartData({ items: cartItems, subtotal: res.data?.subtotal || 0, totalItems: cartItems.length })
       notify(Haptics.NotificationFeedbackType.Success)
-      Alert.alert('Added!', 'Item added to cart')
+      toast.success('Item added to cart')
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed')
+      toast.error(e?.response?.data?.message || 'Failed')
       notify(Haptics.NotificationFeedbackType.Error)
     } finally { setAddingId(null) }
   }

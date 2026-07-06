@@ -1,5 +1,5 @@
 // src/app/_layout.tsx
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -13,6 +13,7 @@ import { useBootstrap } from '../hooks/useBootstrap'
 import { useOrderSocket } from '../hooks/useOrderSocket'
 import { useStore } from '../store'
 import { Colors } from '../constants/theme'
+import { ToastContainer, ToastRef, setToastRef } from '../components/ui/Toast'
 
 function Inner() {
   const [fontsLoaded] = useFonts({
@@ -28,7 +29,6 @@ function Inner() {
   const authOpen = useStore((s) => s.authOpen)
   const setAuthOpen = useStore((s) => s.setAuthOpen)
 
-  // Global auth gate — any screen calling setAuthOpen(true) triggers navigation
   useEffect(() => {
     if (authOpen && bootstrapped) {
       setAuthOpen(false)
@@ -66,10 +66,18 @@ function Inner() {
   )
 }
 
+// ToastHost sits outside Inner — survives navigation and font-loading
+function ToastHost() {
+  const ref = useRef<ToastRef>(null)
+  useEffect(() => { setToastRef(ref.current) }, [])
+  return <ToastContainer ref={ref} />
+}
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <Inner />
+      <ToastHost />
     </SafeAreaProvider>
   )
 }

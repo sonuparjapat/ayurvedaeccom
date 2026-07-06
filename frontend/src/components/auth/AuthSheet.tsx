@@ -15,8 +15,9 @@ import {
   ArrowRight, Send, ShieldCheck, Smartphone,
   RefreshCw, LogIn, UserPlus, KeyRound,
   CheckCircle2, LucideIcon, Leaf, Sprout,
-  FlowerIcon, BookOpen
+  FlowerIcon, BookOpen, Gift
 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 
 // ── Typed field component ──
 interface AuthInputProps {
@@ -276,11 +277,24 @@ export function AuthSheet() {
   const [otpTimer, setOtpTimer] = useState(0)
   const [mobileOtpTimer, setMobileOtpTimer] = useState(0)
 
+  const searchParams = useSearchParams()
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
-  const [registerForm, setRegisterForm] = useState({ name: '', email: '', phone: '', password: '' })
+  const [registerForm, setRegisterForm] = useState({ name: '', email: '', phone: '', password: '', referralCode: '' })
   const [otpForm, setOtpForm] = useState({ identifier: '', otp: '' })
   const [mobileForm, setMobileForm] = useState({ phone: '', otp: '' })
   const [forgotEmail, setForgotEmail] = useState('')
+
+  // Pre-fill referral code from ?ref= URL param or localStorage
+  useEffect(() => {
+    const urlRef = searchParams?.get('ref') || ''
+    if (urlRef) {
+      localStorage.setItem('pending_ref', urlRef.toUpperCase())
+      setRegisterForm(f => ({ ...f, referralCode: urlRef.toUpperCase() }))
+    } else {
+      const stored = localStorage.getItem('pending_ref') || ''
+      if (stored) setRegisterForm(f => ({ ...f, referralCode: stored }))
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (otpTimer <= 0) return
@@ -322,6 +336,7 @@ export function AuthSheet() {
     try {
       setLoading(true)
       await axios.post('/users/register', registerForm)
+      localStorage.removeItem('pending_ref')
       toast.success('Account created successfully')
       setAuthMode('verifySent')
     } catch (err: any) {
@@ -407,8 +422,10 @@ export function AuthSheet() {
   const handleCredentialResponse = useCallback(async (response: { credential: string }) => {
     try {
       setLoading(true)
-      const res = await axios.post('/users/google-login', { id_token: response.credential })
+      const pendingRef = localStorage.getItem('pending_ref') || undefined
+      const res = await axios.post('/users/google-login', { id_token: response.credential, referralCode: pendingRef })
       // Backend sets the httpOnly 'token' cookie on this response — no manual cookie needed
+      localStorage.removeItem('pending_ref')
       await login(res.data.user)
       toast.success('Welcome 🌿')
       handlePostLogin()
@@ -624,6 +641,13 @@ export function AuthSheet() {
                   <AuthInput icon={Lock} type="password" placeholder="Create a strong password"
                     value={registerForm.password}
                     onChange={e => setRegisterForm({ ...registerForm, password: e.target.value })} />
+                </div>
+
+                <div className="auth-field">
+                  <label className="auth-label"><span className="auth-label-dot" /> Referral code <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span></label>
+                  <AuthInput icon={Gift} placeholder="Friend's referral code"
+                    value={registerForm.referralCode}
+                    onChange={e => setRegisterForm({ ...registerForm, referralCode: e.target.value.toUpperCase() })} />
                 </div>
 
                 <button className="auth-primary-btn" disabled={loading} onClick={handleRegister}>

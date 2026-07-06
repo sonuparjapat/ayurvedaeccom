@@ -44,6 +44,51 @@ const getAppSettings = async (client) => {
 };
 
 
+/* ================= REFERRAL REWARD HELPER ================= */
+// Call inside an open transaction (client). Credits the referrer ₹50 on the
+// referred user's FIRST ever order. Marks referral as rewarded to prevent double credit.
+const REFERRAL_REWARD = 50;
+
+async function creditReferralReward(client, userId, orderId) {
+  try {
+    // Only fire on the user's very first order
+    const countRes = await client.query(
+      `SELECT COUNT(*) FROM orders WHERE user_id = $1 AND payment_status IN ('paid','unpaid')`,
+      [userId]
+    );
+    if (Number(countRes.rows[0].count) !== 1) return;
+
+    // Find a pending referral where this user is the referred party
+    const refRes = await client.query(
+      `SELECT id, referrer_id FROM referrals WHERE referred_id = $1 AND status = 'pending' LIMIT 1`,
+      [userId]
+    );
+    if (!refRes.rows.length) return;
+
+    const { id: referralId, referrer_id: referrerId } = refRes.rows[0];
+
+    // Credit referrer wallet
+    await client.query(
+      `UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2`,
+      [REFERRAL_REWARD, referrerId]
+    );
+    await client.query(
+      `INSERT INTO wallet_transactions (user_id, amount, type, source, order_id, description)
+       VALUES ($1, $2, 'credit', 'referral', $3, $4)`,
+      [referrerId, REFERRAL_REWARD, orderId, `Referral reward — your friend placed their first order (#${orderId})`]
+    );
+
+    // Mark referral rewarded
+    await client.query(
+      `UPDATE referrals SET status = 'rewarded', reward_amount = $1, rewarded_at = NOW() WHERE id = $2`,
+      [REFERRAL_REWARD, referralId]
+    );
+  } catch (refErr) {
+    console.error('[Referral reward]', refErr.message);
+    // Non-fatal — don't break the order flow
+  }
+}
+
 /* ================= CREATE ORDER ================= */
 
 const STATUS_PENDING = 0;
@@ -641,6 +686,11 @@ if (addr.pincode) {
       ]);
     }
 
+    /* ================= REFERRAL REWARD (COD — payment committed immediately) ================= */
+    if (paymentMethod === 'cod') {
+      await creditReferralReward(client, userId, orderId);
+    }
+
     await client.query("COMMIT");
 
     /* ================= FIRE SOCKET EVENTS (after commit — data is now visible) ================= */
@@ -829,6 +879,9 @@ exports.verifyPayment = async (req, res) => {
       "DELETE FROM cart WHERE user_id=$1",
       [userId]
     );
+
+    /* ================= REFERRAL REWARD (online — fire after payment verified) ================= */
+    await creditReferralReward(client, userId, orderId);
 
     await client.query("COMMIT");
 

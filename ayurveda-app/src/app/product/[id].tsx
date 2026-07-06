@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getGuestSession } from '../../utils/guestSession'
 import {
-  ActivityIndicator, Dimensions, FlatList, Image, Alert, KeyboardAvoidingView, Modal,
+  ActivityIndicator, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal,
   Platform, ScrollView, Share, StatusBar, StyleSheet, Text,
   TouchableOpacity, View, TextInput,
 } from 'react-native'
+import { toast } from '../../components/ui/Toast'
 import Animated, {
   FadeIn, FadeInDown, FadeInUp,
   useAnimatedScrollHandler, useAnimatedStyle,
@@ -298,7 +299,7 @@ export default function ProductDetailScreen() {
       }
     } catch (e: any) {
       console.warn('[Product detail]', e?.response?.status, e?.message)
-      Alert.alert('Error', 'Product not found')
+      toast.error('Product not found')
     } finally { setLoading(false) }
   }
 
@@ -324,7 +325,7 @@ export default function ProductDetailScreen() {
 
     if (!product || effectiveInventory === 0) return
     if (variants.length > 0 && !selectedVariant) {
-      Alert.alert('Select Variant', 'Please select a variant before adding to cart')
+      toast.warning('Please select a variant before adding to cart')
       return
     }
     setCartLoading(true)
@@ -343,12 +344,12 @@ export default function ProductDetailScreen() {
       const items = res.data?.items || []
       setCartData({ items, subtotal: res.data?.subtotal || 0, totalItems: items.length })
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to add to cart')
+      toast.error(e?.response?.data?.message || 'Failed to add to cart')
     } finally { setCartLoading(false) }
   }
 
   const checkPincode = async () => {
-    if (!/^\d{6}$/.test(pincode)) { Alert.alert('Invalid', 'Enter a valid 6-digit pincode'); return }
+    if (!/^\d{6}$/.test(pincode)) { toast.warning('Enter a valid 6-digit pincode'); return }
     setPincodeLoading(true)
     try {
       const r = await api.get(`/shop/pincode-check?pincode=${pincode}`)
@@ -359,14 +360,14 @@ export default function ProductDetailScreen() {
   }
 
   const submitNotifyMe = async () => {
-    if (!notifyEmail.includes('@')) { Alert.alert('Invalid', 'Enter a valid email'); return }
+    if (!notifyEmail.includes('@')) { toast.warning('Enter a valid email address'); return }
     setNotifyLoading(true)
     try {
       await api.post('/shop/notify-me', { productId: product?.id, email: notifyEmail, variantId: selectedVariant?.id })
       setNotifyDone(true)
-      Alert.alert('Done!', "We'll notify you when this is back in stock")
+      toast.success("We'll notify you when back in stock")
     } catch {
-      Alert.alert('Error', 'Could not register. Try again.')
+      toast.error('Could not register. Try again.')
     } finally { setNotifyLoading(false) }
   }
 
@@ -381,7 +382,7 @@ export default function ProductDetailScreen() {
 
   const submitReview = async () => {
     if (!user) { setAuthOpen(true); return }
-    if (!myRating) { Alert.alert('Rate', 'Please select a star rating'); return }
+    if (!myRating) { toast.warning('Please select a star rating'); return }
     setSubmitting(true)
     try {
       const form = new FormData()
@@ -393,7 +394,7 @@ export default function ProductDetailScreen() {
       setMyRating(0); setMyComment('')
       fetchReviews(1); fetchProduct()
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Login required')
+      toast.error(e?.response?.data?.message || 'Login required')
     } finally { setSubmitting(false) }
   }
 
@@ -403,10 +404,10 @@ export default function ProductDetailScreen() {
     try {
       await api.post(`/qa/product/${id}/ask`, { question: myQuestion.trim() })
       setMyQuestion('')
-      Alert.alert('Question Submitted', 'Your question is pending review and will appear once approved.')
+      toast.success('Your question is pending review')
       api.get(`/qa/product/${id}`).then(r => setQuestions(r.data?.questions || [])).catch(() => {})
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to submit question')
+      toast.error(e?.response?.data?.message || 'Failed to submit question')
     } finally { setQaSubmitting(false) }
   }
 

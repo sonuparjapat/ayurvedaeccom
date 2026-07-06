@@ -14,7 +14,7 @@ exports.userRegister = async (req, res) => {
   const client = await pool.connect();
 
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, referralCode } = req.body;
 
     /* ================= VALIDATION ================= */
 
@@ -111,7 +111,7 @@ exports.userRegister = async (req, res) => {
 
     /* ================= INSERT USER ================= */
 
-    await client.query(
+    const insertRes = await client.query(
       `
       INSERT INTO users
       (
@@ -128,6 +128,7 @@ exports.userRegister = async (req, res) => {
       )
       VALUES
       ($1,$2,$3,$4,3,$5,false,$6,NOW(),NOW())
+      RETURNING id
       `,
       [
         cleanName,
@@ -138,6 +139,32 @@ exports.userRegister = async (req, res) => {
         referralCode
       ]
     );
+
+    const newUserId = insertRes.rows[0].id;
+
+    /* ================= REFERRAL TRACKING ================= */
+    if (referralCode) {
+      try {
+        const refRes = await client.query(
+          `SELECT id FROM users WHERE UPPER(referral_code) = UPPER($1) AND id != $2`,
+          [referralCode.trim(), newUserId]
+        );
+        if (refRes.rows.length) {
+          const referrerId = refRes.rows[0].id;
+          await client.query(
+            `UPDATE users SET referred_by = $1 WHERE id = $2`,
+            [referrerId, newUserId]
+          );
+          await client.query(
+            `INSERT INTO referrals (referrer_id, referred_id, status) VALUES ($1, $2, 'pending')
+             ON CONFLICT (referred_id) DO NOTHING`,
+            [referrerId, newUserId]
+          );
+        }
+      } catch (_) {
+        // referral tracking is non-fatal — don't block registration
+      }
+    }
 
     const verifyLink =
       `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
@@ -1537,13 +1564,33 @@ exports.googleLogin = async (req, res) => {
     } else {
       // New user — create with random password (they'll use Google to sign in)
       const hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10)
-      const referralCode = crypto.randomBytes(4).toString('hex').toUpperCase()
+      const myReferralCode = crypto.randomBytes(4).toString('hex').toUpperCase()
       const result = await pool.query(
         `INSERT INTO users (name, email, password, role, is_verified, referral_code, google_id)
          VALUES ($1, $2, $3, 3, TRUE, $4, $5) RETURNING *`,
-        [cleanName, cleanEmail, hash, referralCode, tokenInfo.sub || null]
+        [cleanName, cleanEmail, hash, myReferralCode, tokenInfo.sub || null]
       )
       user = result.rows[0]
+
+      // Track referral if the frontend passed a ?ref= code
+      const incomingRef = (req.body.referralCode || '').trim()
+      if (incomingRef) {
+        try {
+          const refRes = await pool.query(
+            `SELECT id FROM users WHERE UPPER(referral_code) = UPPER($1) AND id != $2`,
+            [incomingRef, user.id]
+          )
+          if (refRes.rows.length) {
+            const referrerId = refRes.rows[0].id
+            await pool.query(`UPDATE users SET referred_by = $1 WHERE id = $2`, [referrerId, user.id])
+            await pool.query(
+              `INSERT INTO referrals (referrer_id, referred_id, status) VALUES ($1, $2, 'pending')
+               ON CONFLICT (referred_id) DO NOTHING`,
+              [referrerId, user.id]
+            )
+          }
+        } catch (_) {}
+      }
     }
 
     // ── Step 5: Issue your own JWT ──
@@ -1640,7 +1687,6 @@ exports.getMe = async (req, res) => {
     const userId = req.user.id
 
     const result = await pool.query(`
-
       SELECT
         id,
         name,
@@ -1648,11 +1694,12 @@ exports.getMe = async (req, res) => {
         role,
         phone,
         is_verified,
+        referral_code,
+        wallet_balance,
+        referred_by,
         created_at
-
       FROM users
       WHERE id=$1
-
     `,[userId])
 
 

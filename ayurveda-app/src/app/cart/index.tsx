@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator, Alert, Dimensions, FlatList,
+  ActivityIndicator, Dimensions, FlatList,
   StatusBar, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
+import { toast } from '../../components/ui/Toast'
 import { Image as ExpoImage } from 'expo-image'
 import Animated, {
   FadeIn, FadeInDown, FadeOutLeft, Layout,
@@ -208,8 +209,8 @@ export default function CartScreen() {
     const cartItem = items.find(i => i.product_id === productId)
     const minQty = cartItem?.min_order_qty || 1
     const maxQty = cartItem?.max_order_qty || 100
-    if (newQty < minQty) { Alert.alert('Minimum Qty', `Minimum order quantity is ${minQty}`); return }
-    if (newQty > maxQty) { Alert.alert('Maximum Qty', `Maximum order quantity is ${maxQty}`); return }
+    if (newQty < minQty) { toast.warning(`Minimum order quantity is ${minQty}`); return }
+    if (newQty > maxQty) { toast.warning(`Maximum order quantity is ${maxQty}`); return }
     if (newQty < 1) { removeItem(productId); return }
     const finalQty = Math.min(newQty, stock)
     setUpdatingId(productId)
@@ -218,7 +219,7 @@ export default function CartScreen() {
       if (!user?.id) payload.sessionId = await AsyncStorage.getItem('guest_session_id')
       await api.put('/cart', payload)
       fetchCart()
-    } catch (e: any) { Alert.alert('Error', e?.response?.data?.message || 'Failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
     finally { setUpdatingId(null) }
   }
 

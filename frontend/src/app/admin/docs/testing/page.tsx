@@ -942,6 +942,57 @@ const SECTIONS: TestSection[] = [
         expected: 'Wallet amount deducted from order total. Order created with correct total.',
         where: 'Web & Mobile: Checkout.',
       },
+      {
+        id: 'wal-4', title: 'Referral Code Visible in Profile', severity: 'critical',
+        steps: [
+          'Login as any user → Web: Account → Profile tab | Mobile: Account screen',
+          'Look for referral code card',
+        ],
+        expected: 'Unique 8-char code displayed (e.g. A1B2C3D4). Copy button copies code to clipboard. Share Link (web) copies full URL with ?ref= param.',
+        where: 'Web: /account | Mobile: Account screen.',
+      },
+      {
+        id: 'wal-5', title: 'Referral Code at Registration (Web)', severity: 'critical',
+        steps: [
+          'Copy User A\'s referral code from their profile',
+          'Open auth sheet as a new/incognito user → Register tab',
+          'Fill name, email, password → paste code in "Referral code (optional)" field → Create Account',
+          'Verify email → Login',
+          'Place first order (COD or online)',
+        ],
+        expected: 'User A\'s wallet balance increases by ₹50. Referral status in DB becomes "rewarded". Wallet transaction logged with source="referral".',
+        where: 'Web: Auth sheet → Register | Admin: DB / wallet transactions.',
+      },
+      {
+        id: 'wal-6', title: 'Referral Code at Registration (Mobile)', severity: 'critical',
+        steps: [
+          'Mobile → Auth → Register',
+          'Fill fields → enter referral code in "Referral Code (optional)" field → Create Account',
+          'Verify email → Login → place first order',
+        ],
+        expected: 'Same as wal-5: referrer gets ₹50 wallet credit after first order.',
+        where: 'Mobile: Auth screen → Register.',
+      },
+      {
+        id: 'wal-7', title: 'Referral via ?ref= URL (Web)', severity: 'high',
+        steps: [
+          'Paste User A\'s share link into browser: https://yourdomain.com/?ref=USERCODE',
+          'Open auth sheet → Register — referral code field should be pre-filled',
+          'Complete registration → place first order',
+        ],
+        expected: 'Referral code auto-filled from URL param. After first order, referrer earns ₹50.',
+        where: 'Web: Any page with ?ref= param.',
+      },
+      {
+        id: 'wal-8', title: 'Edge Cases — Invalid / Self Referral', severity: 'high',
+        steps: [
+          'Register with a made-up referral code (e.g. INVALID1) — registration should succeed normally',
+          'Try to use your OWN referral code at registration (self-referral) — should be silently ignored',
+          'Try to place a second order after referral already rewarded — referrer wallet should NOT be credited again',
+        ],
+        expected: 'Invalid code: registration succeeds, no referral tracked. Self-referral: silently skipped. Double reward: blocked by UNIQUE(referred_id) + status=\'rewarded\' check.',
+        where: 'Web & Mobile: Registration + Checkout.',
+      },
     ],
   },
 
@@ -1323,6 +1374,18 @@ const SECTIONS: TestSection[] = [
         expected: 'Payment processed. Order created. Success screen shown.',
         where: 'Mobile: Checkout.',
       },
+      {
+        id: 'mob-7', title: 'Custom Toast Notifications', severity: 'medium',
+        steps: [
+          'Mobile: trigger a validation error (e.g. tap Add to Cart with no variant selected)',
+          'Trigger a success (e.g. add item to cart from wishlist)',
+          'Trigger an info (e.g. submit product review)',
+          'Trigger 3+ notifications quickly to test stacking',
+          'Tap a toast while visible',
+        ],
+        expected: 'Animated toast slides in from top with correct color/icon. Auto-dismisses after 3.5s. Tap dismisses immediately. Max 3 stacked, oldest drops when exceeded.',
+        where: 'Mobile: throughout app.',
+      },
     ],
   },
 
@@ -1437,12 +1500,6 @@ const PLANNED_FEATURES: PlannedFeature[] = [
     description: 'Earn points on every purchase, review written, or referral. Points redeemable as wallet balance on next order. Admin controls earn rate and redemption value.',
     platforms: ['Web App', 'Mobile App', 'Admin'],
     priority: 'high',
-  },
-  {
-    title: 'Referral System',
-    description: 'Every user gets a unique referral code. When a new user signs up using this code and makes their first purchase, both parties earn wallet credits.',
-    platforms: ['Web App', 'Mobile App', 'Admin'],
-    priority: 'medium',
   },
   {
     title: 'Product Q&A on Mobile',

@@ -48,6 +48,7 @@ import {
 
 import Link from 'next/link'
 import axios from '@/lib/axios'
+import toast from 'react-hot-toast'
 
 import { useAuth } from '@/context/auth-context'
 import { useOrderSocket } from '@/hooks/useOrderSocket'
@@ -872,7 +873,6 @@ const handleSaveAddress = async (data: any) => {
                               { icon: Mail, label: 'Email Address', value: loginuserdata?.email },
                               { icon: Phone, label: 'Phone Number', value: loginuserdata?.phone || '—' },
                               { icon: Gift, label: 'Member Since', value:formatDate(loginuserdata?.created_at) },
-                              { icon: TrendingUp, label: 'Referral Code', value: loginuserdata?.referral_code || '—' },
                             ].map(({ icon: Icon, label, value }) => (
                               <div key={label} className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
                                 <div className="p-2 bg-emerald-100 rounded-lg">
@@ -885,6 +885,27 @@ const handleSaveAddress = async (data: any) => {
                               </div>
                             ))}
                           </div>
+
+                          {/* Referral Code Card */}
+                          {loginuserdata?.referral_code && (
+                            <div className="mt-5 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">🎁 Your Referral Code</p>
+                              <p className="text-xs text-gray-500 mb-3">Share with friends — they enter this code at sign-up. You earn ₹50 wallet credit when they place their first order.</p>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-white border border-emerald-300 rounded-lg px-4 py-2 text-center">
+                                  <span className="font-bold text-lg tracking-widest text-emerald-700">{loginuserdata.referral_code}</span>
+                                </div>
+                                <button
+                                  onClick={() => { navigator.clipboard.writeText(loginuserdata.referral_code); toast.success('Referral code copied!') }}
+                                  className="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors"
+                                >Copy</button>
+                                <button
+                                  onClick={() => { const url = `${window.location.origin}/?ref=${loginuserdata.referral_code}`; navigator.clipboard.writeText(url); toast.success('Referral link copied!') }}
+                                  className="px-4 py-2 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-lg hover:bg-emerald-200 transition-colors"
+                                >Share Link</button>
+                              </div>
+                            </div>
+                          )}
                         )}
                       </div>
                     </div>

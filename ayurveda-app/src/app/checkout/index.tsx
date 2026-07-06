@@ -4,6 +4,7 @@ import {
   Linking, Platform, ScrollView, StatusBar, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native'
+import { toast } from '../../components/ui/Toast'
 import * as WebBrowser from 'expo-web-browser'
 import Animated, {
   FadeIn, FadeInDown, FadeInUp, SlideInRight, ZoomIn,
@@ -261,7 +262,7 @@ export default function CheckoutScreen() {
       const res = await api.post('/coupons/apply', { code: couponInput.trim(), cartTotal: subtotal + tax })
       setAppliedCoupon({ code: res.data.coupon.code, discount: res.data.discount })
       setCouponInput(res.data.coupon.code)
-      Alert.alert('', res.data.message)
+      toast.success(res.data.message)
     } catch (e: any) {
       setCouponError(e?.response?.data?.message || 'Invalid coupon')
       setAppliedCoupon(null)
@@ -271,7 +272,7 @@ export default function CheckoutScreen() {
   const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); setCouponError('') }
 
   const placeOrder = async () => {
-    if (!selectedAddr) { Alert.alert('Required', 'Select a delivery address'); return }
+    if (!selectedAddr) { toast.warning('Select a delivery address'); return }
     if (processing) return
     setProcessing(true)
     try {
@@ -326,16 +327,16 @@ export default function CheckoutScreen() {
             setOrderNo(`ORD-${orderId}`)
             setStep(3)
           } catch (e: any) {
-            Alert.alert('Payment Error', e?.response?.data?.message || 'Payment verification failed')
+            toast.error(e?.response?.data?.message || 'Payment verification failed')
           } finally { setProcessing(false) }
         } else {
-          Alert.alert('Payment Cancelled', 'Your payment was cancelled. You can try again.')
+          toast.warning('Payment cancelled. You can try again.')
         }
       } else if (result.type === 'cancel' || result.type === 'dismiss') {
-        Alert.alert('Payment Cancelled', 'Payment was not completed. Your order has been placed as pending.')
+        toast.warning('Payment not completed. Your order is pending.')
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || e?.message || 'Something went wrong')
+      toast.error(e?.response?.data?.message || e?.message || 'Something went wrong')
       setProcessing(false)
     }
   }
@@ -445,7 +446,7 @@ export default function CheckoutScreen() {
 
               <TouchableOpacity
                 onPress={() => {
-                  if (!selectedAddr) { Alert.alert('Required', 'Select a delivery address'); return }
+                  if (!selectedAddr) { toast.warning('Select a delivery address'); return }
                   setStep(2)
                 }}
                 disabled={addresses.length === 0}

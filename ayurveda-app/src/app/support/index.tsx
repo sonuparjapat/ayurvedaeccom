@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { toast } from '../../components/ui/Toast'
 import {
   ActivityIndicator,
   Alert,
@@ -98,7 +99,7 @@ export default function SupportScreen() {
 
   const createTicket = async () => {
     if (!form.subject.trim() || !form.message.trim()) {
-      Alert.alert('Missing Info', 'Please fill subject and message')
+      toast.warning('Please fill subject and message')
       return
     }
     setSubmitting(true)
@@ -107,7 +108,7 @@ export default function SupportScreen() {
       setForm({ subject: '', category: 'general', priority: 'medium', message: '' })
       await loadTickets()
       await loadChat({ ...r.data.ticket, message_count: '1' })
-    } catch { Alert.alert('Error', 'Failed to submit') } finally { setSubmitting(false) }
+    } catch { toast.error('Failed to submit') } finally { setSubmitting(false) }
   }
 
   const sendReply = async () => {
@@ -117,7 +118,7 @@ export default function SupportScreen() {
       const r = await api.post(`/support/tickets/${selectedTicket.id}/reply`, { message: reply.trim() })
       setMessages(prev => [...prev, r.data.message])
       setReply('')
-    } catch { Alert.alert('Error', 'Failed to send') } finally { setSending(false) }
+    } catch { toast.error('Failed to send') } finally { setSending(false) }
   }
 
   const closeTicket = async () => {
