@@ -42,7 +42,7 @@ exports.adminListWallets = async (req, res) => {
     const offset = (Number(page) - 1) * Number(limit)
 
     let where = `WHERE u.role = 3`
-    const vals: any[] = []
+    const vals = []
     if (search) {
       where += ` AND (u.name ILIKE $1 OR u.email ILIKE $1)`
       vals.push(`%${search}%`)
