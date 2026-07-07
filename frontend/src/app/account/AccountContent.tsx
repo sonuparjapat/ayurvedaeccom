@@ -867,6 +867,7 @@ const handleSaveAddress = async (data: any) => {
                             </div>
                           </form>
                         ) : (
+                          <>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             {[
                               { icon: User, label: 'Full Name', value: loginuserdata?.name },
@@ -906,6 +907,7 @@ const handleSaveAddress = async (data: any) => {
                               </div>
                             </div>
                           )}
+                          </>
                         )}
                       </div>
                     </div>
