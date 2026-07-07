@@ -424,6 +424,11 @@ export default function AccountContent() {
   const [images, setImages] = useState<any[]>([])
   const { loadReviews, reviewsData } = useAuth()
 
+  /* ===== TRACKING ===== */
+  const [trackingOpenId, setTrackingOpenId] = useState<number | null>(null)
+  const [trackingData, setTrackingData] = useState<Record<number, any>>({})
+  const [trackingLoading, setTrackingLoading] = useState<number | null>(null)
+
   /* ===== WALLET ===== */
   const [walletData, setWalletData] = useState<{ balance: number; loyalty_balance: number; transactions: any[]; loyalty: any[] } | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
@@ -587,6 +592,21 @@ const handleSaveAddress = async (data: any) => {
 
   const totalSpent = orders?.reduce((sum: number, o: Order) => sum + Number(o.totalAmount), 0) || 0
   const deliveredOrders = orders?.filter((o: Order) => o.status === 'delivered').length || 0
+
+  /* ================= TRACKING ================= */
+
+  const toggleTracking = async (orderId: number) => {
+    if (trackingOpenId === orderId) { setTrackingOpenId(null); return }
+    setTrackingOpenId(orderId)
+    if (trackingData[orderId]) return
+    setTrackingLoading(orderId)
+    try {
+      const res = await axios.get(`/shop/orders/${orderId}/timeline`)
+      setTrackingData(prev => ({ ...prev, [orderId]: res.data }))
+    } catch { /* silent */ } finally {
+      setTrackingLoading(null)
+    }
+  }
 
   /* ================= MODAL ================= */
 
@@ -1023,11 +1043,10 @@ const handleSaveAddress = async (data: any) => {
                                 size="sm"
                                 variant="outline"
                                 className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl gap-1.5 text-xs"
-                                asChild
+                                onClick={() => toggleTracking(order.id)}
                               >
-                                <Link href={`/orders/${order.id}`}>
-                                  <Truck size={13} /> Track Order
-                                </Link>
+                                <Truck size={13} />
+                                {trackingOpenId === order.id ? 'Hide Tracking' : 'Track Order'}
                               </Button>
                               <Button
                                 size="sm"
@@ -1051,6 +1070,66 @@ const handleSaveAddress = async (data: any) => {
                               </Button>
                             </div>
                           </div>
+
+                          {/* INLINE TRACKING PANEL */}
+                          {trackingOpenId === order.id && (
+                            <div className="border-t border-gray-100 px-5 py-4 bg-gray-50 rounded-b-2xl">
+                              {trackingLoading === order.id ? (
+                                <div className="flex justify-center py-4">
+                                  <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                              ) : trackingData[order.id] ? (() => {
+                                const td = trackingData[order.id]
+                                const tr = td.tracking || {}
+                                const steps = [
+                                  { key: 'pending', label: 'Order Placed', icon: '📦' },
+                                  { key: 'confirmed', label: 'Confirmed', icon: '✅' },
+                                  { key: 'processing', label: 'Processing', icon: '⚙️' },
+                                  { key: 'shipped', label: 'Shipped', icon: '🚚' },
+                                  { key: 'out_for_delivery', label: 'Out for Delivery', icon: '🛵' },
+                                  { key: 'delivered', label: 'Delivered', icon: '🎉' },
+                                ]
+                                const statusOrder = ['pending','confirmed','processing','shipped','out_for_delivery','delivered']
+                                const currentIdx = statusOrder.indexOf(order.status)
+                                return (
+                                  <div>
+                                    {/* Status Timeline */}
+                                    <div className="flex items-start gap-0 overflow-x-auto pb-2 mb-4">
+                                      {steps.map((step, i) => {
+                                        const done = i <= currentIdx
+                                        const active = i === currentIdx
+                                        return (
+                                          <div key={step.key} className="flex flex-col items-center" style={{ minWidth: 80 }}>
+                                            <div className="flex items-center w-full">
+                                              {i > 0 && <div className={`flex-1 h-0.5 ${i <= currentIdx ? 'bg-emerald-500' : 'bg-gray-200'}`} />}
+                                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 ${active ? 'border-emerald-500 bg-emerald-500 text-white' : done ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-gray-200 bg-white text-gray-400'}`}>
+                                                {step.icon}
+                                              </div>
+                                              {i < steps.length - 1 && <div className={`flex-1 h-0.5 ${i < currentIdx ? 'bg-emerald-500' : 'bg-gray-200'}`} />}
+                                            </div>
+                                            <p className={`text-[10px] mt-1 text-center font-medium ${done ? 'text-emerald-700' : 'text-gray-400'}`}>{step.label}</p>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                    {/* Courier Info */}
+                                    {tr.tracking_number ? (
+                                      <div className="bg-white rounded-xl border border-emerald-100 p-3 flex flex-wrap gap-4 text-xs">
+                                        <div><p className="text-gray-400 font-medium uppercase tracking-wide">Courier</p><p className="font-bold text-gray-800 mt-0.5">{tr.courier_name || '—'}</p></div>
+                                        <div><p className="text-gray-400 font-medium uppercase tracking-wide">Tracking No.</p><p className="font-bold text-gray-800 mt-0.5 font-mono">{tr.tracking_number}</p></div>
+                                        {tr.shipped_at && <div><p className="text-gray-400 font-medium uppercase tracking-wide">Shipped</p><p className="font-bold text-gray-800 mt-0.5">{new Date(tr.shipped_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</p></div>}
+                                        {tr.estimated_delivery && <div><p className="text-gray-400 font-medium uppercase tracking-wide">Est. Delivery</p><p className="font-bold text-emerald-700 mt-0.5">{new Date(tr.estimated_delivery).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</p></div>}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-gray-400 text-center py-2">Tracking details will appear once the order is shipped.</p>
+                                    )}
+                                  </div>
+                                )
+                              })() : (
+                                <p className="text-xs text-gray-400 text-center py-2">Could not load tracking info.</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))
                     )}

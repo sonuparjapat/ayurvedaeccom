@@ -167,6 +167,7 @@ router.put('/orders/:id/status', controller.updateOrderStatus)
 // router.post('/orders/:id/invoice', invoicecontroller.generateInvoice)
 
 router.post('/orders/:id/tracking', shipingcontroller.addTracking)
+router.get('/tracking/search', auth, admin, controller.searchByTracking)
 
 /* ─── PRODUCT VARIANTS ADMIN CRUD ─── */
 router.get('/variants/:productId', auth, admin, controller.adminGetVariants)

@@ -30,10 +30,10 @@ console.log(req.body,"req body")
     }
 
 
-    if (orderRes.rows[0].status !== 3) {
+    if (![2, 3].includes(Number(orderRes.rows[0].status))) {
       return res.status(400).json({
         success: false,
-        message: 'Tracking allowed only after shipped'
+        message: 'Tracking can only be added when order is Processing or Shipped'
       })
     }
 

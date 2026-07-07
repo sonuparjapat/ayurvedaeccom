@@ -922,6 +922,7 @@ exports.getOrderById = async (req, res) => {
         o.total_amount,
         o.created_at,
         o.tracking_number,
+        o.courier_name,
         o.shipped_at,
         o.shipping_address,
         o.razorpay_order_id,
@@ -1251,9 +1252,9 @@ exports.getMyOrders = async (req, res) => {
     o.total_amount,
     o.created_at,
     o.tracking_number,
+    o.courier_name,
     o.shipped_at,
     o.shipping_address,
-    
 
     /* Invoice Details */
     i.id           AS invoice_id,

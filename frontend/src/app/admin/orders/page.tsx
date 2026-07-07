@@ -58,6 +58,10 @@ export default function AdminOrdersPage() {
   const [otpLoading, setOtpLoading] = useState(false)
   const [generatedOtp, setGeneratedOtp] = useState<string | null>(null)
 
+  const [trackingQuery, setTrackingQuery] = useState('')
+  const [trackingResults, setTrackingResults] = useState<any[]>([])
+  const [trackingSearching, setTrackingSearching] = useState(false)
+
   const {statusList} = useAuth()
   /* ================= LOAD ================= */
 
@@ -215,6 +219,21 @@ const styles = {
 
     )
   }
+  const searchTracking = async () => {
+    if (!trackingQuery.trim()) return
+    setTrackingSearching(true)
+    setTrackingResults([])
+    try {
+      const res = await axios.get('/admin/tracking/search', { params: { q: trackingQuery.trim() } })
+      setTrackingResults(res.data?.orders || [])
+      if (!res.data?.orders?.length) notify.error('No orders found for that tracking number')
+    } catch {
+      notify.error('Search failed')
+    } finally {
+      setTrackingSearching(false)
+    }
+  }
+
   const saveTracking = async () => {
 
   if (!current?.courier_name || !current?.tracking_number) {
@@ -525,16 +544,15 @@ const generateInvoice = async () => {
     </button>
 
 
-    {/* TRACKING (ONLY IF SHIPPED) */}
-    {o.status ==3 && (
-
+    {/* TRACKING (Processing or Shipped) */}
+    {[2, 3].includes(Number(o.status)) && (
       <button
         onClick={() => openModal('tracking', o)}
         className="text-purple-600"
+        title={o.tracking_number ? `Tracking: ${o.tracking_number}` : 'Add Tracking'}
       >
         <Truck size={18} />
       </button>
-
     )}
     <button
       onClick={() => openModal('timeline', o)}
@@ -754,6 +772,50 @@ const generateInvoice = async () => {
 
         </div>
 
+
+        {/* TRACKING LOOKUP */}
+        <div className="bg-white rounded-2xl shadow-lg p-5 border border-gray-100">
+          <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <Truck className="w-4 h-4 text-purple-600" /> Tracking Number Lookup
+          </h3>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              placeholder="Enter tracking number to find order..."
+              value={trackingQuery}
+              onChange={e => setTrackingQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && searchTracking()}
+              className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
+            />
+            <button
+              onClick={searchTracking}
+              disabled={trackingSearching}
+              className="px-5 py-2.5 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center gap-2"
+            >
+              <Search className="w-4 h-4" />{trackingSearching ? 'Searching...' : 'Search'}
+            </button>
+          </div>
+          {trackingResults.length > 0 && (
+            <div className="mt-4 space-y-3">
+              {trackingResults.map(o => (
+                <div key={o.id} className="border border-purple-100 rounded-xl p-4 bg-purple-50">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-gray-800 text-sm">#{o.order_number || o.id} — {o.customer_name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{o.email} · {o.phone}</p>
+                      <p className="text-xs text-purple-700 mt-1 font-medium">Courier: {o.courier_name} · Tracking: {o.tracking_number}</p>
+                      {o.shipped_at && <p className="text-xs text-gray-400 mt-0.5">Shipped: {new Date(o.shipped_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}</p>}
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-bold px-2 py-1 rounded-full bg-white border border-purple-200 text-purple-700">{o.status_label}</span>
+                      <p className="text-sm font-bold text-gray-800 mt-1">₹{Number(o.total_amount).toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* TABLE */}
 

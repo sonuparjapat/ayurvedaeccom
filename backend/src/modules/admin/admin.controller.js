@@ -1396,13 +1396,11 @@ status = Number(status);
       })
 
     }
-if (currentStatus == 3&&(!order.courier_name || !order.tracking_number)) {
-
+if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
     return res.status(400).json({
       success: false,
-      message: 'Add courier & tracking before shipping'
+      message: 'Add courier & tracking number before marking Out for Delivery'
     })
-
   }
 
     /* ================= UPDATE STATUS ================= */
@@ -1980,6 +1978,34 @@ exports.exportOrdersCSV = async (req, res) => {
     res.send(csv)
   } catch (err) {
     res.status(500).json({ message: 'Export failed' })
+  }
+}
+
+/* ================= TRACKING SEARCH (admin: lookup by tracking number) ================= */
+
+exports.searchByTracking = async (req, res) => {
+  try {
+    const { q } = req.query
+    if (!q || !q.trim()) return res.status(400).json({ success: false, message: 'Tracking number required' })
+
+    const result = await pool.query(
+      `SELECT o.id, o.order_number, o.courier_name, o.tracking_number, o.shipped_at,
+              o.status, osm.label as status_label, o.total_amount, o.payment_method,
+              o.payment_status, o.created_at,
+              u.name as customer_name, u.phone, u.email, u.id as user_id,
+              o.shipping_address
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       LEFT JOIN order_status_master osm ON osm.code = o.status
+       WHERE o.tracking_number ILIKE $1
+       ORDER BY o.created_at DESC`,
+      [`%${q.trim()}%`]
+    )
+
+    res.json({ success: true, orders: result.rows })
+  } catch (err) {
+    console.error('[searchByTracking]', err)
+    res.status(500).json({ success: false, message: 'Server error' })
   }
 }
 
