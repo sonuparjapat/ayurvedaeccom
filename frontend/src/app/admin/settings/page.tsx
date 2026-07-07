@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 
-import { Plus, Eye, Edit, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Eye, Edit, Trash2, Loader2, Truck, IndianRupee, Package } from 'lucide-react'
 
 import { notify } from '@/app/utils/notify'
 
@@ -295,19 +295,94 @@ export default function AdminSettingsPage() {
   )
 
 
+  /* ================= DELIVERY QUICK-EDIT ================= */
+
+  const DELIVERY_KEYS = ['free_delivery_limit', 'delivery_charge', 'platform_fee'] as const
+  type DeliveryKey = typeof DELIVERY_KEYS[number]
+
+  const getVal = (key: DeliveryKey) => {
+    const row = list.find((r: any) => r.key === key)
+    return row ? String(row.value) : ''
+  }
+
+  const [deliveryEdits, setDeliveryEdits] = useState<Record<string, string>>({})
+  const [deliverySaving, setDeliverySaving] = useState(false)
+
+  const saveDeliverySetting = async (key: DeliveryKey) => {
+    const val = deliveryEdits[key] ?? getVal(key)
+    if (!val) return notify.error('Enter a value')
+    if (isNaN(Number(val))) return notify.error('Must be a number')
+    setDeliverySaving(true)
+    try {
+      const existing = list.find((r: any) => r.key === key)
+      if (existing) {
+        await axios.put(`/admin/settings/${existing.id}`, { ...existing, value: val })
+      } else {
+        await axios.post('/admin/settings', { key, value: val, type: 'number', description: '', is_active: true })
+      }
+      notify.success('Saved')
+      load()
+      setDeliveryEdits(prev => { const n = { ...prev }; delete n[key]; return n })
+    } catch { notify.error('Save failed') }
+    finally { setDeliverySaving(false) }
+  }
+
+  const DELIVERY_META: Record<DeliveryKey, { label: string; hint: string; icon: any }> = {
+    free_delivery_limit: { label: 'Free Delivery Above (₹)', hint: 'Orders at or above this amount get free delivery', icon: Truck },
+    delivery_charge: { label: 'Delivery Charge (₹)', hint: 'Charge added when order is below the free delivery limit', icon: IndianRupee },
+    platform_fee: { label: 'Platform Fee (₹)', hint: 'Fixed fee added to every order', icon: Package },
+  }
+
   /* ================= UI ================= */
 
   return (
 
 <div className="space-y-6 max-w-6xl mx-auto w-full">
 
+      {/* DELIVERY QUICK-EDIT CARD */}
+      <div className="bg-white border border-emerald-100 rounded-xl p-5">
+        <h3 className="text-base font-semibold text-gray-800 mb-1">Delivery & Charges</h3>
+        <p className="text-xs text-gray-500 mb-4">Changes apply instantly to cart, checkout, and order processing.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {DELIVERY_KEYS.map(key => {
+            const { label, hint, icon: Icon } = DELIVERY_META[key]
+            const current = getVal(key)
+            const edited = deliveryEdits[key]
+            const displayVal = edited ?? current
+            const isDirty = edited !== undefined && edited !== current
+            return (
+              <div key={key} className="border border-gray-100 rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon size={15} className="text-emerald-600" />
+                  <span className="text-xs font-semibold text-gray-700">{label}</span>
+                </div>
+                <input
+                  type="number"
+                  value={displayVal}
+                  onChange={e => setDeliveryEdits(prev => ({ ...prev, [key]: e.target.value }))}
+                  placeholder="0"
+                  className="w-full border border-gray-200 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+                <p className="text-xs text-gray-400 mb-3">{hint}</p>
+                <button
+                  onClick={() => saveDeliverySetting(key)}
+                  disabled={deliverySaving || !isDirty}
+                  className="w-full text-xs font-semibold py-1.5 rounded bg-emerald-600 text-white disabled:opacity-40"
+                >
+                  {deliverySaving ? 'Saving…' : isDirty ? 'Save' : 'Saved'}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       {/* HEADER */}
 
       <div className="flex justify-between items-center">
 
         <h2 className="text-xl font-bold">
-          App Settings
+          All Settings
         </h2>
 
 

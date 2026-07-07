@@ -1678,14 +1678,27 @@ exports.adminListPincodes = async (req, res) => {
   try {
     const { search = '', page = 1, limit = 50 } = req.query
     const offset = (Number(page) - 1) * Number(limit)
-    const where = search ? `WHERE pincode ILIKE $3 OR city ILIKE $3 OR state ILIKE $3` : ''
-    const params = search ? [Number(limit), offset, `%${search}%`] : [Number(limit), offset]
+    const like = `%${search}%`
     const [rows, count] = await Promise.all([
-      pool.query(`SELECT * FROM serviceable_pincodes ${where} ORDER BY id DESC LIMIT $1 OFFSET $2`, params),
-      pool.query(`SELECT COUNT(*) FROM serviceable_pincodes ${where}`, search ? [`%${search}%`] : []),
+      search
+        ? pool.query(
+            `SELECT * FROM serviceable_pincodes WHERE pincode ILIKE $3 OR city ILIKE $3 OR state ILIKE $3 ORDER BY id DESC LIMIT $1 OFFSET $2`,
+            [Number(limit), offset, like]
+          )
+        : pool.query(
+            `SELECT * FROM serviceable_pincodes ORDER BY id DESC LIMIT $1 OFFSET $2`,
+            [Number(limit), offset]
+          ),
+      search
+        ? pool.query(
+            `SELECT COUNT(*) FROM serviceable_pincodes WHERE pincode ILIKE $1 OR city ILIKE $1 OR state ILIKE $1`,
+            [like]
+          )
+        : pool.query(`SELECT COUNT(*) FROM serviceable_pincodes`),
     ])
     res.json({ success: true, pincodes: rows.rows, total: Number(count.rows[0].count) })
   } catch (err) {
+    console.error('adminListPincodes error:', err)
     res.status(500).json({ success: false, message: 'Failed to list pincodes' })
   }
 }

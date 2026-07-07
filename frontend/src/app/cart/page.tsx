@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -41,7 +41,7 @@ interface CouponResult {
 
 export default function CartPage() {
   const router = useRouter()
-  const { cartdata, fetchCart, loginuserdata } = useAuth()
+  const { cartdata, fetchCart, loginuserdata, settings } = useAuth()
   const [items, setItems] = useState<CartItem[]>([])
   const [couponCode, setCouponCode] = useState('')
   const [coupon, setCoupon] = useState<CouponResult | null>(null)
@@ -60,14 +60,27 @@ export default function CartPage() {
     axios.get('/coupons/public').then((r) => setAvailableCoupons(r.data?.coupons || [])).catch(() => {})
   }, [])
 
+  const chargesMap = useMemo(() => {
+    return (settings || []).reduce((acc: any, item: any) => {
+      let value: any = item.value
+      if (item.type === 'number') value = Number(value)
+      if (item.type === 'boolean') value = value === 'true'
+      acc[item.key] = value
+      return acc
+    }, {})
+  }, [settings])
+
+  const freeLimit = Number(chargesMap.free_delivery_limit ?? 500)
+  const deliveryCharge = Number(chargesMap.delivery_charge ?? 0)
+
   const subtotal = items.reduce((a, b) => a + b.price * b.quantity, 0)
   const gstTotal = items.reduce((a, b) => {
     const gstRate = b.gst_percent ? Number(b.gst_percent) / 100 : 0
     return a + b.price * b.quantity * gstRate
   }, 0)
   const discount = coupon?.discount || 0
-  const freeShipping = subtotal >= 500
-  const shippingCharge = freeShipping ? 0 : 60
+  const freeShipping = subtotal >= freeLimit
+  const shippingCharge = freeShipping ? 0 : deliveryCharge
   const total = subtotal + gstTotal - discount + shippingCharge
 
   const updateQty = async (item: CartItem, delta: number) => {
@@ -341,7 +354,7 @@ export default function CartPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Row label={`Subtotal (${items.length} items)`} value={`₹${subtotal.toFixed(2)}`} />
               {gstTotal > 0 && <Row label="GST" value={`+₹${gstTotal.toFixed(2)}`} />}
-              <Row label="Shipping" value={freeShipping ? 'FREE' : `₹${shippingCharge}`} valueColor={freeShipping ? '#2d5a3d' : undefined} />
+              <Row label="Delivery" value={freeShipping ? 'FREE 🎉' : `₹${shippingCharge}`} valueColor={freeShipping ? '#2d5a3d' : undefined} />
               {discount > 0 && <Row label={`Coupon (${coupon?.code})`} value={`-₹${discount.toFixed(2)}`} valueColor="#2d5a3d" />}
 
               <div style={{ height: 1, background: 'rgba(26,58,42,0.08)', margin: '4px 0' }} />
@@ -351,10 +364,10 @@ export default function CartPage() {
                 <span style={{ fontSize: 20, fontWeight: 700, color: '#1a3a2a' }}>₹{total.toFixed(2)}</span>
               </div>
 
-              {!freeShipping && (
+              {!freeShipping && deliveryCharge > 0 && (
                 <div style={{ background: '#fff8e6', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#8a6a00' }}>
                   <Sparkles size={12} style={{ display: 'inline', marginRight: 4 }} />
-                  Add ₹{(500 - subtotal).toFixed(2)} more for FREE shipping!
+                  Add ₹{(freeLimit - subtotal).toFixed(2)} more for FREE delivery!
                 </div>
               )}
             </div>

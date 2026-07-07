@@ -19,11 +19,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getGuestSession } from '@/utils/guestSession'
 
 const { width: W } = Dimensions.get('window')
-const FREE_DELIVERY_MIN = 499
 
 // ─── DELIVERY PROGRESS BAR ────────────────────────────────────────────────────
-function DeliveryProgress({ subtotal }: { subtotal: number }) {
-  const progress = Math.min(subtotal / FREE_DELIVERY_MIN, 1)
+function DeliveryProgress({ subtotal, freeLimit }: { subtotal: number; freeLimit: number }) {
+  const progress = Math.min(subtotal / freeLimit, 1)
   const barWidth = useSharedValue(0)
 
   useEffect(() => {
@@ -34,8 +33,8 @@ function DeliveryProgress({ subtotal }: { subtotal: number }) {
     width: `${barWidth.value * 100}%` as any,
   }))
 
-  const remaining = FREE_DELIVERY_MIN - subtotal
-  const achieved = subtotal >= FREE_DELIVERY_MIN
+  const remaining = freeLimit - subtotal
+  const achieved = subtotal >= freeLimit
 
   return (
     <View style={dp.wrap}>
@@ -62,7 +61,7 @@ function DeliveryProgress({ subtotal }: { subtotal: number }) {
         )}
       </View>
       {!achieved && (
-        <Text style={dp.hint}>Free delivery on orders above ₹{FREE_DELIVERY_MIN}</Text>
+        <Text style={dp.hint}>Free delivery on orders above ₹{freeLimit}</Text>
       )}
     </View>
   )
@@ -181,8 +180,20 @@ export default function CartScreen() {
   const { cartData, setCartData, user, setAuthOpen } = useStore()
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<number | null>(null)
+  const [freeLimit, setFreeLimit] = useState(500)
+  const [deliveryCharge, setDeliveryCharge] = useState(0)
 
-  useEffect(() => { fetchCart() }, [])
+  useEffect(() => {
+    fetchCart()
+    api.get('/admin/settings').then(res => {
+      const map = (res.data?.data || []).reduce((acc: any, s: any) => {
+        acc[s.key] = s.type === 'number' ? Number(s.value) : s.value
+        return acc
+      }, {})
+      if (map.free_delivery_limit) setFreeLimit(Number(map.free_delivery_limit))
+      if (map.delivery_charge) setDeliveryCharge(Number(map.delivery_charge))
+    }).catch(() => {})
+  }, [])
 
   const fetchCart = async () => {
     try {
@@ -238,7 +249,7 @@ export default function CartScreen() {
 
   const items = cartData.items
   const subtotal = cartData.subtotal
-  const delivery = subtotal >= FREE_DELIVERY_MIN ? 0 : 49
+  const delivery = subtotal >= freeLimit ? 0 : deliveryCharge
   const total = subtotal + delivery
 
   if (loading) return (
@@ -278,7 +289,7 @@ export default function CartScreen() {
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={
               <Animated.View entering={FadeInDown.delay(100)}>
-                <DeliveryProgress subtotal={subtotal} />
+                <DeliveryProgress subtotal={subtotal} freeLimit={freeLimit} />
               </Animated.View>
             }
             renderItem={({ item, index }) => (
