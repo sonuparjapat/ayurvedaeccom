@@ -39,7 +39,7 @@ interface Product {
   is_returnable?: boolean; sort_order?: number
 }
 interface Review { id?: number; name: string; rating: number; comment: string; images?: string[] }
-
+// console.log("hii")
 // ─── IMAGE ZOOM MODAL ─────────────────────────────────────────────────────────
 function ImageZoomModal({ uri, onClose }: { uri: string; onClose: () => void }) {
   return (
