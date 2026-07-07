@@ -343,13 +343,13 @@ export default function UserManualPage() {
 
         {/* ═══ 6. ORDERS ═══ */}
         <Section id="orders" title="Orders & Tracking" icon={Truck} color="#0891b2">
-          <p className="text-sm text-gray-600 leading-relaxed">Once an order is placed, customers can track every stage in real time from <strong>My Account → Orders</strong> or by opening the order detail page.</p>
+          <p className="text-sm text-gray-600 leading-relaxed">Once an order is placed, customers can track every stage directly from <strong>My Account → Orders</strong> without leaving the page — click <strong>Track Order</strong> on any order card to expand the inline tracking panel.</p>
           <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
-            <p className="font-semibold text-gray-800 text-sm">What's shown on the order tracking page:</p>
+            <p className="font-semibold text-gray-800 text-sm">What's shown in the inline tracking panel:</p>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { icon: '📊', label: 'Visual progress bar', desc: '6-step progress indicator showing Order Placed → Confirmed → Processing → Shipped → Out for Delivery → Delivered' },
-                { icon: '📦', label: 'Courier information', desc: 'Courier company name and tracking number. Click "Track Shipment" to open the carrier\'s website directly.' },
+                { icon: '📊', label: 'Visual progress bar', desc: '6-step progress indicator: Order Placed → Confirmed → Processing → Shipped → Out for Delivery → Delivered' },
+                { icon: '📦', label: 'Courier information', desc: 'Courier company name and tracking number shown once the order is shipped.' },
                 { icon: '📅', label: 'Estimated delivery', desc: 'Calculated from shipping date + standard delivery days for your pincode.' },
                 { icon: '🕐', label: 'Status history', desc: 'A reverse-chronological timeline showing every status change with exact date and time.' },
                 { icon: '🧾', label: 'Invoice download', desc: 'Download the PDF invoice directly from the order page.' },
@@ -365,7 +365,7 @@ export default function UserManualPage() {
               ))}
             </div>
           </div>
-          <InfoBox type="tip">For COD orders, the delivery agent will ask for a 4-digit OTP when delivering. This OTP is sent to your registered email and confirms successful delivery.</InfoBox>
+          <InfoBox type="tip">For COD orders: payment status shows "Pay on Delivery" until the order is physically delivered. Once the admin marks the order as Delivered, the payment status automatically updates to "Paid". The delivery agent will ask for a 4-digit OTP to confirm delivery.</InfoBox>
         </Section>
 
         {/* ═══ 7. REVIEWS ═══ */}

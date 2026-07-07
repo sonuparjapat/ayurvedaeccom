@@ -457,9 +457,31 @@ const SECTIONS: TestSection[] = [
           'Fill/Select delivery address',
           'Choose "Cash on Delivery"',
           'Confirm order',
+          'Check order in Admin → Orders',
         ],
-        expected: 'Order created. Invoice number generated. Order visible in /orders (web) and Admin → Orders.',
-        where: 'Web & Mobile: Checkout → Order success page.',
+        expected: 'Order created with payment_status = "pending" (NOT "paid"). Invoice number generated. Order visible in /orders and Admin.',
+        where: 'Web & Mobile: Checkout → Order success. Admin: /admin/orders.',
+      },
+      {
+        id: 'ord-1b', title: 'COD → Delivered → payment_status auto-paid', severity: 'critical',
+        steps: [
+          'Place a COD order (payment_status should be "pending")',
+          'Admin → Orders → update status to "Delivered" (status 5)',
+          'Check the order payment_status in Admin',
+        ],
+        expected: 'payment_status auto-changes from "pending" to "paid" when COD order is marked Delivered.',
+        where: 'Admin: /admin/orders.',
+      },
+      {
+        id: 'ord-1c', title: 'COD Order Cancellation restores inventory', severity: 'high',
+        steps: [
+          'Place a COD order',
+          'Note product inventory count before',
+          'Admin → cancel the order',
+          'Check product inventory after',
+        ],
+        expected: 'Inventory restored even though payment_status was "pending". Stock should be back to pre-order count.',
+        where: 'Admin: /admin/orders (cancel action).',
       },
       {
         id: 'ord-2', title: 'Place Razorpay Order', severity: 'critical',
@@ -487,9 +509,10 @@ const SECTIONS: TestSection[] = [
         steps: [
           'Admin → Pincodes → add/remove a pincode',
           'Web checkout → enter that pincode in address',
+          'Also test: Admin → Pincodes search with ?search=rewari (or any city name)',
         ],
-        expected: 'Serviceable pincode: delivery option shows. Non-serviceable: error message shown.',
-        where: 'Web & Mobile: Checkout address step.',
+        expected: 'Serviceable pincode: delivery option shows. Non-serviceable: error message shown. Search returns filtered results without 500 error.',
+        where: 'Web & Mobile: Checkout address step. Admin: /admin/pincodes.',
       },
       {
         id: 'ord-5', title: 'Order Listing (User)', severity: 'high',
@@ -526,12 +549,26 @@ const SECTIONS: TestSection[] = [
         where: 'Admin: order detail.',
       },
       {
-        id: 'adord-3', title: 'Add Tracking Number', severity: 'high',
+        id: 'adord-3', title: 'Add Tracking — Correct Flow', severity: 'high',
         steps: [
-          'Admin → order detail → enter Tracking Number + Courier Name → Save',
+          'Admin: move order to "Shipped" (status 3)',
+          'Click the Truck 🚚 icon → enter Courier Name + Tracking Number → Save',
+          'Then try to move to "Out for Delivery" — should succeed',
+          'Try "Out for Delivery" WITHOUT tracking → should fail with clear error',
+          'Web: My Orders → Track Order → should show courier + tracking inline',
+          'Mobile: order detail → Tracking Info section shows courier + tracking',
         ],
-        expected: 'Tracking info visible on user\'s order detail page.',
-        where: 'Web & Mobile: /orders/[id].',
+        expected: 'Tracking saved at status 3. Status 3→4 blocked without tracking. Customer sees tracking inline without leaving the page.',
+        where: 'Admin: /admin/orders. Web: Account → My Orders. Mobile: order detail.',
+      },
+      {
+        id: 'adord-3b', title: 'Tracking Lookup by Tracking Number', severity: 'medium',
+        steps: [
+          'Admin → Orders page → "Tracking Number Lookup" card at top',
+          'Enter a tracking number (partial or full) → press Enter or Search',
+        ],
+        expected: 'Matching orders appear with customer name, status, courier, and amount. Empty state shows error toast.',
+        where: 'Admin: /admin/orders.',
       },
       {
         id: 'adord-4', title: 'Generate Invoice', severity: 'high',
