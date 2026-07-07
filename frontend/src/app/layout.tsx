@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/auth-context";
@@ -102,7 +103,7 @@ export default function RootLayout({
         >
           <PageTracker />
           {children}
-  <AuthSheet />
+  <Suspense fallback={null}><AuthSheet /></Suspense>
 
 <Toaster
   position="bottom-right"
