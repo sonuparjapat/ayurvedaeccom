@@ -571,12 +571,15 @@ const SECTIONS: TestSection[] = [
         where: 'Admin: /admin/orders.',
       },
       {
-        id: 'adord-4', title: 'Generate Invoice', severity: 'high',
+        id: 'adord-4', title: 'Invoice Generate + Download', severity: 'high',
         steps: [
-          'Admin → Invoices OR order detail → Download Invoice',
+          'Admin → Invoices → find an eligible order → click Generate',
+          'After generation, click Download PDF',
+          'Verify: delivery charge and platform fee appear correctly in the PDF (not 0 or blank)',
+          'Customer: /orders/[id] → "Download Invoice" button (only appears after admin generates)',
         ],
-        expected: 'PDF invoice generated with company info, products, GST breakup.',
-        where: 'Admin: /admin/invoices.',
+        expected: 'PDF contains product line items, GST, delivery charge, platform fee, grand total. Download works without 500 error.',
+        where: 'Admin: /admin/invoices. Web: /orders/[id].',
       },
       {
         id: 'adord-5', title: 'Filter Orders by Status/Date', severity: 'medium',
@@ -590,28 +593,51 @@ const SECTIONS: TestSection[] = [
     ],
   },
 
-  /* ── 9. RETURNS ── */
+  /* ── 9. RETURNS & REFUNDS ── */
   {
     id: 'returns', label: 'Returns & Refunds', icon: RotateCcw,
     platform: ['admin', 'web', 'mobile'], color: '#ef4444',
     cases: [
       {
-        id: 'ret-1', title: 'User Initiates Return', severity: 'high',
+        id: 'ret-1', title: 'User Initiates Return (7-day window)', severity: 'high',
         steps: [
-          'Login → go to a delivered order',
+          'Login → go to a delivered order (must be within 7 days of delivery)',
           'Click "Return" → fill reason → submit',
+          'Try on an order older than 7 days → should be blocked',
         ],
-        expected: 'Return request created. Visible in Admin → Returns.',
+        expected: 'Return request created within window. Request blocked if >7 days since delivered_at. Visible in Admin → Returns.',
         where: 'Web & Mobile: Order detail.',
       },
       {
-        id: 'ret-2', title: 'Admin Approves/Rejects Return', severity: 'high',
+        id: 'ret-2', title: 'Admin Approve Return → Wallet Refund', severity: 'high',
         steps: [
-          'Admin → Returns → select a return request',
-          'Click Approve or Reject',
+          'Admin → Returns → find a Return Requested order',
+          'Click Approve (with wallet credit enabled)',
+          'Check customer wallet balance increased',
+          'Then click "Complete Refund" → order goes to Refunded (status 9)',
         ],
-        expected: 'Return status updated. If approved: refund initiated (wallet/original payment). User notified.',
+        expected: 'Wallet credited on approval. Razorpay refund triggered on Complete Refund for online orders. COD: marked cod_manual.',
         where: 'Admin: /admin/returns.',
+      },
+      {
+        id: 'ret-3', title: 'Admin Reject Return', severity: 'medium',
+        steps: [
+          'Admin → Returns → find a Return Requested order',
+          'Click Reject → provide reason',
+        ],
+        expected: 'Order reverts to Delivered (status 5). Reason stored in return_reject_reason (not cancel_reason). Customer sees rejection.',
+        where: 'Admin: /admin/returns.',
+      },
+      {
+        id: 'ret-4', title: 'Cancel Online Paid Order → Auto Refund', severity: 'critical',
+        steps: [
+          'Place an online order and complete Razorpay payment',
+          'Before it ships → cancel the order from My Orders',
+          'Check: does refund appear in Razorpay dashboard?',
+          'Check: payment_status → "refunded" on the order',
+        ],
+        expected: 'Auto Razorpay refund triggered at cancellation. If Razorpay call fails → refund_status="failed" (admin manual action needed).',
+        where: 'Web: Account → My Orders → Cancel. Admin: /admin/orders (check refund_status).',
       },
     ],
   },

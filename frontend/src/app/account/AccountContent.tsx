@@ -601,7 +601,7 @@ const handleSaveAddress = async (data: any) => {
     if (trackingData[orderId]) return
     setTrackingLoading(orderId)
     try {
-      const res = await axios.get(`/shop/orders/${orderId}/timeline`)
+      const res = await axios.get(`/orders/${orderId}/timeline`)
       setTrackingData(prev => ({ ...prev, [orderId]: res.data }))
     } catch { /* silent */ } finally {
       setTrackingLoading(null)

@@ -246,7 +246,7 @@ export default function UserManualPage() {
               { num: 10, title: 'Track the Order', body: 'Customers can view real-time order status, a visual timeline of status changes, courier name, tracking number, and estimated delivery date.' },
               { num: 11, title: 'Receive & Review', body: 'After delivery, customers are invited to write a product review and star rating. Loyalty points are automatically credited to their account. A "Write a Review" card appears on the order detail page on both web and mobile.' },
               { num: 12, title: 'Re-order', body: 'On any delivered or cancelled order, a Re-order button lets customers add all items back to cart in one tap and go straight to checkout.' },
-              { num: 13, title: 'Return / Refund (if needed)', body: 'Customers can request a return within the return window. The admin processes the return and issues a refund to wallet or original payment method.' },
+              { num: 13, title: 'Return / Refund (if needed)', body: 'Customers can request a return within 7 days of delivery. The admin approves or rejects the request. On approval, the refund is credited to wallet or automatically returned to the original Razorpay payment method. For COD orders, cash refunds are handled manually.' },
             ].map(s => <Step key={s.num} num={s.num} title={s.title}>{s.body}</Step>)}
           </div>
         </Section>
@@ -353,7 +353,7 @@ export default function UserManualPage() {
                 { icon: '📅', label: 'Estimated delivery', desc: 'Calculated from shipping date + standard delivery days for your pincode.' },
                 { icon: '🕐', label: 'Status history', desc: 'A reverse-chronological timeline showing every status change with exact date and time.' },
                 { icon: '🧾', label: 'Invoice download', desc: 'Download the PDF invoice directly from the order page.' },
-                { icon: '↩️', label: 'Return & cancel', desc: 'Cancel button available for Pending/Confirmed orders. Return button available 30 days after delivery.' },
+                { icon: '↩️', label: 'Cancel & Return', desc: 'Cancel available on Pending/Confirmed orders. Online paid orders: Razorpay refund auto-triggered at cancellation. Return request available within 7 days of delivery.' },
               ].map(f => (
                 <div key={f.label} className="flex gap-2 p-3 bg-gray-50 rounded-xl">
                   <span className="text-lg flex-shrink-0">{f.icon}</span>

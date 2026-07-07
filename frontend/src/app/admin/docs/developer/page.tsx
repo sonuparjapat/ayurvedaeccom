@@ -321,7 +321,7 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
             headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
             rows={[
               ['serviceable_pincodes', 'id (serial)', 'pincode (UNIQUE), city, state, delivery_days, is_active', 'Used for pincode serviceability check + ETA. GET /admin/pincodes supports ?search= for city/state/pincode filtering. Note: COUNT query uses separate $1 param — do not reuse the SELECT $3 placeholder in the COUNT.'],
-              ['invoices', 'id (serial)', 'order_id, invoice_number, pdf_url, created_at', ''],
+              ['invoices', 'id (serial)', 'order_id, invoice_no, subtotal, tax, total, pdf_url, created_at', 'PDF generated via Puppeteer + S3. downloadInvoice fetches delivery_charge + platform_fee from orders table. generateInvoice reads from shipping_address.price_breakup first, falls back to order columns.'],
               ['order_status_logs', 'id (serial)', 'order_id, old_status, new_status, new_label, old_label, note, changed_by, created_at', 'Full timeline history per order'],
               ['admin_logs', 'id (serial)', 'admin_id, action, entity_type, entity_id, details (JSON), ip_address, created_at', 'Audit trail'],
               ['settings (app_settings)', 'id (serial)', 'key, value, type (number/string/boolean/json), description, is_active', 'Key-value store for platform config. Standard keys: free_delivery_limit, delivery_charge, platform_fee. Read via GET /admin/settings (public — used in auth context). Cart and checkout on both web and mobile read chargesMap from this — changes take effect immediately.'],
@@ -498,8 +498,8 @@ Token location: Authorization: Bearer <token>  (HTTP header)
                 ['GET', '/export/users', 'admin', 'Download users CSV.'],
                 ['GET', '/returns', 'admin', 'All return requests (status 7, 8, 9) with order items and user details.'],
                 ['PUT', '/returns/:id/approve', 'admin', 'Approve return: status→8, optionally credits wallet_balance. Body: { credit_wallet: bool }'],
-                ['PUT', '/returns/:id/reject', 'admin', 'Reject return: status→5 (Delivered), stores cancel_reason.'],
-                ['PUT', '/returns/:id/complete-refund', 'admin', 'Mark refund done: status→9 (requires status 8 first).'],
+                ['PUT', '/returns/:id/reject', 'admin', 'Reject return: status→5 (Delivered). Stores reason in return_reject_reason (not cancel_reason).'],
+                ['PUT', '/returns/:id/complete-refund', 'admin', 'Complete refund: status→9. Auto-triggers Razorpay refund for online orders. Sets refund_status=processed or failed.'],
               ]
             },
             {
@@ -620,38 +620,54 @@ Order Status Codes:
   4 = Out for Delivery(admin action)
   5 = Delivered       (admin action or COD OTP verification)
   6 = Cancelled       (admin or customer action — from 0 or 1 only)
-  7 = Return Requested(customer action — from 5 only, within 30 days)
+  7 = Return Requested(customer action — from 5 only, within 7 days of delivered_at)
   8 = Returned        (admin action — from 7)
-  9 = Refunded        (admin action — triggers Razorpay refund)
+  9 = Refunded        (admin: PUT /returns/:id/complete-refund triggers Razorpay automatically)
 
 Valid transitions:
   0 → 1 (confirm)
   1 → 2 (start processing)
-  2 → 3 (ship — add tracking first)
-  3 → 4 (out for delivery)
+  2 → 3 (ship — add tracking first via PUT /orders/:id/tracking)
+  3 → 4 (out for delivery — blocked without courier_name + tracking_number)
   4 → 5 (deliver)
   0,1 → 6 (cancel)
-  5 → 7 (return request, customer only)
-  7 → 8 (mark returned, admin)
-  8 → 9 (refund, admin)
+  5 → 7 (return request, customer only, within 7 days of delivered_at)
+  7 → 8 (approve return, admin — see adminApproveReturn)
+  8 → 9 (complete refund, admin — see adminCompleteRefund)
 
 Side effects on transition:
   → 1: Send confirmation email
-  → 3: Send shipment email with tracking number
-  → 5: Credit loyalty points, generate final invoice, send delivered email
-      COD only: payment_status auto-updated to 'paid' (cash collected on delivery)
-  → 6: Restore stock quantities; for online paid orders also triggers refund logic
-       NOTE: COD stock is always deducted at order creation, so cancellation always restores it
-  → 8: Optionally credit wallet_balance (adminApproveReturn with credit_wallet=true)
-  → 9: Final refund — Razorpay refund triggered if payment_method=online; COD → status='cod_manual'
+  → 3: Tracking info required; send shipment email with courier + tracking number
+  → 5: Sets delivered_at=NOW(). Credits loyalty points. Sends delivered email.
+       COD only: payment_status auto-updated to 'paid' (cash collected on delivery)
+  → 6 (cancel by customer): Restores stock. For online orders with payment_status='paid',
+       auto-calls Razorpay refund immediately. If Razorpay fails → refund_status='failed' (manual action needed).
+       COD stock always restored at cancellation regardless of payment_status.
+  → 8 (adminApproveReturn): Restores stock. Optionally credits wallet_balance.
+       Online orders: Razorpay NOT called here — call adminCompleteRefund (status→9) for that.
+  → 9 (adminCompleteRefund): For online orders → calls Razorpay refund, sets payment_status='refunded', refund_id.
+       If Razorpay call fails → refund_status='failed' (admin must manually process).
+       COD: No Razorpay; mark refund_status='cod_manual'.
+
+Return window:
+  Uses delivered_at column (set when status→5). Falls back to updated_at for legacy orders.
+  Window: 7 days. Enforced in cancelOrder before request is accepted.
+
+adminRejectReturn:
+  Sets status back to 5 (Delivered). Stores reason in return_reject_reason column (NOT cancel_reason).
+
+Invoice:
+  downloadInvoice (GET /admin/invoices/:id/pdf): fetches delivery_charge + platform_fee from orders table.
+  Previously had a ReferenceError on 'delivery'/'platform' variables — fixed.
 
 payment_status lifecycle:
   COD order created  → 'pending'   (cash not yet collected)
-  COD → status 5     → 'paid'      (auto-updated: cash collected on delivery)
+  COD → status 5     → 'paid'      (auto: cash collected on delivery)
+  Cancel online paid → 'refunded'  (auto: Razorpay refund triggered on cancel)
   Online order created → 'unpaid'
   Online payment verified → 'paid'
-  Return refunded (status 9, online) → 'refunded'
-  Return refunded (status 9, COD)    → refund_status='cod_manual' (manual cash return)`}</Code>
+  Return refunded (status 9, online) → 'refunded' (auto: Razorpay via adminCompleteRefund)
+  Return refunded (status 9, COD)    → refund_status='cod_manual' (admin manually returns cash)`}</Code>
         </Section>
 
         {/* ═══ EMAIL ═══ */}

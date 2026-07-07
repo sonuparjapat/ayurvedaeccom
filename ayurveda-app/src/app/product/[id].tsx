@@ -856,38 +856,44 @@ export default function ProductDetailScreen() {
             </Animated.View>
           ) : (
             <Animated.View entering={FadeIn.duration(300)}>
-              {/* Write review */}
-              <View style={ss.reviewWriteBox}>
-                <Text style={ss.reviewWriteTitle}>Write a Review</Text>
-                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
-                  {[1, 2, 3, 4, 5].map(s => (
-                    <TouchableOpacity key={s} onPress={() => setMyRating(s)} hitSlop={6}>
-                      <Text style={{ fontSize: 28, color: s <= myRating ? '#f59e0b' : '#d1d5db' }}>★</Text>
-                    </TouchableOpacity>
-                  ))}
-                  {myRating > 0 && (
-                    <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: Colors.sage, alignSelf: 'center', marginLeft: 6 }}>
-                      {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][myRating]}
-                    </Text>
-                  )}
+              {/* Write review — logged-in users only */}
+              {user ? (
+                <View style={ss.reviewWriteBox}>
+                  <Text style={ss.reviewWriteTitle}>Write a Review</Text>
+                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <TouchableOpacity key={s} onPress={() => setMyRating(s)} hitSlop={6}>
+                        <Text style={{ fontSize: 28, color: s <= myRating ? '#f59e0b' : '#d1d5db' }}>★</Text>
+                      </TouchableOpacity>
+                    ))}
+                    {myRating > 0 && (
+                      <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: Colors.sage, alignSelf: 'center', marginLeft: 6 }}>
+                        {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][myRating]}
+                      </Text>
+                    )}
+                  </View>
+                  <TextInput
+                    style={ss.reviewInput}
+                    placeholder="Share your experience with this product..."
+                    placeholderTextColor={Colors.textDim}
+                    value={myComment}
+                    onChangeText={setMyComment}
+                    multiline
+                    numberOfLines={3}
+                  />
+                  <TouchableOpacity onPress={submitReview} disabled={submitting} style={{ borderRadius: 12, overflow: 'hidden' }}>
+                    <LinearGradient colors={[Colors.forest, Colors.moss]} style={{ padding: 13, borderRadius: 12, alignItems: 'center' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                      <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 13 }}>
+                        {submitting ? 'Submitting...' : '✓ Submit Review'}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
                 </View>
-                <TextInput
-                  style={ss.reviewInput}
-                  placeholder="Share your experience with this product..."
-                  placeholderTextColor={Colors.textDim}
-                  value={myComment}
-                  onChangeText={setMyComment}
-                  multiline
-                  numberOfLines={3}
-                />
-                <TouchableOpacity onPress={submitReview} disabled={submitting} style={{ borderRadius: 12, overflow: 'hidden' }}>
-                  <LinearGradient colors={[Colors.forest, Colors.moss]} style={{ padding: 13, borderRadius: 12, alignItems: 'center' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                    <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 13 }}>
-                      {submitting ? 'Submitting...' : '✓ Submit Review'}
-                    </Text>
-                  </LinearGradient>
+              ) : (
+                <TouchableOpacity onPress={() => setAuthOpen(true)} style={[ss.reviewWriteBox, { alignItems: 'center' }]}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest }}>Login to write a review</Text>
                 </TouchableOpacity>
-              </View>
+              )}
 
               {reviews.length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 30 }}>

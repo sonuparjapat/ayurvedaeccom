@@ -466,56 +466,33 @@ exports.removeWishlist = async (req, res) => {
 /* ================== RATINGS ================== */
 
 exports.addReview = async (req, res) => {
+  try {
+    const userId = req.user.id
+    const { productId, rating, comment } = req.body
 
-  const userId = req.user.id
-  const { productId, rating, comment } = req.body
+    if (!productId || !rating) {
+      return res.status(400).json({ success: false, message: 'productId and rating are required' })
+    }
 
-console.log(req.body, "chec")
-  await pool.query(`
+    await pool.query(`
+      INSERT INTO reviews (user_id, product_id, rating, comment)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (user_id, product_id)
+      DO UPDATE SET rating = $3, comment = $4
+    `, [userId, productId, Number(rating), comment || ''])
 
-    INSERT INTO reviews
-    (user_id,product_id,rating,comment)
+    await pool.query(`
+      UPDATE products SET
+        averagerating = (SELECT AVG(rating) FROM reviews WHERE product_id = $1),
+        reviewcount   = (SELECT COUNT(*)    FROM reviews WHERE product_id = $1)
+      WHERE id = $1
+    `, [productId])
 
-    VALUES($1,$2,$3,$4)
-
-    ON CONFLICT(user_id,product_id)
-
-    DO UPDATE SET
-      rating=$3,
-      comment=$4
-
-  `, [
-    userId,
-    productId,
-    Number(rating),
-    comment||"",
-  ])
-
-
-  // Update avg rating
-  await pool.query(`
-
-    UPDATE products
-    SET
-      averagerating = (
-        SELECT AVG(rating)
-        FROM reviews
-        WHERE product_id=$1
-      ),
-
-      reviewcount = (
-        SELECT COUNT(*)
-        FROM reviews
-        WHERE product_id=$1
-      )
-
-    WHERE id=$1
-
-  `, [productId])
-
-
-  res.json({ success: true })
-
+    res.json({ success: true })
+  } catch (err) {
+    console.error('[addReview]', err.message)
+    res.status(500).json({ success: false, message: 'Failed to submit review' })
+  }
 }
 exports.addOrUpdateReview = async (req, res) => {
 

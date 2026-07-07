@@ -1289,29 +1289,35 @@ const addToCart = async () => {
           )}
         </h2>
 
-        {/* Write review form */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-4">
-          <p className="text-sm font-semibold text-gray-700 mb-3">Write a Review</p>
-          <div className="flex gap-1 mb-3">
-            {[1,2,3,4,5].map(i => (
-              <Star
-                key={i}
-                onClick={() => setWRating(i)}
-                className={`cursor-pointer w-6 h-6 ${i <= wRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
-              />
-            ))}
+        {/* Write review form — visible to logged-in users only */}
+        {loginuserdata ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-4">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Write a Review</p>
+            <div className="flex gap-1 mb-3">
+              {[1,2,3,4,5].map(i => (
+                <Star
+                  key={i}
+                  onClick={() => setWRating(i)}
+                  className={`cursor-pointer w-6 h-6 ${i <= wRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
+                />
+              ))}
+            </div>
+            <textarea
+              className="w-full border rounded-lg p-3 mb-3 text-sm"
+              placeholder="Share your experience..."
+              rows={3}
+              value={wComment}
+              onChange={e => setWComment(e.target.value)}
+            />
+            <Button size="sm" onClick={submitReview} disabled={wLoading}>
+              {wLoading ? 'Saving...' : 'Submit Review'}
+            </Button>
           </div>
-          <textarea
-            className="w-full border rounded-lg p-3 mb-3 text-sm"
-            placeholder="Share your experience..."
-            rows={3}
-            value={wComment}
-            onChange={e => setWComment(e.target.value)}
-          />
-          <Button size="sm" onClick={submitReview} disabled={wLoading}>
-            {wLoading ? 'Saving...' : 'Submit Review'}
-          </Button>
-        </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-4 text-center text-sm text-gray-500">
+            <a href="/login" className="text-emerald-700 font-semibold hover:underline">Login</a> to write a review
+          </div>
+        )}
 
         <div className="space-y-4">
           {reviewsData?.data?.map((r: any) => {

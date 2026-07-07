@@ -1163,6 +1163,10 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`CREATE INDEX IF NOT EXISTS idx_price_logs_reason ON price_logs(reason_type)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_price_logs_created ON price_logs(created_at DESC)`);
 
+    /* ================= REVIEWS: nullable order_id + user-product unique index ================= */
+    await client.query(`ALTER TABLE reviews ALTER COLUMN order_id DROP NOT NULL`);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS unique_review_per_user_product ON reviews(user_id, product_id)`);
+
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 
