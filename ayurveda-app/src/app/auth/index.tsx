@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   Dimensions, KeyboardAvoidingView, Platform, ScrollView,
@@ -32,7 +32,7 @@ if (GoogleSignin) {
 
 const LOGO_LOCAL = require('@/assets/images/oroganix-logo.png')
 
-const { width: W } = Dimensions.get('window')
+Dimensions.get('window')
 type Mode = 'login' | 'register' | 'otp' | 'mobileOtp' | 'forgot' | 'verifySent'
 
 // ─── FIELD COMPONENT ─────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ function Field({ label, emoji, rightSlot, ...props }: any) {
   )
 }
 
-function PrimaryBtn({ label, onPress, disabled, loading: isLoading }: any) {
+function PrimaryBtn({ label, onPress, disabled }: any) {
   return (
     <TouchableOpacity onPress={onPress} disabled={disabled} style={{ marginBottom: 12, borderRadius: 16, overflow: 'hidden' }} activeOpacity={0.87}>
       <LinearGradient colors={disabled ? ['#9ca3af', '#6b7280'] : [Colors.forest, Colors.moss]} style={fs.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
@@ -154,7 +154,8 @@ export default function AuthScreen() {
       } else if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         toast.error('Google Play Services not available on this device.')
       } else {
-        toast.error(`Google Sign-In failed: ${e.message || e.code || 'unknown error'}`)
+        // Shows exact error so we can diagnose without logs
+        toast.error(`Google error [${e.code ?? 'no-code'}]: ${e.message ?? 'unknown'}`)
       }
       setGoogleLoading(false)
     }
@@ -165,7 +166,7 @@ export default function AuthScreen() {
     try {
       const res = await api.post('/users/google-login', { id_token: idToken })
       if (res.data?.token) await AsyncStorage.setItem('auth_token', res.data.token)
-      await afterLogin(res.data.user, res.data)
+      await afterLogin(res.data.user)
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Google login failed. Please try again.')
     } finally { setGoogleLoading(false) }
@@ -178,7 +179,7 @@ export default function AuthScreen() {
     return () => clearInterval(t)
   }, [otpTimer])
 
-  const afterLogin = async (user: any, responseData?: any) => {
+  const afterLogin = async (user: any) => {
     try {
       setUser(user)
       setAuthOpen(false)
@@ -218,7 +219,7 @@ export default function AuthScreen() {
     try {
       const res = await api.post('/users/login', loginForm)
       if (res.data?.token) await AsyncStorage.setItem('auth_token', res.data.token)
-      await afterLogin(res.data.user, res.data)
+      await afterLogin(res.data.user)
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Invalid credentials')
     } finally { setLoading(false) }
@@ -251,7 +252,7 @@ export default function AuthScreen() {
     try {
       const res = await api.post('/users/verify-login-otp', otpForm)
       if (res.data?.token) await AsyncStorage.setItem('auth_token', res.data.token)
-      await afterLogin(res.data.user, res.data)
+      await afterLogin(res.data.user)
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Invalid OTP, please try again')
     } finally { setLoading(false) }
@@ -272,7 +273,7 @@ export default function AuthScreen() {
     setLoading(true)
     try {
       const res = await api.post('/users/verify-mobile-otp', mobileForm)
-      await afterLogin(res.data.user, res.data)
+      await afterLogin(res.data.user)
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Invalid OTP, please try again')
     } finally { setLoading(false) }

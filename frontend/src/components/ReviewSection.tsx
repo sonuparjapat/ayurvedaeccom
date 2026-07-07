@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import axios from "@/lib/axios"
 import toast from "react-hot-toast"
 
-import { Star, Upload, Trash2 } from "lucide-react"
+import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 
@@ -16,69 +16,41 @@ export default function ReviewSection({ productId,fetchProduct,product,loginuser
 
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState("")
-  const [images, setImages] = useState<File[]>([])
-  const [oldImages, setOldImages] = useState<string[]>([])
 
   const [loading, setLoading] = useState(false)
 
   /* ================= LOAD ================= */
 
   const loadReviews = async () => {
-    const { data } = await axios.get(
-      `/shop/getreview/${productId}`
-    );
+    try {
+      const { data } = await axios.get(`/shop/reviews/product/${productId}`)
+      setReviews(data.reviews || data.data || [])
+      const mine = (data.reviews || data.data || []).find((r: any) => r.user_id == loginuserdata?.id)
+      if (mine) { setRating(mine.rating); setComment(mine.comment || "") }
+    } catch {
+      // silent — reviews failing shouldn't block the product page
+    }
+  }
 
-    setReviews(data.data);
-    console.log(data?.data?.find((item:any)=>item?.user_id==loginuserdata?.id)?.rating,"user")
-    setRating(data?.data?.find((item:any)=>item?.user_id==loginuserdata?.id)?.rating)
-  
-
-  };
-
-  useEffect(() => {
-    loadReviews();
-    console.log(product,"product")
-
-  }, []);
+  useEffect(() => { loadReviews() }, [])
 
   /* ================= SUBMIT ================= */
 
   const submit = async () => {
+    if (!loginuserdata) { toast.error("Please login to submit a review"); return }
+    if (!rating) { toast.error("Please select a rating"); return }
     try {
-      setLoading(true);
-
-      const form = new FormData();
-
-      form.append("productId", String(productId));
-      form.append("rating", String(rating));
-      form.append("comment", comment);
-
-      form.append(
-        "oldImages",
-        JSON.stringify(oldImages)
-      );
-
-      images.forEach(img =>
-        form.append("images", img)
-      );
-
-      await axios.post("/shop/addreview", form);
-
-      toast.success("Review saved");
-
-      setImages([]);
-      setComment("");
-
-      loadReviews();
+      setLoading(true)
+      await axios.post("/shop/reviews/product", { productId, rating, comment })
+      toast.success("Review saved")
+      loadReviews()
       fetchProduct()
-
-    } catch(err:any) {
-        console.log(err)
-      toast.error("Login required");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Login required to review")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   /* ================= UI ================= */
 
@@ -93,12 +65,14 @@ export default function ReviewSection({ productId,fetchProduct,product,loginuser
 
       <div className="bg-white p-6 rounded-xl shadow mb-10">
 
+        <p className="text-sm font-medium text-gray-700 mb-3">Your Rating</p>
+
         <div className="flex gap-1 mb-4">
           {[1,2,3,4,5].map(i=>(
             <Star
               key={i}
               onClick={()=>setRating(i)}
-              className={`cursor-pointer ${
+              className={`cursor-pointer w-7 h-7 ${
                 i<=rating
                 ? "fill-amber-400 text-amber-400"
                 : "text-gray-300"
@@ -108,50 +82,16 @@ export default function ReviewSection({ productId,fetchProduct,product,loginuser
         </div>
 
         <textarea
-          className="w-full border rounded-lg p-3 mb-3"
+          className="w-full border rounded-lg p-3 mb-4"
           placeholder="Write your experience..."
+          rows={3}
           value={comment}
           onChange={e=>setComment(e.target.value)}
-        />
-
-        {/* Images */}
-
-        <div className="flex gap-3 mb-4 flex-wrap">
-
-          {oldImages.map(img=>(
-            <div key={img} className="relative">
-              <img src={img} className="w-20 h-20 rounded" />
-
-              <button
-                onClick={() =>
-                  setOldImages(prev =>
-                    prev.filter(i=>i!==img)
-                  )
-                }
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-              >
-                <Trash2 size={12}/>
-              </button>
-            </div>
-          ))}
-
-        </div>
-
-        <input
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={e =>
-            setImages(
-              Array.from(e.target.files||[])
-            )
-          }
         />
 
         <Button
           onClick={submit}
           disabled={loading}
-          className="mt-4"
         >
           {loading ? "Saving..." : "Submit Review"}
         </Button>

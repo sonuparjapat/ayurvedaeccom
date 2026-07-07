@@ -50,8 +50,8 @@ router.get(
 );
 router.post(
   "/reviews/product",
-  optionalAuth,
-  controller.getProductReviews
+  auth,
+  controller.addReview
 );
 router.get(
   "/reviews",

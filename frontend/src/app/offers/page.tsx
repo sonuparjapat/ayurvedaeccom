@@ -52,6 +52,7 @@ export default function OffersPage() {
   const [bundles, setBundles] = useState<Bundle[]>([])
   const [loading, setLoading] = useState(true)
   const [copiedCode, setCopiedCode] = useState('')
+  const [addingBundleId, setAddingBundleId] = useState<number | null>(null)
 
   useEffect(() => {
     document.title = 'Offers & Deals | Oroganix'
@@ -61,6 +62,18 @@ export default function OffersPage() {
       axios.get('/bundles/public').then(r => setBundles(r.data?.data || r.data?.bundles || [])).catch(() => {}),
     ]).finally(() => setLoading(false))
   }, [])
+
+  const addBundleToCart = async (bundleId: number) => {
+    setAddingBundleId(bundleId)
+    try {
+      await axios.post('/bundles/add-to-cart', { bundleId })
+      toast.success('Bundle added to cart!')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Please login to add to cart')
+    } finally {
+      setAddingBundleId(null)
+    }
+  }
 
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code)
@@ -75,7 +88,7 @@ export default function OffersPage() {
       <div className="min-h-screen bg-gray-50">
 
         {/* Hero */}
-        <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 py-16 px-4 text-center text-white">
+        <div className="bg-linear-to-r from-orange-500 via-red-500 to-pink-500 py-16 px-4 text-center text-white">
           <h1 className="text-4xl font-bold mb-3">Offers & Deals</h1>
           <p className="text-lg text-white/80 max-w-xl mx-auto">Exclusive discounts on premium Ayurvedic products. Save more on your wellness journey.</p>
         </div>
@@ -99,7 +112,7 @@ export default function OffersPage() {
                 </div>
               </div>
               {flashSales.map(sale => (
-                <div key={sale.id} className="bg-gradient-to-r from-red-600 to-orange-500 rounded-2xl overflow-hidden shadow-lg mb-6">
+                <div key={sale.id} className="bg-linear-to-r from-red-600 to-orange-500 rounded-2xl overflow-hidden shadow-lg mb-6">
                   <div className="flex items-center justify-between px-6 py-4">
                     <h3 className="text-white font-bold text-lg">{sale.title}</h3>
                     <div className="flex items-center gap-2 text-white/80 text-sm">
@@ -197,8 +210,15 @@ export default function OffersPage() {
                       </div>
                       {b.description && <p className="text-sm text-gray-500 mb-3">{b.description}</p>}
                       {b.products?.length > 0 && (
-                        <p className="text-xs text-gray-400">{b.products.length} products included</p>
+                        <p className="text-xs text-gray-400 mb-4">{b.products.length} products included</p>
                       )}
+                      <button
+                        onClick={() => addBundleToCart(b.id)}
+                        disabled={addingBundleId === b.id}
+                        className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold py-2.5 rounded-xl transition"
+                      >
+                        {addingBundleId === b.id ? 'Adding...' : '🛒 Add Bundle to Cart'}
+                      </button>
                     </div>
                   </div>
                 ))}
