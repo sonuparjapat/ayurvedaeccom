@@ -36,7 +36,6 @@ import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { notify } from '@/app/utils/notify'
 import { useAuth } from '@/context/auth-context'
-import ReviewSection from '@/components/ReviewSection'
 import StarRating from '@/components/StartRatings'
 import Pagination from '@/components/Paginationcom'
 
@@ -152,6 +151,11 @@ export default function ProductDetailPage() {
   // Related products
   const [relatedProducts, setRelatedProducts] = useState<any[]>([])
 
+  // Write review
+  const [wRating, setWRating] = useState(0)
+  const [wComment, setWComment] = useState('')
+  const [wLoading, setWLoading] = useState(false)
+
   // Flash sale
   const [flashSaleInfo, setFlashSaleInfo] = useState<{ flash_price: number; ends_at: string; title: string; discount_percent: number; saleId: number } | null>(null)
  const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
@@ -170,6 +174,11 @@ const handlepagechage=(page:number)=>{
   useEffect(() => {
     loadReviews(id, page)
   }, [page])
+
+  useEffect(() => {
+    const mine = reviewsData?.data?.find((r: any) => r.user_id == loginuserdata?.id)
+    if (mine) { setWRating(mine.rating); setWComment(mine.comment || '') }
+  }, [reviewsData, loginuserdata])
 
   useEffect(() => {
     if (wishlistdata?.items) {
@@ -285,6 +294,22 @@ const handlepagechage=(page:number)=>{
       setPincodeResult({ serviceable: false, message: 'Unable to check. Please try again.' })
     } finally {
       setPincodeLoading(false)
+    }
+  }
+
+  const submitReview = async () => {
+    if (!loginuserdata) { toast.error('Please login to submit a review'); return }
+    if (!wRating) { toast.error('Please select a rating'); return }
+    try {
+      setWLoading(true)
+      await axios.post('/shop/reviews/product', { productId: product?.id, rating: wRating, comment: wComment })
+      toast.success('Review saved')
+      loadReviews(id, page)
+      fetchProduct()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Login required to review')
+    } finally {
+      setWLoading(false)
     }
   }
 
@@ -1221,7 +1246,7 @@ const addToCart = async () => {
       )}
 
       {/* ================= RATING BREAKDOWN + REVIEWS ================= */}
-      {/* <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 16px 0' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 16px 0' }}>
         {ratingBreakdown && (
           <div style={{ background: 'white', borderRadius: 16, padding: '24px', marginBottom: 24, border: '1px solid rgba(26,58,42,0.1)', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ textAlign: 'center', minWidth: 100 }}>
@@ -1251,9 +1276,8 @@ const addToCart = async () => {
             </div>
           </div>
         )}
-      </div> */}
+      </div>
 
-<ReviewSection productId={product.id} fetchProduct={fetchProduct} product={product} loginuserdata={loginuserdata}/>
       {/* ================= REVIEWS ================= */}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 16px 32px' }}>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a3a2a', marginBottom: 16 }}>
@@ -1264,6 +1288,30 @@ const addToCart = async () => {
             </span>
           )}
         </h2>
+
+        {/* Write review form */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-4">
+          <p className="text-sm font-semibold text-gray-700 mb-3">Write a Review</p>
+          <div className="flex gap-1 mb-3">
+            {[1,2,3,4,5].map(i => (
+              <Star
+                key={i}
+                onClick={() => setWRating(i)}
+                className={`cursor-pointer w-6 h-6 ${i <= wRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
+              />
+            ))}
+          </div>
+          <textarea
+            className="w-full border rounded-lg p-3 mb-3 text-sm"
+            placeholder="Share your experience..."
+            rows={3}
+            value={wComment}
+            onChange={e => setWComment(e.target.value)}
+          />
+          <Button size="sm" onClick={submitReview} disabled={wLoading}>
+            {wLoading ? 'Saving...' : 'Submit Review'}
+          </Button>
+        </div>
 
         <div className="space-y-4">
           {reviewsData?.data?.map((r: any) => {

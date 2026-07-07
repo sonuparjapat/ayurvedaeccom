@@ -639,9 +639,19 @@ Side effects on transition:
   → 1: Send confirmation email
   → 3: Send shipment email with tracking number
   → 5: Credit loyalty points, generate final invoice, send delivered email
-  → 6: Restore stock quantities, refund online payments (if paid)
+      COD only: payment_status auto-updated to 'paid' (cash collected on delivery)
+  → 6: Restore stock quantities; for online paid orders also triggers refund logic
+       NOTE: COD stock is always deducted at order creation, so cancellation always restores it
   → 8: Optionally credit wallet_balance (adminApproveReturn with credit_wallet=true)
-  → 9: Final refund complete marker (Razorpay refund triggered separately if needed)`}</Code>
+  → 9: Final refund — Razorpay refund triggered if payment_method=online; COD → status='cod_manual'
+
+payment_status lifecycle:
+  COD order created  → 'pending'   (cash not yet collected)
+  COD → status 5     → 'paid'      (auto-updated: cash collected on delivery)
+  Online order created → 'unpaid'
+  Online payment verified → 'paid'
+  Return refunded (status 9, online) → 'refunded'
+  Return refunded (status 9, COD)    → refund_status='cod_manual' (manual cash return)`}</Code>
         </Section>
 
         {/* ═══ EMAIL ═══ */}
