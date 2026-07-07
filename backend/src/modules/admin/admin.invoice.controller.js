@@ -404,8 +404,8 @@ exports.downloadInvoice = async (req,res)=>{
 
     html = html
       .replace("{{items}}",rows)
-      .replace("{{delivery}}",delivery)
-            .replace("{{platformfee}}",platform)
+      .replace("{{delivery}}", Number(inv.delivery_charge || 0).toFixed(2))
+      .replace("{{platformfee}}", Number(inv.platform_fee || 0).toFixed(2))
       .replace("{{subtotal}}",inv.subtotal)
       .replace("{{tax}}",inv.tax)
       .replace("{{total}}",inv.total)
@@ -438,7 +438,8 @@ exports.downloadInvoice = async (req,res)=>{
 
 async function getInvoice(id){
   const res = await pool.query(`
-    SELECT i.*,o.id order_id,u.*
+    SELECT i.*, o.id AS order_id, u.*,
+           o.delivery_charge, o.platform_fee, o.shipping_address
     FROM invoices i
     JOIN orders o ON o.id=i.order_id
     JOIN users u ON u.id=o.user_id

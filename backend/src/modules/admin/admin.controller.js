@@ -1411,11 +1411,11 @@ if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
     );
 
     /* ================= COD PAYMENT COLLECTED ON DELIVERY (status→5) ================= */
-    if (status === 5 && order.payment_method === 'cod') {
-      await client.query(
-        `UPDATE orders SET payment_status='paid' WHERE id=$1`,
-        [id]
-      );
+    if (status === 5) {
+      await client.query(`UPDATE orders SET delivered_at=NOW() WHERE id=$1`, [id]);
+      if (order.payment_method === 'cod') {
+        await client.query(`UPDATE orders SET payment_status='paid' WHERE id=$1`, [id]);
+      }
     }
 
     /* ================= LOYALTY POINTS ON DELIVERY (status→5) ================= */
@@ -2232,7 +2232,7 @@ exports.adminRejectReturn = async (req, res) => {
     const ord = await pool.query(`SELECT status FROM orders WHERE id=$1`, [id])
     if (!ord.rows.length) return res.status(404).json({ message: 'Order not found' })
     if (ord.rows[0].status !== 7) return res.status(400).json({ message: 'Order is not in Return Requested state' })
-    await pool.query(`UPDATE orders SET status=5, cancel_reason=$1, updated_at=NOW() WHERE id=$2`, [reason, id])
+    await pool.query(`UPDATE orders SET status=5, return_reject_reason=$1, updated_at=NOW() WHERE id=$2`, [reason, id])
     res.json({ success: true, message: 'Return rejected' })
   } catch (err) {
     res.status(500).json({ message: 'Rejection failed' })
@@ -2240,12 +2240,54 @@ exports.adminRejectReturn = async (req, res) => {
 }
 
 exports.adminCompleteRefund = async (req, res) => {
+  const client = await pool.connect()
   try {
     const { id } = req.params
-    await pool.query(`UPDATE orders SET status=9, updated_at=NOW() WHERE id=$1 AND status=8`, [id])
+    await client.query('BEGIN')
+
+    const ord = await client.query(
+      `SELECT status, razorpay_payment_id, total_amount, payment_method, refund_status FROM orders WHERE id=$1 FOR UPDATE`,
+      [id]
+    )
+    if (!ord.rows.length) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ message: 'Order not found' })
+    }
+    if (ord.rows[0].status !== 8) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ message: 'Order is not in Returned state' })
+    }
+
+    const order = ord.rows[0]
+    await client.query(`UPDATE orders SET status=9, updated_at=NOW() WHERE id=$1`, [id])
+
+    // Razorpay refund for online orders not yet refunded
+    if (order.payment_method === 'online' && order.razorpay_payment_id && order.refund_status !== 'processed') {
+      try {
+        const refundAmount = Math.round(Number(order.total_amount) * 100)
+        const refund = await razorpay.payments.refund(order.razorpay_payment_id, {
+          amount: refundAmount,
+          speed: 'normal',
+          notes: { order_id: id, type: 'return_refund' }
+        })
+        await client.query(
+          `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status='processed', payment_status='refunded', updated_at=NOW() WHERE id=$3`,
+          [refund.id, Number(order.total_amount), id]
+        )
+      } catch (refundErr) {
+        console.error('[COMPLETE REFUND RAZORPAY ERROR]', refundErr.message)
+        await client.query(`UPDATE orders SET refund_status='failed', updated_at=NOW() WHERE id=$1`, [id])
+      }
+    }
+
+    await client.query('COMMIT')
     res.json({ success: true, message: 'Refund completed' })
   } catch (err) {
+    await client.query('ROLLBACK')
+    console.error('[adminCompleteRefund]', err)
     res.status(500).json({ message: 'Failed' })
+  } finally {
+    client.release()
   }
 }
 

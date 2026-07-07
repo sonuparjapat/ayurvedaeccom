@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 import {
   LayoutDashboard,
@@ -406,21 +406,26 @@ export default function AdminLayout({
 
 /* ---------- MENU ITEM ---------- */
 
-function MenuItem({
-  href,
-  icon,
-  children,
-}: any) {
+function MenuItem({ href, icon, children, badge }: any) {
+  const pathname = usePathname()
+  const isActive = pathname === href || (href !== '/admin' && pathname.startsWith(href))
 
   return (
-
     <Link
       href={href}
-      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-800 transition"
+      className={`flex items-center gap-3 px-3 py-2 rounded-md transition text-sm ${
+        isActive
+          ? 'bg-emerald-700 text-white font-semibold'
+          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+      }`}
     >
       {icon}
-      <span>{children}</span>
+      <span className="flex-1">{children}</span>
+      {badge != null && badge > 0 && (
+        <span className="text-[10px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-4.5 text-center leading-none">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </Link>
-
   )
 }

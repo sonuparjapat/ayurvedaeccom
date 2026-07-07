@@ -354,6 +354,7 @@ await client.query(`
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_reason TEXT`);
     await client.query(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_status_check`);
     await client.query(`ALTER TABLE orders ADD CONSTRAINT orders_payment_status_check CHECK (payment_status IN ('pending','unpaid','paid','failed','refunded'))`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);`);

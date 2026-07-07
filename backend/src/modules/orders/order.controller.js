@@ -1035,6 +1035,26 @@ exports.cancelOrder = async (req, res) => {
 
     await client.query("COMMIT");
 
+    // Auto-refund for online orders that were already paid (runs after commit so cancellation always succeeds)
+    if (order.payment_method !== 'cod' && order.payment_status === 'paid' && order.razorpay_payment_id) {
+      try {
+        const refundAmount = Math.round(Number(order.total_amount) * 100);
+        const refund = await razorpay.payments.refund(order.razorpay_payment_id, {
+          amount: refundAmount,
+          speed: 'normal',
+          notes: { order_id: id, reason: 'Order cancelled by customer' }
+        });
+        await pool.query(
+          `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status='processed', payment_status='refunded', updated_at=NOW() WHERE id=$3`,
+          [refund.id, Number(order.total_amount), id]
+        );
+      } catch (refundErr) {
+        console.error('[CANCEL REFUND ERROR]', refundErr.message);
+        // Mark for manual admin action
+        await pool.query(`UPDATE orders SET refund_status='failed', updated_at=NOW() WHERE id=$1`, [id]);
+      }
+    }
+
     res.json({ success: true, message: "Order cancelled successfully" });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -1095,8 +1115,8 @@ exports.returnOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'This order contains non-returnable products' });
     }
 
-    // Enforce 7-day return window (updated_at = delivery timestamp when status was set to 5)
-    const deliveredAt = new Date(order.updated_at);
+    // Enforce 7-day return window from actual delivery timestamp
+    const deliveredAt = order.delivered_at ? new Date(order.delivered_at) : new Date(order.updated_at);
     const daysSinceDelivery = (Date.now() - deliveredAt.getTime()) / (1000 * 60 * 60 * 24);
     if (daysSinceDelivery > 7) {
       await client.query("ROLLBACK");
