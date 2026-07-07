@@ -12,3 +12,13 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /account/
+Disallow: /cart/
+Disallow: /checkout/
+Disallow: /orders/
+Disallow: /wishlist/
+Disallow: /support/
+Disallow: /adminauth/
+
+Sitemap: https://oroganix.com/sitemap.xml

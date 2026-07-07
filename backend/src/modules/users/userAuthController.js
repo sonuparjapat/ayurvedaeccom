@@ -107,7 +107,7 @@ exports.userRegister = async (req, res) => {
       .randomBytes(32)
       .toString("hex");
 
-    const referralCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+    const newReferralCode = crypto.randomBytes(4).toString('hex').toUpperCase();
 
     /* ================= INSERT USER ================= */
 
@@ -136,7 +136,7 @@ exports.userRegister = async (req, res) => {
         cleanPhone,
         hash,
         token,
-        referralCode
+        newReferralCode
       ]
     );
 

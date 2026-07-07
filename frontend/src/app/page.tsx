@@ -27,8 +27,12 @@ export default function Home() {
               '@type': 'ContactPoint',
               contactType: 'customer service',
               availableLanguage: 'English',
+              email: 'support@oroganix.com',
             },
-            sameAs: [],
+            sameAs: [
+              'https://www.instagram.com/oroganix',
+              'https://www.facebook.com/oroganix',
+            ],
           }),
         }}
       />
