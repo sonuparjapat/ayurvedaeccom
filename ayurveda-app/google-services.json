@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "970718987682-j34r1dm7q42tp5it3epcptih2g4rsidf.apps.googleusercontent.com",
+          "client_id": "970718987682-5vlcv6rlduffhi074mj79odad6rf977s.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.sonu992000parjapat.ayurvedaapp",
-            "certificate_hash": "e095483286fc473298a3c49c1db580ffa42c82f7"
+            "certificate_hash": "5cb27608990dc82cb4b79e449787156c2ddb8634"
           }
         },
         {
