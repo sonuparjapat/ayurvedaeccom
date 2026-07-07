@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "970718987682",
+    "project_id": "oroganixstore",
+    "storage_bucket": "oroganixstore.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:970718987682:android:8f093f5eaf160563035efb",
+        "android_client_info": {
+          "package_name": "com.sonu992000parjapat.ayurvedaapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "970718987682-j34r1dm7q42tp5it3epcptih2g4rsidf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sonu992000parjapat.ayurvedaapp",
+            "certificate_hash": "e095483286fc473298a3c49c1db580ffa42c82f7"
+          }
+        },
+        {
+          "client_id": "970718987682-ashvgih1hiq7c6pjkjer2vk90t7h38sa.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMLSAaRut2Th0ir8CL9Qb4l_itE1UO22o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "970718987682-ashvgih1hiq7c6pjkjer2vk90t7h38sa.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

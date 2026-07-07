@@ -20,7 +20,8 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.sonu992000parjapat.ayurvedaapp"
+      "package": "com.sonu992000parjapat.ayurvedaapp",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

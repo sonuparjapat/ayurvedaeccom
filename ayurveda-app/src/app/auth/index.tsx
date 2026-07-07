@@ -10,16 +10,25 @@ import Animated, { FadeIn, FadeInDown, FadeInUp, ZoomIn } from 'react-native-rea
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import { GoogleSignin } from '@react-native-google-signin/google-signin'
+// Lazy require — prevents crash in Expo Go (native module not bundled there)
+let GoogleSignin: any = null
+let statusCodes: Record<string, string> = {}
+try {
+  const m = require('@react-native-google-signin/google-signin')
+  GoogleSignin = m.GoogleSignin
+  statusCodes = m.statusCodes
+} catch {}
 import api from '../../api/axios'
 import { useStore } from '../../store'
 import { Image as ExpoImage } from 'expo-image'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
 
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-  scopes: ['profile', 'email'],
-})
+if (GoogleSignin) {
+  GoogleSignin.configure({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    scopes: ['profile', 'email'],
+  })
+}
 
 const LOGO_LOCAL = require('@/assets/images/oroganix-logo.png')
 
@@ -116,6 +125,10 @@ export default function AuthScreen() {
 
   // ── Google Sign-In ──
   const googleSignIn = async () => {
+    if (!GoogleSignin) {
+      toast.error('Google Sign-In requires a development build. Please use email login.')
+      return
+    }
     setGoogleLoading(true)
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
@@ -133,7 +146,16 @@ export default function AuthScreen() {
         setGoogleLoading(false)
       }
     } catch (e: any) {
-      toast.error('Google Sign-In failed. Please try again.')
+      console.error('[GoogleSignIn] error code:', e.code, 'message:', e.message)
+      if (e.code === statusCodes.SIGN_IN_CANCELLED) {
+        // user cancelled — no toast needed
+      } else if (e.code === statusCodes.IN_PROGRESS) {
+        toast.error('Sign-in already in progress, please wait.')
+      } else if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        toast.error('Google Play Services not available on this device.')
+      } else {
+        toast.error(`Google Sign-In failed: ${e.message || e.code || 'unknown error'}`)
+      }
       setGoogleLoading(false)
     }
   }

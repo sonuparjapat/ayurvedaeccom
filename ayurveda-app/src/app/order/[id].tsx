@@ -102,14 +102,23 @@ function LoadingSkeleton() {
 }
 
 // ─── STATUS TIMELINE ─────────────────────────────────────────────────────────
-function StatusTimeline({ currentStatus }: { currentStatus: number }) {
+function StatusTimeline({ currentStatus, logs, estimatedDelivery }: { currentStatus: number; logs: TimelineLog[]; estimatedDelivery: string | null }) {
   if ([6, 7, 8, 9].includes(currentStatus)) return null
+
+  const getLogDate = (status: number): string | null => {
+    const log = logs.find(l => l.new_status === status)
+    if (!log) return null
+    return new Date(log.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  }
+
   return (
     <View style={tl.wrap}>
       {TIMELINE_STEPS.map((step, i) => {
         const done = currentStatus >= step.status
         const active = currentStatus === step.status
         const isLast = i === TIMELINE_STEPS.length - 1
+        const dateStr = getLogDate(step.status)
+        const isDelivery = step.status === 5
         return (
           <View key={step.status} style={tl.stepRow}>
             <View style={tl.leftCol}>
@@ -126,7 +135,15 @@ function StatusTimeline({ currentStatus }: { currentStatus: number }) {
             </View>
             <Animated.View entering={FadeInRight.delay(i * 80)} style={tl.labelCol}>
               <Text style={[tl.label, done && tl.labelDone, active && tl.labelActive]}>{step.label}</Text>
-              {active && <Text style={tl.activeNote}>Current Status</Text>}
+              {dateStr
+                ? <Text style={tl.dateNote}>{dateStr}</Text>
+                : active && <Text style={tl.activeNote}>Current Status</Text>
+              }
+              {isDelivery && !done && estimatedDelivery && (
+                <Text style={tl.etaNote}>
+                  ETA: {new Date(estimatedDelivery).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                </Text>
+              )}
             </Animated.View>
           </View>
         )
@@ -150,6 +167,8 @@ const tl = StyleSheet.create({
   labelDone: { color: 'rgba(255,255,255,0.7)' },
   labelActive: { color: '#fff', fontFamily: Fonts.bold, fontSize: 14 },
   activeNote: { fontFamily: Fonts.regular, fontSize: 10, color: Colors.gold, marginTop: 2 },
+  dateNote: { fontFamily: Fonts.regular, fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 },
+  etaNote: { fontFamily: Fonts.medium, fontSize: 10, color: Colors.gold, marginTop: 2 },
 })
 
 // ─── ORDER ITEM CARD ──────────────────────────────────────────────────────────
@@ -322,6 +341,11 @@ const m = StyleSheet.create({
   closeBtnText: { fontFamily: Fonts.medium, fontSize: 13, color: Colors.textDim },
 })
 
+interface TimelineLog {
+  id: number; old_status: number; new_status: number; note?: string
+  created_at: string; old_label?: string; new_label?: string
+}
+
 // ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams()
@@ -331,17 +355,29 @@ export default function OrderDetailScreen() {
   const [showCancel, setShowCancel] = useState(false)
   const [showReturn, setShowReturn] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [timelineLogs, setTimelineLogs] = useState<TimelineLog[]>([])
+  const [estimatedDelivery, setEstimatedDelivery] = useState<string | null>(null)
 
   useEffect(() => { if (id) fetchOrder() }, [id])
 
   const fetchOrder = async () => {
     setLoading(true)
     try {
-      const res = await api.get(`/orders/${id}`)
-      setOrder(res.data?.data || null)
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Order not found')
-      router.back()
+      const [orderRes, timelineRes] = await Promise.allSettled([
+        api.get(`/orders/${id}`),
+        api.get(`/orders/${id}/timeline`),
+      ])
+      if (orderRes.status === 'fulfilled') {
+        setOrder(orderRes.value.data?.data || null)
+      } else {
+        toast.error('Order not found')
+        router.back()
+        return
+      }
+      if (timelineRes.status === 'fulfilled') {
+        setTimelineLogs(timelineRes.value.data?.timeline || [])
+        setEstimatedDelivery(timelineRes.value.data?.tracking?.estimated_delivery || null)
+      }
     } finally { setLoading(false) }
   }
 
@@ -506,7 +542,7 @@ export default function OrderDetailScreen() {
             {![6, 7, 8, 9].includes(order.status) && (
               <Animated.View entering={FadeInDown.delay(120)} style={ss.card}>
                 <Text style={ss.cardTitle}>Order Progress</Text>
-                <StatusTimeline currentStatus={order.status} />
+                <StatusTimeline currentStatus={order.status} logs={timelineLogs} estimatedDelivery={estimatedDelivery} />
               </Animated.View>
             )}
 
