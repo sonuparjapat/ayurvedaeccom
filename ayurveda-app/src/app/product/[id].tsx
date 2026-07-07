@@ -215,6 +215,7 @@ export default function ProductDetailScreen() {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [qty, setQty] = useState(1)
+  const [cartQty, setCartQty] = useState(1) // qty currently in cart for this product
   const [cartLoading, setCartLoading] = useState(false)
   const [wished, setWished] = useState(false)
   const wishScale = useSharedValue(1)
@@ -317,34 +318,43 @@ export default function ProductDetailScreen() {
   const effectivePrice = flashPrice ?? (selectedVariant ? selectedVariant.price : product?.price ?? '0')
 
   const handleAddCart = async () => {
-    // If already in cart, navigate there instead of re-adding
-    if (inCart) {
-      router.push('/cart')
-      return
-    }
-
     if (!product || effectiveInventory === 0) return
     if (variants.length > 0 && !selectedVariant) {
       toast.warning('Please select a variant before adding to cart')
       return
     }
+
+    // In cart and qty unchanged → just navigate to cart
+    if (inCart && qty === cartQty) {
+      router.push('/cart')
+      return
+    }
+
     setCartLoading(true)
     try {
-      const payload: any = { productId: product.id, quantity: qty }
-      if (selectedVariant) payload.variantId = selectedVariant.id
       let sessionId: string | null = null
-      if (!user?.id) {
-        sessionId = await getGuestSession()
-        if (sessionId) payload.sessionId = sessionId
+      if (!user?.id) sessionId = await getGuestSession()
+      const base: any = { productId: product.id, quantity: qty }
+      if (selectedVariant) base.variantId = selectedVariant.id
+      if (sessionId) base.sessionId = sessionId
+
+      if (inCart && qty !== cartQty) {
+        // Update existing cart item quantity
+        await api.put('/cart', base)
+        toast.success('Quantity updated!')
+      } else {
+        // Fresh add
+        await api.post('/cart', base)
+        toast.success('Added to cart!')
       }
-      // Always POST — backend upserts (inserts or increments, capped at stock)
-      await api.post('/cart', payload)
+
       const cartUrl = !user?.id && sessionId ? `/cart?sessionId=${sessionId}` : '/cart'
       const res = await api.get(cartUrl)
       const items = res.data?.items || []
       setCartData({ items, subtotal: res.data?.subtotal || 0, totalItems: items.length })
+      setCartQty(qty)
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed to add to cart')
+      toast.error(e?.response?.data?.message || 'Failed to update cart')
     } finally { setCartLoading(false) }
   }
 
@@ -385,16 +395,12 @@ export default function ProductDetailScreen() {
     if (!myRating) { toast.warning('Please select a star rating'); return }
     setSubmitting(true)
     try {
-      const form = new FormData()
-      form.append('productId', String(id))
-      form.append('rating', String(myRating))
-      form.append('comment', myComment)
-      form.append('oldImages', JSON.stringify([]))
-      await api.post('/shop/review', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      await api.post('/shop/reviews/product', { productId: id, rating: myRating, comment: myComment })
       setMyRating(0); setMyComment('')
       fetchReviews(1); fetchProduct()
+      toast.success('Review submitted!')
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Login required')
+      toast.error(e?.response?.data?.message || 'Failed to submit review')
     } finally { setSubmitting(false) }
   }
 
@@ -411,7 +417,16 @@ export default function ProductDetailScreen() {
     } finally { setQaSubmitting(false) }
   }
 
-  const inCart = cartData.items.some(i => i.product_id === Number(id) && (!selectedVariant || i.variant_id === selectedVariant.id))
+  const cartItem = cartData.items.find(i => i.product_id === Number(id) && (!selectedVariant || i.variant_id === selectedVariant?.id))
+  const inCart = !!cartItem
+
+  // Sync qty from cart when item is detected in cart for the first time
+  useEffect(() => {
+    if (cartItem && cartItem.quantity !== cartQty) {
+      setCartQty(cartItem.quantity)
+      setQty(cartItem.quantity)
+    }
+  }, [cartItem?.quantity, cartItem?.product_id])
   const disc = product?.compareprice ? Math.round(((+product.compareprice - +effectivePrice) / +product.compareprice) * 100) : null
 
   if (loading) return (
@@ -972,6 +987,7 @@ export default function ProductDetailScreen() {
             colors={
               effectiveInventory === 0 ? ['#9ca3af', '#6b7280']
                 : (variants.length > 0 && !selectedVariant) ? ['#9ca3af', '#6b7280']
+                : inCart && qty !== cartQty ? ['#d97706', '#b45309']
                 : inCart ? ['#059669', '#0d9488']
                   : [Colors.forest, Colors.moss]
             }
@@ -979,10 +995,11 @@ export default function ProductDetailScreen() {
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           >
             <Text style={ss.ctaBtnText}>
-              {cartLoading ? '·  Adding...'
+              {cartLoading ? '·  Updating...'
                 : effectiveInventory === 0 ? '🚫  Out of Stock'
                 : (variants.length > 0 && !selectedVariant) ? 'Select Variant'
-                  : inCart ? '✓  Go to Cart'
+                : inCart && qty !== cartQty ? '↻  Update Cart'
+                  : inCart ? '✓  In Cart'
                     : '🛍️  Add to Cart'}
             </Text>
           </LinearGradient>

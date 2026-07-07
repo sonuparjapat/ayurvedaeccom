@@ -125,6 +125,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true)
 
   const [qty, setQty] = useState(1)
+  const [cartQty, setCartQty] = useState(1) // qty currently in cart
   const [activeImg, setActiveImg] = useState(0)
 
   const [cartLoading, setCartLoading] = useState(false)
@@ -306,29 +307,38 @@ const handlepagechage=(page:number)=>{
 
   /* ================= CART ================= */
 
-  const isInCart = product
-    ? cartdata?.items?.some((item: any) =>
+  const cartItem = product
+    ? cartdata?.items?.find((item: any) =>
         item?.product_id == product?.id &&
         (!selectedVariant ? !item?.variant_id : item?.variant_id == selectedVariant?.id)
       )
-    : false
+    : undefined
+  const isInCart = !!cartItem
+
+  // Sync qty from cart when item detected
+  useEffect(() => {
+    if (cartItem && cartItem.quantity !== cartQty) {
+      setCartQty(cartItem.quantity)
+      setQty(cartItem.quantity)
+    }
+  }, [cartItem?.quantity, cartItem?.product_id])
 
 const addToCart = async () => {
   if (!product) return;
 
-  // Already in cart — open cart drawer instead of re-adding
-  if (isInCart) {
-    setOpencart(true);
-    return;
-  }
-
   if (effectiveInventory === 0) {
-    notify.error("Product is Out of stock");
+    toast.error("Product is out of stock");
     return;
   }
 
   if (variants.length > 0 && !selectedVariant) {
     toast.error("Please select a variant");
+    return;
+  }
+
+  // In cart, qty unchanged → open cart drawer
+  if (isInCart && qty === cartQty) {
+    setOpencart(true);
     return;
   }
 
@@ -348,14 +358,20 @@ const addToCart = async () => {
       if (sessionId) payload.sessionId = sessionId;
     }
 
-    // Always POST — backend upserts (inserts or increments, capped at stock)
-    await axios.post("/cart", payload);
-    toast.success("Added to cart!");
+    if (isInCart && qty !== cartQty) {
+      // Update existing cart quantity
+      await axios.put("/cart", payload);
+      toast.success("Quantity updated!");
+    } else {
+      await axios.post("/cart", payload);
+      toast.success("Added to cart!");
+    }
+    setCartQty(finalQty);
     fetchCart(loginuserdata?.id);
 
   } catch (err: any) {
     toast.error(
-      err?.response?.data?.message || "Could not add to cart"
+      err?.response?.data?.message || "Could not update cart"
     );
   } finally {
     setCartLoading(false);
@@ -936,21 +952,27 @@ const addToCart = async () => {
 
 
                   <Button
-                    disabled={!isInCart && (effectiveInventory === 0 || cartLoading || (variants.length > 0 && !selectedVariant))}
+                    disabled={effectiveInventory === 0 || cartLoading || (variants.length > 0 && !selectedVariant)}
                     onClick={addToCart}
-                    className={`flex-1 text-lg py-6 ${isInCart ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-linear-to-r from-emerald-600 to-green-600'}`}
+                    className={`flex-1 text-lg py-6 ${
+                      isInCart && qty !== cartQty ? 'bg-amber-600 hover:bg-amber-700'
+                      : isInCart ? 'bg-emerald-700 hover:bg-emerald-800'
+                      : 'bg-linear-to-r from-emerald-600 to-green-600'
+                    }`}
                   >
                     {cartLoading ? (
                       <span className="flex gap-2">
                         <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Adding...
+                        Updating...
                       </span>
                     ) : effectiveInventory === 0 ? (
                       <><Package className="mr-2" /> Out Of Stock</>
                     ) : variants.length > 0 && !selectedVariant ? (
                       <><Tag className="mr-2" /> Select a Variant</>
+                    ) : isInCart && qty !== cartQty ? (
+                      <><ShoppingCart className="mr-2" /> Update Cart</>
                     ) : isInCart ? (
-                      <><ShoppingCart className="mr-2" /> Go to Cart</>
+                      <><ShoppingCart className="mr-2" /> In Cart</>
                     ) : (
                       <><ShoppingCart className="mr-2" /> Add To Cart</>
                     )}

@@ -70,10 +70,10 @@ function SkeletonCard() {
 }
 
 // ─── PRODUCT CARD ─────────────────────────────────────────────────────────────
-function ProductCard({ p, index, addingId, addToCart, toggleWish, wishlist, inCart }: {
+function ProductCard({ p, index, addingId, addToCart, toggleWish, wishlist, inCart, onOpenCart }: {
   p: Product; index: number; addingId: number | null
   addToCart: (id: number) => void; toggleWish: (id: number) => void
-  wishlist: number[]; inCart: (id: number) => boolean
+  wishlist: number[]; inCart: (id: number) => boolean; onOpenCart: () => void
 }) {
   const d = p.compareprice ? Math.round(((p.compareprice - p.price) / p.compareprice) * 100) : null
   const isWished = wishlist.includes(p.id)
@@ -120,7 +120,10 @@ function ProductCard({ p, index, addingId, addToCart, toggleWish, wishlist, inCa
       </TouchableOpacity>
 
       <TouchableOpacity
-        onPress={() => addToCart(p.id)}
+        onPress={() => {
+          if (inCart(p.id)) { onOpenCart(); return }
+          addToCart(p.id)
+        }}
         disabled={p.inventory === 0 || addingId === p.id}
         style={{ marginHorizontal: 10, marginBottom: 10, borderRadius: 10, overflow: 'hidden' }}
       >
@@ -388,6 +391,7 @@ export default function ProductsScreen() {
               p={p} index={index} addingId={addingId}
               addToCart={addToCart} toggleWish={toggleWish}
               wishlist={wishlist} inCart={inCart}
+              onOpenCart={() => router.push('/cart')}
             />
           )}
           numColumns={2}

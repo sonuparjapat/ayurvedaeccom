@@ -40,7 +40,7 @@ async function upsertUserCart(client, userId, productId, variantId, qty, maxStoc
     const currentQty = parseInt(existing.rows[0].quantity);
     const newQty = Math.min(currentQty + qty, maxStock);
     await client.query(
-      `UPDATE cart SET quantity=$1, updated_at=NOW() WHERE id=$2`,
+      `UPDATE cart SET quantity=$1 WHERE id=$2`,
       [newQty, existing.rows[0].id]
     );
     return true;
