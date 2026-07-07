@@ -338,7 +338,9 @@ export default function OrderDetailPage() {
             </div>
           )}
           <div className="flex justify-between">
-            <span className="text-sm font-semibold text-gray-700">Total Paid</span>
+            <span className="text-sm font-semibold text-gray-700">
+              {order.payment_status === 'paid' ? 'Total Paid' : order.payment_method === 'cod' ? 'Amount to Pay on Delivery' : 'Order Total'}
+            </span>
             <span className="text-lg font-bold text-gray-900">₹{Number(order.total_amount).toFixed(2)}</span>
           </div>
         </div>

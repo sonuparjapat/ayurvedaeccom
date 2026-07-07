@@ -283,13 +283,19 @@ const openModal = async (m: string, order: any) => {
   const getPaymentBadge = (status: string) => {
 
     const styles: any = {
+      paid:     'bg-emerald-100 text-emerald-800 border-emerald-200',
+      pending:  'bg-amber-100 text-amber-800 border-amber-200',
+      unpaid:   'bg-orange-100 text-orange-800 border-orange-200',
+      failed:   'bg-rose-100 text-rose-800 border-rose-200',
+      refunded: 'bg-purple-100 text-purple-800 border-purple-200',
+    }
 
-      paid: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-
-      pending: 'bg-amber-100 text-amber-800 border-amber-200',
-
-      failed: 'bg-rose-100 text-rose-800 border-rose-200'
-
+    const labels: any = {
+      paid:     'Paid',
+      pending:  'Pay on Delivery',
+      unpaid:   'Unpaid',
+      failed:   'Failed',
+      refunded: 'Refunded',
     }
 
     return (
@@ -298,11 +304,11 @@ const openModal = async (m: string, order: any) => {
         className={`
           px-3 py-1 rounded-full
           text-xs font-semibold border
-          ${styles[status] || styles.pending}
+          ${styles[status] || 'bg-gray-100 text-gray-600 border-gray-200'}
         `}
       >
 
-        {status?.toUpperCase()}
+        {labels[status] || status?.toUpperCase()}
 
       </span>
 

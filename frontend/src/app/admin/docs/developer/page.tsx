@@ -320,11 +320,11 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
           <Table
             headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
             rows={[
-              ['serviceable_pincodes', 'id (serial)', 'pincode, city, state, delivery_days, is_active', 'Used for pincode check + ETA calc'],
+              ['serviceable_pincodes', 'id (serial)', 'pincode (UNIQUE), city, state, delivery_days, is_active', 'Used for pincode serviceability check + ETA. GET /admin/pincodes supports ?search= for city/state/pincode filtering. Note: COUNT query uses separate $1 param — do not reuse the SELECT $3 placeholder in the COUNT.'],
               ['invoices', 'id (serial)', 'order_id, invoice_number, pdf_url, created_at', ''],
               ['order_status_logs', 'id (serial)', 'order_id, old_status, new_status, new_label, old_label, note, changed_by, created_at', 'Full timeline history per order'],
               ['admin_logs', 'id (serial)', 'admin_id, action, entity_type, entity_id, details (JSON), ip_address, created_at', 'Audit trail'],
-              ['settings', 'id (serial)', 'key, value', 'Key-value store for platform config'],
+              ['settings (app_settings)', 'id (serial)', 'key, value, type (number/string/boolean/json), description, is_active', 'Key-value store for platform config. Standard keys: free_delivery_limit, delivery_charge, platform_fee. Read via GET /admin/settings (public — used in auth context). Cart and checkout on both web and mobile read chargesMap from this — changes take effect immediately.'],
               ['company_settings', 'id (serial)', 'company_name, email, support_email, phone, website, gst_number, address_line1, city, state, country, pincode, logo_url, social_links (JSONB: facebook/instagram/twitter/youtube), privacy_policy, terms_conditions, shipping_policy, return_policy, is_active, extra_data (JSONB)', 'Single-row table. logo_url is uploaded to S3 via multer. social_links is a JSONB column. companydata[0] is loaded globally in the auth context and used by the web header, footer, and exposed via GET /company.'],
             ]}
           />

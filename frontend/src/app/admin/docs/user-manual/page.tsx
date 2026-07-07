@@ -1056,23 +1056,28 @@ export default function UserManualPage() {
         {/* ═══ ADMIN: SETTINGS ═══ */}
         <Section id="admin-settings" title="Admin: Platform Settings" icon={Settings} color="#6b7280">
           <p className="text-sm text-gray-600 leading-relaxed">
-            The Settings page (<strong>Admin → Settings</strong>) controls platform-wide configuration that affects every order. These settings directly impact what customers pay at checkout.
+            The Settings page (<strong>Admin → Settings</strong>) controls platform-wide configuration that affects every order. These settings directly impact what customers pay at checkout — in both the web app and the mobile app.
           </p>
+
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+            <p className="font-semibold text-sm text-emerald-900 mb-1">⚡ Quick Edit — Delivery &amp; Charges Card</p>
+            <p className="text-xs text-emerald-800 leading-relaxed">At the top of the Settings page is a <strong>Delivery &amp; Charges</strong> panel with three clearly labelled fields. Type the new value and click <strong>Save</strong> — no need to know any setting key names. Changes apply instantly to cart totals, checkout, and order processing across web and mobile.</p>
+          </div>
 
           <div className="bg-white border border-gray-100 rounded-xl p-4">
             <p className="font-semibold text-sm text-gray-800 mb-3">Settings — Complete Field Reference</p>
             <Table
               headers={['Setting', 'What it controls', 'How it works']}
               rows={[
-                ['Delivery Charge (₹)', 'Default shipping fee added to every order', 'This amount is added to the order total at checkout as a delivery/shipping charge. Customers see it as a separate line item in the order summary. Set to 0 if you want to offer free shipping on all orders.'],
-                ['Free Delivery Limit (₹)', 'Orders above this amount get free shipping automatically', 'If a customer\'s cart total exceeds this amount, the delivery charge is waived (set to ₹0). For example, if Free Delivery Limit is ₹499, an order of ₹500 gets free delivery while an order of ₹400 pays the delivery charge. This encourages customers to add more items to reach the free delivery threshold.'],
-                ['Platform Fee (₹)', 'Service/convenience charge added to each order', 'A small fee added to every order for platform maintenance. Shows as a separate line item at checkout. Set to 0 if you do not want to charge a platform fee. Common for marketplace-style platforms.'],
+                ['Free Delivery Above (₹)', 'Cart threshold for automatic free delivery', 'Orders at or above this amount get free delivery. The cart page shows an animated progress bar ("Add ₹X more for free delivery") to encourage customers to reach the threshold. Applies to web cart, web checkout, mobile cart, and mobile checkout.'],
+                ['Delivery Charge (₹)', 'Shipping fee for orders below the free delivery threshold', 'Added to orders whose cart total is below the Free Delivery Above limit. Set to 0 to make all deliveries free regardless of order value.'],
+                ['Platform Fee (₹)', 'Service/convenience charge on every order', 'A fixed fee added to every order. Shows as a separate line item at checkout. Set to 0 if you do not charge a platform fee.'],
               ]}
             />
           </div>
 
-          <InfoBox type="tip"><strong>Free Delivery strategy:</strong> Set the Free Delivery Limit slightly above your average order value. If customers typically spend ₹350, set the limit to ₹499. Many customers will add one more item to qualify for free delivery, increasing your average order value.</InfoBox>
-          <InfoBox type="warning">Changes to these settings take effect immediately for all new orders. Orders already placed are not affected — they keep the charges calculated at the time of checkout.</InfoBox>
+          <InfoBox type="tip"><strong>Free Delivery strategy:</strong> Set the threshold slightly above your average order value. If customers typically spend ₹350, set it to ₹499 — many customers add one more item to qualify, increasing average order value. The progress bar in the cart reinforces this.</InfoBox>
+          <InfoBox type="warning">Changes take effect immediately for all new orders. Orders already placed keep the charges calculated at the time of checkout.</InfoBox>
         </Section>
 
         {/* ═══ ADMIN: PINCODES ═══ */}

@@ -506,7 +506,7 @@ export default function OrderDetailScreen() {
               </LinearGradient>
               <View style={ss.payBadge}>
                 <Text style={ss.payBadgeText}>
-                  {order.payment_method === 'cod' ? '💵 COD' : '💳 Online'} · {order.payment_status === 'paid' ? '✓ Paid' : 'Unpaid'}
+                  {order.payment_method === 'cod' ? '💵 COD' : '💳 Online'} · {order.payment_status === 'paid' ? '✓ Paid' : order.payment_status === 'pending' && order.payment_method === 'cod' ? '⏳ Pay on Delivery' : order.payment_status === 'refunded' ? '↩ Refunded' : 'Unpaid'}
                 </Text>
               </View>
             </View>

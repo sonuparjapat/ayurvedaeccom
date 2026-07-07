@@ -1412,6 +1412,14 @@ if (currentStatus == 3&&(!order.courier_name || !order.tracking_number)) {
       [status, id]
     );
 
+    /* ================= COD PAYMENT COLLECTED ON DELIVERY (status→5) ================= */
+    if (status === 5 && order.payment_method === 'cod') {
+      await client.query(
+        `UPDATE orders SET payment_status='paid' WHERE id=$1`,
+        [id]
+      );
+    }
+
     /* ================= LOYALTY POINTS ON DELIVERY (status→5) ================= */
     if (status === 5) {
       try {

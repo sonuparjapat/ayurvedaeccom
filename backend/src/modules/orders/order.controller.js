@@ -53,7 +53,7 @@ async function creditReferralReward(client, userId, orderId) {
   try {
     // Only fire on the user's very first order
     const countRes = await client.query(
-      `SELECT COUNT(*) FROM orders WHERE user_id = $1 AND payment_status IN ('paid','unpaid')`,
+      `SELECT COUNT(*) FROM orders WHERE user_id = $1 AND payment_status IN ('paid','unpaid','pending')`,
       [userId]
     );
     if (Number(countRes.rows[0].count) !== 1) return;
@@ -430,7 +430,7 @@ if (addr.pincode) {
 
   STATUS_PENDING,
 
-  paymentMethod === "cod" ? "paid" : "unpaid",
+  paymentMethod === "cod" ? "pending" : "unpaid",
 
   appliedCouponCode,
   discountAmount,
@@ -1008,7 +1008,10 @@ exports.cancelOrder = async (req, res) => {
       [id]
     );
 
-    if (order.payment_status === "paid") {
+    // Restore inventory if:
+    // - Online order that was actually paid (stock was deducted at payment time)
+    // - COD order (stock is always deducted at creation, regardless of payment_status)
+    if (order.payment_status === "paid" || order.payment_method === "cod") {
       for (const item of items.rows) {
         if (item.variant_id) {
           await client.query(

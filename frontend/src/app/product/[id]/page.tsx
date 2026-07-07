@@ -1221,7 +1221,7 @@ const addToCart = async () => {
       )}
 
       {/* ================= RATING BREAKDOWN + REVIEWS ================= */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 16px 0' }}>
+      {/* <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 16px 0' }}>
         {ratingBreakdown && (
           <div style={{ background: 'white', borderRadius: 16, padding: '24px', marginBottom: 24, border: '1px solid rgba(26,58,42,0.1)', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ textAlign: 'center', minWidth: 100 }}>
@@ -1251,7 +1251,7 @@ const addToCart = async () => {
             </div>
           </div>
         )}
-      </div>
+      </div> */}
 
 <ReviewSection productId={product.id} fetchProduct={fetchProduct} product={product} loginuserdata={loginuserdata}/>
       {/* ================= REVIEWS ================= */}
