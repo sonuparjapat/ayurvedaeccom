@@ -312,7 +312,7 @@ export default function AuthScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
       <StatusBar barStyle="light-content" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" bounces={false}>
 
           {/* Header */}
@@ -327,11 +327,13 @@ export default function AuthScreen() {
 
             {/* Brand */}
             <Animated.View entering={FadeIn.delay(80)} style={ss.brandRow}>
-              <ExpoImage
-                source={LOGO_LOCAL}
-                style={{ width: 160, height: 46, backgroundColor: 'transparent' }}
-                contentFit="contain"
-              />
+              <View style={{ width: 180, height: 52, overflow: 'hidden' }}>
+                <ExpoImage
+                  source={LOGO_LOCAL}
+                  style={{ width: 210, height: 52, marginLeft: -15 }}
+                  contentFit="cover"
+                />
+              </View>
             </Animated.View>
 
             {/* Heading */}

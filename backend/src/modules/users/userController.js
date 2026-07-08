@@ -200,7 +200,7 @@ exports.addAddress = async (req, res) => {
         `,
         [
           userId,
-          type || "home",
+          (type || "home").toLowerCase(),
           street,
           city,
           state,
@@ -323,7 +323,7 @@ exports.updateAddress = async (req, res) => {
         RETURNING *
         `,
         [
-          type,
+          (type || 'home').toLowerCase(),
           street,
           city,
           state,

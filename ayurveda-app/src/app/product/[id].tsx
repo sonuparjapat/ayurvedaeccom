@@ -444,6 +444,7 @@ export default function ProductDetailScreen() {
   )
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
       <StatusBar barStyle="light-content" />
 
@@ -1012,6 +1013,7 @@ export default function ProductDetailScreen() {
         </TouchableOpacity>
       </Animated.View>
     </View>
+    </KeyboardAvoidingView>
   )
 }
 

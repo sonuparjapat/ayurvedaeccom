@@ -116,28 +116,33 @@ function TopBar({ cartCount, user, defaultAddr }: { cartCount: number; user: any
   return (
     <LinearGradient colors={[Colors.forest, '#0f2018']} style={ss.topbar}>
       {/* Logo + Deliver to */}
-      <TouchableOpacity
-        style={{ flex: 1 }}
-        activeOpacity={user ? 0.7 : 1}
-        onPress={() => user && router.push('/account')}
-      >
-        <ExpoImage
-          source={LOGO_LOCAL}
-          style={{ width: 120, height: 34, backgroundColor: 'transparent' }}
-          contentFit="contain"
-        />
-        {user ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
-            <Text style={ss.deliverPin}>📍</Text>
-            <Text style={ss.deliverVal} numberOfLines={1}>{defaultAddr || 'Select address ›'}</Text>
-            <Text style={ss.deliverChev}>›</Text>
+      <View style={{ flex: 1 }}>
+        <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/account')}>
+          <View style={{ width: 180, height: 52, overflow: 'hidden' }}>
+            <ExpoImage
+              source={LOGO_LOCAL}
+              style={{ width: 210, height: 52, marginLeft: -15 }}
+              contentFit="cover"
+            />
           </View>
+        </TouchableOpacity>
+        {user ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push({ pathname: '/account', params: { tab: 'Addresses' } })}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
+              <Text style={ss.deliverPin}>📍</Text>
+              <Text style={ss.deliverVal} numberOfLines={1}>{defaultAddr || 'Select address ›'}</Text>
+              <Text style={ss.deliverChev}>›</Text>
+            </View>
+          </TouchableOpacity>
         ) : (
           <TouchableOpacity onPress={() => setAuthOpen(true)} activeOpacity={0.8}>
             <Text style={[ss.deliverVal, { fontSize: 11, color: 'rgba(255,255,255,0.5)' }]}>Sign in for faster checkout ›</Text>
           </TouchableOpacity>
         )}
-      </TouchableOpacity>
+      </View>
       <Animated.View style={cartStyle}>
         <TouchableOpacity onPress={() => router.push('/cart')} style={ss.topbarIcon} activeOpacity={0.8}>
           <Text style={{ fontSize: 20 }}>🛍️</Text>
@@ -910,11 +915,13 @@ export default function HomeScreen() {
       <Animated.View style={[ss.floatHeader, { paddingTop: insets.top }, headerStyle]} pointerEvents="none">
         <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={{ paddingHorizontal: 20, paddingVertical: 10 }}>
-          <ExpoImage
-            source={LOGO_LOCAL}
-            style={{ width: 110, height: 30, backgroundColor: 'transparent' }}
-            contentFit="contain"
-          />
+          <View style={{ width: 140, height: 38, overflow: 'hidden' }}>
+            <ExpoImage
+              source={LOGO_LOCAL}
+              style={{ width: 170, height: 38, marginLeft: -15 }}
+              contentFit="cover"
+            />
+          </View>
         </View>
       </Animated.View>
 
@@ -1048,7 +1055,7 @@ const ss = StyleSheet.create({
   tickerDot: { color: Colors.gold, fontSize: 8 },
   tickerText: { color: 'rgba(167,243,208,0.85)', fontSize: 9.5, fontFamily: Fonts.bold, letterSpacing: 1.2, textTransform: 'uppercase' },
 
-  topbar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 12 },
+  topbar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 12 },
   deliverLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 9, fontFamily: Fonts.medium, letterSpacing: 0.8, textTransform: 'uppercase' },
   deliverPin: { fontSize: 12 },
   deliverVal: { color: '#fff', fontSize: 13, fontFamily: Fonts.bold },

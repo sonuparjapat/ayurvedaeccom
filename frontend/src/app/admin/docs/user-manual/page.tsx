@@ -370,15 +370,15 @@ export default function UserManualPage() {
 
         {/* ═══ 7. REVIEWS ═══ */}
         <Section id="reviews" title="Reviews & Ratings" icon={Star} color="#d97706">
-          <p className="text-sm text-gray-600 leading-relaxed">Only customers who have actually purchased and received a product can write a review. This ensures all reviews are genuine.</p>
+          <p className="text-sm text-gray-600 leading-relaxed">Any <strong>logged-in</strong> customer can write a review directly from the product page. Guests see a "Login to write a review" prompt. Reviews submitted via the order page are marked <strong>Verified Purchase</strong>.</p>
           <div className="space-y-3">
             <div className="bg-white border border-gray-100 rounded-xl p-4">
               <p className="font-semibold text-sm text-gray-800 mb-2">How to write a review:</p>
               <div className="space-y-2">
-                <Step num={1} title="Go to My Account → Orders">Find the delivered order.</Step>
-                <Step num={2} title="Click 'Write Review'">This opens the review form for that specific product and order. On the <strong>mobile app</strong>, a "Write a Review ⭐" card appears automatically on the Order Detail screen once your order is delivered — tap it to go directly to the review form.</Step>
-                <Step num={3} title="Add your rating (1–5 stars) and comment">You can also upload up to 5 product photos.</Step>
-                <Step num={4} title="Submit">Your review may be pending moderation before it appears publicly.</Step>
+                <Step num={1} title="Login and visit any product page">Scroll to the Customer Reviews section — a "Write a Review" card will be visible.</Step>
+                <Step num={2} title="Select a star rating and write your comment">Pick 1–5 stars and describe your experience. You can edit and re-submit — only one review per product per account is saved.</Step>
+                <Step num={3} title="Submit">Click Submit Review. Your review may be pending moderation before it appears publicly.</Step>
+                <Step num={4} title="Mobile app">On the mobile app, the same "Write a Review" card is shown on the product detail screen when you are logged in.</Step>
               </div>
             </div>
             <Table
@@ -1142,6 +1142,7 @@ export default function UserManualPage() {
           <InfoBox type="tip">Your <strong>referral code</strong> is visible in the Account screen. Tap <strong>Copy</strong> to copy it to clipboard, or tap <strong>Share</strong> to send it via WhatsApp, email, or any app — friends who use your code get a discount and you earn wallet credits.</InfoBox>
           <InfoBox type="tip">The mobile app gives <strong>haptic feedback</strong> (vibration) on key actions — adding to cart, toggling wishlist, removing items — so you always feel confirmation without looking at the screen.</InfoBox>
           <InfoBox type="tip">The app uses the <strong>real Oroganix logo</strong> (from your S3 bucket) in the top bar, auth screen, floating header, and order details — consistent with the website branding.</InfoBox>
+          <InfoBox type="tip">After logging in, the <strong>top bar shows your default delivery address</strong> (city + pincode) below the logo. Tap it to jump straight to the Addresses section in your Account. If no address is saved, it shows "Select address ›".</InfoBox>
           <InfoBox type="tip">During checkout, if you have <strong>wallet credits</strong> or <strong>loyalty points</strong>, the app shows Apply/Redeem cards. Tap <strong>Apply</strong> to use wallet credits or <strong>Redeem</strong> to convert loyalty points (1 point = ₹0.10). Both discounts appear in the price breakdown. Tap <strong>Remove</strong> to undo.</InfoBox>
           <InfoBox type="info">If the Featured Products section shows a <strong>"Server is starting up"</strong> message, the backend server is on a free hosting plan and takes a moment to wake up. The app <strong>automatically retries up to 3 times</strong> — you will see "Server warming up (1/3)" below the skeleton cards. You can also tap <strong>Retry</strong> to reload manually at any time.</InfoBox>
         </Section>

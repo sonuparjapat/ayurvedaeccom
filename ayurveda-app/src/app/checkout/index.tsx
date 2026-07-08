@@ -352,7 +352,7 @@ export default function CheckoutScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
       <StatusBar barStyle="light-content" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
         {/* Header */}
         <LinearGradient colors={['#0a1f14', Colors.forest]} style={[ss.header, { paddingTop: insets.top + 8 }]}>

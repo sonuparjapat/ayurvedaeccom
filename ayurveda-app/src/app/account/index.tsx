@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import {
-  Alert, Clipboard, Modal, Pressable, ScrollView, Share, StatusBar,
+  Alert, Clipboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, StatusBar,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { toast } from '../../components/ui/Toast'
@@ -591,168 +591,184 @@ export default function AccountScreen() {
 
       {/* ── EDIT PROFILE MODAL ── */}
       <Modal visible={showEditProfile} animationType="slide" transparent statusBarTranslucent>
-        <Pressable style={ms.bg} onPress={() => setShowEditProfile(false)} />
-        <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={ms.handle} />
-          <Text style={ms.title}>Edit Profile</Text>
-          <ModalField label="Full Name" placeholder="Your full name" value={editForm.name} onChangeText={(t: string) => setEditForm(p => ({ ...p, name: t }))} />
-          <ModalField label="Email Address" placeholder="you@example.com" value={editForm.email} keyboardType="email-address" onChangeText={(t: string) => setEditForm(p => ({ ...p, email: t }))} />
-          <ModalField label="Phone Number" placeholder="+91 98765 43210" value={editForm.phone} keyboardType="phone-pad" onChangeText={(t: string) => setEditForm(p => ({ ...p, phone: t }))} />
-          <TouchableOpacity onPress={saveProfile} disabled={savingProfile} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}>
-            <LinearGradient colors={[Colors.forest, Colors.moss]} style={ms.confirmBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={ms.confirmText}>{savingProfile ? 'Saving...' : '✓  Save Changes'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={ms.bg} onPress={() => setShowEditProfile(false)} />
+          <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
+            <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
+              <View style={ms.handle} />
+              <Text style={ms.title}>Edit Profile</Text>
+              <ModalField label="Full Name" placeholder="Your full name" value={editForm.name} onChangeText={(t: string) => setEditForm(p => ({ ...p, name: t }))} />
+              <ModalField label="Email Address" placeholder="you@example.com" value={editForm.email} keyboardType="email-address" onChangeText={(t: string) => setEditForm(p => ({ ...p, email: t }))} />
+              <ModalField label="Phone Number" placeholder="+91 98765 43210" value={editForm.phone} keyboardType="phone-pad" onChangeText={(t: string) => setEditForm(p => ({ ...p, phone: t }))} />
+              <TouchableOpacity onPress={saveProfile} disabled={savingProfile} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}>
+                <LinearGradient colors={[Colors.forest, Colors.moss]} style={ms.confirmBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  <Text style={ms.confirmText}>{savingProfile ? 'Saving...' : '✓  Save Changes'}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── CHANGE PASSWORD MODAL ── */}
       <Modal visible={showChangePwd} animationType="slide" transparent statusBarTranslucent>
-        <Pressable style={ms.bg} onPress={() => setShowChangePwd(false)} />
-        <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={ms.handle} />
-          <Text style={ms.title}>Change Password</Text>
-          <View style={{ marginBottom: 12 }}>
-            <Text style={mf.label}>Current Password</Text>
-            <View style={ms.pwdRow}>
-              <TextInput
-                style={[mf.input, { flex: 1, marginBottom: 0 }]}
-                placeholder="Current password"
-                placeholderTextColor={Colors.textDim}
-                secureTextEntry={!showOld}
-                value={pwdForm.oldPassword}
-                onChangeText={t => setPwdForm(p => ({ ...p, oldPassword: t }))}
-              />
-              <TouchableOpacity onPress={() => setShowOld(s => !s)} style={ms.eyeBtn}>
-                <Text style={{ fontSize: 16 }}>{showOld ? '🙈' : '👁️'}</Text>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={ms.bg} onPress={() => setShowChangePwd(false)} />
+          <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
+            <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
+              <View style={ms.handle} />
+              <Text style={ms.title}>Change Password</Text>
+              <View style={{ marginBottom: 12 }}>
+                <Text style={mf.label}>Current Password</Text>
+                <View style={ms.pwdRow}>
+                  <TextInput
+                    style={[mf.input, { flex: 1, marginBottom: 0 }]}
+                    placeholder="Current password"
+                    placeholderTextColor={Colors.textDim}
+                    secureTextEntry={!showOld}
+                    value={pwdForm.oldPassword}
+                    onChangeText={t => setPwdForm(p => ({ ...p, oldPassword: t }))}
+                  />
+                  <TouchableOpacity onPress={() => setShowOld(s => !s)} style={ms.eyeBtn}>
+                    <Text style={{ fontSize: 16 }}>{showOld ? '🙈' : '👁️'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={{ marginBottom: 12 }}>
+                <Text style={mf.label}>New Password</Text>
+                <View style={ms.pwdRow}>
+                  <TextInput
+                    style={[mf.input, { flex: 1, marginBottom: 0 }]}
+                    placeholder="New password (min 6 chars)"
+                    placeholderTextColor={Colors.textDim}
+                    secureTextEntry={!showNew}
+                    value={pwdForm.newPassword}
+                    onChangeText={t => setPwdForm(p => ({ ...p, newPassword: t }))}
+                  />
+                  <TouchableOpacity onPress={() => setShowNew(s => !s)} style={ms.eyeBtn}>
+                    <Text style={{ fontSize: 16 }}>{showNew ? '🙈' : '👁️'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <ModalField label="Confirm New Password" placeholder="Repeat new password" secureTextEntry value={pwdForm.confirmPassword} onChangeText={(t: string) => setPwdForm(p => ({ ...p, confirmPassword: t }))} />
+              <TouchableOpacity onPress={changePassword} disabled={savingPwd} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}>
+                <LinearGradient colors={[Colors.forest, Colors.moss]} style={ms.confirmBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  <Text style={ms.confirmText}>{savingPwd ? 'Updating...' : '🔒  Update Password'}</Text>
+                </LinearGradient>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </View>
-          <View style={{ marginBottom: 12 }}>
-            <Text style={mf.label}>New Password</Text>
-            <View style={ms.pwdRow}>
-              <TextInput
-                style={[mf.input, { flex: 1, marginBottom: 0 }]}
-                placeholder="New password (min 6 chars)"
-                placeholderTextColor={Colors.textDim}
-                secureTextEntry={!showNew}
-                value={pwdForm.newPassword}
-                onChangeText={t => setPwdForm(p => ({ ...p, newPassword: t }))}
-              />
-              <TouchableOpacity onPress={() => setShowNew(s => !s)} style={ms.eyeBtn}>
-                <Text style={{ fontSize: 16 }}>{showNew ? '🙈' : '👁️'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          <ModalField label="Confirm New Password" placeholder="Repeat new password" secureTextEntry value={pwdForm.confirmPassword} onChangeText={(t: string) => setPwdForm(p => ({ ...p, confirmPassword: t }))} />
-          <TouchableOpacity onPress={changePassword} disabled={savingPwd} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}>
-            <LinearGradient colors={[Colors.forest, Colors.moss]} style={ms.confirmBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={ms.confirmText}>{savingPwd ? 'Updating...' : '🔒  Update Password'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── ADD ADDRESS MODAL ── */}
       <Modal visible={showAddAddr} animationType="slide" transparent statusBarTranslucent>
-        <Pressable style={ms.bg} onPress={() => setShowAddAddr(false)} />
-        <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={ms.handle} />
-          <Text style={ms.title}>Add Delivery Address</Text>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={ms.bg} onPress={() => setShowAddAddr(false)} />
+          <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
+            <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
+              <View style={ms.handle} />
+              <Text style={ms.title}>Add Delivery Address</Text>
 
-          <Text style={mf.label}>Address Type</Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-            {['Home', 'Work', 'Other'].map(t => (
-              <TouchableOpacity
-                key={t}
-                onPress={() => setAddrForm(p => ({ ...p, type: t }))}
-                style={[ms.typePill, addrForm.type === t && ms.typePillActive]}
-              >
-                <Text style={[ms.typePillText, addrForm.type === t && ms.typePillTextActive]}>
-                  {t === 'Home' ? '🏠' : t === 'Work' ? '🏢' : '📌'} {t}
-                </Text>
+              <Text style={mf.label}>Address Type</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+                {['Home', 'Work', 'Other'].map(t => (
+                  <TouchableOpacity
+                    key={t}
+                    onPress={() => setAddrForm(p => ({ ...p, type: t }))}
+                    style={[ms.typePill, addrForm.type === t && ms.typePillActive]}
+                  >
+                    <Text style={[ms.typePillText, addrForm.type === t && ms.typePillTextActive]}>
+                      {t === 'Home' ? '🏠' : t === 'Work' ? '🏢' : '📌'} {t}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {[
+                { label: 'Street / House No.', key: 'street', placeholder: '12A, MG Road', multi: true },
+                { label: 'City', key: 'city', placeholder: 'Mumbai' },
+                { label: 'State', key: 'state', placeholder: 'Maharashtra' },
+                { label: 'PIN Code', key: 'pincode', placeholder: '400001', keyboard: 'numeric' },
+              ].map(f => (
+                <View key={f.key} style={{ marginBottom: 12 }}>
+                  <Text style={mf.label}>{f.label}</Text>
+                  <TextInput
+                    style={[mf.input, (f as any).multi && { height: 64, textAlignVertical: 'top' }]}
+                    placeholder={f.placeholder}
+                    placeholderTextColor={Colors.textDim}
+                    value={(addrForm as any)[f.key]}
+                    onChangeText={t => setAddrForm(prev => ({ ...prev, [f.key]: t }))}
+                    keyboardType={(f as any).keyboard || 'default'}
+                    multiline={(f as any).multi}
+                    autoCapitalize="none"
+                  />
+                </View>
+              ))}
+
+              <TouchableOpacity onPress={addAddress} disabled={savingAddr} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 4 }}>
+                <LinearGradient colors={[Colors.forest, Colors.moss]} style={ms.confirmBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  <Text style={ms.confirmText}>{savingAddr ? 'Saving...' : '✓  Save Address'}</Text>
+                </LinearGradient>
               </TouchableOpacity>
-            ))}
+            </ScrollView>
           </View>
-
-          {[
-            { label: 'Street / House No.', key: 'street', placeholder: '12A, MG Road', multi: true },
-            { label: 'City', key: 'city', placeholder: 'Mumbai' },
-            { label: 'State', key: 'state', placeholder: 'Maharashtra' },
-            { label: 'PIN Code', key: 'pincode', placeholder: '400001', keyboard: 'numeric' },
-          ].map(f => (
-            <View key={f.key} style={{ marginBottom: 12 }}>
-              <Text style={mf.label}>{f.label}</Text>
-              <TextInput
-                style={[mf.input, (f as any).multi && { height: 64, textAlignVertical: 'top' }]}
-                placeholder={f.placeholder}
-                placeholderTextColor={Colors.textDim}
-                value={(addrForm as any)[f.key]}
-                onChangeText={t => setAddrForm(prev => ({ ...prev, [f.key]: t }))}
-                keyboardType={(f as any).keyboard || 'default'}
-                multiline={(f as any).multi}
-                autoCapitalize="none"
-              />
-            </View>
-          ))}
-
-          <TouchableOpacity onPress={addAddress} disabled={savingAddr} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 4 }}>
-            <LinearGradient colors={[Colors.forest, Colors.moss]} style={ms.confirmBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={ms.confirmText}>{savingAddr ? 'Saving...' : '✓  Save Address'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── EDIT ADDRESS MODAL ── */}
       <Modal visible={!!editingAddr} animationType="slide" transparent statusBarTranslucent>
-        <Pressable style={ms.bg} onPress={() => setEditingAddr(null)} />
-        <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={ms.handle} />
-          <Text style={ms.title}>Edit Address</Text>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={ms.bg} onPress={() => setEditingAddr(null)} />
+          <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
+            <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
+              <View style={ms.handle} />
+              <Text style={ms.title}>Edit Address</Text>
 
-          <Text style={mf.label}>Address Type</Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-            {['Home', 'Work', 'Other'].map(t => (
-              <TouchableOpacity
-                key={t}
-                onPress={() => setEditAddrForm(p => ({ ...p, type: t }))}
-                style={[ms.typePill, editAddrForm.type === t && ms.typePillActive]}
-              >
-                <Text style={[ms.typePillText, editAddrForm.type === t && ms.typePillTextActive]}>
-                  {t === 'Home' ? '🏠' : t === 'Work' ? '🏢' : '📌'} {t}
-                </Text>
+              <Text style={mf.label}>Address Type</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+                {['Home', 'Work', 'Other'].map(t => (
+                  <TouchableOpacity
+                    key={t}
+                    onPress={() => setEditAddrForm(p => ({ ...p, type: t }))}
+                    style={[ms.typePill, editAddrForm.type === t && ms.typePillActive]}
+                  >
+                    <Text style={[ms.typePillText, editAddrForm.type === t && ms.typePillTextActive]}>
+                      {t === 'Home' ? '🏠' : t === 'Work' ? '🏢' : '📌'} {t}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {[
+                { label: 'Street / House No.', key: 'street', placeholder: '12A, MG Road', multi: true },
+                { label: 'City', key: 'city', placeholder: 'Mumbai' },
+                { label: 'State', key: 'state', placeholder: 'Maharashtra' },
+                { label: 'PIN Code', key: 'pincode', placeholder: '400001', keyboard: 'numeric' },
+              ].map(f => (
+                <View key={f.key} style={{ marginBottom: 12 }}>
+                  <Text style={mf.label}>{f.label}</Text>
+                  <TextInput
+                    style={[mf.input, (f as any).multi && { height: 64, textAlignVertical: 'top' }]}
+                    placeholder={f.placeholder}
+                    placeholderTextColor={Colors.textDim}
+                    value={(editAddrForm as any)[f.key]}
+                    onChangeText={t => setEditAddrForm(prev => ({ ...prev, [f.key]: t }))}
+                    keyboardType={(f as any).keyboard || 'default'}
+                    multiline={(f as any).multi}
+                    autoCapitalize="none"
+                  />
+                </View>
+              ))}
+
+              <TouchableOpacity onPress={saveEditAddr} disabled={savingEditAddr} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 4 }}>
+                <LinearGradient colors={[Colors.forest, Colors.moss]} style={ms.confirmBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  <Text style={ms.confirmText}>{savingEditAddr ? 'Saving...' : '✓  Update Address'}</Text>
+                </LinearGradient>
               </TouchableOpacity>
-            ))}
+            </ScrollView>
           </View>
-
-          {[
-            { label: 'Street / House No.', key: 'street', placeholder: '12A, MG Road', multi: true },
-            { label: 'City', key: 'city', placeholder: 'Mumbai' },
-            { label: 'State', key: 'state', placeholder: 'Maharashtra' },
-            { label: 'PIN Code', key: 'pincode', placeholder: '400001', keyboard: 'numeric' },
-          ].map(f => (
-            <View key={f.key} style={{ marginBottom: 12 }}>
-              <Text style={mf.label}>{f.label}</Text>
-              <TextInput
-                style={[mf.input, (f as any).multi && { height: 64, textAlignVertical: 'top' }]}
-                placeholder={f.placeholder}
-                placeholderTextColor={Colors.textDim}
-                value={(editAddrForm as any)[f.key]}
-                onChangeText={t => setEditAddrForm(prev => ({ ...prev, [f.key]: t }))}
-                keyboardType={(f as any).keyboard || 'default'}
-                multiline={(f as any).multi}
-                autoCapitalize="none"
-              />
-            </View>
-          ))}
-
-          <TouchableOpacity onPress={saveEditAddr} disabled={savingEditAddr} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 4 }}>
-            <LinearGradient colors={[Colors.forest, Colors.moss]} style={ms.confirmBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={ms.confirmText}>{savingEditAddr ? 'Saving...' : '✓  Update Address'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
       <BottomNav active="/account" />
     </View>

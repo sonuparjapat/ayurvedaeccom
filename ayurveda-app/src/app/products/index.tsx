@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
-  Dimensions, FlatList, Modal, Platform, RefreshControl,
+  Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, RefreshControl,
   ScrollView, StatusBar, StyleSheet, Text, TextInput,
   TouchableOpacity, View, Pressable,
 } from 'react-native'
@@ -411,63 +411,65 @@ export default function ProductsScreen() {
 
       {/* Filter Sheet */}
       <Modal visible={showFilter} animationType="slide" transparent statusBarTranslucent>
-        <Pressable style={ss.modalBackdrop} onPress={() => setShowFilter(false)} />
-        <Animated.View entering={FadeInUp.duration(300)} style={[ss.filterSheet, { paddingBottom: insets.bottom + 20 }]}>
-          <View style={ss.filterHandle} />
-          <View style={ss.filterSheetHeader}>
-            <Text style={ss.filterTitle}>Filters & Sort</Text>
-            {hasFilters && (
-              <TouchableOpacity onPress={() => { setMinPrice(''); setMaxPrice(''); setInStockOnly(false); setSelectedSort('created_at') }}>
-                <Text style={ss.clearAllText}>Clear All</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
-            <Text style={ss.filterLabel}>Price Range</Text>
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-              <TextInput
-                style={ss.priceInput} placeholder="Min ₹"
-                placeholderTextColor={Colors.textDim}
-                value={minPrice} onChangeText={setMinPrice} keyboardType="numeric"
-              />
-              <View style={ss.priceSep}><Text style={{ color: Colors.textDim, fontFamily: Fonts.bold }}>—</Text></View>
-              <TextInput
-                style={ss.priceInput} placeholder="Max ₹"
-                placeholderTextColor={Colors.textDim}
-                value={maxPrice} onChangeText={setMaxPrice} keyboardType="numeric"
-              />
-            </View>
-
-            <Text style={ss.filterLabel}>Sort By</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-              {SORTS.map(s => (
-                <TouchableOpacity key={s.value} onPress={() => setSelectedSort(s.value)}
-                  style={[ss.filterChip, selectedSort === s.value && ss.filterChipActive]}>
-                  <Text style={{ fontSize: 12 }}>{s.icon}</Text>
-                  <Text style={[ss.filterChipText, selectedSort === s.value && ss.filterChipTextActive]}>{s.label}</Text>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={ss.modalBackdrop} onPress={() => setShowFilter(false)} />
+          <Animated.View entering={FadeInUp.duration(300)} style={[ss.filterSheet, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={ss.filterHandle} />
+            <View style={ss.filterSheetHeader}>
+              <Text style={ss.filterTitle}>Filters & Sort</Text>
+              {hasFilters && (
+                <TouchableOpacity onPress={() => { setMinPrice(''); setMaxPrice(''); setInStockOnly(false); setSelectedSort('created_at') }}>
+                  <Text style={ss.clearAllText}>Clear All</Text>
                 </TouchableOpacity>
-              ))}
+              )}
             </View>
 
-            <TouchableOpacity onPress={() => setInStockOnly(s => !s)} style={ss.toggleRow}>
-              <View>
-                <Text style={ss.toggleLabel}>In Stock Only</Text>
-                <Text style={ss.toggleSub}>Show only available products</Text>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 10 }}>
+              <Text style={ss.filterLabel}>Price Range</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+                <TextInput
+                  style={ss.priceInput} placeholder="Min ₹"
+                  placeholderTextColor={Colors.textDim}
+                  value={minPrice} onChangeText={setMinPrice} keyboardType="numeric"
+                />
+                <View style={ss.priceSep}><Text style={{ color: Colors.textDim, fontFamily: Fonts.bold }}>—</Text></View>
+                <TextInput
+                  style={ss.priceInput} placeholder="Max ₹"
+                  placeholderTextColor={Colors.textDim}
+                  value={maxPrice} onChangeText={setMaxPrice} keyboardType="numeric"
+                />
               </View>
-              <View style={[ss.toggle, inStockOnly && ss.toggleActive]}>
-                <View style={[ss.toggleThumb, inStockOnly && ss.toggleThumbActive]} />
-              </View>
-            </TouchableOpacity>
-          </ScrollView>
 
-          <TouchableOpacity onPress={() => { setShowFilter(false); setPage(1); fetchProducts(1) }}
-            style={{ borderRadius: 14, overflow: 'hidden', marginTop: 10 }}>
-            <LinearGradient colors={[Colors.forest, Colors.moss]} style={ss.applyBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={ss.applyBtnText}>Apply Filters</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
+              <Text style={ss.filterLabel}>Sort By</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                {SORTS.map(s => (
+                  <TouchableOpacity key={s.value} onPress={() => setSelectedSort(s.value)}
+                    style={[ss.filterChip, selectedSort === s.value && ss.filterChipActive]}>
+                    <Text style={{ fontSize: 12 }}>{s.icon}</Text>
+                    <Text style={[ss.filterChipText, selectedSort === s.value && ss.filterChipTextActive]}>{s.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity onPress={() => setInStockOnly(s => !s)} style={ss.toggleRow}>
+                <View>
+                  <Text style={ss.toggleLabel}>In Stock Only</Text>
+                  <Text style={ss.toggleSub}>Show only available products</Text>
+                </View>
+                <View style={[ss.toggle, inStockOnly && ss.toggleActive]}>
+                  <View style={[ss.toggleThumb, inStockOnly && ss.toggleThumbActive]} />
+                </View>
+              </TouchableOpacity>
+            </ScrollView>
+
+            <TouchableOpacity onPress={() => { setShowFilter(false); setPage(1); fetchProducts(1) }}
+              style={{ borderRadius: 14, overflow: 'hidden', marginTop: 10 }}>
+              <LinearGradient colors={[Colors.forest, Colors.moss]} style={ss.applyBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <Text style={ss.applyBtnText}>Apply Filters</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        </KeyboardAvoidingView>
       </Modal>
       <BottomNav active="/products" />
     </View>

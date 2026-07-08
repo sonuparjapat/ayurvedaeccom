@@ -280,8 +280,8 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
               ['related_products', 'id (serial)', 'product_id (FK), related_id (FK), type (related/cross_sell/upsell), sort_order', 'Explicit product relations for "You may also like"'],
               ['orders', 'id (serial)', 'user_id, status (0-9), total_amount, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, address_id, coupon_id, discount_amount, wallet_used, loyalty_points_used, cod_otp, shipped_at, courier_name, tracking_number', 'status enum: see Order State Machine'],
               ['order_items', 'id (serial)', 'order_id, product_id, variant_id, quantity, unit_price, total_price, gst_amount', 'Snapshot prices at order time'],
-              ['user_addresses', 'id (serial)', 'user_id, name, phone, address_line1/2, city, state, pincode, is_default', ''],
-              ['reviews', 'id (serial)', 'user_id, product_id, order_id, rating, comment, status (pending/approved/rejected)', 'status column added for moderation'],
+              ['user_addresses', 'id (serial)', 'user_id, type (home/work/other), street, city, state, pincode, email, is_default', 'type CHECK IN (\'home\',\'work\',\'other\') lowercase only — backend lowercases on insert/update so Title Case from frontend never violates constraint'],
+              ['reviews', 'id (serial)', 'user_id, product_id, order_id (nullable), rating, comment, status (pending/approved/rejected)', 'order_id nullable — quick review from product page has no order_id; UNIQUE(user_id, product_id) enforces one review per user. Verified Purchase badge shown when order_id is set (via /reviews/order/:orderId/product/:productId endpoint).'],
               ['review_images', 'id (serial)', 'review_id (FK), url', 'Up to 5 images per review'],
               ['wishlist', 'id (serial)', 'user_id, product_id', 'UNIQUE(user_id, product_id)'],
               ['cart_items', 'id (serial)', 'user_id, product_id, variant_id, quantity', ''],
@@ -418,7 +418,8 @@ Token location: Authorization: Bearer <token>  (HTTP header)
                 ['DELETE', '/:productId', 'auth', 'Remove specific product from wishlist.'],
                 ['POST', '/cart', 'auth', 'Add/update cart item. Body: { product_id, variant_id, quantity }'],
                 ['GET', '/cart', 'auth', 'Get cart items.'],
-                ['POST', '/reviews/order/:orderId/product/:productId', 'auth', 'Add/update review. Verifies purchase + delivered status.'],
+                ['POST', '/reviews/order/:orderId/product/:productId', 'auth', 'Add/update review with Verified Purchase badge. Verifies purchase + delivered status.'],
+                ['POST', '/reviews/product', 'auth', 'Quick review from product page (no order_id). ON CONFLICT(user_id, product_id) upserts. No Verified Purchase badge.'],
                 ['GET', '/reviews/product/:productId', 'optionalAuth', 'Get reviews for a product. Approved only for public.'],
                 ['DELETE', '/review/:id', 'auth', 'Delete own review.'],
               ]
@@ -429,7 +430,7 @@ Token location: Authorization: Bearer <token>  (HTTP header)
                 ['POST', '/', 'auth', 'Create new order. Body: { address_id, payment_method, coupon_code, wallet_amount, loyalty_points }'],
                 ['GET', '/', 'auth', 'List user\'s own orders.'],
                 ['GET', '/:id', 'auth', 'Get single order details.'],
-                ['GET', '/:id/timeline', 'auth', 'Order status history + tracking info.'],
+                ['GET', '/:id/timeline', 'auth', 'Order status history + tracking info. URL: /api/orders/:id/timeline (NOT /api/shop/orders). Frontend must use /orders/:id/timeline with axios baseURL=/api.'],
                 ['GET', '/:id/invoice', 'auth', 'Download invoice PDF.'],
                 ['PUT', '/:id/cancel', 'auth', 'Cancel order (only Pending/Confirmed states).'],
                 ['POST', '/:id/return', 'auth', 'Request a return.'],
@@ -1075,15 +1076,20 @@ if (meRes.status === 'fulfilled') {
           <Code>{`// Logo URL (S3): same across web header, admin sidebar, and mobile app
 const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
 
-// Used in mobile screens:
-//   index.tsx    — TopBar (110×32) + floating header (100×28)
-//   auth/        — brand section on login/register screen (140×40)
-//   order/[id]   — help section footer (32×32)
-// All use ExpoImage with contentFit="contain" + transition={200}
+// Used in mobile screens (all use overflow:hidden crop + marginLeft:-15 to hide grey vignette edges):
+//   index.tsx    — TopBar (180×52 container, 210×52 image) + floating header (140×38 / 170×38)
+//   auth/        — brand section on login/register screen (180×52 / 210×52)
+//   order/[id]   — help section footer (52×32 container, 64×32 image)
+// All use ExpoImage with contentFit="cover"
 
 // Web:
 //   header.tsx  — NEXT_PUBLIC_LOGO_URL env var → <img> in nav
-//   admin/layout.tsx — same S3 URL in sidebar logo`}</Code>
+//   admin/layout.tsx — same S3 URL in sidebar logo
+
+// Mobile TopBar — default address display (index.tsx)
+// After login, TopBar fetches GET /users/addresses → finds is_default || first address
+// Shows "{city} {pincode}" truncated to 1 line. "Select address ›" shown when none found.
+// Tapping the address row navigates to /account?tab=Addresses (Addresses tab opens directly).`}</Code>
           <H3>Wallet and loyalty points in mobile checkout</H3>
           <Code>{`// File: checkout/index.tsx
 // Mirrors the web checkout (frontend/src/app/checkout/page.tsx)

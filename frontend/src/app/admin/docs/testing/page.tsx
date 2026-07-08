@@ -147,6 +147,29 @@ const SECTIONS: TestSection[] = [
         where: 'Web & Mobile.',
       },
       {
+        id: 'auth-5e', title: 'Add Address — All Type Values', severity: 'high',
+        steps: [
+          'Login → Account → Addresses → Add New Address',
+          'Try type = "Home", "Work", "Other" (Title Case from dropdown)',
+          'Save each',
+        ],
+        expected: 'All three types save successfully. No user_addresses_type_check constraint error. Backend lowercases type before insert.',
+        where: 'Web & Mobile: Account → Addresses.',
+      },
+      {
+        id: 'auth-5f', title: 'Mobile Navbar Shows Default Address', severity: 'high',
+        steps: [
+          'Login on mobile',
+          'Note the address row under the logo in the top bar',
+          'If no address: should show "Select address ›"',
+          'Add an address and mark it default (or first address auto-used)',
+          'Go back to home — address row should show "{City} {Pincode}"',
+          'Tap the address row → should open Account screen on the Addresses tab directly',
+        ],
+        expected: 'Default address city+pincode shown in navbar (truncated). Tap navigates to /account?tab=Addresses.',
+        where: 'Mobile: Home screen top bar.',
+      },
+      {
         id: 'auth-6', title: 'Admin Login', severity: 'critical',
         steps: [
           'Go to /auth → enter admin email + password',
@@ -555,10 +578,11 @@ const SECTIONS: TestSection[] = [
           'Click the Truck 🚚 icon → enter Courier Name + Tracking Number → Save',
           'Then try to move to "Out for Delivery" — should succeed',
           'Try "Out for Delivery" WITHOUT tracking → should fail with clear error',
-          'Web: My Orders → Track Order → should show courier + tracking inline',
-          'Mobile: order detail → Tracking Info section shows courier + tracking',
+          'Web: My Orders → Track Order button → should expand inline panel with courier + tracking (API: GET /orders/:id/timeline)',
+          'Mobile: order detail → Progress section + tracking info card (same API)',
+          'Verify Network tab shows /api/orders/:id/timeline — NOT /api/shop/orders/:id/timeline',
         ],
-        expected: 'Tracking saved at status 3. Status 3→4 blocked without tracking. Customer sees tracking inline without leaving the page.',
+        expected: 'Tracking saved at status 3. Status 3→4 blocked without tracking. Customer sees tracking inline without leaving the page. No 404 on timeline call.',
         where: 'Admin: /admin/orders. Web: Account → My Orders. Mobile: order detail.',
       },
       {
@@ -882,13 +906,22 @@ const SECTIONS: TestSection[] = [
     platform: ['admin', 'web', 'mobile'], color: '#f59e0b',
     cases: [
       {
-        id: 'rev-1', title: 'User Submits Review', severity: 'critical',
+        id: 'rev-1', title: 'Logged-In User Submits Review (Quick)', severity: 'critical',
         steps: [
-          'Login → go to a product you purchased',
-          'Scroll to Reviews section',
-          'Select star rating, write review, submit',
+          'Login → go to any product page',
+          'Scroll to Reviews section → "Write a Review" form should be visible',
+          'Select star rating, write review text, click Submit Review',
+          'Check DB: INSERT into reviews with user_id + product_id (order_id NULL). ON CONFLICT upserts on second submit.',
         ],
-        expected: 'Review submitted. If auto-approved: visible immediately. If moderation: pending in admin.',
+        expected: 'Review saved without error. Rating average on product updates. No "ON CONFLICT" DB error.',
+        where: 'Web & Mobile: product detail.',
+      },
+      {
+        id: 'rev-1b', title: 'Guest Cannot See Review Form', severity: 'high',
+        steps: [
+          'Logout → go to any product page → scroll to Reviews section',
+        ],
+        expected: 'Web: "Login to write a review" prompt with link. Mobile: "Login to write a review" tappable box that opens auth modal. No form shown.',
         where: 'Web & Mobile: product detail.',
       },
       {
@@ -908,12 +941,13 @@ const SECTIONS: TestSection[] = [
         where: 'Web: product detail.',
       },
       {
-        id: 'rev-4', title: 'Review on Mobile', severity: 'high',
+        id: 'rev-4', title: 'Review on Mobile (Login Gate)', severity: 'high',
         steps: [
-          'Mobile → product detail → scroll to reviews',
-          'Tap "Write Review" → rate → submit',
+          'Mobile logged in → product detail → scroll to reviews → "Write Review" form shown',
+          'Rate and submit → success toast',
+          'Mobile logged OUT → product detail → see "Login to write a review" box → tap → auth modal opens',
         ],
-        expected: 'Review submitted. UI updates (pending or live based on moderation setting).',
+        expected: 'Logged-in: review submitted. Logged-out: auth prompt, no form.',
         where: 'Mobile: Product screen.',
       },
     ],

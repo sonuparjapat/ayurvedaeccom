@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { toast } from '../../components/ui/Toast'
 import {
-  Alert, Dimensions, Image, Modal, Pressable, ScrollView,
+  Alert, Dimensions, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import Animated, {
@@ -212,52 +212,56 @@ function CancelModal({ visible, onClose, onConfirm, loading }: any) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
-      <Pressable style={m.bg} onPress={onClose} />
-      <View style={m.sheet}>
-        <View style={m.handle} />
-        <Text style={m.title}>Cancel Order</Text>
-        <Text style={m.sub}>Please tell us why you want to cancel</Text>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={m.bg} onPress={onClose} />
+        <View style={m.sheet}>
+          <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
+            <View style={m.handle} />
+            <Text style={m.title}>Cancel Order</Text>
+            <Text style={m.sub}>Please tell us why you want to cancel</Text>
 
-        <View style={{ gap: 8, marginBottom: 16 }}>
-          {REASONS.map(r => (
-            <TouchableOpacity key={r} onPress={() => setSelected(r)} style={[m.optionRow, selected === r && m.optionRowActive]}>
-              <View style={[m.radio, selected === r && m.radioActive]}>
-                {selected === r && <View style={m.radioDot} />}
-              </View>
-              <Text style={[m.optionText, selected === r && m.optionTextActive]}>{r}</Text>
+            <View style={{ gap: 8, marginBottom: 16 }}>
+              {REASONS.map(r => (
+                <TouchableOpacity key={r} onPress={() => setSelected(r)} style={[m.optionRow, selected === r && m.optionRowActive]}>
+                  <View style={[m.radio, selected === r && m.radioActive]}>
+                    {selected === r && <View style={m.radioDot} />}
+                  </View>
+                  <Text style={[m.optionText, selected === r && m.optionTextActive]}>{r}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {selected === 'Other' && (
+              <TextInput
+                style={m.input}
+                placeholder="Describe your reason..."
+                placeholderTextColor={Colors.textDim}
+                value={reason}
+                onChangeText={setReason}
+                multiline
+                numberOfLines={3}
+              />
+            )}
+
+            <TouchableOpacity
+              onPress={() => { if (finalReason) onConfirm(finalReason) }}
+              disabled={!finalReason || loading}
+              style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}
+            >
+              <LinearGradient
+                colors={!finalReason ? ['#9ca3af','#6b7280'] : ['#dc2626','#b91c1c']}
+                style={m.confirmBtn}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              >
+                <Text style={m.confirmText}>{loading ? 'Cancelling...' : '❌  Confirm Cancellation'}</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          ))}
+            <TouchableOpacity onPress={onClose} style={m.closeBtn}>
+              <Text style={m.closeBtnText}>Keep Order</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
-
-        {selected === 'Other' && (
-          <TextInput
-            style={m.input}
-            placeholder="Describe your reason..."
-            placeholderTextColor={Colors.textDim}
-            value={reason}
-            onChangeText={setReason}
-            multiline
-            numberOfLines={3}
-          />
-        )}
-
-        <TouchableOpacity
-          onPress={() => { if (finalReason) onConfirm(finalReason) }}
-          disabled={!finalReason || loading}
-          style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}
-        >
-          <LinearGradient
-            colors={!finalReason ? ['#9ca3af','#6b7280'] : ['#dc2626','#b91c1c']}
-            style={m.confirmBtn}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-          >
-            <Text style={m.confirmText}>{loading ? 'Cancelling...' : '❌  Confirm Cancellation'}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onClose} style={m.closeBtn}>
-          <Text style={m.closeBtnText}>Keep Order</Text>
-        </TouchableOpacity>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
@@ -271,52 +275,56 @@ function ReturnModal({ visible, onClose, onConfirm, loading }: any) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
-      <Pressable style={m.bg} onPress={onClose} />
-      <View style={m.sheet}>
-        <View style={m.handle} />
-        <Text style={m.title}>Request Return</Text>
-        <Text style={m.sub}>Tell us what went wrong</Text>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={m.bg} onPress={onClose} />
+        <View style={m.sheet}>
+          <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
+            <View style={m.handle} />
+            <Text style={m.title}>Request Return</Text>
+            <Text style={m.sub}>Tell us what went wrong</Text>
 
-        <View style={{ gap: 8, marginBottom: 16 }}>
-          {REASONS.map(r => (
-            <TouchableOpacity key={r} onPress={() => setSelected(r)} style={[m.optionRow, selected === r && m.optionRowActive]}>
-              <View style={[m.radio, selected === r && m.radioActive]}>
-                {selected === r && <View style={m.radioDot} />}
-              </View>
-              <Text style={[m.optionText, selected === r && m.optionTextActive]}>{r}</Text>
+            <View style={{ gap: 8, marginBottom: 16 }}>
+              {REASONS.map(r => (
+                <TouchableOpacity key={r} onPress={() => setSelected(r)} style={[m.optionRow, selected === r && m.optionRowActive]}>
+                  <View style={[m.radio, selected === r && m.radioActive]}>
+                    {selected === r && <View style={m.radioDot} />}
+                  </View>
+                  <Text style={[m.optionText, selected === r && m.optionTextActive]}>{r}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {selected === 'Other' && (
+              <TextInput
+                style={m.input}
+                placeholder="Describe your reason..."
+                placeholderTextColor={Colors.textDim}
+                value={reason}
+                onChangeText={setReason}
+                multiline
+                numberOfLines={3}
+              />
+            )}
+
+            <TouchableOpacity
+              onPress={() => { if (finalReason) onConfirm(finalReason) }}
+              disabled={!finalReason || loading}
+              style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}
+            >
+              <LinearGradient
+                colors={!finalReason ? ['#9ca3af','#6b7280'] : [Colors.forest, Colors.moss]}
+                style={m.confirmBtn}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              >
+                <Text style={m.confirmText}>{loading ? 'Submitting...' : '↩️  Submit Return Request'}</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          ))}
+            <TouchableOpacity onPress={onClose} style={m.closeBtn}>
+              <Text style={m.closeBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
-
-        {selected === 'Other' && (
-          <TextInput
-            style={m.input}
-            placeholder="Describe your reason..."
-            placeholderTextColor={Colors.textDim}
-            value={reason}
-            onChangeText={setReason}
-            multiline
-            numberOfLines={3}
-          />
-        )}
-
-        <TouchableOpacity
-          onPress={() => { if (finalReason) onConfirm(finalReason) }}
-          disabled={!finalReason || loading}
-          style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}
-        >
-          <LinearGradient
-            colors={!finalReason ? ['#9ca3af','#6b7280'] : [Colors.forest, Colors.moss]}
-            style={m.confirmBtn}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-          >
-            <Text style={m.confirmText}>{loading ? 'Submitting...' : '↩️  Submit Return Request'}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onClose} style={m.closeBtn}>
-          <Text style={m.closeBtnText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
@@ -751,7 +759,9 @@ export default function OrderDetailScreen() {
             {/* ── HELP ── */}
             <Animated.View entering={FadeInDown.delay(280)} style={[ss.card, { marginTop: 10 }]}>
               <View style={ss.helpRow}>
-                <ExpoImage source={{ uri: LOGO_URL }} style={{ width: 32, height: 32 }} contentFit="contain" />
+                <View style={{ width: 52, height: 32, overflow: 'hidden' }}>
+                  <ExpoImage source={{ uri: LOGO_URL }} style={{ width: 64, height: 32, marginLeft: -6 }} contentFit="cover" />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={ss.helpTitle}>Need help?</Text>
                   <Text style={ss.helpSub}>Contact our support team for any order related queries</Text>
