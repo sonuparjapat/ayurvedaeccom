@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
-  Dimensions, KeyboardAvoidingView, Platform, ScrollView,
+  Dimensions, KeyboardAvoidingView, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
   ActivityIndicator,
 } from 'react-native'
@@ -312,8 +312,8 @@ export default function AuthScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
       <StatusBar barStyle="light-content" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" bounces={false}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" bounces={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
           {/* Header */}
           <LinearGradient colors={['#071410', Colors.forest, '#1a3a2a']} style={[ss.header, { paddingTop: insets.top + 12 }]}>

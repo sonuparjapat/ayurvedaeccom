@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getGuestSession } from '../../utils/guestSession'
 import {
-  ActivityIndicator, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal,
-  Platform, ScrollView, Share, StatusBar, StyleSheet, Text,
+  ActivityIndicator, Dimensions, FlatList, Image, Modal,
+  ScrollView, Share, StatusBar, StyleSheet, Text,
   TouchableOpacity, View, TextInput,
 } from 'react-native'
 import { toast } from '../../components/ui/Toast'
@@ -38,7 +38,7 @@ interface Product {
   focus_keyword?: string; min_order_qty?: number; max_order_qty?: number
   is_returnable?: boolean; sort_order?: number
 }
-interface Review { id?: number; name: string; rating: number; comment: string; images?: string[] }
+interface Review { id?: number; name: string; user_name?: string; rating: number; comment: string; images?: string[]; order_id?: number }
 // console.log("hii")
 // ─── IMAGE ZOOM MODAL ─────────────────────────────────────────────────────────
 function ImageZoomModal({ uri, onClose }: { uri: string; onClose: () => void }) {
@@ -162,7 +162,7 @@ const ig = StyleSheet.create({
 function ReviewItem({ r, index }: { r: Review; index: number }) {
   const initials = (r.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const colors = ['#059669', '#f59e0b', '#7c3aed', '#e11d48', '#0284c7']
-  const color = colors[r.name.charCodeAt(0) % colors.length]
+  const color = colors[(r.name || '?').charCodeAt(0) % colors.length]
   return (
     <Animated.View entering={FadeInDown.delay(index * 60)} style={rv.card}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
@@ -307,8 +307,9 @@ export default function ProductDetailScreen() {
   const fetchReviews = async (pg: number) => {
     try {
       const res = await api.get(`/shop/reviews/product/${id}`, { params: { page: pg, limit: 5 } })
-      if (pg === 1) setReviews(res.data?.data || [])
-      else setReviews(p => [...p, ...(res.data?.data || [])])
+      const mapped = (res.data?.data || []).map((r: any) => ({ ...r, name: r.user_name || r.name || '?' }))
+      if (pg === 1) setReviews(mapped)
+      else setReviews(p => [...p, ...mapped])
       setTotalReviewPages(res.data?.pagination?.totalPages || 1)
       setReviewPage(pg)
     } catch { }
@@ -444,7 +445,6 @@ export default function ProductDetailScreen() {
   )
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
       <StatusBar barStyle="light-content" />
 
@@ -741,20 +741,32 @@ export default function ProductDetailScreen() {
 
           {/* Quantity */}
           <View style={ss.qtyRow}>
-            <Text style={ss.qtyLabel}>Quantity</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={ss.qtyLabel}>Quantity</Text>
+              {inCart && (
+                <View style={{ backgroundColor: Colors.mint, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 }}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: Colors.sage }}>✓ IN CART ({cartQty})</Text>
+                </View>
+              )}
+            </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               <TouchableOpacity onPress={() => setQty(q => Math.max(1, q - 1))} style={ss.qtyBtn}>
                 <Text style={ss.qtyBtnText}>−</Text>
               </TouchableOpacity>
               <Text style={ss.qtyVal}>{qty}</Text>
               <TouchableOpacity
-                onPress={() => setQty(q => Math.min(product.inventory, q + 1))}
+                onPress={() => setQty(q => Math.min(effectiveInventory, q + 1))}
                 style={[ss.qtyBtn, ss.qtyBtnPlus]}
               >
                 <Text style={[ss.qtyBtnText, { color: '#fff' }]}>+</Text>
               </TouchableOpacity>
             </View>
           </View>
+          {inCart && qty !== cartQty && (
+            <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: Colors.gold, marginTop: -10, marginBottom: 12 }}>
+              Cart qty: {cartQty} → Tap "Update Cart" to change to {qty}
+            </Text>
+          )}
 
           {/* Pincode delivery check */}
           <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 0.5, borderColor: Colors.border }}>
@@ -1013,7 +1025,6 @@ export default function ProductDetailScreen() {
         </TouchableOpacity>
       </Animated.View>
     </View>
-    </KeyboardAvoidingView>
   )
 }
 

@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react'
 import { toast } from '../../components/ui/Toast'
 import {
   Alert, Dimensions, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView,
-  StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator,
 } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
 import Animated, {
   FadeIn, FadeInDown, FadeInRight, ZoomIn,
   useSharedValue, withSpring, useAnimatedStyle,
@@ -106,9 +107,10 @@ function StatusTimeline({ currentStatus, logs, estimatedDelivery }: { currentSta
   if ([6, 7, 8, 9].includes(currentStatus)) return null
 
   const getLogDate = (status: number): string | null => {
-    const log = logs.find(l => l.new_status === status)
+    const log = logs.find(l => Number(l.new_status) === status)
     if (!log) return null
-    return new Date(log.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    const d = new Date(log.created_at)
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' · ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
   }
 
   return (
@@ -167,7 +169,7 @@ const tl = StyleSheet.create({
   labelDone: { color: 'rgba(255,255,255,0.7)' },
   labelActive: { color: '#fff', fontFamily: Fonts.bold, fontSize: 14 },
   activeNote: { fontFamily: Fonts.regular, fontSize: 10, color: Colors.gold, marginTop: 2 },
-  dateNote: { fontFamily: Fonts.regular, fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 },
+  dateNote: { fontFamily: Fonts.regular, fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   etaNote: { fontFamily: Fonts.medium, fontSize: 10, color: Colors.gold, marginTop: 2 },
 })
 
@@ -212,7 +214,7 @@ function CancelModal({ visible, onClose, onConfirm, loading }: any) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <Pressable style={m.bg} onPress={onClose} />
         <View style={m.sheet}>
           <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
@@ -275,7 +277,7 @@ function ReturnModal({ visible, onClose, onConfirm, loading }: any) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <Pressable style={m.bg} onPress={onClose} />
         <View style={m.sheet}>
           <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
@@ -329,6 +331,219 @@ function ReturnModal({ visible, onClose, onConfirm, loading }: any) {
   )
 }
 
+// ─── WRITE REVIEW MODAL ──────────────────────────────────────────────────────
+interface ReviewItemState {
+  product_id: number; name: string; image?: string
+  rating: number; comment: string
+  images: { uri: string; name: string; type: string }[]
+  submitting: boolean; submitted: boolean
+}
+
+function StarRow({ rating, onChange }: { rating: number; onChange: (n: number) => void }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
+      {[1, 2, 3, 4, 5].map(n => (
+        <TouchableOpacity key={n} onPress={() => onChange(n)} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+          <Text style={{ fontSize: 28, opacity: n <= rating ? 1 : 0.25 }}>⭐</Text>
+        </TouchableOpacity>
+      ))}
+      {rating > 0 && (
+        <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: Colors.gold, alignSelf: 'center', marginLeft: 4 }}>
+          {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][rating]}
+        </Text>
+      )}
+    </View>
+  )
+}
+
+function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
+  visible: boolean; onClose: () => void; orderId: number; orderItems: OrderItem[]
+}) {
+  const [items, setItems] = useState<ReviewItemState[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (visible) {
+      setItems(orderItems.map(i => ({
+        product_id: i.product_id, name: i.name, image: i.image,
+        rating: 0, comment: '', images: [], submitting: false, submitted: false,
+      })))
+      loadExistingReviews()
+    }
+  }, [visible])
+
+  const loadExistingReviews = async () => {
+    try {
+      const res = await api.get('/shop/reviews/product', { params: { me: '1', limit: 50 } })
+      const myReviews: any[] = res.data?.data || []
+      setItems(prev => prev.map(it => {
+        const existing = myReviews.find((r: any) => r.product_id === it.product_id)
+        if (!existing) return it
+        return { ...it, rating: existing.rating || 0, comment: existing.comment || '' }
+      }))
+    } catch { }
+  }
+
+  const update = (idx: number, patch: Partial<ReviewItemState>) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, ...patch } : it))
+
+  const pickImages = async (idx: number) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') { toast.error('Gallery permission needed'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.75,
+      selectionLimit: 5,
+    })
+    if (!result.canceled) {
+      const newImgs = result.assets.map(a => ({
+        uri: a.uri, name: a.fileName || `photo_${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg',
+      }))
+      setItems(prev => prev.map((it, i) => {
+        if (i !== idx) return it
+        const merged = [...it.images, ...newImgs].slice(0, 5)
+        return { ...it, images: merged }
+      }))
+    }
+  }
+
+  const submitItem = async (idx: number) => {
+    const item = items[idx]
+    if (!item.rating) { toast.error('Please select a star rating'); return }
+    update(idx, { submitting: true })
+    try {
+      const form = new FormData()
+      form.append('rating', String(item.rating))
+      form.append('comment', item.comment)
+      item.images.forEach(img => form.append('images', { uri: img.uri, type: img.type, name: img.name } as any))
+      await api.post(`/shop/reviews/order/${orderId}/product/${item.product_id}`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      update(idx, { submitting: false, submitted: true })
+      toast.success('Review submitted!')
+    } catch (e: any) {
+      update(idx, { submitting: false })
+      toast.error(e?.response?.data?.message || 'Failed to submit review')
+    }
+  }
+
+  const allDone = items.length > 0 && items.every(i => i.submitted)
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        <Pressable style={m.bg} onPress={onClose} />
+        <View style={[m.sheet, { maxHeight: '92%' }]}>
+          <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
+            <View style={m.handle} />
+            <Text style={m.title}>Rate Your Order</Text>
+            <Text style={m.sub}>Share your experience for each product</Text>
+
+            {items.map((item, idx) => (
+              <View key={item.product_id} style={rv2.card}>
+                {/* Product info */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  {item.image
+                    ? <ExpoImage source={{ uri: item.image }} style={rv2.thumb} contentFit="cover" />
+                    : <View style={[rv2.thumb, { backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' }]}>
+                        <Text style={{ fontSize: 18 }}>🌿</Text>
+                      </View>
+                  }
+                  <Text style={rv2.itemName} numberOfLines={2}>{item.name}</Text>
+                </View>
+
+                {item.submitted ? (
+                  <View style={rv2.doneRow}>
+                    <Text style={{ fontSize: 20 }}>✅</Text>
+                    <Text style={rv2.doneText}>Review submitted!</Text>
+                  </View>
+                ) : (
+                  <>
+                    <StarRow rating={item.rating} onChange={r => update(idx, { rating: r })} />
+
+                    <TextInput
+                      style={m.input}
+                      placeholder="Share your experience with this product..."
+                      placeholderTextColor={Colors.textDim}
+                      value={item.comment}
+                      onChangeText={t => update(idx, { comment: t })}
+                      multiline
+                      numberOfLines={3}
+                      maxLength={300}
+                    />
+                    <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: Colors.textDim, textAlign: 'right', marginTop: -6, marginBottom: 10 }}>
+                      {item.comment.length}/300
+                    </Text>
+
+                    {/* Image picker */}
+                    {item.images.length < 5 && (
+                      <TouchableOpacity onPress={() => pickImages(idx)} style={rv2.addPhotoBtn}>
+                        <Text style={{ fontSize: 14 }}>📷</Text>
+                        <Text style={rv2.addPhotoText}>Add Photos ({item.images.length}/5)</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Image previews */}
+                    {item.images.length > 0 && (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                        {item.images.map((img, i2) => (
+                          <View key={i2} style={rv2.imgPreview}>
+                            <ExpoImage source={{ uri: img.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                            <TouchableOpacity
+                              onPress={() => update(idx, { images: item.images.filter((_, j) => j !== i2) })}
+                              style={rv2.imgRemove}
+                            >
+                              <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    <TouchableOpacity
+                      onPress={() => submitItem(idx)}
+                      disabled={item.submitting || !item.rating}
+                      style={{ borderRadius: 12, overflow: 'hidden' }}
+                    >
+                      <LinearGradient
+                        colors={!item.rating ? ['#9ca3af', '#6b7280'] : [Colors.forest, Colors.moss]}
+                        style={{ paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      >
+                        {item.submitting
+                          ? <ActivityIndicator size="small" color="#fff" />
+                          : <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 13 }}>⭐  Submit Review</Text>
+                        }
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            ))}
+
+            <TouchableOpacity onPress={onClose} style={m.closeBtn}>
+              <Text style={m.closeBtnText}>{allDone ? 'Close' : 'Skip for Now'}</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  )
+}
+
+const rv2 = StyleSheet.create({
+  card: { backgroundColor: '#f8f9f8', borderRadius: 16, padding: 14, marginBottom: 14, borderWidth: 0.5, borderColor: Colors.border },
+  thumb: { width: 52, height: 52, borderRadius: 10 },
+  itemName: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, flex: 1, lineHeight: 18 },
+  addPhotoBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.mint, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 14, marginBottom: 10, alignSelf: 'flex-start' },
+  addPhotoText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.sage },
+  imgPreview: { width: 68, height: 68, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border, position: 'relative' },
+  imgRemove: { position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
+  doneRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.mint, borderRadius: 10, padding: 10 },
+  doneText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.sage },
+})
+
 const m = StyleSheet.create({
   bg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: { backgroundColor: Colors.cream, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, paddingBottom: 36 },
@@ -362,6 +577,7 @@ export default function OrderDetailScreen() {
   const [loading, setLoading] = useState(true)
   const [showCancel, setShowCancel] = useState(false)
   const [showReturn, setShowReturn] = useState(false)
+  const [showReview, setShowReview] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [timelineLogs, setTimelineLogs] = useState<TimelineLog[]>([])
   const [estimatedDelivery, setEstimatedDelivery] = useState<string | null>(null)
@@ -707,18 +923,23 @@ export default function OrderDetailScreen() {
             {order?.status === 5 && (
               <Animated.View entering={FadeInDown.delay(270)} style={{ paddingHorizontal: 16, marginTop: 8 }}>
                 <TouchableOpacity
-                  onPress={() => {
-                    const firstItem = order.items[0]
-                    if (firstItem) router.push(`/product/${firstItem.product_id}` as any)
-                  }}
-                  style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#d1fae5' }}
+                  onPress={() => setShowReview(true)}
+                  style={{ borderRadius: 16, overflow: 'hidden' }}
                 >
-                  <Text style={{ fontSize: 28 }}>⭐</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest }}>Write a Review</Text>
-                    <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, marginTop: 2 }}>Share your experience with this product</Text>
-                  </View>
-                  <Text style={{ color: Colors.textDim, fontSize: 18 }}>›</Text>
+                  <LinearGradient
+                    colors={['#f59e0b', '#d97706']}
+                    style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={{ fontSize: 24 }}>⭐</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: '#fff' }}>Rate This Order</Text>
+                      <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
+                        Review {order.items.length === 1 ? 'the product' : `all ${order.items.length} products`}
+                      </Text>
+                    </View>
+                    <Text style={{ color: '#fff', fontSize: 18 }}>›</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
             )}
@@ -787,6 +1008,14 @@ export default function OrderDetailScreen() {
         onConfirm={handleReturn}
         loading={actionLoading}
       />
+      {order && (
+        <WriteReviewModal
+          visible={showReview}
+          onClose={() => setShowReview(false)}
+          orderId={order.id}
+          orderItems={order.items}
+        />
+      )}
     </View>
   )
 }

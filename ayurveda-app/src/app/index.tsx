@@ -118,10 +118,10 @@ function TopBar({ cartCount, user, defaultAddr }: { cartCount: number; user: any
       {/* Logo + Deliver to */}
       <View style={{ flex: 1 }}>
         <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/account')}>
-          <View style={{ width: 180, height: 52, overflow: 'hidden' }}>
+          <View style={{ width: 130, height: 40, overflow: 'hidden' }}>
             <ExpoImage
               source={LOGO_LOCAL}
-              style={{ width: 210, height: 52, marginLeft: -15 }}
+              style={{ width: 155, height: 40, marginLeft: -12 }}
               contentFit="cover"
             />
           </View>
@@ -131,9 +131,9 @@ function TopBar({ cartCount, user, defaultAddr }: { cartCount: number; user: any
             activeOpacity={0.7}
             onPress={() => router.push({ pathname: '/account', params: { tab: 'Addresses' } })}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 1 }}>
               <Text style={ss.deliverPin}>📍</Text>
-              <Text style={ss.deliverVal} numberOfLines={1}>{defaultAddr || 'Select address ›'}</Text>
+              <Text style={[ss.deliverVal, { flexShrink: 1 }]} numberOfLines={1}>{defaultAddr || 'Select address'}</Text>
               <Text style={ss.deliverChev}>›</Text>
             </View>
           </TouchableOpacity>
@@ -896,10 +896,10 @@ export default function HomeScreen() {
     }
     refreshCart()
     if (u?.id) {
-      api.get('/users/addresses').then(res => {
-        const addrs = res.data?.addresses || []
-        const def = addrs.find((a: any) => a.is_default) || addrs[0]
-        if (def) setDefaultAddr(`${def.city} ${def.pincode}`)
+      api.get('/users/address').then(res => {
+        const addrs: any[] = res.data?.data || []
+        const def = addrs.find(a => a.is_default) || addrs[0]
+        if (def) setDefaultAddr(`${def.city}, ${def.pincode}`)
         else setDefaultAddr(null)
       }).catch(() => {})
     } else {

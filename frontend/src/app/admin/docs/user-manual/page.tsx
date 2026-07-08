@@ -244,7 +244,7 @@ export default function UserManualPage() {
               { num: 8, title: 'Checkout & Payment', body: 'Enter a delivery address, confirm the order summary, then pay via Razorpay (Credit/Debit card, UPI, Net Banking, Wallets) or choose Cash on Delivery (COD).' },
               { num: 9, title: 'Order Confirmation', body: 'After successful payment, the customer receives a confirmation email with order details and an invoice.' },
               { num: 10, title: 'Track the Order', body: 'Customers can view real-time order status, a visual timeline of status changes, courier name, tracking number, and estimated delivery date.' },
-              { num: 11, title: 'Receive & Review', body: 'After delivery, customers are invited to write a product review and star rating. Loyalty points are automatically credited to their account. A "Write a Review" card appears on the order detail page on both web and mobile.' },
+              { num: 11, title: 'Receive & Review', body: 'After delivery, customers can rate each product from the order detail page — no need to navigate to the product page. On mobile, tap the amber "Rate This Order" button; on web, click "Review" in the Orders tab. Both support photo upload (up to 5 images per product). Loyalty points are automatically credited.' },
               { num: 12, title: 'Re-order', body: 'On any delivered or cancelled order, a Re-order button lets customers add all items back to cart in one tap and go straight to checkout.' },
               { num: 13, title: 'Return / Refund (if needed)', body: 'Customers can request a return within 7 days of delivery. The admin approves or rejects the request. On approval, the refund is credited to wallet or automatically returned to the original Razorpay payment method. For COD orders, cash refunds are handled manually.' },
             ].map(s => <Step key={s.num} num={s.num} title={s.title}>{s.body}</Step>)}
@@ -305,6 +305,7 @@ export default function UserManualPage() {
             ]}
           />
           <InfoBox type="tip">Products marked <strong>Out of Stock</strong> show a "Notify Me" button. Enter your email and the system automatically emails you when the product is restocked.</InfoBox>
+          <InfoBox type="tip"><strong>Already added to cart?</strong> On the product detail page (mobile), if an item is already in your cart, the quantity row shows a green <strong>"✓ IN CART (n)"</strong> badge showing how many are in your cart. Change the quantity and the button turns amber with <strong>"↻ Update Cart"</strong> — tap it to update the quantity. Tapping <strong>"✓ In Cart"</strong> (when qty unchanged) takes you straight to the cart.</InfoBox>
         </Section>
 
         {/* ═══ 5. CART & CHECKOUT ═══ */}
@@ -375,10 +376,10 @@ export default function UserManualPage() {
             <div className="bg-white border border-gray-100 rounded-xl p-4">
               <p className="font-semibold text-sm text-gray-800 mb-2">How to write a review:</p>
               <div className="space-y-2">
-                <Step num={1} title="Login and visit any product page">Scroll to the Customer Reviews section — a "Write a Review" card will be visible.</Step>
+                <Step num={1} title="From your order (recommended — Verified Purchase)">Open a delivered order → tap/click "Rate This Order" (mobile: amber button; web: green "Review" button). Rate each product, write a comment, and optionally add up to 5 photos per product.</Step>
                 <Step num={2} title="Select a star rating and write your comment">Pick 1–5 stars and describe your experience. You can edit and re-submit — only one review per product per account is saved.</Step>
                 <Step num={3} title="Submit">Click Submit Review. Your review may be pending moderation before it appears publicly.</Step>
-                <Step num={4} title="Mobile app">On the mobile app, the same "Write a Review" card is shown on the product detail screen when you are logged in.</Step>
+                <Step num={4} title="From the product page (no Verified Purchase badge)">Scroll to the Customer Reviews section on any product page and submit directly. No order required.</Step>
               </div>
             </div>
             <Table

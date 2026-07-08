@@ -6,6 +6,7 @@ import {
 } from 'react-native'
 import { toast } from '../../components/ui/Toast'
 import * as WebBrowser from 'expo-web-browser'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, {
   FadeIn, FadeInDown, FadeInUp, SlideInRight, ZoomIn,
   useSharedValue, withTiming, withSpring, useAnimatedStyle,
@@ -304,7 +305,8 @@ export default function CheckoutScreen() {
       // Online payment via Razorpay web page
       setProcessing(false)
       const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') || ''
-      const paymentPageUrl = `${apiBase}/api/orders/${orderId}/payment-page?returnUrl=oroganix://payment`
+      const authToken = await AsyncStorage.getItem('auth_token')
+      const paymentPageUrl = `${apiBase}/api/orders/${orderId}/payment-page?returnUrl=oroganix://payment&token=${encodeURIComponent(authToken || '')}`
 
       const result = await WebBrowser.openAuthSessionAsync(paymentPageUrl, 'oroganix://')
 
@@ -352,7 +354,7 @@ export default function CheckoutScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
       <StatusBar barStyle="light-content" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
 
         {/* Header */}
         <LinearGradient colors={['#0a1f14', Colors.forest]} style={[ss.header, { paddingTop: insets.top + 8 }]}>
@@ -375,7 +377,7 @@ export default function CheckoutScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
         >
           {/* ── STEP 1: ADDRESS ── */}
           {step === 1 && (

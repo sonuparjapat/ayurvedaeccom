@@ -144,7 +144,7 @@ export default function SupportScreen() {
     return (
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: Colors.cream }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
       >
         <StatusBar barStyle="light-content" />
         <LinearGradient colors={[Colors.forest, Colors.moss]} style={[s.chatHeader, { paddingTop: insets.top + 8 }]}>
@@ -219,7 +219,8 @@ export default function SupportScreen() {
   // ── CREATE VIEW ────────────────────────────────────────────────────────
   if (view === 'create') {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: Colors.cream }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: Colors.cream }} behavior="padding">
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
         <StatusBar barStyle="light-content" />
         <LinearGradient colors={[Colors.forest, Colors.moss]} style={[s.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity onPress={() => setView('list')} style={s.backBtn}>
@@ -292,6 +293,7 @@ export default function SupportScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     )
   }
 

@@ -416,11 +416,12 @@ Token location: Authorization: Bearer <token>  (HTTP header)
                 ['POST', '/wishlist', 'auth', 'Toggle wishlist (add if not present, remove if present).'],
                 ['GET', '/', 'auth', 'Get wishlist items.'],
                 ['DELETE', '/:productId', 'auth', 'Remove specific product from wishlist.'],
-                ['POST', '/cart', 'auth', 'Add/update cart item. Body: { product_id, variant_id, quantity }'],
+                ['POST', '/cart', 'auth', 'Add item to cart. Body: { product_id, variant_id, quantity }'],
+                ['PUT', '/cart', 'auth', 'Update cart item quantity. Same body as POST. Used when product is already in cart and user changes qty on product detail screen.'],
                 ['GET', '/cart', 'auth', 'Get cart items.'],
-                ['POST', '/reviews/order/:orderId/product/:productId', 'auth', 'Add/update review with Verified Purchase badge. Verifies purchase + delivered status.'],
-                ['POST', '/reviews/product', 'auth', 'Quick review from product page (no order_id). ON CONFLICT(user_id, product_id) upserts. No Verified Purchase badge.'],
-                ['GET', '/reviews/product/:productId', 'optionalAuth', 'Get reviews for a product. Approved only for public.'],
+                ['POST', '/reviews/order/:orderId/product/:productId', 'auth + multipart/form-data', 'Add/update review with Verified Purchase badge. Fields: rating, comment, oldImages (JSON array of kept URLs), images (files, max 5 total). Verifies purchase + delivered status. Used by mobile WriteReviewModal.'],
+                ['POST', '/reviews/product', 'auth', 'Quick review (no order_id, no image upload). Body: { productId (int or slug), rating, comment }. ON CONFLICT(user_id, product_id) upserts. resolveProductId() handles slug-to-int conversion.'],
+                ['GET', '/reviews/product/:productId', 'optionalAuth', 'Get reviews for a product. Returns user_name field (not name). Approved only for public; ?me=1 returns own reviews for any status.'],
                 ['DELETE', '/review/:id', 'auth', 'Delete own review.'],
               ]
             },
@@ -432,6 +433,7 @@ Token location: Authorization: Bearer <token>  (HTTP header)
                 ['GET', '/:id', 'auth', 'Get single order details.'],
                 ['GET', '/:id/timeline', 'auth', 'Order status history + tracking info. URL: /api/orders/:id/timeline (NOT /api/shop/orders). Frontend must use /orders/:id/timeline with axios baseURL=/api.'],
                 ['GET', '/:id/invoice', 'auth', 'Download invoice PDF.'],
+                ['GET', '/:id/payment-page', 'auth', 'Renders Razorpay HTML payment page. Query: ?returnUrl=oroganix://payment&token=JWT. Mobile app passes JWT as ?token= because WebBrowser.openAuthSessionAsync cannot send headers. Auth middleware accepts token from cookie, Authorization header, OR ?token query param.'],
                 ['PUT', '/:id/cancel', 'auth', 'Cancel order (only Pending/Confirmed states).'],
                 ['POST', '/:id/return', 'auth', 'Request a return.'],
               ]
@@ -862,6 +864,33 @@ await api.post('/orders', { address_id, payment_method })`}</Code>
     │   ├── login.tsx            # Email/password login
     │   └── register.tsx         # Registration
     └── (tabs)/                  # Bottom tab navigator`}</Code>
+          <H3>Keyboard handling — universal fix (Expo 56 / edge-to-edge)</H3>
+          <Code>{`// app.json → android section:
+// "softwareKeyboardLayoutMode": "pan"
+// — this is the primary Android fix. Expo 56 enables edge-to-edge by default,
+//   which causes KAV behavior="height" to do nothing. "pan" tells Android to
+//   shift the window up to keep the focused input visible on ALL screens.
+
+// Every screen/modal with TextInput uses:
+// 1. <KeyboardAvoidingView behavior="padding"> (NOT 'height' — does not work edge-to-edge)
+// 2. <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
+//    — extra bottom padding ensures last input can scroll above keyboard
+// 3. For bottom-sheet modals the structure is:
+//    <Modal>
+//      <KeyboardAvoidingView flex:1 behavior="padding">
+//        <Pressable flex:1 (backdrop)/>      ← shrinks as KAV shrinks
+//        <View (sheet at bottom)>
+//          <ScrollView keyboardShouldPersistTaps="handled">
+//            {inputs...}
+//          </ScrollView>
+//        </View>
+//      </KeyboardAvoidingView>
+//    </Modal>
+// When keyboard opens: KAV pads up, backdrop shrinks, sheet lifts above keyboard.
+
+// Screens covered: auth, checkout, support (create + chat), product (review),
+// products (filter modal), account (4 modals), order (2 modals)`}</Code>
+
           <H3>Key mobile dependencies</H3>
           <Table
             headers={['Package', 'Purpose']}
@@ -1089,7 +1118,44 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 // Mobile TopBar — default address display (index.tsx)
 // After login, TopBar fetches GET /users/addresses → finds is_default || first address
 // Shows "{city} {pincode}" truncated to 1 line. "Select address ›" shown when none found.
-// Tapping the address row navigates to /account?tab=Addresses (Addresses tab opens directly).`}</Code>
+// Tapping the address row navigates to /account?tab=Addresses (Addresses tab opens directly).
+
+// Product detail — cart state UX (product/[id].tsx)
+// cartItem = cartData.items.find(i => i.product_id === Number(id) && variant match)
+// inCart = !!cartItem
+// On mount: useEffect syncs qty and cartQty to cartItem.quantity when cart item found.
+// Qty row shows a green "✓ IN CART (n)" pill badge when inCart === true.
+// Hint text appears below qty row when user changes qty away from cart qty:
+//   "Cart qty: N → Tap 'Update Cart' to change to M"
+// Bottom CTA button states:
+//   inCart && qty === cartQty → green "✓ In Cart" → tap navigates to /cart
+//   inCart && qty !== cartQty → amber "↻ Update Cart" → tap calls PUT /cart
+//   !inCart → forest green "🛍️ Add to Cart" → tap calls POST /cart`}</Code>
+          <H3>Mobile order screen — WriteReviewModal (order/[id].tsx)</H3>
+          <Code>{`// Triggered by amber "Rate This Order" button on delivered orders.
+// WriteReviewModal: per-item star rating + comment + image upload
+//
+// Dependencies: expo-image-picker (npx expo install expo-image-picker)
+//   app.json plugins includes expo-image-picker with photosPermission string.
+//
+// State per item: { product_id, name, image, rating, comment, images: [{uri,name,type}], submitting, submitted }
+//
+// On open: loads existing user reviews via GET /shop/reviews/product?me=1&limit=50
+//   → pre-fills rating + comment for any products already reviewed.
+//
+// Image pick: ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, selectionLimit: 5 })
+//   → Appended to item.images array, capped at 5 total. Thumbnails shown with ✕ remove button.
+//
+// Submit per item: POST /shop/reviews/order/:orderId/product/:productId  (multipart/form-data)
+//   form fields: rating, comment, images (files)
+//   Uses UPSERT on conflict, so this also handles review updates.
+//
+// Review name fix: getProductReviews returns user_name field.
+//   Mobile fetchReviews now maps: r.name = r.user_name || r.name || '?'
+//
+// Tracking timeline fix: Number(l.new_status) === status (was strict === causing no match)
+//   dateNote opacity raised from 0.35 → 0.60 for visibility on dark background.
+//   Date format: "15 Jul · 03:45 PM"`}</Code>
           <H3>Wallet and loyalty points in mobile checkout</H3>
           <Code>{`// File: checkout/index.tsx
 // Mirrors the web checkout (frontend/src/app/checkout/page.tsx)

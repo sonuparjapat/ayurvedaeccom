@@ -1053,15 +1053,13 @@ const handleSaveAddress = async (data: any) => {
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1.5 text-xs"
                                 onClick={async () => {
                                   const newdata = await loadReviews(order?.items?.map((item: any) => item?.product_id), 1, 10, 1)
-                                  const data2 = orders?.flatMap((el: any) =>
-                                    el.items.map((item: any) => ({
-                                      ...item,
-                                      rating: newdata?.find((item2: any) => item2?.order_id == orders[orderIndex]?.id && item2?.product_id == item?.product_id)?.rating ?? null,
-                                      comment: newdata?.find((item2: any) => item2?.order_id == orders[orderIndex]?.id && item2?.product_id == item?.product_id)?.comment ?? "",
-                                      images: [],
-                                      oldImages: newdata?.find((item2: any) => item2?.order_id == el?.id && item2?.product_id == item?.product_id)?.images ?? [],
-                                    }))
-                                  )
+                                  const data2 = order.items.map((item: any) => ({
+                                    ...item,
+                                    rating: newdata?.find((item2: any) => item2?.order_id == order?.id && item2?.product_id == item?.product_id)?.rating ?? null,
+                                    comment: newdata?.find((item2: any) => item2?.order_id == order?.id && item2?.product_id == item?.product_id)?.comment ?? "",
+                                    images: [],
+                                    oldImages: newdata?.find((item2: any) => item2?.order_id == order?.id && item2?.product_id == item?.product_id)?.images ?? [],
+                                  }))
                                   setRealReviewData(data2)
                                   openOrderModal(order)
                                 }}

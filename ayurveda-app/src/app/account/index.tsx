@@ -591,7 +591,7 @@ export default function AccountScreen() {
 
       {/* ── EDIT PROFILE MODAL ── */}
       <Modal visible={showEditProfile} animationType="slide" transparent statusBarTranslucent>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <Pressable style={ms.bg} onPress={() => setShowEditProfile(false)} />
           <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
             <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
@@ -612,7 +612,7 @@ export default function AccountScreen() {
 
       {/* ── CHANGE PASSWORD MODAL ── */}
       <Modal visible={showChangePwd} animationType="slide" transparent statusBarTranslucent>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <Pressable style={ms.bg} onPress={() => setShowChangePwd(false)} />
           <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
             <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
@@ -663,7 +663,7 @@ export default function AccountScreen() {
 
       {/* ── ADD ADDRESS MODAL ── */}
       <Modal visible={showAddAddr} animationType="slide" transparent statusBarTranslucent>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <Pressable style={ms.bg} onPress={() => setShowAddAddr(false)} />
           <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
             <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
@@ -718,7 +718,7 @@ export default function AccountScreen() {
 
       {/* ── EDIT ADDRESS MODAL ── */}
       <Modal visible={!!editingAddr} animationType="slide" transparent statusBarTranslucent>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <Pressable style={ms.bg} onPress={() => setEditingAddr(null)} />
           <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
             <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>

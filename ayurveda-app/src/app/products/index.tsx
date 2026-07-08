@@ -411,7 +411,7 @@ export default function ProductsScreen() {
 
       {/* Filter Sheet */}
       <Modal visible={showFilter} animationType="slide" transparent statusBarTranslucent>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <Pressable style={ss.modalBackdrop} onPress={() => setShowFilter(false)} />
           <Animated.View entering={FadeInUp.duration(300)} style={[ss.filterSheet, { paddingBottom: insets.bottom + 20 }]}>
             <View style={ss.filterHandle} />

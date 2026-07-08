@@ -468,10 +468,15 @@ exports.removeWishlist = async (req, res) => {
 exports.addReview = async (req, res) => {
   try {
     const userId = req.user.id
-    const { productId, rating, comment } = req.body
+    const { productId: rawProductId, rating, comment } = req.body
 
-    if (!productId || !rating) {
+    if (!rawProductId || !rating) {
       return res.status(400).json({ success: false, message: 'productId and rating are required' })
+    }
+
+    const productId = await resolveProductId(rawProductId)
+    if (!productId) {
+      return res.status(404).json({ success: false, message: 'Product not found' })
     }
 
     await pool.query(`
