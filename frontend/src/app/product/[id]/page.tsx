@@ -571,7 +571,7 @@ const addToCart = async () => {
 
 
 
-      <div className="bg-linear-to-br from-stone-50 via-amber-50/20 to-emerald-50/30 pb-10">
+      <div style={{background: 'linear-gradient(160deg, #f8fffb 0%, #f0fdf4 25%, #fffdf5 55%, #f0fdf4 80%, #f6fff9 100%)'}} className="pb-10">
 
 
         <div className="max-w-7xl mx-auto px-4 py-10 lg:py-16">
@@ -579,7 +579,7 @@ const addToCart = async () => {
 
           {/* ================= BREADCRUMB ================= */}
 
-          <nav className="mb-10 text-sm text-stone-500 flex items-center gap-2">
+          <nav className="mb-10 flex items-center gap-2" style={{fontSize: 13, color: '#6b7280', width: 'fit-content', background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)', padding: '9px 22px', borderRadius: 50, border: '1px solid rgba(16,185,129,0.14)', boxShadow: '0 2px 12px rgba(0,0,0,0.05)'}}>
 
             <Link href="/" className="hover:text-emerald-600">
               Home
@@ -610,7 +610,7 @@ const addToCart = async () => {
 
             <div className="space-y-6">
 
-              <div className="relative aspect-square bg-white rounded-3xl overflow-hidden shadow-2xl group">
+              <div className="relative aspect-square rounded-3xl overflow-hidden group" style={{background: 'white', boxShadow: '0 24px 80px rgba(16,185,129,0.14), 0 8px 30px rgba(0,0,0,0.08), 0 0 0 1px rgba(16,185,129,0.08)'}}>
 
                 <img
                   src={product.images[activeImg]}
@@ -661,10 +661,10 @@ const addToCart = async () => {
                   <button
                     key={i}
                     onClick={() => setActiveImg(i)}
-                    className={`w-20 h-20 rounded-xl overflow-hidden border-2 ${
+                    className={`w-20 h-20 rounded-xl overflow-hidden transition-all duration-200 ${
                       activeImg === i
-                        ? 'border-emerald-600'
-                        : 'border-gray-200'
+                        ? 'ring-2 ring-emerald-500 ring-offset-2 shadow-md scale-105'
+                        : 'ring-1 ring-black/5 opacity-70 hover:opacity-100 hover:ring-2 hover:ring-emerald-200 hover:ring-offset-1 hover:shadow-sm'
                     }`}
                   >
 
@@ -695,13 +695,13 @@ const addToCart = async () => {
               )}
 
               <div className="flex items-center gap-3 flex-wrap">
-                <Badge className="bg-emerald-100 text-emerald-700 px-4 py-1">
+                <Badge className="px-4 py-1.5 text-xs font-semibold rounded-full" style={{background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)', color: '#065f46', border: '1px solid rgba(16,185,129,0.22)', letterSpacing: '0.03em'}}>
                   {product.category_name || 'Ayurveda'}
                 </Badge>
 
                 {/* BESTSELLER BADGE */}
                 {product.is_bestseller && (
-                  <Badge className="bg-amber-100 text-amber-700 px-4 py-1 flex items-center gap-1">
+                  <Badge className="px-4 py-1.5 text-xs font-semibold rounded-full flex items-center gap-1" style={{background: 'linear-gradient(135deg, #fef3c7, #fde68a)', color: '#92400e', border: '1px solid rgba(245,158,11,0.25)', letterSpacing: '0.03em'}}>
                     <Award size={14} />
                     BESTSELLER
                   </Badge>
@@ -709,10 +709,8 @@ const addToCart = async () => {
               </div>
 
 
-              <h1 className="text-4xl lg:text-5xl font-bold">
-
+              <h1 className="text-4xl lg:text-5xl font-extrabold leading-tight" style={{color: '#0f172a', letterSpacing: '-0.02em'}}>
                 {product.name}
-
               </h1>
 
 
@@ -760,7 +758,7 @@ const addToCart = async () => {
 
               <div className="flex items-end gap-4">
 
-                <span className="text-4xl font-bold text-emerald-600">
+                <span className="text-4xl font-black" style={{background: 'linear-gradient(135deg, #047857, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'}}>
                   {flashSaleInfo ? `₹${Number(flashSaleInfo.flash_price).toFixed(0)}` : formatPrice(String(effectivePrice))}
                 </span>
                 {product.unit && (
@@ -1003,11 +1001,12 @@ const addToCart = async () => {
                   <Button
                     disabled={effectiveInventory === 0 || cartLoading || (variants.length > 0 && !selectedVariant)}
                     onClick={addToCart}
-                    className={`flex-1 text-lg py-6 ${
+                    className={`flex-1 text-lg py-6 font-semibold rounded-2xl transition-all duration-200 ${
                       isInCart && qty !== cartQty ? 'bg-amber-600 hover:bg-amber-700'
                       : isInCart ? 'bg-emerald-700 hover:bg-emerald-800'
-                      : 'bg-linear-to-r from-emerald-600 to-green-600'
+                      : 'bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700'
                     }`}
+                    style={!(effectiveInventory === 0 || cartLoading || (variants.length > 0 && !selectedVariant)) ? {boxShadow: '0 8px 28px rgba(16,185,129,0.4), 0 2px 8px rgba(16,185,129,0.2)'} : {}}
                   >
                     {cartLoading ? (
                       <span className="flex gap-2">
@@ -1035,32 +1034,25 @@ const addToCart = async () => {
 
               {/* TRUST */}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
-
-
-                <div className="bg-white p-4 rounded-xl shadow flex items-center gap-3">
-
-                  <Truck className="text-emerald-600" />
-                  Fast Delivery
-
+              <div className="flex items-stretch gap-3 pt-6">
+                <div className="flex-1 rounded-2xl p-4 flex flex-col items-center gap-2 text-center" style={{background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: '1px solid rgba(16,185,129,0.18)', boxShadow: '0 2px 14px rgba(16,185,129,0.08)'}}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{background: 'rgba(16,185,129,0.14)'}}>
+                    <Truck size={18} className="text-emerald-600" />
+                  </div>
+                  <span className="text-xs font-semibold text-emerald-800">Fast Delivery</span>
                 </div>
-
-
-                <div className="bg-white p-4 rounded-xl shadow flex items-center gap-3">
-
-                  <Shield className="text-blue-600" />
-                  Secure Payment
-
+                <div className="flex-1 rounded-2xl p-4 flex flex-col items-center gap-2 text-center" style={{background: 'linear-gradient(135deg, #eff6ff, #dbeafe)', border: '1px solid rgba(37,99,235,0.14)', boxShadow: '0 2px 14px rgba(37,99,235,0.07)'}}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{background: 'rgba(37,99,235,0.1)'}}>
+                    <Shield size={18} className="text-blue-600" />
+                  </div>
+                  <span className="text-xs font-semibold text-blue-800">Secure Payment</span>
                 </div>
-
-
-                <div className="bg-white p-4 rounded-xl shadow flex items-center gap-3">
-
-                  <CheckCircle className="text-amber-600" />
-                  Genuine
-
+                <div className="flex-1 rounded-2xl p-4 flex flex-col items-center gap-2 text-center" style={{background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid rgba(217,119,6,0.16)', boxShadow: '0 2px 14px rgba(217,119,6,0.07)'}}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{background: 'rgba(217,119,6,0.1)'}}>
+                    <CheckCircle size={18} className="text-amber-600" />
+                  </div>
+                  <span className="text-xs font-semibold text-amber-800">100% Genuine</span>
                 </div>
-
               </div>
 
             </div>
@@ -1070,28 +1062,33 @@ const addToCart = async () => {
 
 
           {/* ── TAB BAR ── */}
-          <div className="flex border-b-2 border-gray-200 mt-12">
+          <div className="mt-14 mb-2">
+            <div className="inline-flex gap-1 p-1.5 rounded-2xl" style={{background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)', border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 4px 24px rgba(0,0,0,0.07)'}}>
             {(['desc', 'reviews', 'qa'] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setPdTab(t)}
-                className={`px-6 py-3.5 text-sm font-semibold border-b-2 -mb-0.5 transition-colors ${
-                  pdTab === t ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-800'
-                }`}
+                className="px-6 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200"
+                style={pdTab === t ? {
+                  background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)',
+                  color: '#065f46',
+                  boxShadow: '0 2px 10px rgba(16,185,129,0.22)',
+                } : {color: '#6b7280'}}
               >
                 {t === 'desc' ? 'Description' : t === 'reviews' ? `Reviews (${product.reviewcount})` : 'Q&A'}
               </button>
             ))}
+            </div>
           </div>
 
           {/* ================= DESCRIPTION TAB ================= */}
           {pdTab === 'desc' && (
-          <Card className="mt-8 shadow-xl rounded-3xl border-0 overflow-hidden">
+          <Card className="mt-8 rounded-3xl border-0 overflow-hidden" style={{boxShadow: '0 8px 40px rgba(0,0,0,0.06), 0 0 0 1px rgba(16,185,129,0.06)', background: 'white'}}>
 
 
             <CardContent className="p-10">
 
-              <h2 className="text-3xl font-bold mb-6">
+              <h2 className="text-3xl font-bold mb-6" style={{borderLeft: '4px solid #10b981', paddingLeft: 14, color: '#0f172a'}}>
 
                 Product Description
 
@@ -1106,13 +1103,13 @@ const addToCart = async () => {
               {/* SPECIFICATIONS */}
               {product.specifications && product.specifications.length > 0 && (
                 <div className="mt-10">
-                  <h3 className="text-2xl font-bold mb-4">Specifications</h3>
-                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                  <h3 className="text-2xl font-bold mb-4" style={{borderLeft: '4px solid #6366f1', paddingLeft: 14, color: '#0f172a'}}>Specifications</h3>
+                  <div className="overflow-hidden" style={{borderRadius: 14, border: '1px solid rgba(99,102,241,0.12)', boxShadow: '0 2px 12px rgba(0,0,0,0.04)'}}>
                     <table className="w-full text-sm">
                       <tbody>
                         {product.specifications.map((spec: any, i: number) => (
-                          <tr key={i} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                            <td className="px-5 py-3 font-semibold text-gray-700 w-1/3 border-r border-gray-200">
+                          <tr key={i} style={{background: i % 2 === 0 ? '#f8f9ff' : 'white'}}>
+                            <td className="px-5 py-3 font-semibold text-gray-700 w-1/3" style={{borderRight: '1px solid rgba(99,102,241,0.1)'}}>
                               {spec.key}
                             </td>
                             <td className="px-5 py-3 text-gray-600">
@@ -1139,9 +1136,9 @@ const addToCart = async () => {
 
           {/* HIGHLIGHTS */}
           {product.highlights && (
-            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+            <Card className="rounded-3xl border-0 overflow-hidden" style={{boxShadow: '0 6px 30px rgba(0,0,0,0.06)', background: 'linear-gradient(135deg, #ffffff, #f8fffe)'}}>
               <CardContent className="p-10">
-                <h3 className="text-2xl font-bold mb-4">Product Highlights</h3>
+                <h3 className="text-2xl font-bold mb-4" style={{borderLeft: '4px solid #10b981', paddingLeft: 14, color: '#0f172a'}}>Product Highlights</h3>
                 <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{product.highlights}</p>
               </CardContent>
             </Card>
@@ -1149,9 +1146,9 @@ const addToCart = async () => {
 
           {/* INGREDIENTS */}
           {product.ingredients && (
-            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+            <Card className="rounded-3xl border-0 overflow-hidden" style={{boxShadow: '0 6px 30px rgba(0,0,0,0.06)', background: 'linear-gradient(135deg, #ffffff, #f8fff8)'}}>
               <CardContent className="p-10">
-                <h3 className="text-2xl font-bold mb-4">Ingredients</h3>
+                <h3 className="text-2xl font-bold mb-4" style={{borderLeft: '4px solid #059669', paddingLeft: 14, color: '#0f172a'}}>Ingredients</h3>
                 <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{product.ingredients}</p>
               </CardContent>
             </Card>
@@ -1159,9 +1156,9 @@ const addToCart = async () => {
 
           {/* BENEFITS */}
           {product.benefits && (
-            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+            <Card className="rounded-3xl border-0 overflow-hidden" style={{boxShadow: '0 6px 30px rgba(0,0,0,0.06)', background: 'linear-gradient(135deg, #ffffff, #f8fff3)'}}>
               <CardContent className="p-10">
-                <h3 className="text-2xl font-bold mb-4">Health Benefits</h3>
+                <h3 className="text-2xl font-bold mb-4" style={{borderLeft: '4px solid #16a34a', paddingLeft: 14, color: '#0f172a'}}>Health Benefits</h3>
                 <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{product.benefits}</p>
               </CardContent>
             </Card>
@@ -1169,9 +1166,9 @@ const addToCart = async () => {
 
           {/* USAGE INSTRUCTIONS */}
           {product.usage_instructions && (
-            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+            <Card className="rounded-3xl border-0 overflow-hidden" style={{boxShadow: '0 6px 30px rgba(0,0,0,0.06)', background: 'linear-gradient(135deg, #ffffff, #fffbf5)'}}>
               <CardContent className="p-10">
-                <h3 className="text-2xl font-bold mb-4">Usage / Dosage Instructions</h3>
+                <h3 className="text-2xl font-bold mb-4" style={{borderLeft: '4px solid #d97706', paddingLeft: 14, color: '#0f172a'}}>Usage / Dosage Instructions</h3>
                 <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{product.usage_instructions}</p>
               </CardContent>
             </Card>
@@ -1179,9 +1176,9 @@ const addToCart = async () => {
 
           {/* STORAGE INSTRUCTIONS */}
           {product.storage_instructions && (
-            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+            <Card className="rounded-3xl border-0 overflow-hidden" style={{boxShadow: '0 6px 30px rgba(0,0,0,0.06)', background: 'linear-gradient(135deg, #ffffff, #f5fbff)'}}>
               <CardContent className="p-10">
-                <h3 className="text-2xl font-bold mb-4">Storage Instructions</h3>
+                <h3 className="text-2xl font-bold mb-4" style={{borderLeft: '4px solid #0ea5e9', paddingLeft: 14, color: '#0f172a'}}>Storage Instructions</h3>
                 <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{product.storage_instructions}</p>
               </CardContent>
             </Card>
@@ -1200,9 +1197,9 @@ const addToCart = async () => {
 
           {/* VIDEO */}
           {product.video_url && (
-            <Card className="shadow-xl rounded-3xl border-0 overflow-hidden">
+            <Card className="rounded-3xl border-0 overflow-hidden" style={{boxShadow: '0 6px 30px rgba(0,0,0,0.06)', background: 'white'}}>
               <CardContent className="p-10">
-                <h3 className="text-2xl font-bold mb-4">Product Video</h3>
+                <h3 className="text-2xl font-bold mb-4" style={{borderLeft: '4px solid #7c3aed', paddingLeft: 14, color: '#0f172a'}}>Product Video</h3>
                 <div className="aspect-video rounded-2xl overflow-hidden">
                   <iframe
                     src={product.video_url.replace('watch?v=', 'embed/')}
@@ -1264,19 +1261,31 @@ const addToCart = async () => {
 
       {/* ================= RELATED PRODUCTS ================= */}
       {relatedProducts.length > 0 && (
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 16px 0' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a3a2a', marginBottom: 20 }}>You May Also Like</h2>
-          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 12, scrollbarWidth: 'none' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 16px 0' }}>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 24, letterSpacing: '-0.01em' }}>You May Also Like</h2>
+          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, scrollbarWidth: 'none' }}>
             {relatedProducts.map((p: any) => (
-              <a key={p.id} href={`/product/${p.slug || p.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: 180 }}>
-                <div style={{ background: 'white', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(26,58,42,0.1)', transition: 'transform 0.2s' }}>
-                  <img src={p.images?.[0] || '/placeholder.png'} alt={p.name} style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
-                  <div style={{ padding: '10px 12px' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1a3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4 }}>{p.name}</div>
+              <a key={p.id} href={`/product/${p.slug || p.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: 188 }}>
+                <div style={{ background: 'white', borderRadius: 18, overflow: 'hidden', border: '1px solid rgba(16,185,129,0.1)', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', transition: 'all 0.25s ease' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 12px 40px rgba(16,185,129,0.14)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 20px rgba(0,0,0,0.07)' }}
+                >
+                  <div style={{overflow: 'hidden'}}>
+                    <img src={p.images?.[0] || '/placeholder.png'} alt={p.name} style={{ width: '100%', height: 168, objectFit: 'cover', display: 'block', transition: 'transform 0.4s ease' }} />
+                  </div>
+                  <div style={{ padding: '12px 14px 14px' }}>
+                    {p.is_bestseller && <div style={{ fontSize: 9, fontWeight: 700, color: '#92400e', background: '#fef3c7', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 20, padding: '2px 8px', display: 'inline-block', marginBottom: 6, letterSpacing: '0.06em' }}>BESTSELLER</div>}
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 6 }}>{p.name}</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#2d5a3d' }}>₹{p.price}</span>
-                      {p.compareprice && <span style={{ fontSize: 11, color: '#bbb', textDecoration: 'line-through' }}>₹{p.compareprice}</span>}
+                      <span style={{ fontSize: 15, fontWeight: 800, color: '#047857' }}>₹{p.price}</span>
+                      {p.compareprice && <span style={{ fontSize: 11, color: '#cbd5e1', textDecoration: 'line-through' }}>₹{p.compareprice}</span>}
                     </div>
+                    {Number(p.averagerating) > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                        <span style={{ fontSize: 10, color: '#f59e0b' }}>★</span>
+                        <span style={{ fontSize: 10, color: '#6b7280', fontWeight: 500 }}>{Number(p.averagerating).toFixed(1)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </a>
@@ -1290,7 +1299,7 @@ const addToCart = async () => {
       <>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 16px 0' }}>
         {ratingBreakdown && (
-          <div style={{ background: 'white', borderRadius: 16, padding: '24px', marginBottom: 24, border: '1px solid rgba(26,58,42,0.1)', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ background: 'linear-gradient(135deg, #ffffff, #f8fffe)', borderRadius: 20, padding: '28px 24px', marginBottom: 28, border: '1px solid rgba(16,185,129,0.1)', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ textAlign: 'center', minWidth: 100 }}>
               <div style={{ fontSize: 52, fontWeight: 800, color: '#1a3a2a', lineHeight: 1 }}>{Number(ratingBreakdown.average).toFixed(1)}</div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 3, margin: '8px 0 4px' }}>
@@ -1309,7 +1318,7 @@ const addToCart = async () => {
                     <span style={{ fontSize: 12, color: '#888', width: 16, textAlign: 'right' }}>{star}</span>
                     <Star size={11} fill="#f59e0b" stroke="#f59e0b" />
                     <div style={{ flex: 1, height: 8, background: '#f0f0f0', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: pct > 0 ? '#f59e0b' : 'transparent', borderRadius: 4, transition: 'width 0.5s' }} />
+                      <div style={{ width: `${pct}%`, height: '100%', background: pct > 0 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'transparent', borderRadius: 4, transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
                     </div>
                     <span style={{ fontSize: 11, color: '#aaa', width: 24 }}>{count}</span>
                   </div>
@@ -1333,7 +1342,7 @@ const addToCart = async () => {
 
         {/* Write review form — visible to logged-in users only */}
         {loginuserdata ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-4">
+          <div className="bg-white rounded-2xl mb-4 p-5" style={{border: '1px solid rgba(16,185,129,0.1)', boxShadow: '0 4px 24px rgba(16,185,129,0.08)'}}>
             <p className="text-sm font-semibold text-gray-700 mb-3">
               {wExistingImages.length > 0 || wRating > 0 ? 'Edit Your Review' : 'Write a Review'}
             </p>
@@ -1415,7 +1424,7 @@ const addToCart = async () => {
             const colors = ['#2d5a3d', '#1e40af', '#7c3aed', '#b45309', '#0e7490']
             const avatarColor = colors[r.id % colors.length]
             return (
-              <div key={r.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+              <div key={r.id} className="bg-white rounded-2xl p-5 transition-all duration-200 hover:shadow-lg" style={{border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 14px rgba(0,0,0,0.04)'}}>
                 <div className="flex items-start gap-3 mb-3">
                   {/* Avatar */}
                   <div

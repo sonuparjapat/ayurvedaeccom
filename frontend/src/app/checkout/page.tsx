@@ -63,7 +63,7 @@ const GlobalStyles = () => (
 
     .checkout-root {
       font-family: 'DM Sans', sans-serif;
-      background: var(--cream);
+      background: radial-gradient(ellipse at 70% 10%, rgba(201,169,110,0.07) 0%, transparent 50%), radial-gradient(ellipse at 20% 90%, rgba(61,90,62,0.06) 0%, transparent 50%), var(--cream);
       min-height: 100vh;
     }
 
@@ -153,12 +153,12 @@ const GlobalStyles = () => (
 
     /* Glass card */
     .glass-card {
-      background: rgba(255,255,255,0.85);
-      backdrop-filter: blur(20px);
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(24px);
       border: 1px solid var(--border);
       border-radius: 24px;
       overflow: hidden;
-      box-shadow: 0 4px 60px rgba(26,22,18,0.06), 0 1px 0 rgba(255,255,255,0.8) inset;
+      box-shadow: 0 8px 60px rgba(26,22,18,0.08), 0 2px 0 rgba(255,255,255,0.9) inset, 0 0 0 1px rgba(201,169,110,0.05) inset;
     }
 
     /* Card header */
@@ -213,12 +213,12 @@ const GlobalStyles = () => (
     /* Payment option */
     .pay-option {
       flex: 1;
-      padding: 20px;
-      border: 1px solid var(--border);
-      border-radius: 16px;
+      padding: 28px 20px 24px;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
       cursor: pointer;
       text-align: center;
-      transition: all 0.25s ease;
+      transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
       background: var(--parchment);
       position: relative;
       overflow: hidden;
@@ -226,16 +226,19 @@ const GlobalStyles = () => (
     .pay-option.selected {
       border-color: var(--gold);
       background: white;
-      box-shadow: 0 0 0 2px var(--gold), 0 8px 32px rgba(201,169,110,0.15);
+      box-shadow: 0 0 0 2px var(--gold), 0 16px 48px rgba(201,169,110,0.22), 0 4px 16px rgba(26,22,18,0.06);
+      transform: translateY(-3px);
     }
     .pay-option.selected::before {
       content: '';
       position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(201,169,110,0.06) 0%, transparent 100%);
+      background: linear-gradient(160deg, rgba(201,169,110,0.1) 0%, rgba(201,169,110,0.02) 60%, transparent 100%);
     }
     .pay-option:hover:not(.selected) {
       border-color: rgba(201,169,110,0.5);
       background: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(26,22,18,0.07);
     }
 
     /* CTA button */
@@ -292,14 +295,15 @@ const GlobalStyles = () => (
     }
     .summary-row.total {
       color: var(--ink);
-      font-size: 18px;
-      font-weight: 600;
-      padding-top: 16px;
+      font-size: 20px;
+      font-weight: 700;
+      padding-top: 18px;
+      letter-spacing: -0.01em;
     }
     .summary-divider {
       height: 1px;
-      background: var(--border);
-      margin: 4px 0;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 8px 0;
     }
     .free-badge {
       background: linear-gradient(135deg, var(--sage), #2d4a2e);
@@ -314,16 +318,18 @@ const GlobalStyles = () => (
 
     /* Cart item */
     .cart-item-row {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 0;
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 13px 0;
       border-bottom: 1px solid var(--border);
     }
     .cart-item-row:last-child { border-bottom: none; }
     .item-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
-      background: var(--gold);
+      background: linear-gradient(135deg, var(--gold-dark), var(--gold));
       flex-shrink: 0;
+      margin-top: 5px;
+      box-shadow: 0 0 6px rgba(201,169,110,0.5);
     }
 
     /* Success page */
@@ -1163,9 +1169,11 @@ if (checkingAddress) {
                           className={`pay-option ${paymentMethod === 'cod' ? 'selected' : ''}`}
                           onClick={() => setPaymentMethod('cod')}
                         >
-                          <IndianRupee size={22} style={{ color: paymentMethod === 'cod' ? 'var(--gold)' : '#999', margin: '0 auto 8px' }} />
-                          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Cash on Delivery</p>
-                          <p style={{ fontSize: 11, color: '#999' }}>Pay when it arrives</p>
+                          <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: paymentMethod === 'cod' ? 'rgba(201,169,110,0.16)' : 'rgba(0,0,0,0.04)', transition: 'all 0.3s ease' }}>
+                            <IndianRupee size={26} style={{ color: paymentMethod === 'cod' ? 'var(--gold)' : '#aaa' }} />
+                          </div>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Cash on Delivery</p>
+                          <p style={{ fontSize: 12, color: '#999', lineHeight: 1.4 }}>Pay when it arrives</p>
                           {paymentMethod === 'cod' && (
                             <motion.div
                               initial={{ scale: 0 }}
@@ -1181,9 +1189,11 @@ if (checkingAddress) {
                           className={`pay-option ${paymentMethod === 'online' ? 'selected' : ''}`}
                           onClick={() => setPaymentMethod('online')}
                         >
-                          <CreditCard size={22} style={{ color: paymentMethod === 'online' ? 'var(--gold)' : '#999', margin: '0 auto 8px' }} />
-                          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Online Payment</p>
-                          <p style={{ fontSize: 11, color: '#999' }}>UPI, Cards, NetBanking</p>
+                          <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: paymentMethod === 'online' ? 'rgba(201,169,110,0.16)' : 'rgba(0,0,0,0.04)', transition: 'all 0.3s ease' }}>
+                            <CreditCard size={26} style={{ color: paymentMethod === 'online' ? 'var(--gold)' : '#aaa' }} />
+                          </div>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Online Payment</p>
+                          <p style={{ fontSize: 12, color: '#999', lineHeight: 1.4 }}>UPI, Cards, NetBanking</p>
                           {paymentMethod === 'online' && (
                             <motion.div
                               initial={{ scale: 0 }}
@@ -1476,7 +1486,7 @@ if (checkingAddress) {
 
                   <div className="summary-row total">
                     <span>Total</span>
-                    <span style={{ color: 'var(--gold-dark)' }}>₹{total}</span>
+                    <span style={{ background: 'linear-gradient(135deg, var(--gold-dark), var(--gold))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 800 }}>₹{total}</span>
                   </div>
 
                 </div>
