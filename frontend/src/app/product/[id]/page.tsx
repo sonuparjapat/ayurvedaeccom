@@ -157,6 +157,7 @@ export default function ProductDetailPage() {
   const [wLoading, setWLoading] = useState(false)
   const [wImages, setWImages] = useState<{ file: File; preview: string }[]>([])
   const [wExistingImages, setWExistingImages] = useState<string[]>([])
+  const [wUrlInput, setWUrlInput] = useState('')
   const [lightbox, setLightbox] = useState<{ images: string[]; idx: number } | null>(null)
   const [pdTab, setPdTab] = useState<'desc' | 'reviews' | 'qa'>('desc')
 
@@ -1364,6 +1365,27 @@ const addToCart = async () => {
               value={wComment}
               onChange={e => setWComment(e.target.value)}
             />
+            {/* Image URL input */}
+            <div className="flex gap-2 mb-3">
+              <input
+                type="url"
+                value={wUrlInput}
+                onChange={e => setWUrlInput(e.target.value)}
+                placeholder="Paste image URL (optional)..."
+                className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+              />
+              <button
+                onClick={() => {
+                  const url = wUrlInput.trim()
+                  if (url && wExistingImages.length + wImages.length < 5) {
+                    setWExistingImages(prev => [...prev, url])
+                    setWUrlInput('')
+                  }
+                }}
+                disabled={!wUrlInput.trim() || wExistingImages.length + wImages.length >= 5}
+                className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-40 transition-colors"
+              >Add URL</button>
+            </div>
             {/* Existing images */}
             {wExistingImages.length > 0 && (
               <div className="flex gap-2 flex-wrap mb-2">

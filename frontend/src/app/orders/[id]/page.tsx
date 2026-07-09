@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
+import { useAuth } from '@/context/auth-context'
 
 /* ── Status meta ── */
 const STATUS_MAP: Record<number, { label: string; color: string; bg: string; icon: any; emoji: string }> = {
@@ -74,6 +75,18 @@ export default function OrderDetailPage() {
   const [returning, setReturning] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [reordering, setReordering] = useState(false)
+
+  // Per-item review form
+  const [reviewingProductId, setReviewingProductId] = useState<number | null>(null)
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewFileImgs, setReviewFileImgs] = useState<{ file: File; preview: string }[]>([])
+  const [reviewExistingImgs, setReviewExistingImgs] = useState<string[]>([])
+  const [reviewUrlInput, setReviewUrlInput] = useState('')
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [reviewFetching, setReviewFetching] = useState(false)
+
+  const { loginuserdata } = useAuth()
 
   useEffect(() => {
     if (!id) return
@@ -151,6 +164,52 @@ export default function OrderDetailPage() {
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed')
     } finally { setReturning(false) }
+  }
+
+  const openReviewForm = async (productId: number) => {
+    if (reviewingProductId === productId) {
+      setReviewingProductId(null)
+      return
+    }
+    setReviewingProductId(productId)
+    setReviewRating(0)
+    setReviewComment('')
+    setReviewFileImgs([])
+    setReviewExistingImgs([])
+    setReviewUrlInput('')
+    setReviewFetching(true)
+    try {
+      const { data } = await axios.get(`/shop/reviews/product/${productId}`)
+      const reviews = data.reviews || data.data || []
+      const mine = reviews.find((r: any) => r.user_id == loginuserdata?.id)
+      if (mine) {
+        setReviewRating(mine.rating || 0)
+        setReviewComment(mine.comment || '')
+        setReviewExistingImgs(mine.images || [])
+      }
+    } catch {}
+    finally { setReviewFetching(false) }
+  }
+
+  const submitProductReview = async (productId: number) => {
+    if (!loginuserdata) { toast.error('Please login to submit a review'); return }
+    if (!reviewRating) { toast.error('Please select a star rating'); return }
+    try {
+      setReviewSubmitting(true)
+      const form = new FormData()
+      form.append('productId', String(productId))
+      form.append('rating', String(reviewRating))
+      form.append('comment', reviewComment)
+      form.append('oldImages', JSON.stringify(reviewExistingImgs))
+      reviewFileImgs.forEach(img => form.append('images', img.file))
+      await axios.post('/shop/reviews/product', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      toast.success('Review saved!')
+      setReviewingProductId(null)
+      setReviewFileImgs([])
+      setReviewExistingImgs([])
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to submit review')
+    } finally { setReviewSubmitting(false) }
   }
 
   if (loading) return (
@@ -297,7 +356,7 @@ export default function OrderDetailPage() {
                   {idx < timeline.length - 1 && (
                     <div className="absolute left-[15px] top-8 w-0.5 h-full bg-gray-100" />
                   )}
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10"
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10"
                     style={{ background: st ? `${st.color}18` : '#e8f5ee', border: `2px solid ${st?.color || '#4a7c5e'}` }}>
                     <Icon size={13} style={{ color: st?.color || '#4a7c5e' }} />
                   </div>
@@ -316,17 +375,145 @@ export default function OrderDetailPage() {
       {/* ── Items ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
         <p className="text-sm font-semibold text-gray-700 mb-4">Items Ordered ({order.items?.length})</p>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {order.items?.map((item: any, i: number) => (
-            <div key={i} className="flex gap-3 items-center">
-              <img src={item.image || '/placeholder.png'} alt={item.name}
-                className="w-14 h-14 rounded-xl object-cover bg-green-50 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
-                {item.variant_label && <p className="text-xs text-green-600 font-medium mt-0.5">{item.variant_label}</p>}
-                <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
+            <div key={i}>
+              <div className="flex gap-3 items-center">
+                <img src={item.image || '/placeholder.png'} alt={item.name}
+                  className="w-14 h-14 rounded-xl object-cover bg-green-50 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
+                  {item.variant_label && <p className="text-xs text-green-600 font-medium mt-0.5">{item.variant_label}</p>}
+                  <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <p className="text-sm font-bold text-gray-800">₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}</p>
+                  {order.status === 5 && (
+                    <button
+                      onClick={() => openReviewForm(item.product_id)}
+                      className="text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors"
+                      style={reviewingProductId === item.product_id
+                        ? { color: '#92400e', background: '#fef3c7', borderColor: '#fde68a' }
+                        : { color: '#d97706', background: '#fffbeb', borderColor: '#fde68a' }
+                      }
+                    >
+                      {reviewingProductId === item.product_id ? '✕ Close' : '⭐ Review'}
+                    </button>
+                  )}
+                </div>
               </div>
-              <p className="text-sm font-bold text-gray-800 flex-shrink-0">₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}</p>
+
+              {/* Inline per-item review form */}
+              {reviewingProductId === item.product_id && (
+                <div className="mt-3 p-4 rounded-xl border border-amber-200 bg-amber-50">
+                  {reviewFetching ? (
+                    <div className="flex items-center gap-2 text-sm text-amber-600 py-2">
+                      <div className="w-4 h-4 border-2 border-amber-300 border-t-amber-600 rounded-full animate-spin" />
+                      Loading your review...
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-amber-800 mb-3">
+                        {reviewRating > 0 ? 'Edit Your Review' : 'Write a Review'}
+                        <span className="text-amber-600 font-normal"> · {item.name}</span>
+                      </p>
+                      {/* Stars */}
+                      <div className="flex gap-1 mb-3">
+                        {[1,2,3,4,5].map(s => (
+                          <Star
+                            key={s}
+                            size={24}
+                            onClick={() => setReviewRating(s)}
+                            fill={s <= reviewRating ? '#f59e0b' : 'none'}
+                            color={s <= reviewRating ? '#f59e0b' : '#d1d5db'}
+                            className="cursor-pointer"
+                          />
+                        ))}
+                      </div>
+                      {/* Comment */}
+                      <textarea
+                        className="w-full border border-amber-200 rounded-xl p-3 text-sm mb-3 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white"
+                        placeholder="Share your experience with this product..."
+                        rows={3}
+                        value={reviewComment}
+                        onChange={e => setReviewComment(e.target.value)}
+                      />
+                      {/* Existing images (from previous review) */}
+                      {reviewExistingImgs.length > 0 && (
+                        <div className="flex gap-2 flex-wrap mb-2">
+                          {reviewExistingImgs.map((url, idx) => (
+                            <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-amber-200">
+                              <img src={url} alt="review" className="w-full h-full object-cover" />
+                              <button
+                                onClick={() => setReviewExistingImgs(prev => prev.filter((_, j) => j !== idx))}
+                                className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* New file images preview */}
+                      {reviewFileImgs.length > 0 && (
+                        <div className="flex gap-2 flex-wrap mb-2">
+                          {reviewFileImgs.map((img, idx) => (
+                            <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-amber-200">
+                              <img src={img.preview} alt="new" className="w-full h-full object-cover" />
+                              <button
+                                onClick={() => setReviewFileImgs(prev => prev.filter((_, j) => j !== idx))}
+                                className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Image URL input */}
+                      <div className="flex gap-2 mb-3">
+                        <input
+                          type="url"
+                          value={reviewUrlInput}
+                          onChange={e => setReviewUrlInput(e.target.value)}
+                          placeholder="Paste image URL (optional)..."
+                          className="flex-1 border border-amber-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-300"
+                        />
+                        <button
+                          onClick={() => {
+                            const url = reviewUrlInput.trim()
+                            if (url && reviewExistingImgs.length + reviewFileImgs.length < 5) {
+                              setReviewExistingImgs(prev => [...prev, url])
+                              setReviewUrlInput('')
+                            }
+                          }}
+                          disabled={!reviewUrlInput.trim() || reviewExistingImgs.length + reviewFileImgs.length >= 5}
+                          className="px-3 py-2 bg-amber-400 text-white rounded-xl text-xs font-semibold hover:bg-amber-500 disabled:opacity-40"
+                        >Add</button>
+                      </div>
+                      {/* Actions */}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <button
+                          onClick={() => submitProductReview(item.product_id)}
+                          disabled={reviewSubmitting || !reviewRating}
+                          className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors"
+                        >
+                          {reviewSubmitting ? 'Saving...' : 'Submit Review'}
+                        </button>
+                        {reviewExistingImgs.length + reviewFileImgs.length < 5 && (
+                          <label className="cursor-pointer text-xs text-amber-700 font-semibold border border-amber-200 rounded-lg px-3 py-1.5 hover:bg-amber-100 bg-white transition-colors">
+                            + Add Photos
+                            <input type="file" multiple accept="image/*" className="hidden" onChange={e => {
+                              const files = Array.from(e.target.files || []).filter((f: any) => f.type.startsWith('image/'))
+                              const remaining = 5 - reviewExistingImgs.length - reviewFileImgs.length
+                              const toAdd = files.slice(0, remaining)
+                              setReviewFileImgs(prev => [...prev, ...toAdd.map((f: any) => ({ file: f, preview: URL.createObjectURL(f) }))])
+                              e.target.value = ''
+                            }} />
+                          </label>
+                        )}
+                        <span className="text-xs text-gray-400">{reviewExistingImgs.length + reviewFileImgs.length}/5 photos</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -344,20 +531,6 @@ export default function OrderDetailPage() {
             <span className="text-lg font-bold text-gray-900">₹{Number(order.total_amount).toFixed(2)}</span>
           </div>
         </div>
-        {/* Write Review CTA for delivered orders */}
-        {order.status === 5 && (
-          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3 bg-amber-50 rounded-xl p-3">
-            <Star size={18} className="text-amber-500 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800">How was your experience?</p>
-              <p className="text-xs text-gray-500">Share your thoughts on the products</p>
-            </div>
-            <Link href={`/account?tab=orders`}
-              className="text-xs font-semibold text-amber-600 bg-amber-100 px-3 py-1.5 rounded-lg hover:bg-amber-200 flex-shrink-0">
-              Write Review
-            </Link>
-          </div>
-        )}
       </div>
 
       {/* ── Delivery Address ── */}
@@ -382,7 +555,7 @@ export default function OrderDetailPage() {
       {canRetryPayment && (
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-amber-800">Payment Pending</p>
               <p className="text-xs text-amber-700 mt-0.5">Your order needs payment to be confirmed.</p>

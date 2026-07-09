@@ -29,6 +29,21 @@ On Android, after payment confirm, the `Linking` event must fire and the browser
 
 ---
 
+## Web — Order Detail Review Form
+
+1. Go to `/orders/<delivered-order-id>` (order with status = Delivered).
+2. Verify each item row has an "⭐ Review" button.
+3. Click "⭐ Review" on an item — verify it expands an inline review form for that specific product.
+4. If the user already reviewed this product, verify the form is pre-filled (stars, comment, existing photos).
+5. Select stars, write a comment, upload a photo via file picker — verify image thumbnail appears.
+6. Paste an image URL into the URL field and click "Add" — verify it appears as a thumbnail.
+7. Remove a photo (hover → ✕) — verify it disappears from the form.
+8. Submit — verify toast "Review saved!" and form collapses.
+9. Re-open the review form for the same item — verify the updated review pre-fills.
+10. Click "✕ Close" — verify form collapses without submitting.
+
+---
+
 ## Web — Cart Sheet
 
 1. Open any page; click the cart icon in the header.
