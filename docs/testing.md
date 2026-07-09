@@ -29,6 +29,21 @@ On Android, after payment confirm, the `Linking` event must fire and the browser
 
 ---
 
+## Web — Cart Sheet
+
+1. Open any page; click the cart icon in the header.
+2. Verify the cart drawer slides in from the right with a glass panel (light green tint).
+3. Verify the count badge on the trigger animates in/out with a spring effect.
+4. Add items to cart and verify each shows image, name, gradient price, and quantity controls.
+5. Increment/decrement quantity — verify API is called and subtotal updates.
+6. Remove an item — verify the card slides out with the exit animation.
+7. When cart is empty, verify the empty state icon and "Shop Now" button appear.
+8. Click "Checkout" when not logged in — verify login modal opens (no redirect yet).
+9. Click "Checkout" when logged in — verify redirect to `/checkout`.
+10. Test at 375px — verify the drawer is full-width and items are readable.
+
+---
+
 ## Web — Checkout Page
 
 1. Add items to cart, go to `/checkout`.

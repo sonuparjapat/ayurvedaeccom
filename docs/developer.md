@@ -48,6 +48,16 @@ Premium UI upgrade applied — all logic and state management unchanged. Key vis
 - Coloured left-border accent per content section
 - Gradient trust badge cards (Fast Delivery / Secure Payment / 100% Genuine)
 
+### Cart Sheet (`frontend/src/components/cart/cart-sheet.tsx`)
+Premium UI upgrade applied — all logic and state management unchanged. Key visual changes:
+- Trigger button matches header `action-btn` style (38px rounded, hover glass lift, gold count badge with spring animation)
+- Sheet panel: `linear-gradient(180deg, #f8fffb, #f0fdf4, #fafff8)` background, left border `rgba(16,185,129,0.10)`, `box-shadow: -8px 0 60px rgba(26,58,42,0.12)`
+- Sticky header: `backdrop-filter: blur(20px)`, dark forest icon container, item count subtitle
+- Item cards: glass `rgba(255,255,255,0.82)` with `backdrop-filter: blur(8px)`, hover lift, gradient price text, emerald quantity controls
+- Exit animation: items slide right + scale down on removal (`AnimatePresence`)
+- Empty state: emerald icon box with `box-shadow`, prominent "Shop Now" gradient button
+- Footer: gradient total amount text, shimmer checkout button (`::after` sweep), trust chips
+
 ### Checkout (`frontend/src/app/checkout/page.tsx`)
 Premium UI upgrade applied — all logic and state management unchanged. Key visual changes:
 - Radial gradient page background
