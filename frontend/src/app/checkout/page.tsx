@@ -66,377 +66,235 @@ const GlobalStyles = () => (
       background: radial-gradient(ellipse at 70% 10%, rgba(201,169,110,0.07) 0%, transparent 50%), radial-gradient(ellipse at 20% 90%, rgba(61,90,62,0.06) 0%, transparent 50%), var(--cream);
       min-height: 100vh;
     }
+    .display-font { font-family: 'Cormorant Garamond', serif; }
 
-    .display-font {
-      font-family: 'Cormorant Garamond', serif;
-    }
-
-    /* Animated background */
-    .bg-canvas {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-      overflow: hidden;
-    }
-    .bg-orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.25;
-    }
-    .bg-orb-1 {
-      width: 600px; height: 600px;
-      background: radial-gradient(circle, #c9a96e 0%, transparent 70%);
-      top: -200px; right: -100px;
-      animation: driftA 18s ease-in-out infinite alternate;
-    }
-    .bg-orb-2 {
-      width: 400px; height: 400px;
-      background: radial-gradient(circle, #3d5a3e 0%, transparent 70%);
-      bottom: -100px; left: -100px;
-      animation: driftB 22s ease-in-out infinite alternate;
-    }
-    .bg-orb-3 {
-      width: 300px; height: 300px;
-      background: radial-gradient(circle, #c9a96e 0%, transparent 70%);
-      top: 50%; left: 30%;
-      opacity: 0.12;
-      animation: driftC 28s ease-in-out infinite alternate;
-    }
+    /* ── Background canvas ── */
+    .bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.25; }
+    .bg-orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, #c9a96e 0%, transparent 70%); top: -200px; right: -100px; animation: driftA 18s ease-in-out infinite alternate; }
+    .bg-orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, #3d5a3e 0%, transparent 70%); bottom: -100px; left: -100px; animation: driftB 22s ease-in-out infinite alternate; }
+    .bg-orb-3 { width: 300px; height: 300px; background: radial-gradient(circle, #c9a96e 0%, transparent 70%); top: 50%; left: 30%; opacity: 0.12; animation: driftC 28s ease-in-out infinite alternate; }
+    .bg-orb-4 { width: 500px; height: 500px; background: radial-gradient(circle, #2d5a3d 0%, transparent 70%); top: 30%; right: -200px; opacity: 0.09; animation: driftB 26s ease-in-out infinite alternate; }
     @keyframes driftA { from { transform: translate(0,0) scale(1); } to { transform: translate(-60px,80px) scale(1.1); } }
     @keyframes driftB { from { transform: translate(0,0) scale(1); } to { transform: translate(80px,-60px) scale(1.15); } }
     @keyframes driftC { from { transform: translate(0,0) rotate(0deg); } to { transform: translate(40px,40px) rotate(45deg); } }
 
     /* Grain overlay */
-    .grain-overlay {
-      position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      opacity: 0.4;
-    }
+    .grain-overlay { position: fixed; inset: 0; z-index: 1; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); opacity: 0.4; }
 
-    /* Progress bar */
-    .progress-rail {
-      background: var(--border);
-      height: 1px;
-      flex: 1;
-      margin: 0 12px;
-    }
+    /* ── Progress rail ── */
+    .progress-rail { background: var(--border); height: 1px; flex: 1; margin: 0 12px; }
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+      background: linear-gradient(90deg, var(--gold-dark), var(--gold), var(--gold-dark));
+      background-size: 200% auto;
       transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+      animation: shimmer-rail 2.2s linear infinite;
     }
+    @keyframes shimmer-rail { 0% { background-position: 200% center; } 100% { background-position: 0% center; } }
 
-    /* Step node */
+    /* ── Step node ── */
     .step-node {
-      width: 44px; height: 44px;
-      border-radius: 50%;
+      width: 44px; height: 44px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      border: 1px solid var(--border);
-      background: white;
-      color: #999;
-      transition: all 0.4s ease;
-      position: relative;
+      border: 1px solid var(--border); background: white; color: #999;
+      transition: all 0.4s ease; position: relative;
     }
     .step-node.active {
-      background: var(--ink);
-      border-color: var(--ink);
-      color: var(--gold);
-      box-shadow: 0 0 0 4px var(--mist), 0 8px 24px rgba(26,22,18,0.2);
+      background: var(--ink); border-color: var(--ink); color: var(--gold);
+      animation: step-pulse 2.4s ease-in-out infinite;
     }
-    .step-node.done {
-      background: var(--gold);
-      border-color: var(--gold);
-      color: white;
+    .step-node.done { background: var(--gold); border-color: var(--gold); color: white; }
+    @keyframes step-pulse {
+      0%, 100% { box-shadow: 0 0 0 4px rgba(201,169,110,0.18), 0 8px 24px rgba(26,22,18,0.2); }
+      50%       { box-shadow: 0 0 0 10px rgba(201,169,110,0.05), 0 8px 24px rgba(26,22,18,0.2); }
     }
 
-    /* Glass card */
+    /* ── Glass card ── */
     .glass-card {
-      background: rgba(255,255,255,0.92);
+      background: rgba(255,255,255,0.93);
       backdrop-filter: blur(24px);
       border: 1px solid var(--border);
-      border-radius: 24px;
-      overflow: hidden;
+      border-radius: 24px; overflow: hidden;
       box-shadow: 0 8px 60px rgba(26,22,18,0.08), 0 2px 0 rgba(255,255,255,0.9) inset, 0 0 0 1px rgba(201,169,110,0.05) inset;
     }
 
-    /* Card header */
+    /* ── Card header — animated gradient ── */
     .card-header-luxury {
       padding: 28px 32px;
       border-bottom: 1px solid var(--border);
-      background: linear-gradient(135deg, var(--bark) 0%, var(--ink) 100%);
-      position: relative;
-      overflow: hidden;
+      background: linear-gradient(-45deg, #1a1612, #2c2317, #0e2318, #1a1612, #2c2317);
+      background-size: 400% 400%;
+      animation: hdr-shift 12s ease infinite;
+      position: relative; overflow: hidden;
     }
     .card-header-luxury::before {
-      content: '';
-      position: absolute;
-      top: -40px; right: -40px;
-      width: 120px; height: 120px;
-      border-radius: 50%;
+      content: ''; position: absolute; top: -40px; right: -40px;
+      width: 140px; height: 140px; border-radius: 50%;
       background: radial-gradient(circle, var(--gold) 0%, transparent 70%);
-      opacity: 0.15;
+      opacity: 0.18;
     }
+    .card-header-luxury::after {
+      content: ''; position: absolute; bottom: -30px; left: -30px;
+      width: 100px; height: 100px; border-radius: 50%;
+      background: radial-gradient(circle, #2d5a3d 0%, transparent 70%);
+      opacity: 0.22;
+    }
+    @keyframes hdr-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-    /* Gold input */
+    /* ── Gold input ── */
     .gold-input {
-      width: 100%;
-      padding: 14px 18px;
-      background: var(--parchment);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      color: var(--ink);
-      transition: all 0.2s ease;
-      outline: none;
+      width: 100%; padding: 14px 18px;
+      background: var(--parchment); border: 1px solid var(--border); border-radius: 12px;
+      font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--ink);
+      transition: all 0.2s ease; outline: none;
     }
     .gold-input::placeholder { color: #b8a898; }
-    .gold-input:focus {
-      border-color: var(--gold);
-      background: white;
-      box-shadow: 0 0 0 3px rgba(201,169,110,0.12);
-    }
+    .gold-input:focus { border-color: var(--gold); background: white; box-shadow: 0 0 0 3px rgba(201,169,110,0.12); }
 
-    /* Label */
-    .input-label {
-      display: block;
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--gold-dark);
-      margin-bottom: 6px;
-    }
+    /* ── Label ── */
+    .input-label { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dark); margin-bottom: 6px; }
 
-    /* Payment option */
+    /* ── Payment option ── */
     .pay-option {
-      flex: 1;
-      padding: 28px 20px 24px;
-      border: 1.5px solid var(--border);
-      border-radius: 20px;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
-      background: var(--parchment);
-      position: relative;
-      overflow: hidden;
+      flex: 1; padding: 28px 20px 24px;
+      border: 1.5px solid var(--border); border-radius: 20px;
+      cursor: pointer; text-align: center;
+      transition: border-color 0.3s, background 0.3s, transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s;
+      background: var(--parchment); position: relative; overflow: hidden;
     }
     .pay-option.selected {
-      border-color: var(--gold);
-      background: white;
-      box-shadow: 0 0 0 2px var(--gold), 0 16px 48px rgba(201,169,110,0.22), 0 4px 16px rgba(26,22,18,0.06);
-      transform: translateY(-3px);
+      border-color: var(--gold); background: white; transform: translateY(-4px);
+      animation: ring-pulse 2.2s ease-in-out infinite;
     }
     .pay-option.selected::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(160deg, rgba(201,169,110,0.1) 0%, rgba(201,169,110,0.02) 60%, transparent 100%);
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(160deg, rgba(201,169,110,0.12) 0%, rgba(201,169,110,0.02) 60%, transparent 100%);
     }
     .pay-option:hover:not(.selected) {
-      border-color: rgba(201,169,110,0.5);
-      background: white;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 20px rgba(26,22,18,0.07);
+      border-color: rgba(201,169,110,0.5); background: white;
+      transform: translateY(-2px); box-shadow: 0 6px 24px rgba(26,22,18,0.08);
+    }
+    @keyframes ring-pulse {
+      0%, 100% { box-shadow: 0 0 0 2px var(--gold), 0 16px 48px rgba(201,169,110,0.2), 0 4px 16px rgba(26,22,18,0.06); }
+      50%       { box-shadow: 0 0 0 3.5px var(--gold), 0 22px 60px rgba(201,169,110,0.32), 0 4px 16px rgba(26,22,18,0.06); }
     }
 
-    /* CTA button */
+    /* ── CTA button + shimmer ── */
     .cta-btn {
-      width: 100%;
-      padding: 16px 28px;
+      width: 100%; padding: 16px 28px;
       background: linear-gradient(135deg, var(--ink) 0%, var(--bark) 100%);
-      color: var(--gold-light);
-      border: none;
-      border-radius: 14px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 500;
-      letter-spacing: 0.04em;
-      cursor: pointer;
+      color: var(--gold-light); border: none; border-radius: 14px;
+      font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+      letter-spacing: 0.04em; cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 10px;
-      transition: all 0.25s ease;
-      position: relative;
-      overflow: hidden;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      position: relative; overflow: hidden;
     }
     .cta-btn::before {
-      content: '';
-      position: absolute; inset: 0;
+      content: ''; position: absolute; inset: 0;
       background: linear-gradient(135deg, rgba(201,169,110,0.15) 0%, transparent 50%);
-      opacity: 0;
-      transition: opacity 0.25s ease;
+      opacity: 0; transition: opacity 0.25s ease;
     }
-    .cta-btn:hover::before { opacity: 1; }
-    .cta-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 40px rgba(26,22,18,0.25); }
+    .cta-btn::after {
+      content: ''; position: absolute; top: 0; left: -100%;
+      width: 55%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.09), transparent);
+      transform: skewX(-15deg); transition: left 0.6s ease;
+    }
+    .cta-btn:not(:disabled):hover::before { opacity: 1; }
+    .cta-btn:not(:disabled):hover::after { left: 150%; }
+    .cta-btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 14px 44px rgba(26,22,18,0.28); }
     .cta-btn:active { transform: translateY(0); }
-    .cta-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .cta-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .back-btn {
-      padding: 14px 20px;
-      background: transparent;
-      color: var(--ink);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      cursor: pointer;
-      display: flex; align-items: center; gap-6;
-      gap: 6px;
-      transition: all 0.2s ease;
+      padding: 14px 20px; background: transparent; color: var(--ink);
+      border: 1px solid var(--border); border-radius: 14px;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;
     }
     .back-btn:hover { background: var(--parchment); }
 
-    /* Summary row */
-    .summary-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 0;
-      font-size: 14px;
-      color: #666;
-    }
-    .summary-row.total {
-      color: var(--ink);
-      font-size: 20px;
-      font-weight: 700;
-      padding-top: 18px;
-      letter-spacing: -0.01em;
-    }
-    .summary-divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--border), transparent);
-      margin: 8px 0;
-    }
-    .free-badge {
-      background: linear-gradient(135deg, var(--sage), #2d4a2e);
-      color: #a8d5a9;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      padding: 3px 10px;
-      border-radius: 20px;
-      text-transform: uppercase;
-    }
+    /* ── Summary ── */
+    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 14px; color: #666; }
+    .summary-row.total { color: var(--ink); font-size: 20px; font-weight: 700; padding-top: 18px; letter-spacing: -0.01em; }
+    .summary-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 8px 0; }
+    .free-badge { background: linear-gradient(135deg, var(--sage), #2d4a2e); color: #a8d5a9; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; }
 
-    /* Cart item */
-    .cart-item-row {
-      display: flex; align-items: flex-start; gap: 12px;
-      padding: 13px 0;
-      border-bottom: 1px solid var(--border);
-    }
+    /* ── Cart item row — with thumbnail ── */
+    .cart-item-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
     .cart-item-row:last-child { border-bottom: none; }
-    .item-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-      flex-shrink: 0;
-      margin-top: 5px;
-      box-shadow: 0 0 6px rgba(201,169,110,0.5);
-    }
+    .summary-item-img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
 
-    /* Success page */
-    .success-scene {
-      min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      padding: 24px;
-      position: relative;
+    /* ── Trust pill ── */
+    .trust-pill {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 10px; border-radius: 10px;
+      background: var(--mist); border: 1px solid var(--border);
+      transition: background 0.2s;
     }
+    .trust-pill:hover { background: rgba(201,169,110,0.12); }
+
+    /* ── Success ── */
+    .success-scene { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative; }
     .success-card {
-      max-width: 480px; width: 100%;
-      background: white;
-      border-radius: 32px;
-      padding: 56px 48px;
-      text-align: center;
-      box-shadow: 0 32px 80px rgba(26,22,18,0.12), 0 1px 0 rgba(255,255,255,0.9) inset;
-      border: 1px solid var(--border);
-      position: relative;
-      overflow: hidden;
+      max-width: 480px; width: 100%; background: white; border-radius: 32px;
+      padding: 56px 48px; text-align: center;
+      box-shadow: 0 32px 80px rgba(26,22,18,0.13), 0 1px 0 rgba(255,255,255,0.9) inset;
+      border: 1px solid var(--border); position: relative; overflow: hidden;
     }
     .success-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 4px;
-      background: linear-gradient(90deg, var(--gold-dark), var(--gold), var(--gold-dark));
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, var(--gold-dark), var(--gold), #2d5a3d, var(--gold), var(--gold-dark));
+      background-size: 300% auto; animation: shimmer-rail 3s linear infinite;
     }
     .success-icon-ring {
-      width: 96px; height: 96px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--ink), var(--bark));
+      width: 96px; height: 96px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--ink), #0e2318);
       display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 28px;
-      position: relative;
+      margin: 0 auto 28px; position: relative;
     }
     .success-icon-ring::before {
-      content: '';
-      position: absolute;
-      inset: -4px;
-      border-radius: 50%;
-      background: conic-gradient(var(--gold), var(--gold-dark), var(--gold));
-      z-index: -1;
-      animation: spin 4s linear infinite;
+      content: ''; position: absolute; inset: -4px; border-radius: 50%;
+      background: conic-gradient(var(--gold), #2d5a3d, var(--gold-dark), var(--gold));
+      z-index: -1; animation: spin 4s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .order-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 8px 20px;
-      background: var(--parchment);
-      border: 1px solid var(--border);
-      border-radius: 40px;
-      font-size: 13px;
-      color: var(--gold-dark);
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      margin: 16px 0;
-    }
-    .amount-display {
-      padding: 20px 28px;
-      background: linear-gradient(135deg, var(--ink), var(--bark));
-      border-radius: 16px;
-      margin: 24px 0;
-    }
-    .shop-btn {
-      width: 100%;
-      padding: 16px;
-      background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-      color: var(--ink);
-      border: none;
-      border-radius: 14px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      transition: all 0.25s ease;
-    }
+
+    .order-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: var(--parchment); border: 1px solid var(--border); border-radius: 40px; font-size: 13px; color: var(--gold-dark); font-weight: 600; letter-spacing: 0.06em; margin: 16px 0; }
+    .amount-display { padding: 20px 28px; background: linear-gradient(135deg, var(--ink), #0e2318); border-radius: 16px; margin: 24px 0; position: relative; overflow: hidden; }
+    .amount-display::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 40%; background: radial-gradient(circle at right, rgba(201,169,110,0.1) 0%, transparent 70%); }
+    .shop-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: var(--ink); border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.25s ease; position: relative; overflow: hidden; }
+    .shop-btn::after { content: ''; position: absolute; top: 0; left: -100%; width: 55%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent); transform: skewX(-15deg); transition: left 0.5s ease; }
     .shop-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(201,169,110,0.4); }
+    .shop-btn:hover::after { left: 150%; }
 
-    /* Loading */
-    .loading-scene {
-      height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--cream);
+    /* ── Floating particles ── */
+    @keyframes particle-float {
+      0%   { transform: translateY(0) translateX(0) rotate(0deg) scale(1); opacity: 1; }
+      80%  { opacity: 0.7; }
+      100% { transform: translateY(-150px) translateX(var(--tx)) rotate(var(--r)) scale(0.2); opacity: 0; }
     }
-    .loader-ring {
-      width: 64px; height: 64px;
-      border-radius: 50%;
-      border: 2px solid var(--border);
-      border-top-color: var(--gold);
-      animation: spin 1s linear infinite;
-    }
-
-    /* Sticky top nav */
-    .checkout-nav {
-      position: sticky; top: 0; z-index: 50;
-      background: rgba(253,249,242,0.85);
-      backdrop-filter: blur(24px);
-      border-bottom: 1px solid var(--border);
-      padding: 20px 0;
+    .success-particle {
+      position: absolute; pointer-events: none; z-index: 0;
+      animation: particle-float var(--dur) ease-out forwards;
+      animation-delay: var(--delay);
+      font-size: var(--fs, 18px);
+      bottom: 12%; left: var(--left);
     }
 
-    /* Responsive */
-    @media (max-width: 768px) {
-      .card-header-luxury { padding: 22px 24px; }
-      .success-card { padding: 40px 28px; }
-    }
+    /* ── Loading ── */
+    .loading-scene { height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--cream); }
+    .loader-ring { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--gold); animation: spin 1s linear infinite; }
 
-    /* Scrollbar */
+    /* ── Nav ── */
+    .checkout-nav { position: sticky; top: 0; z-index: 50; background: rgba(253,249,242,0.88); backdrop-filter: blur(24px); border-bottom: 1px solid var(--border); padding: 20px 0; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) { .card-header-luxury { padding: 22px 24px; } .success-card { padding: 40px 28px; } }
+
+    /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: var(--parchment); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -450,7 +308,33 @@ const BackgroundCanvas = () => (
     <div className="bg-orb bg-orb-1" />
     <div className="bg-orb bg-orb-2" />
     <div className="bg-orb bg-orb-3" />
+    <div className="bg-orb bg-orb-4" />
   </div>
+)
+
+/* ─── Floating celebration particles ─── */
+const FloatingParticles = () => (
+  <>
+    {[
+      { e: '🌿', l: '12%', tx: '-20px', r: '-120deg', dur: '2.2s', delay: '0s',    fs: '20px' },
+      { e: '✨', l: '26%', tx: '28px',  r: '180deg',  dur: '2.7s', delay: '0.15s', fs: '16px' },
+      { e: '🍃', l: '40%', tx: '-18px', r: '240deg',  dur: '2.4s', delay: '0.3s',  fs: '22px' },
+      { e: '⭐', l: '55%', tx: '22px',  r: '-200deg', dur: '3.0s', delay: '0.08s', fs: '14px' },
+      { e: '🌱', l: '68%', tx: '-26px', r: '150deg',  dur: '2.6s', delay: '0.4s',  fs: '18px' },
+      { e: '✨', l: '82%', tx: '14px',  r: '-90deg',  dur: '2.0s', delay: '0.22s', fs: '14px' },
+      { e: '🌿', l: '48%', tx: '-36px', r: '210deg',  dur: '3.1s', delay: '0.5s',  fs: '16px' },
+      { e: '🍃', l: '33%', tx: '18px',  r: '-160deg', dur: '2.5s', delay: '0.35s', fs: '20px' },
+      { e: '⭐', l: '74%', tx: '-14px', r: '130deg',  dur: '2.3s', delay: '0.18s', fs: '12px' },
+    ].map((p, i) => (
+      <div
+        key={i}
+        className="success-particle"
+        style={{ '--left': p.l, '--tx': p.tx, '--r': p.r, '--dur': p.dur, '--delay': p.delay, '--fs': p.fs } as React.CSSProperties}
+      >
+        {p.e}
+      </div>
+    ))}
+  </>
 )
 
 /* ─── Step Node ─── */
@@ -850,13 +734,29 @@ if (checkingAddress) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
+            <FloatingParticles />
             <motion.div
               className="success-icon-ring"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.3, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ scale: 0, rotate: -30 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.3, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
             >
-              <CheckCircle size={40} color="var(--gold)" />
+              <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+                <motion.circle
+                  cx="26" cy="26" r="24"
+                  stroke="var(--gold)" strokeWidth="1.5" fill="none"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ delay: 0.5, duration: 0.7, ease: 'easeInOut' }}
+                />
+                <motion.path
+                  d="M14 27l8 8 16-16"
+                  stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ delay: 0.75, duration: 0.45, ease: 'easeInOut' }}
+                />
+              </svg>
             </motion.div>
 
             <motion.h1
@@ -980,10 +880,10 @@ if (checkingAddress) {
               {step === 1 && (
                 <motion.div
                   key="step1"
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -24 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                  exit={{ opacity: 0, x: 24, transition: { duration: 0.2 } }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="glass-card">
 
@@ -1165,44 +1065,99 @@ if (checkingAddress) {
 
                       <div style={{ display: 'flex', gap: 14, marginBottom: 32 }}>
 
+                        {/* ── COD ── */}
                         <button
                           className={`pay-option ${paymentMethod === 'cod' ? 'selected' : ''}`}
                           onClick={() => setPaymentMethod('cod')}
                         >
-                          <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: paymentMethod === 'cod' ? 'rgba(201,169,110,0.16)' : 'rgba(0,0,0,0.04)', transition: 'all 0.3s ease' }}>
-                            <IndianRupee size={26} style={{ color: paymentMethod === 'cod' ? 'var(--gold)' : '#aaa' }} />
-                          </div>
+                          <motion.div
+                            animate={{ scale: paymentMethod === 'cod' ? 1.1 : 1 }}
+                            transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+                            style={{
+                              width: 62, height: 62, borderRadius: 18, margin: '0 auto 14px',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: paymentMethod === 'cod'
+                                ? 'linear-gradient(135deg, #1a4a28, #2d7a3d)'
+                                : 'rgba(0,0,0,0.05)',
+                              transition: 'background 0.3s ease',
+                              boxShadow: paymentMethod === 'cod' ? '0 8px 24px rgba(45,90,62,0.45)' : 'none',
+                            }}
+                          >
+                            <IndianRupee size={28} style={{ color: paymentMethod === 'cod' ? '#a8d5b0' : '#bbb' }} />
+                          </motion.div>
                           <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Cash on Delivery</p>
-                          <p style={{ fontSize: 12, color: '#999', lineHeight: 1.4 }}>Pay when it arrives</p>
-                          {paymentMethod === 'cod' && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              style={{ position: 'absolute', top: 10, right: 10, width: 18, height: 18, borderRadius: '50%', background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <CheckCircle size={12} color="white" />
-                            </motion.div>
-                          )}
+                          <p style={{ fontSize: 12, color: '#999', lineHeight: 1.4, marginBottom: 10 }}>Pay when it arrives</p>
+                          <div style={{
+                            display: 'inline-block', padding: '3px 10px', borderRadius: 20,
+                            fontSize: 9.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                            background: paymentMethod === 'cod' ? 'rgba(45,90,62,0.1)' : 'rgba(0,0,0,0.04)',
+                            border: `1px solid ${paymentMethod === 'cod' ? 'rgba(45,90,62,0.22)' : 'transparent'}`,
+                            color: paymentMethod === 'cod' ? '#2d5a3d' : '#bbb',
+                            transition: 'all 0.3s ease',
+                          }}>
+                            No extra charges
+                          </div>
+                          <AnimatePresence>
+                            {paymentMethod === 'cod' && (
+                              <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+                                style={{ position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: '50%', background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(201,169,110,0.5)' }}
+                              >
+                                <CheckCircle size={13} color="white" />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </button>
 
+                        {/* ── Online ── */}
                         <button
                           className={`pay-option ${paymentMethod === 'online' ? 'selected' : ''}`}
                           onClick={() => setPaymentMethod('online')}
                         >
-                          <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: paymentMethod === 'online' ? 'rgba(201,169,110,0.16)' : 'rgba(0,0,0,0.04)', transition: 'all 0.3s ease' }}>
-                            <CreditCard size={26} style={{ color: paymentMethod === 'online' ? 'var(--gold)' : '#aaa' }} />
+                          <motion.div
+                            animate={{ scale: paymentMethod === 'online' ? 1.1 : 1 }}
+                            transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+                            style={{
+                              width: 62, height: 62, borderRadius: 18, margin: '0 auto 14px',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: paymentMethod === 'online'
+                                ? 'linear-gradient(135deg, #1a1a60, #3d2a8a)'
+                                : 'rgba(0,0,0,0.05)',
+                              transition: 'background 0.3s ease',
+                              boxShadow: paymentMethod === 'online' ? '0 8px 24px rgba(61,42,138,0.45)' : 'none',
+                            }}
+                          >
+                            <CreditCard size={28} style={{ color: paymentMethod === 'online' ? '#c4b5fd' : '#bbb' }} />
+                          </motion.div>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>Online Payment</p>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 6 }}>
+                            {['UPI', 'Cards', 'Net'].map(m => (
+                              <span key={m} style={{
+                                fontSize: 8.5, fontWeight: 700, padding: '2px 6px', borderRadius: 5,
+                                background: paymentMethod === 'online' ? 'rgba(124,58,237,0.1)' : 'rgba(0,0,0,0.05)',
+                                color: paymentMethod === 'online' ? '#7c3aed' : '#bbb',
+                                border: `1px solid ${paymentMethod === 'online' ? 'rgba(124,58,237,0.2)' : 'transparent'}`,
+                                letterSpacing: '0.06em', textTransform: 'uppercase', transition: 'all 0.3s ease',
+                              }}>{m}</span>
+                            ))}
                           </div>
-                          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Online Payment</p>
-                          <p style={{ fontSize: 12, color: '#999', lineHeight: 1.4 }}>UPI, Cards, NetBanking</p>
-                          {paymentMethod === 'online' && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              style={{ position: 'absolute', top: 10, right: 10, width: 18, height: 18, borderRadius: '50%', background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <CheckCircle size={12} color="white" />
-                            </motion.div>
-                          )}
+                          <p style={{ fontSize: 11, color: '#999' }}>Powered by Razorpay</p>
+                          <AnimatePresence>
+                            {paymentMethod === 'online' && (
+                              <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+                                style={{ position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: '50%', background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(201,169,110,0.5)' }}
+                              >
+                                <CheckCircle size={13} color="white" />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </button>
 
                       </div>
@@ -1405,17 +1360,29 @@ if (checkingAddress) {
 
               <div style={{ padding: '24px' }}>
 
-                {/* Cartdata items */}
+                {/* Cart items with thumbnails */}
                 {cartdata?.items?.map((item: any, i: number) => (
-                  <div key={i} className="cart-item-row">
-                    <div className="item-dot" />
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.4 }}>{item.name || 'Product'}</p>
+                  <motion.div
+                    key={i}
+                    className="cart-item-row"
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.07, duration: 0.3 }}
+                  >
+                    <img
+                      src={item.images?.[0] || '/placeholder-product.jpg'}
+                      alt={item.name}
+                      className="summary-item-img"
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name || 'Product'}</p>
                       {item?.variant_label && <p style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Variant: {item.variant_label}</p>}
-                      {item?.quantity && <p style={{ fontSize: 11, color: '#999', marginTop: 2 }}>Qty: {item?.quantity}</p>}
+                      <p style={{ fontSize: 11, color: '#999', marginTop: 2 }}>Qty: {item?.quantity || 1}</p>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>₹{(Number(item?.price) || 0)?.toFixed(2)}</p>
-                  </div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', flexShrink: 0 }}>
+                      ₹{((Number(item?.price) || 0) * (Number(item?.quantity) || 1)).toFixed(2)}
+                    </p>
+                  </motion.div>
                 ))}
 
                 {/* Price breakdown */}
@@ -1491,18 +1458,24 @@ if (checkingAddress) {
 
                 </div>
 
-                {/* Trust badges */}
-                <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {/* Trust badges — pill style */}
+                <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {[
-                    { icon: Lock, text: '256-bit SSL' },
-                    { icon: Shield, text: 'Buyer Protected' },
-                    { icon: Truck, text: 'Fast Delivery' },
+                    { icon: Lock,     text: '256-bit SSL' },
+                    { icon: Shield,   text: 'Buyer Protected' },
+                    { icon: Truck,    text: 'Fast Delivery' },
                     { icon: Sparkles, text: '100% Natural' },
-                  ].map(({ icon: Icon, text }) => (
-                    <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  ].map(({ icon: Icon, text }, i) => (
+                    <motion.div
+                      key={text}
+                      className="trust-pill"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 + i * 0.05 }}
+                    >
                       <Icon size={12} style={{ color: 'var(--gold)', flexShrink: 0 }} />
-                      <span style={{ fontSize: 11, color: '#999' }}>{text}</span>
-                    </div>
+                      <span style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>{text}</span>
+                    </motion.div>
                   ))}
                 </div>
 

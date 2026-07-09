@@ -59,6 +59,19 @@ Premium UI upgrade applied — all logic and state management unchanged. Key vis
 - Footer: gradient total amount text, shimmer checkout button (`::after` sweep), trust chips
 
 ### Checkout (`frontend/src/app/checkout/page.tsx`)
+Premium animation upgrade applied — all logic and state management unchanged. Key visual changes:
+- 4th background orb added (green-tinted `#2d5a3d`) to match brand palette
+- `card-header-luxury` now uses an animated 4-stop gradient (`hdr-shift` keyframe, 12s loop) blending ink + forest green
+- Progress rail fill has a shimmer sweep animation (`shimmer-rail` keyframe) instead of static gradient
+- Active step node pulses gently (`step-pulse` keyframe) to indicate current position
+- CTA button has a `::after` shimmer sweep on hover (skewed pseudo-element sliding across)
+- Payment cards: COD uses green gradient icon box (`#1a4a28 → #2d7a3d`) with "No extra charges" pill; Online uses indigo gradient (`#1a1a60 → #3d2a8a`) with UPI/Cards/Net mini-badges; selection state has spring-animated scale bounce on icon + pulsing gold ring (`ring-pulse` keyframe)
+- CheckCircle badge on selected payment animates in/out via `AnimatePresence` with spring
+- Order summary items now show product thumbnail images (`item.images?.[0]`) with staggered `x: 12→0` entrance
+- Trust badges upgraded to pill-style with `var(--mist)` background and `motion.div` staggered entrance
+- Success page: `FloatingParticles` component shows 9 emoji particles (`🌿 ✨ 🍃 ⭐ 🌱`) with `particle-float` keyframe; success icon replaced with animated SVG (circle draws in, then checkmark draws, both using `pathLength` motion values); success card top border now has a shimmer sweep matching the brand gradient
+
+### Old checkout note
 Premium UI upgrade applied — all logic and state management unchanged. Key visual changes:
 - Radial gradient page background
 - More opaque glass cards with stronger shadows
