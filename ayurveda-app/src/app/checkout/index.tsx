@@ -304,15 +304,35 @@ export default function CheckoutScreen() {
 
       // Online payment via Razorpay web page
       setProcessing(false)
-      const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') || ''
+      const apiBase = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/api\/?$/, '')
       const authToken = await AsyncStorage.getItem('auth_token')
-      const paymentPageUrl = `${apiBase}/api/orders/${orderId}/payment-page?returnUrl=oroganix://payment&token=${encodeURIComponent(authToken || '')}`
+      const paymentPageUrl = `${apiBase}/api/orders/${orderId}/payment-page?returnUrl=${encodeURIComponent('oroganix://payment')}&token=${encodeURIComponent(authToken || '')}`
 
-      const result = await WebBrowser.openAuthSessionAsync(paymentPageUrl, 'oroganix://')
+      // Use Linking listener — more reliable on Android than openAuthSessionAsync
+      // which sometimes fails to intercept the 302 → custom-scheme redirect
+      const deepLinkUrl = await new Promise<string | null>((resolve) => {
+        const sub = Linking.addEventListener('url', ({ url }) => {
+          if (url.startsWith('oroganix://payment')) {
+            sub.remove()
+            WebBrowser.dismissBrowser()
+            resolve(url)
+          }
+        })
 
-      if (result.type === 'success' && result.url) {
-        const url = result.url
-        const params = new URLSearchParams(url.split('?')[1] || '')
+        WebBrowser.openBrowserAsync(paymentPageUrl, { showInRecents: false })
+          .then(() => {
+            // Browser closed by user without completing payment
+            sub.remove()
+            resolve(null)
+          })
+          .catch(() => {
+            sub.remove()
+            resolve(null)
+          })
+      })
+
+      if (deepLinkUrl) {
+        const params = new URLSearchParams(deepLinkUrl.split('?')[1] || '')
         const status = params.get('status')
 
         if (status === 'success') {
@@ -334,7 +354,7 @@ export default function CheckoutScreen() {
         } else {
           toast.warning('Payment cancelled. You can try again.')
         }
-      } else if (result.type === 'cancel' || result.type === 'dismiss') {
+      } else {
         toast.warning('Payment not completed. Your order is pending.')
       }
     } catch (e: any) {
