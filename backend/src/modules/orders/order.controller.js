@@ -967,6 +967,25 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
+/* ================= GET USER INVOICE ================= */
+exports.getUserInvoice = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT i.pdf_url FROM orders o LEFT JOIN invoices i ON i.order_id=o.id WHERE o.id=$1 AND o.user_id=$2`,
+      [id, userId]
+    );
+    if (!result.rowCount) return res.status(404).json({ success: false, message: 'Order not found' });
+    const pdf_url = result.rows[0].pdf_url;
+    if (!pdf_url) return res.status(404).json({ success: false, message: 'Invoice not yet generated' });
+    res.json({ success: true, pdf_url });
+  } catch (err) {
+    console.error('[GET USER INVOICE]', err);
+    res.status(500).json({ success: false, message: 'Failed to get invoice' });
+  }
+};
+
 /* ================= CANCEL ORDER ================= */
 
 exports.cancelOrder = async (req, res) => {
@@ -1145,6 +1164,19 @@ exports.returnOrder = async (req, res) => {
 
 /* ================= RAZORPAY HTML PAYMENT PAGE ================= */
 
+/* ================= PAYMENT REDIRECT (HTTP 302 → custom scheme) ================= */
+// Chrome Custom Tabs blocks JS-initiated window.location to custom schemes but
+// follows HTTP 302 redirects. This endpoint issues that redirect.
+exports.paymentRedirect = (req, res) => {
+  const { deepLink, ...rest } = req.query;
+  const decoded = deepLink ? decodeURIComponent(deepLink) : '';
+  if (!decoded.startsWith('oroganix://')) {
+    return res.status(400).send('Invalid redirect target');
+  }
+  const params = new URLSearchParams(rest).toString();
+  res.redirect(302, params ? `${decoded}?${params}` : decoded);
+};
+
 exports.getPaymentPage = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1170,10 +1202,13 @@ exports.getPaymentPage = async (req, res) => {
       return res.status(400).send('<h2>Invalid order for online payment</h2>');
     }
 
-    // Only allow deep-link scheme to prevent open redirect
-    const callbackUrl = (returnUrl && returnUrl.startsWith('oroganix://'))
+    // Route JS navigation through a backend HTTP 302 redirect because Chrome
+    // Custom Tabs blocks window.location to custom schemes from JS callbacks.
+    const deepLinkReturn = (returnUrl && returnUrl.startsWith('oroganix://'))
       ? returnUrl
-      : `${process.env.FRONTEND_URL}/payment-callback`;
+      : 'oroganix://payment';
+    const backendBase = `${req.protocol}://${req.get('host')}`;
+    const callbackUrl = `${backendBase}/api/orders/payment-redirect?deepLink=${encodeURIComponent(deepLinkReturn)}`;
     const keyId = process.env.RAZORPAY_KEY;
     const amount = Math.round(Number(order.total_amount) * 100);
 

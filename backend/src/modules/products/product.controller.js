@@ -466,9 +466,10 @@ exports.removeWishlist = async (req, res) => {
 /* ================== RATINGS ================== */
 
 exports.addReview = async (req, res) => {
+  let uploaded = []
   try {
     const userId = req.user.id
-    const { productId: rawProductId, rating, comment } = req.body
+    const { productId: rawProductId, rating, comment, oldImages = '[]' } = req.body
 
     if (!rawProductId || !rating) {
       return res.status(400).json({ success: false, message: 'productId and rating are required' })
@@ -479,12 +480,38 @@ exports.addReview = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' })
     }
 
+    // Load existing images to delete removed ones
+    const exist = await pool.query(
+      `SELECT images FROM reviews WHERE user_id=$1 AND product_id=$2`,
+      [userId, productId]
+    )
+    const dbImages = exist.rowCount ? (exist.rows[0].images || []) : []
+
+    let oldImgs = []
+    try { oldImgs = JSON.parse(oldImages) } catch { oldImgs = [] }
+    if (!Array.isArray(oldImgs)) oldImgs = []
+
+    const toDelete = dbImages.filter(img => !oldImgs.includes(img))
+    for (const img of toDelete) await deleteFromAWS(img)
+
+    // Upload new files
+    let newImages = []
+    if (req.files?.length) {
+      for (const file of req.files) {
+        const url = await uploadImageToAWS(file)
+        uploaded.push(url)
+        newImages.push(url)
+      }
+    }
+
+    const finalImages = [...oldImgs, ...newImages].slice(0, 5)
+
     await pool.query(`
-      INSERT INTO reviews (user_id, product_id, rating, comment)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO reviews (user_id, product_id, rating, comment, images)
+      VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (user_id, product_id)
-      DO UPDATE SET rating = $3, comment = $4
-    `, [userId, productId, Number(rating), comment || ''])
+      DO UPDATE SET rating = $3, comment = $4, images = $5
+    `, [userId, productId, Number(rating), comment || '', JSON.stringify(finalImages)])
 
     await pool.query(`
       UPDATE products SET
@@ -495,6 +522,7 @@ exports.addReview = async (req, res) => {
 
     res.json({ success: true })
   } catch (err) {
+    for (const url of uploaded) await deleteFromAWS(url).catch(() => {})
     console.error('[addReview]', err.message)
     res.status(500).json({ success: false, message: 'Failed to submit review' })
   }

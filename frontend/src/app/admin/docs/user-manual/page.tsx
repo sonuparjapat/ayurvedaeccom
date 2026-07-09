@@ -353,7 +353,7 @@ export default function UserManualPage() {
                 { icon: '📦', label: 'Courier information', desc: 'Courier company name and tracking number shown once the order is shipped.' },
                 { icon: '📅', label: 'Estimated delivery', desc: 'Calculated from shipping date + standard delivery days for your pincode.' },
                 { icon: '🕐', label: 'Status history', desc: 'A reverse-chronological timeline showing every status change with exact date and time.' },
-                { icon: '🧾', label: 'Invoice download', desc: 'Download the PDF invoice directly from the order page.' },
+                { icon: '🧾', label: 'Invoice download', desc: 'The 📄 Invoice button appears in the order header for all confirmed, paid orders. Tap it to download the PDF — if the invoice has not been generated yet it is auto-generated on the spot and opens immediately.' },
                 { icon: '↩️', label: 'Cancel & Return', desc: 'Cancel available on Pending/Confirmed orders. Online paid orders: Razorpay refund auto-triggered at cancellation. Return request available within 7 days of delivery.' },
               ].map(f => (
                 <div key={f.label} className="flex gap-2 p-3 bg-gray-50 rounded-xl">

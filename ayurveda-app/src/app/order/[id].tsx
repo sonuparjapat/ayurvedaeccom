@@ -1,13 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from '../../components/ui/Toast'
 import {
-  Alert, Dimensions, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView,
+  KeyboardAvoidingView, Modal, Pressable, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import Animated, {
   FadeIn, FadeInDown, FadeInRight, ZoomIn,
-  useSharedValue, withSpring, useAnimatedStyle,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -22,16 +21,16 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 
 const CARRIER_URLS: Record<string, (n: string) => string> = {
   'delhivery': n => `https://www.delhivery.com/track/package/${n}`,
-  'bluedart': n => `https://www.bluedart.com/tracking`,
-  'blue dart': n => `https://www.bluedart.com/tracking`,
+  'bluedart': _n => `https://www.bluedart.com/tracking`,
+  'blue dart': _n => `https://www.bluedart.com/tracking`,
   'ekart': n => `https://ekartlogistics.com/track/${n}`,
   'xpressbees': n => `https://www.xpressbees.com/shipment/tracking/?awb=${n}`,
   'xpressbee': n => `https://www.xpressbees.com/shipment/tracking/?awb=${n}`,
   'dtdc': n => `https://www.dtdc.in/tracking/tracking_results.asp?track_type=consignment&strCnno=${n}`,
-  'shadowfax': n => `https://www.shadowfax.in/`,
+  'shadowfax': _n => `https://www.shadowfax.in/`,
   'ecom express': n => `https://ecomexpress.in/tracking/?awb_field=${n}`,
-  'india post': n => `https://www.indiapost.gov.in/vas/pages/AnonymousTracking.aspx`,
-  'speed post': n => `https://www.indiapost.gov.in/vas/pages/AnonymousTracking.aspx`,
+  'india post': _n => `https://www.indiapost.gov.in/vas/pages/AnonymousTracking.aspx`,
+  'speed post': _n => `https://www.indiapost.gov.in/vas/pages/AnonymousTracking.aspx`,
   'amazon': n => `https://track.amazon.in/tracking/${n}`,
   'fedex': n => `https://www.fedex.com/en-in/tracking.html?trknbr=${n}`,
   'dhl': n => `https://www.dhl.com/in-en/home/tracking.html?tracking-id=${n}`,
@@ -45,7 +44,6 @@ function getCarrierUrl(courier: string, tracking: string): string | null {
   return null
 }
 
-const { width: W } = Dimensions.get('window')
 
 interface OrderItem {
   product_id: number; name: string; quantity: number; price: string; image?: string; variant_label?: string
@@ -155,21 +153,21 @@ function StatusTimeline({ currentStatus, logs, estimatedDelivery }: { currentSta
 }
 
 const tl = StyleSheet.create({
-  wrap: { paddingLeft: 8, paddingVertical: 4 },
-  stepRow: { flexDirection: 'row', alignItems: 'flex-start', minHeight: 48 },
-  leftCol: { alignItems: 'center', width: 36 },
-  dot: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  dotDone: { backgroundColor: 'rgba(16,185,129,0.25)', borderColor: '#10b981' },
-  dotActive: { backgroundColor: Colors.gold, borderColor: Colors.gold, width: 36, height: 36, borderRadius: 18 },
-  dotInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.2)' },
-  line: { width: 2, flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1, minHeight: 16 },
-  lineDone: { backgroundColor: '#10b981' },
+  wrap: { paddingLeft: 4, paddingVertical: 4 },
+  stepRow: { flexDirection: 'row', alignItems: 'flex-start', minHeight: 52 },
+  leftCol: { alignItems: 'center', width: 38 },
+  dot: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f3f4f6', borderWidth: 1.5, borderColor: '#d1d5db', alignItems: 'center', justifyContent: 'center' },
+  dotDone: { backgroundColor: Colors.mint, borderColor: Colors.emerald },
+  dotActive: { backgroundColor: Colors.forest, borderColor: Colors.forest, width: 36, height: 36, borderRadius: 18 },
+  dotInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#d1d5db' },
+  line: { width: 2, flex: 1, backgroundColor: '#e5e7eb', borderRadius: 1, minHeight: 16 },
+  lineDone: { backgroundColor: Colors.emerald },
   labelCol: { flex: 1, paddingLeft: 12, paddingBottom: 14, justifyContent: 'center' },
-  label: { fontFamily: Fonts.medium, fontSize: 13, color: 'rgba(255,255,255,0.4)' },
-  labelDone: { color: 'rgba(255,255,255,0.7)' },
-  labelActive: { color: '#fff', fontFamily: Fonts.bold, fontSize: 14 },
-  activeNote: { fontFamily: Fonts.regular, fontSize: 10, color: Colors.gold, marginTop: 2 },
-  dateNote: { fontFamily: Fonts.regular, fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  label: { fontFamily: Fonts.medium, fontSize: 13, color: '#9ca3af' },
+  labelDone: { color: Colors.forest },
+  labelActive: { color: Colors.forest, fontFamily: Fonts.bold, fontSize: 14 },
+  activeNote: { fontFamily: Fonts.medium, fontSize: 10, color: Colors.gold, marginTop: 2 },
+  dateNote: { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textDim, marginTop: 2 },
   etaNote: { fontFamily: Fonts.medium, fontSize: 10, color: Colors.gold, marginTop: 2 },
 })
 
@@ -336,6 +334,7 @@ interface ReviewItemState {
   product_id: number; name: string; image?: string
   rating: number; comment: string
   images: { uri: string; name: string; type: string }[]
+  existingImages: string[]
   submitting: boolean; submitted: boolean
 }
 
@@ -360,13 +359,12 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
   visible: boolean; onClose: () => void; orderId: number; orderItems: OrderItem[]
 }) {
   const [items, setItems] = useState<ReviewItemState[]>([])
-  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (visible) {
       setItems(orderItems.map(i => ({
         product_id: i.product_id, name: i.name, image: i.image,
-        rating: 0, comment: '', images: [], submitting: false, submitted: false,
+        rating: 0, comment: '', images: [], existingImages: [], submitting: false, submitted: false,
       })))
       loadExistingReviews()
     }
@@ -374,12 +372,15 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
 
   const loadExistingReviews = async () => {
     try {
-      const res = await api.get('/shop/reviews/product', { params: { me: '1', limit: 50 } })
-      const myReviews: any[] = res.data?.data || []
-      setItems(prev => prev.map(it => {
-        const existing = myReviews.find((r: any) => r.product_id === it.product_id)
-        if (!existing) return it
-        return { ...it, rating: existing.rating || 0, comment: existing.comment || '' }
+      const results = await Promise.allSettled(
+        orderItems.map(item => api.get(`/shop/reviews/product/${item.product_id}`, { params: { limit: 50 } }))
+      )
+      setItems(prev => prev.map((it, idx) => {
+        const r = results[idx]
+        if (r.status !== 'fulfilled') return it
+        const mine = (r.value.data?.data || []).find((rv: any) => rv.is_mine)
+        if (!mine) return it
+        return { ...it, rating: mine.rating || 0, comment: mine.comment || '', existingImages: mine.images || [] }
       }))
     } catch { }
   }
@@ -388,13 +389,16 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, ...patch } : it))
 
   const pickImages = async (idx: number) => {
+    const item = items[idx]
+    const remaining = 5 - item.existingImages.length - item.images.length
+    if (remaining <= 0) return
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') { toast.error('Gallery permission needed'); return }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsMultipleSelection: true,
       quality: 0.75,
-      selectionLimit: 5,
+      selectionLimit: remaining,
     })
     if (!result.canceled) {
       const newImgs = result.assets.map(a => ({
@@ -402,8 +406,7 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
       }))
       setItems(prev => prev.map((it, i) => {
         if (i !== idx) return it
-        const merged = [...it.images, ...newImgs].slice(0, 5)
-        return { ...it, images: merged }
+        return { ...it, images: [...it.images, ...newImgs].slice(0, 5 - it.existingImages.length) }
       }))
     }
   }
@@ -416,6 +419,7 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
       const form = new FormData()
       form.append('rating', String(item.rating))
       form.append('comment', item.comment)
+      form.append('oldImages', JSON.stringify(item.existingImages))
       item.images.forEach(img => form.append('images', { uri: img.uri, type: img.type, name: img.name } as any))
       await api.post(`/shop/reviews/order/${orderId}/product/${item.product_id}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -434,12 +438,27 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <Pressable style={m.bg} onPress={onClose} />
-        <View style={[m.sheet, { maxHeight: '92%' }]}>
-          <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
-            <View style={m.handle} />
-            <Text style={m.title}>Rate Your Order</Text>
-            <Text style={m.sub}>Share your experience for each product</Text>
+        <View style={[m.sheet, { maxHeight: '92%', padding: 0 }]}>
 
+          {/* ── Fixed header ─────────────────────────────────────── */}
+          <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border }}>
+            <View style={m.handle} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={m.title}>Rate Your Order</Text>
+              <TouchableOpacity onPress={onClose} hitSlop={12} style={{ padding: 6, borderRadius: 18, backgroundColor: '#f3f4f6' }}>
+                <Text style={{ fontSize: 15, color: Colors.textDim, fontFamily: Fonts.bold }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[m.sub, { marginBottom: 0 }]}>Share your experience for each product</Text>
+          </View>
+
+          {/* ── Scrollable item cards ─────────────────────────────── */}
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 8 }}
+          >
             {items.map((item, idx) => (
               <View key={item.product_id} style={rv2.card}>
                 {/* Product info */}
@@ -476,15 +495,24 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
                       {item.comment.length}/300
                     </Text>
 
-                    {/* Image picker */}
-                    {item.images.length < 5 && (
-                      <TouchableOpacity onPress={() => pickImages(idx)} style={rv2.addPhotoBtn}>
-                        <Text style={{ fontSize: 14 }}>📷</Text>
-                        <Text style={rv2.addPhotoText}>Add Photos ({item.images.length}/5)</Text>
-                      </TouchableOpacity>
+                    {/* Previously uploaded images (from backend) */}
+                    {item.existingImages.length > 0 && (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                        {item.existingImages.map((url, i2) => (
+                          <View key={`ex-${i2}`} style={rv2.imgPreview}>
+                            <ExpoImage source={{ uri: url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                            <TouchableOpacity
+                              onPress={() => update(idx, { existingImages: item.existingImages.filter((_, j) => j !== i2) })}
+                              style={rv2.imgRemove}
+                            >
+                              <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
                     )}
 
-                    {/* Image previews */}
+                    {/* Newly picked images */}
                     {item.images.length > 0 && (
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                         {item.images.map((img, i2) => (
@@ -501,10 +529,20 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
                       </View>
                     )}
 
+                    {/* Add photos button */}
+                    {(item.existingImages.length + item.images.length) < 5 && (
+                      <TouchableOpacity onPress={() => pickImages(idx)} style={[rv2.addPhotoBtn, { marginBottom: 10 }]}>
+                        <Text style={{ fontSize: 14 }}>📷</Text>
+                        <Text style={rv2.addPhotoText}>
+                          Add Photos ({item.existingImages.length + item.images.length}/5)
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
                     <TouchableOpacity
                       onPress={() => submitItem(idx)}
                       disabled={item.submitting || !item.rating}
-                      style={{ borderRadius: 12, overflow: 'hidden' }}
+                      style={{ borderRadius: 12, overflow: 'hidden', marginTop: 4 }}
                     >
                       <LinearGradient
                         colors={!item.rating ? ['#9ca3af', '#6b7280'] : [Colors.forest, Colors.moss]}
@@ -521,11 +559,15 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
                 )}
               </View>
             ))}
-
-            <TouchableOpacity onPress={onClose} style={m.closeBtn}>
-              <Text style={m.closeBtnText}>{allDone ? 'Close' : 'Skip for Now'}</Text>
-            </TouchableOpacity>
           </ScrollView>
+
+          {/* ── Fixed footer ─────────────────────────────────────── */}
+          <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 28, borderTopWidth: 0.5, borderTopColor: Colors.border }}>
+            <TouchableOpacity onPress={onClose} style={m.closeBtn}>
+              <Text style={m.closeBtnText}>{allDone ? '✓ All Done — Close' : 'Skip for Now'}</Text>
+            </TouchableOpacity>
+          </View>
+
         </View>
       </KeyboardAvoidingView>
     </Modal>

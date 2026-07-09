@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import * as ImagePicker from 'expo-image-picker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getGuestSession } from '../../utils/guestSession'
 import {
@@ -163,8 +164,10 @@ function ReviewItem({ r, index }: { r: Review; index: number }) {
   const initials = (r.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const colors = ['#059669', '#f59e0b', '#7c3aed', '#e11d48', '#0284c7']
   const color = colors[(r.name || '?').charCodeAt(0) % colors.length]
+  const [viewerUri, setViewerUri] = useState('')
   return (
     <Animated.View entering={FadeInDown.delay(index * 60)} style={rv.card}>
+      {viewerUri ? <ImageZoomModal uri={viewerUri} onClose={() => setViewerUri('')} /> : null}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
           <View style={[rv.avatar, { backgroundColor: color + '22', borderColor: color + '44' }]}>
@@ -185,9 +188,16 @@ function ReviewItem({ r, index }: { r: Review; index: number }) {
       </View>
       <Text style={rv.comment}>{r.comment}</Text>
       {r.images && r.images.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginTop: 10 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 10 }}>
           {r.images.map((img, j) => (
-            <Image key={j} source={{ uri: img }} style={{ width: 64, height: 64, borderRadius: 10 }} />
+            <TouchableOpacity key={j} onPress={() => setViewerUri(img)} activeOpacity={0.85}>
+              <Image source={{ uri: img }} style={{ width: 72, height: 72, borderRadius: 10 }} />
+              {r.images!.length > 1 && j === 0 && (
+                <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 8, paddingHorizontal: 5, paddingVertical: 2 }}>
+                  <Text style={{ color: '#fff', fontSize: 9, fontFamily: Fonts.bold }}>+{r.images!.length - 1} more</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           ))}
         </ScrollView>
       )}
@@ -203,6 +213,17 @@ const rv = StyleSheet.create({
   verifiedBadge: { backgroundColor: Colors.mint, borderRadius: 99, paddingHorizontal: 7, paddingVertical: 1, alignSelf: 'flex-start', marginTop: 2 },
   verifiedText: { color: Colors.sage, fontFamily: Fonts.medium, fontSize: 9 },
   comment: { fontFamily: Fonts.regular, color: Colors.textDim, fontSize: 13, lineHeight: 20 },
+})
+
+const rls = StyleSheet.create({
+  card: { width: 148, backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', borderWidth: 0.5, borderColor: Colors.border, ...Shadows.sm },
+  imgWrap: { width: 148, height: 148, backgroundColor: Colors.mint, position: 'relative' },
+  img: { width: 148, height: 148 },
+  badge: { position: 'absolute', top: 6, left: 6, backgroundColor: Colors.gold, borderRadius: 99, paddingHorizontal: 7, paddingVertical: 2 },
+  badgeText: { fontFamily: Fonts.bold, fontSize: 9, color: '#fff' },
+  name: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.forest, margin: 10, marginBottom: 0, lineHeight: 17 },
+  price: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest, marginLeft: 10, marginBottom: 10 },
+  mrp: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textDim, textDecorationLine: 'line-through' },
 })
 
 // ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
@@ -224,7 +245,10 @@ export default function ProductDetailScreen() {
   const [totalReviewPages, setTotalReviewPages] = useState(1)
   const [myRating, setMyRating] = useState(0)
   const [myComment, setMyComment] = useState('')
+  const [myImages, setMyImages] = useState<{ uri: string; name: string; type: string }[]>([])
+  const [myExistingImages, setMyExistingImages] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [reviewImgViewer, setReviewImgViewer] = useState('')
   const [tab, setTab] = useState<'desc' | 'reviews' | 'qa'>('desc')
 
   // Q&A
@@ -308,8 +332,17 @@ export default function ProductDetailScreen() {
     try {
       const res = await api.get(`/shop/reviews/product/${id}`, { params: { page: pg, limit: 5 } })
       const mapped = (res.data?.data || []).map((r: any) => ({ ...r, name: r.user_name || r.name || '?' }))
-      if (pg === 1) setReviews(mapped)
-      else setReviews(p => [...p, ...mapped])
+      if (pg === 1) {
+        setReviews(mapped)
+        const mine = (res.data?.data || []).find((r: any) => r.is_mine)
+        if (mine) {
+          setMyRating(mine.rating || 0)
+          setMyComment(mine.comment || '')
+          setMyExistingImages(mine.images || [])
+        }
+      } else {
+        setReviews(p => [...p, ...mapped])
+      }
       setTotalReviewPages(res.data?.pagination?.totalPages || 1)
       setReviewPage(pg)
     } catch { }
@@ -391,13 +424,35 @@ export default function ProductDetailScreen() {
     catch { setWished(!next) }
   }
 
+  const pickReviewImages = async () => {
+    const remaining = 5 - myExistingImages.length - myImages.length
+    if (remaining <= 0) return
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') { toast.error('Gallery permission needed'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], allowsMultipleSelection: true, quality: 0.75, selectionLimit: remaining,
+    })
+    if (!result.canceled) {
+      const picked = result.assets.map(a => ({
+        uri: a.uri, name: a.fileName || `photo_${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg',
+      }))
+      setMyImages(prev => [...prev, ...picked].slice(0, 5 - myExistingImages.length))
+    }
+  }
+
   const submitReview = async () => {
     if (!user) { setAuthOpen(true); return }
     if (!myRating) { toast.warning('Please select a star rating'); return }
     setSubmitting(true)
     try {
-      await api.post('/shop/reviews/product', { productId: id, rating: myRating, comment: myComment })
-      setMyRating(0); setMyComment('')
+      const form = new FormData()
+      form.append('productId', String(id))
+      form.append('rating', String(myRating))
+      form.append('comment', myComment)
+      form.append('oldImages', JSON.stringify(myExistingImages))
+      myImages.forEach(img => form.append('images', { uri: img.uri, type: img.type, name: img.name } as any))
+      await api.post('/shop/reviews/product', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setMyImages([])
       fetchReviews(1); fetchProduct()
       toast.success('Review submitted!')
     } catch (e: any) {
@@ -840,7 +895,7 @@ export default function ProductDetailScreen() {
             ))}
           </View>
 
-          {tab === 'desc' ? (
+          {tab === 'desc' && (
             <Animated.View entering={FadeIn.duration(300)}>
               <Text style={ss.longDesc}>{product.longdescription || product.shortdescription}</Text>
 
@@ -867,12 +922,15 @@ export default function ProductDetailScreen() {
                 </View>
               )}
             </Animated.View>
-          ) : (
+          )}
+
+          {tab === 'reviews' && (
             <Animated.View entering={FadeIn.duration(300)}>
+              {reviewImgViewer ? <ImageZoomModal uri={reviewImgViewer} onClose={() => setReviewImgViewer('')} /> : null}
               {/* Write review — logged-in users only */}
               {user ? (
                 <View style={ss.reviewWriteBox}>
-                  <Text style={ss.reviewWriteTitle}>Write a Review</Text>
+                  <Text style={ss.reviewWriteTitle}>{myExistingImages.length > 0 || myRating > 0 ? 'Edit Your Review' : 'Write a Review'}</Text>
                   <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
                     {[1, 2, 3, 4, 5].map(s => (
                       <TouchableOpacity key={s} onPress={() => setMyRating(s)} hitSlop={6}>
@@ -894,6 +952,55 @@ export default function ProductDetailScreen() {
                     multiline
                     numberOfLines={3}
                   />
+
+                  {/* Previously uploaded images */}
+                  {myExistingImages.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 10 }}>
+                      {myExistingImages.map((url, j) => (
+                        <View key={`ex-${j}`} style={{ width: 68, height: 68, borderRadius: 10, overflow: 'hidden' }}>
+                          <TouchableOpacity onPress={() => setReviewImgViewer(url)} activeOpacity={0.85}>
+                            <Image source={{ uri: url }} style={{ width: 68, height: 68 }} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => setMyExistingImages(prev => prev.filter((_, i2) => i2 !== j))}
+                            style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <Text style={{ color: '#fff', fontSize: 10, fontFamily: Fonts.bold }}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
+
+                  {/* Newly picked images */}
+                  {myImages.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 10 }}>
+                      {myImages.map((img, j) => (
+                        <View key={j} style={{ width: 68, height: 68, borderRadius: 10, overflow: 'hidden' }}>
+                          <TouchableOpacity onPress={() => setReviewImgViewer(img.uri)} activeOpacity={0.85}>
+                            <Image source={{ uri: img.uri }} style={{ width: 68, height: 68 }} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => setMyImages(prev => prev.filter((_, i2) => i2 !== j))}
+                            style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <Text style={{ color: '#fff', fontSize: 10, fontFamily: Fonts.bold }}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
+
+                  {/* Add photo button */}
+                  {(myExistingImages.length + myImages.length) < 5 && (
+                    <TouchableOpacity onPress={pickReviewImages} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.mint, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 14, marginBottom: 12, alignSelf: 'flex-start' }}>
+                      <Text style={{ fontSize: 14 }}>📷</Text>
+                      <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.sage }}>
+                        Add Photos ({myExistingImages.length + myImages.length}/5)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
                   <TouchableOpacity onPress={submitReview} disabled={submitting} style={{ borderRadius: 12, overflow: 'hidden' }}>
                     <LinearGradient colors={[Colors.forest, Colors.moss]} style={{ padding: 13, borderRadius: 12, alignItems: 'center' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                       <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 13 }}>
@@ -982,6 +1089,56 @@ export default function ProductDetailScreen() {
                   <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, paddingHorizontal: 12, paddingBottom: 12, lineHeight: 18 }}>A: {faq.answer}</Text>
                 </View>
               ))}
+            </View>
+          )}
+
+          {/* ── Related Products ─────────────────────────────── */}
+          {relatedProducts.length > 0 && (
+            <View style={{ marginTop: 24, marginBottom: 8 }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 16, color: Colors.forest, marginBottom: 12 }}>
+                You May Also Like
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {relatedProducts.map((rp: any) => {
+                  const rpPrice = rp.price || rp.saleprice || '0'
+                  const rpImg = Array.isArray(rp.images) ? rp.images[0] : rp.image
+                  return (
+                    <TouchableOpacity
+                      key={rp.id}
+                      onPress={() => router.push(`/product/${rp.slug || rp.id}` as any)}
+                      style={rls.card}
+                      activeOpacity={0.88}
+                    >
+                      <View style={rls.imgWrap}>
+                        {rpImg
+                          ? <Image source={{ uri: rpImg }} style={rls.img} resizeMode="cover" />
+                          : <View style={[rls.img, { backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' }]}>
+                              <Text style={{ fontSize: 24 }}>🌿</Text>
+                            </View>
+                        }
+                        {rp.is_bestseller && (
+                          <View style={rls.badge}>
+                            <Text style={rls.badgeText}>Bestseller</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={rls.name} numberOfLines={2}>{rp.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                        <Text style={rls.price}>₹{rpPrice}</Text>
+                        {rp.compareprice && Number(rpPrice) < Number(rp.compareprice) && (
+                          <Text style={rls.mrp}>₹{rp.compareprice}</Text>
+                        )}
+                      </View>
+                      {rp.averagerating > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 }}>
+                          <Text style={{ fontSize: 10, color: '#f59e0b' }}>★</Text>
+                          <Text style={{ fontFamily: Fonts.medium, fontSize: 10, color: Colors.textDim }}>{Number(rp.averagerating).toFixed(1)}</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
             </View>
           )}
 

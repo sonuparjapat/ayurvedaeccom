@@ -432,8 +432,9 @@ Token location: Authorization: Bearer <token>  (HTTP header)
                 ['GET', '/', 'auth', 'List user\'s own orders.'],
                 ['GET', '/:id', 'auth', 'Get single order details.'],
                 ['GET', '/:id/timeline', 'auth', 'Order status history + tracking info. URL: /api/orders/:id/timeline (NOT /api/shop/orders). Frontend must use /orders/:id/timeline with axios baseURL=/api.'],
-                ['GET', '/:id/invoice', 'auth', 'Download invoice PDF.'],
-                ['GET', '/:id/payment-page', 'auth', 'Renders Razorpay HTML payment page. Query: ?returnUrl=oroganix://payment&token=JWT. Mobile app passes JWT as ?token= because WebBrowser.openAuthSessionAsync cannot send headers. Auth middleware accepts token from cookie, Authorization header, OR ?token query param.'],
+                ['GET', '/:id/invoice', 'auth', 'Returns existing pdf_url or generates invoice on demand via puppeteer+S3 (same logic as admin generateInvoice, ownership verified).'],
+                ['GET', '/payment-redirect', 'none', 'Issues HTTP 302 to ?deepLink= custom scheme. Workaround for Chrome Custom Tabs blocking JS-initiated window.location to custom schemes.'],
+                ['GET', '/:id/payment-page', 'auth', 'Renders Razorpay HTML payment page. Callback now routes via /api/orders/payment-redirect instead of directly to oroganix:// (Chrome Custom Tabs fix).'],
                 ['PUT', '/:id/cancel', 'auth', 'Cancel order (only Pending/Confirmed states).'],
                 ['POST', '/:id/return', 'auth', 'Request a return.'],
               ]
@@ -1191,8 +1192,29 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 // UI: purple gradient button "Retry Payment" below order details`}</Code>
           <H3>Invoice download on order detail</H3>
           <Code>{`// File: order/[id].tsx → handleDownloadInvoice()
-// Shows only when order.pdf_url exists
-// Uses Linking.openURL(order.pdf_url) to open in browser/PDF viewer`}</Code>
+// Button shown for orders with status 1–5 AND payment_status !== 'unpaid'
+// Flow:
+//   1. If order.pdf_url already set → Linking.openURL(pdf_url) directly
+//   2. Otherwise → GET /api/orders/:id/invoice
+//      - Backend returns existing pdf_url if invoice already generated
+//      - Or triggers puppeteer generation (same as admin generateInvoice)
+//        after verifying order ownership (user_id match)
+//   3. pdf_url cached in local state so next tap is instant
+// Route: order.routes.js → GET /:id/invoice → controller.getUserInvoice`}</Code>
+          <H3>Razorpay mobile payment — custom scheme redirect fix</H3>
+          <Code>{`// Problem: Chrome Custom Tabs blocks window.location.href = 'oroganix://...'
+// from JS callbacks (security policy). Shows "page not found".
+//
+// Fix: payment page HTML now navigates to a backend redirect endpoint:
+//   callbackUrl = \`\${backendBase}/api/orders/payment-redirect?deepLink=oroganix%3A%2F%2Fpayment\`
+//
+// New endpoint: GET /api/orders/payment-redirect (no auth)
+//   - Reads ?deepLink= (must start with 'oroganix://')
+//   - Issues HTTP 302 to deepLink + remaining query params
+//   - Chrome follows HTTP 302 to custom schemes ✓
+//
+// openAuthSessionAsync still monitors for 'oroganix://' prefix as before.
+// Files: order.controller.js (paymentRedirect + getPaymentPage), order.routes.js`}</Code>
           <H3>Carrier tracking links (web + mobile)</H3>
           <Code>{`// 14 carriers supported: Delhivery, BlueDart, Ekart, XpressBees,
 // DTDC, Shadowfax, Ecom Express, India Post, Speed Post,
