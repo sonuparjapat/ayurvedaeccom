@@ -435,10 +435,11 @@ const addToCart = async () => {
 
     return (
 
-      <div className="h-screen flex items-center justify-center bg-linear-to-br from-emerald-50 to-white">
-
-        <div className="animate-spin h-14 w-14 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
-
+      <div className="h-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #f0fdf9 0%, #ecfdf5 50%, #f0fbf7 100%)'}}>
+        <div className="relative flex items-center justify-center">
+          <div className="animate-spin h-14 w-14 border-2 border-emerald-200 border-t-emerald-600 rounded-full"></div>
+          <div className="absolute animate-ping h-14 w-14 border border-emerald-300 rounded-full opacity-20"></div>
+        </div>
       </div>
 
     )
@@ -1243,16 +1244,16 @@ const addToCart = async () => {
       </div>
       {/* ================= FAQs ================= */}
       {pdTab === 'desc' && product?.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Frequently Asked Questions</h3>
+        <div className="p-8 mb-4" style={{background: 'white', borderRadius: 24, border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 4px 24px rgba(0,0,0,0.05)', maxWidth: 1200, margin: '0 auto 16px'}}>
+          <h3 className="text-2xl font-bold mb-6" style={{borderLeft: '4px solid #f59e0b', paddingLeft: 14, color: '#0f172a'}}>Frequently Asked Questions</h3>
           <div className="space-y-3">
             {product.faqs.map((faq: any, i: number) => (
-              <details key={i} className="group border border-gray-100 rounded-xl overflow-hidden">
-                <summary className="flex items-center justify-between cursor-pointer px-4 py-3 bg-gray-50 hover:bg-gray-100 transition font-medium text-sm text-gray-800">
+              <details key={i} className="group overflow-hidden" style={{borderRadius: 14, border: '1px solid rgba(245,158,11,0.15)', background: '#fffdf5'}}>
+                <summary className="flex items-center justify-between cursor-pointer px-5 py-4 font-semibold text-sm text-gray-800 hover:bg-amber-50 transition-colors">
                   {faq.question}
-                  <span className="text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+                  <span className="text-amber-400 group-open:rotate-180 transition-transform shrink-0 ml-3">▾</span>
                 </summary>
-                <div className="px-4 py-3 text-sm text-gray-600 leading-relaxed">{faq.answer}</div>
+                <div className="px-5 py-4 text-sm text-gray-600 leading-relaxed border-t border-amber-100">{faq.answer}</div>
               </details>
             ))}
           </div>
