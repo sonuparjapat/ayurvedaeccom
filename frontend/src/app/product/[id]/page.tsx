@@ -158,6 +158,7 @@ export default function ProductDetailPage() {
   const [wImages, setWImages] = useState<{ file: File; preview: string }[]>([])
   const [wExistingImages, setWExistingImages] = useState<string[]>([])
   const [lightbox, setLightbox] = useState<{ images: string[]; idx: number } | null>(null)
+  const [pdTab, setPdTab] = useState<'desc' | 'reviews' | 'qa'>('desc')
 
   // Flash sale
   const [flashSaleInfo, setFlashSaleInfo] = useState<{ flash_price: number; ends_at: string; title: string; discount_percent: number; saleId: number } | null>(null)
@@ -570,7 +571,7 @@ const addToCart = async () => {
 
 
 
-      <div className="min-h-screen bg-linear-to-br from-stone-50 via-amber-50/20 to-emerald-50/30">
+      <div className="bg-linear-to-br from-stone-50 via-amber-50/20 to-emerald-50/30 pb-10">
 
 
         <div className="max-w-7xl mx-auto px-4 py-10 lg:py-16">
@@ -1068,9 +1069,24 @@ const addToCart = async () => {
 
 
 
-          {/* ================= DESCRIPTION ================= */}
+          {/* ── TAB BAR ── */}
+          <div className="flex border-b-2 border-gray-200 mt-12">
+            {(['desc', 'reviews', 'qa'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setPdTab(t)}
+                className={`px-6 py-3.5 text-sm font-semibold border-b-2 -mb-0.5 transition-colors ${
+                  pdTab === t ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                {t === 'desc' ? 'Description' : t === 'reviews' ? `Reviews (${product.reviewcount})` : 'Q&A'}
+              </button>
+            ))}
+          </div>
 
-          <Card className="mt-20 shadow-xl rounded-3xl border-0 overflow-hidden">
+          {/* ================= DESCRIPTION TAB ================= */}
+          {pdTab === 'desc' && (
+          <Card className="mt-8 shadow-xl rounded-3xl border-0 overflow-hidden">
 
 
             <CardContent className="p-10">
@@ -1113,12 +1129,12 @@ const addToCart = async () => {
             </CardContent>
 
           </Card>
-
+          )}
 
         </div>
 
         {/* ================= AYURVEDIC DETAILS ================= */}
-
+        {pdTab === 'desc' && (
         <div className="max-w-7xl mx-auto px-4 mt-10 space-y-6">
 
           {/* HIGHLIGHTS */}
@@ -1225,10 +1241,11 @@ const addToCart = async () => {
           )}
 
         </div>
+        )}
 
       </div>
       {/* ================= FAQs ================= */}
-      {product?.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
+      {pdTab === 'desc' && product?.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Frequently Asked Questions</h3>
           <div className="space-y-3">
@@ -1268,7 +1285,9 @@ const addToCart = async () => {
         </div>
       )}
 
-      {/* ================= RATING BREAKDOWN + REVIEWS ================= */}
+      {/* ================= REVIEWS TAB ================= */}
+      {pdTab === 'reviews' && (
+      <>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 16px 0' }}>
         {ratingBreakdown && (
           <div style={{ background: 'white', borderRadius: 16, padding: '24px', marginBottom: 24, border: '1px solid rgba(26,58,42,0.1)', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1465,8 +1484,13 @@ const addToCart = async () => {
           )}
         </div>
       </div>
-      {/* Q&A SECTION */}
+      </>
+      )}
+
+      {/* ================= Q&A TAB ================= */}
+      {pdTab === 'qa' && (
       <QASection productId={id as string} loginuserdata={loginuserdata} />
+      )}
 
       {/* ── Image Lightbox ── */}
       {lightbox && (
