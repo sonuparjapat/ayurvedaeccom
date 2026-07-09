@@ -1606,7 +1606,7 @@ const handleSaveAddress = async (data: any) => {
 
                       {/* Submit */}
                       <Button
-                        disabled={reviewLoading || !item?.rating || item?.comment?.trim().length < 5}
+                        disabled={reviewLoading || !item?.rating}
                         onClick={() => submitReview(selectedOrder, item.product_id, item)}
                         className="w-full bg-emerald-600 hover:bg-emerald-700 rounded-xl gap-2 disabled:opacity-50"
                       >

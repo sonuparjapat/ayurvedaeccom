@@ -3,7 +3,8 @@ const pool = require("../../config/db")
 const PDFDocument = require('pdfkit')
 const fs = require("fs")
 const path = require("path")
-const puppeteer = require("puppeteer")
+const chromium = require("@sparticuz/chromium")
+const puppeteer = require("puppeteer-core")
 const { uploadInvoiceToCloud } = require("../../utils/uploadInvoicetoCloud");
 const { uploadInvoiceToAWS } = require("../../utils/awsUpload");
 const { platform } = require("os")
@@ -303,16 +304,10 @@ exports.generateInvoice = async (req, res) => {
     /* ================= PDF ================= */
 
 const browser = await puppeteer.launch({
-  headless: "new",
-  // executablePath: puppeteer.executablePath(),
-  args: [
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-dev-shm-usage",
-    "--disable-gpu",
-    "--single-process",
-    "--no-zygote"
-  ]
+  args: chromium.args,
+  defaultViewport: chromium.defaultViewport,
+  executablePath: await chromium.executablePath(),
+  headless: chromium.headless,
 });
     const page = await browser.newPage();
 
@@ -410,7 +405,12 @@ exports.downloadInvoice = async (req,res)=>{
       .replace("{{tax}}",inv.tax)
       .replace("{{total}}",inv.total)
 
-    const browser = await puppeteer.launch({ headless:"new" })
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    })
     const page = await browser.newPage()
 
     await page.setContent(html,{ waitUntil:"networkidle0" })
