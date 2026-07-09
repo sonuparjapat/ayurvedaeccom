@@ -5,6 +5,7 @@ import {
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { ReviewImageViewer } from '../../components/ui/ReviewImageViewer'
 import Animated, {
   FadeIn, FadeInDown, FadeInRight, ZoomIn,
 } from 'react-native-reanimated'
@@ -359,6 +360,7 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
   visible: boolean; onClose: () => void; orderId: number; orderItems: OrderItem[]
 }) {
   const [items, setItems] = useState<ReviewItemState[]>([])
+  const [viewer, setViewer] = useState<{ images: string[]; start: number } | null>(null)
 
   useEffect(() => {
     if (visible) {
@@ -438,6 +440,7 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <Pressable style={m.bg} onPress={onClose} />
+        {viewer && <ReviewImageViewer images={viewer.images} startIndex={viewer.start} onClose={() => setViewer(null)} />}
         <View style={[m.sheet, { maxHeight: '92%', padding: 0 }]}>
 
           {/* ── Fixed header ─────────────────────────────────────── */}
@@ -500,7 +503,9 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                         {item.existingImages.map((url, i2) => (
                           <View key={`ex-${i2}`} style={rv2.imgPreview}>
-                            <ExpoImage source={{ uri: url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                            <TouchableOpacity onPress={() => setViewer({ images: [...item.existingImages, ...item.images.map(i => i.uri)], start: i2 })} activeOpacity={0.85} style={{ width: '100%', height: '100%' }}>
+                              <ExpoImage source={{ uri: url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                            </TouchableOpacity>
                             <TouchableOpacity
                               onPress={() => update(idx, { existingImages: item.existingImages.filter((_, j) => j !== i2) })}
                               style={rv2.imgRemove}
@@ -517,7 +522,9 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                         {item.images.map((img, i2) => (
                           <View key={i2} style={rv2.imgPreview}>
-                            <ExpoImage source={{ uri: img.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                            <TouchableOpacity onPress={() => setViewer({ images: [...item.existingImages, ...item.images.map(i => i.uri)], start: item.existingImages.length + i2 })} activeOpacity={0.85} style={{ width: '100%', height: '100%' }}>
+                              <ExpoImage source={{ uri: img.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                            </TouchableOpacity>
                             <TouchableOpacity
                               onPress={() => update(idx, { images: item.images.filter((_, j) => j !== i2) })}
                               style={rv2.imgRemove}

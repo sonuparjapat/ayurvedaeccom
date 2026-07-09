@@ -1177,7 +1177,7 @@ exports.getRelatedProducts = async (req, res) => {
 
     const { category_id, price } = product.rows[0]
     const related = await pool.query(`
-      SELECT id, name, price, compareprice, images, averagerating, reviewcount, inventory, category_name
+      SELECT id, name, slug, price, compareprice, images, averagerating, reviewcount, inventory, category_name, is_bestseller
       FROM products
       WHERE status = 'active'
         AND id != $1

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import * as ImagePicker from 'expo-image-picker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { ReviewImageViewer } from '../../components/ui/ReviewImageViewer'
 import { getGuestSession } from '../../utils/guestSession'
 import {
   ActivityIndicator, Dimensions, FlatList, Image, Modal,
@@ -164,10 +165,13 @@ function ReviewItem({ r, index }: { r: Review; index: number }) {
   const initials = (r.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const colors = ['#059669', '#f59e0b', '#7c3aed', '#e11d48', '#0284c7']
   const color = colors[(r.name || '?').charCodeAt(0) % colors.length]
-  const [viewerUri, setViewerUri] = useState('')
+  const [viewerIdx, setViewerIdx] = useState<number | null>(null)
   return (
     <Animated.View entering={FadeInDown.delay(index * 60)} style={rv.card}>
-      {viewerUri ? <ImageZoomModal uri={viewerUri} onClose={() => setViewerUri('')} /> : null}
+      {viewerIdx !== null && r.images?.length
+        ? <ReviewImageViewer images={r.images} startIndex={viewerIdx} onClose={() => setViewerIdx(null)} />
+        : null
+      }
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
           <View style={[rv.avatar, { backgroundColor: color + '22', borderColor: color + '44' }]}>
@@ -190,13 +194,8 @@ function ReviewItem({ r, index }: { r: Review; index: number }) {
       {r.images && r.images.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 10 }}>
           {r.images.map((img, j) => (
-            <TouchableOpacity key={j} onPress={() => setViewerUri(img)} activeOpacity={0.85}>
+            <TouchableOpacity key={j} onPress={() => setViewerIdx(j)} activeOpacity={0.85}>
               <Image source={{ uri: img }} style={{ width: 72, height: 72, borderRadius: 10 }} />
-              {r.images!.length > 1 && j === 0 && (
-                <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 8, paddingHorizontal: 5, paddingVertical: 2 }}>
-                  <Text style={{ color: '#fff', fontSize: 9, fontFamily: Fonts.bold }}>+{r.images!.length - 1} more</Text>
-                </View>
-              )}
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -248,7 +247,7 @@ export default function ProductDetailScreen() {
   const [myImages, setMyImages] = useState<{ uri: string; name: string; type: string }[]>([])
   const [myExistingImages, setMyExistingImages] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
-  const [reviewImgViewer, setReviewImgViewer] = useState('')
+  const [reviewImgViewer, setReviewImgViewer] = useState<{ images: string[]; start: number } | null>(null)
   const [tab, setTab] = useState<'desc' | 'reviews' | 'qa'>('desc')
 
   // Q&A
@@ -866,24 +865,6 @@ export default function ProductDetailScreen() {
             ))}
           </ScrollView>
 
-          {/* Related Products */}
-          {relatedProducts.length > 0 && (
-            <View style={{ marginBottom: 24 }}>
-              <Text style={{ fontFamily: Fonts.bold, fontSize: 15, color: Colors.forest, marginBottom: 12 }}>You May Also Like</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                {relatedProducts.map((p: any) => (
-                  <TouchableOpacity key={p.id} onPress={() => router.push(`/product/${p.slug || p.id}`)} style={{ width: 140, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 0.5, borderColor: Colors.border }}>
-                    <Image source={{ uri: p.images?.[0] || '' }} style={{ width: 140, height: 120 }} resizeMode="cover" />
-                    <View style={{ padding: 10 }}>
-                      <Text numberOfLines={2} style={{ fontFamily: Fonts.bold, fontSize: 11, color: Colors.forest, marginBottom: 4 }}>{p.name}</Text>
-                      <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.moss }}>₹{p.price}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
           {/* Tabs */}
           <View style={ss.tabRow}>
             {(['desc', 'reviews', 'qa'] as const).map(t => (
@@ -926,7 +907,7 @@ export default function ProductDetailScreen() {
 
           {tab === 'reviews' && (
             <Animated.View entering={FadeIn.duration(300)}>
-              {reviewImgViewer ? <ImageZoomModal uri={reviewImgViewer} onClose={() => setReviewImgViewer('')} /> : null}
+              {reviewImgViewer ? <ReviewImageViewer images={reviewImgViewer.images} startIndex={reviewImgViewer.start} onClose={() => setReviewImgViewer(null)} /> : null}
               {/* Write review — logged-in users only */}
               {user ? (
                 <View style={ss.reviewWriteBox}>
@@ -958,7 +939,7 @@ export default function ProductDetailScreen() {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 10 }}>
                       {myExistingImages.map((url, j) => (
                         <View key={`ex-${j}`} style={{ width: 68, height: 68, borderRadius: 10, overflow: 'hidden' }}>
-                          <TouchableOpacity onPress={() => setReviewImgViewer(url)} activeOpacity={0.85}>
+                          <TouchableOpacity onPress={() => setReviewImgViewer({ images: [...myExistingImages, ...myImages.map(i => i.uri)], start: j })} activeOpacity={0.85}>
                             <Image source={{ uri: url }} style={{ width: 68, height: 68 }} />
                           </TouchableOpacity>
                           <TouchableOpacity
@@ -977,7 +958,7 @@ export default function ProductDetailScreen() {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 10 }}>
                       {myImages.map((img, j) => (
                         <View key={j} style={{ width: 68, height: 68, borderRadius: 10, overflow: 'hidden' }}>
-                          <TouchableOpacity onPress={() => setReviewImgViewer(img.uri)} activeOpacity={0.85}>
+                          <TouchableOpacity onPress={() => setReviewImgViewer({ images: [...myExistingImages, ...myImages.map(i => i.uri)], start: myExistingImages.length + j })} activeOpacity={0.85}>
                             <Image source={{ uri: img.uri }} style={{ width: 68, height: 68 }} />
                           </TouchableOpacity>
                           <TouchableOpacity
