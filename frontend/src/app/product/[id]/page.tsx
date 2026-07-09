@@ -155,6 +155,9 @@ export default function ProductDetailPage() {
   const [wRating, setWRating] = useState(0)
   const [wComment, setWComment] = useState('')
   const [wLoading, setWLoading] = useState(false)
+  const [wImages, setWImages] = useState<{ file: File; preview: string }[]>([])
+  const [wExistingImages, setWExistingImages] = useState<string[]>([])
+  const [lightbox, setLightbox] = useState<{ images: string[]; idx: number } | null>(null)
 
   // Flash sale
   const [flashSaleInfo, setFlashSaleInfo] = useState<{ flash_price: number; ends_at: string; title: string; discount_percent: number; saleId: number } | null>(null)
@@ -177,7 +180,11 @@ const handlepagechage=(page:number)=>{
 
   useEffect(() => {
     const mine = reviewsData?.data?.find((r: any) => r.user_id == loginuserdata?.id)
-    if (mine) { setWRating(mine.rating); setWComment(mine.comment || '') }
+    if (mine) {
+      setWRating(mine.rating)
+      setWComment(mine.comment || '')
+      setWExistingImages(mine.images || [])
+    }
   }, [reviewsData, loginuserdata])
 
   useEffect(() => {
@@ -302,8 +309,15 @@ const handlepagechage=(page:number)=>{
     if (!wRating) { toast.error('Please select a rating'); return }
     try {
       setWLoading(true)
-      await axios.post('/shop/reviews/product', { productId: product?.id, rating: wRating, comment: wComment })
+      const form = new FormData()
+      form.append('productId', String(product?.id))
+      form.append('rating', String(wRating))
+      form.append('comment', wComment)
+      form.append('oldImages', JSON.stringify(wExistingImages))
+      wImages.forEach(img => form.append('images', img.file))
+      await axios.post('/shop/reviews/product', form, { headers: { 'Content-Type': 'multipart/form-data' } })
       toast.success('Review saved')
+      setWImages([])
       loadReviews(id, page)
       fetchProduct()
     } catch (err: any) {
@@ -311,6 +325,15 @@ const handlepagechage=(page:number)=>{
     } finally {
       setWLoading(false)
     }
+  }
+
+  const pickReviewImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter((f: any) => f.type.startsWith('image/'))
+    const remaining = 5 - wExistingImages.length - wImages.length
+    if (!files.length || remaining <= 0) return
+    const toAdd = files.slice(0, remaining)
+    setWImages(prev => [...prev, ...toAdd.map((f: any) => ({ file: f, preview: URL.createObjectURL(f) }))])
+    e.target.value = ''
   }
 
   const submitNotifyMe = async () => {
@@ -1292,7 +1315,10 @@ const addToCart = async () => {
         {/* Write review form — visible to logged-in users only */}
         {loginuserdata ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-4">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Write a Review</p>
+            <p className="text-sm font-semibold text-gray-700 mb-3">
+              {wExistingImages.length > 0 || wRating > 0 ? 'Edit Your Review' : 'Write a Review'}
+            </p>
+            {/* Star rating */}
             <div className="flex gap-1 mb-3">
               {[1,2,3,4,5].map(i => (
                 <Star
@@ -1309,9 +1335,54 @@ const addToCart = async () => {
               value={wComment}
               onChange={e => setWComment(e.target.value)}
             />
-            <Button size="sm" onClick={submitReview} disabled={wLoading}>
-              {wLoading ? 'Saving...' : 'Submit Review'}
-            </Button>
+            {/* Existing images */}
+            {wExistingImages.length > 0 && (
+              <div className="flex gap-2 flex-wrap mb-2">
+                {wExistingImages.map((url, i) => (
+                  <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200">
+                    <img
+                      src={url} alt="existing"
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => setLightbox({ images: [...wExistingImages, ...wImages.map(x => x.preview)], idx: i })}
+                    />
+                    <button
+                      onClick={() => setWExistingImages(prev => prev.filter((_, j) => j !== i))}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* New images preview */}
+            {wImages.length > 0 && (
+              <div className="flex gap-2 flex-wrap mb-2">
+                {wImages.map((img, i) => (
+                  <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200">
+                    <img
+                      src={img.preview} alt="new"
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => setLightbox({ images: [...wExistingImages, ...wImages.map(x => x.preview)], idx: wExistingImages.length + i })}
+                    />
+                    <button
+                      onClick={() => setWImages(prev => prev.filter((_, j) => j !== i))}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button size="sm" onClick={submitReview} disabled={wLoading}>
+                {wLoading ? 'Saving...' : 'Submit Review'}
+              </Button>
+              {wExistingImages.length + wImages.length < 5 && (
+                <label className="cursor-pointer text-xs text-emerald-700 font-semibold border border-emerald-200 rounded-lg px-3 py-1.5 hover:bg-emerald-50">
+                  + Add Photos
+                  <input type="file" multiple accept="image/*" className="hidden" onChange={pickReviewImages} />
+                </label>
+              )}
+              <span className="text-xs text-gray-400">{wExistingImages.length + wImages.length}/5 photos</span>
+            </div>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-4 text-center text-sm text-gray-500">
@@ -1364,10 +1435,10 @@ const addToCart = async () => {
 
                 {r.images?.length > 0 && (
                   <div className="flex gap-2 flex-wrap mt-3">
-                    {r.images.map((img: any) => (
-                      <a key={img} href={img} target="_blank" rel="noreferrer">
-                        <img src={img} alt="review" className="w-20 h-20 rounded-xl object-cover border border-gray-100" />
-                      </a>
+                    {r.images.map((img: any, imgIdx: number) => (
+                      <button key={img} onClick={() => setLightbox({ images: r.images, idx: imgIdx })} className="focus:outline-none">
+                        <img src={img} alt="review" className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition-opacity cursor-zoom-in" />
+                      </button>
                     ))}
                   </div>
                 )}
@@ -1396,6 +1467,57 @@ const addToCart = async () => {
       </div>
       {/* Q&A SECTION */}
       <QASection productId={id as string} loginuserdata={loginuserdata} />
+
+      {/* ── Image Lightbox ── */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+          onClick={() => setLightbox(null)}
+        >
+          {/* Counter */}
+          <div className="absolute top-4 left-4 text-white/70 text-sm font-medium select-none">
+            {lightbox.idx + 1} / {lightbox.images.length}
+          </div>
+          {/* Close */}
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 text-lg font-bold"
+          >✕</button>
+          {/* Prev */}
+          {lightbox.images.length > 1 && lightbox.idx > 0 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLightbox(prev => prev ? { ...prev, idx: prev.idx - 1 } : null) }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 text-xl font-bold"
+            >‹</button>
+          )}
+          {/* Image */}
+          <img
+            src={lightbox.images[lightbox.idx]}
+            alt="review"
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl select-none"
+            onClick={e => e.stopPropagation()}
+          />
+          {/* Next */}
+          {lightbox.images.length > 1 && lightbox.idx < lightbox.images.length - 1 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLightbox(prev => prev ? { ...prev, idx: prev.idx + 1 } : null) }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 text-xl font-bold"
+            >›</button>
+          )}
+          {/* Dot indicators */}
+          {lightbox.images.length > 1 && (
+            <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-1.5">
+              {lightbox.images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={e => { e.stopPropagation(); setLightbox(prev => prev ? { ...prev, idx: i } : null) }}
+                  className={`rounded-full transition-all ${i === lightbox.idx ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/40'}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <Footer />
 
