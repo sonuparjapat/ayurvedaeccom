@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator, Alert, Dimensions, KeyboardAvoidingView,
-  Linking, Platform, ScrollView, StatusBar, StyleSheet, Text,
+  Platform, ScrollView, StatusBar, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { toast } from '../../components/ui/Toast'
-import * as WebBrowser from 'expo-web-browser'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import RazorpayCheckout from 'react-native-razorpay'
 import Animated, {
   FadeIn, FadeInDown, FadeInUp, SlideInRight, ZoomIn,
   useSharedValue, withTiming, withSpring, useAnimatedStyle,
@@ -302,60 +301,49 @@ export default function CheckoutScreen() {
         return
       }
 
-      // Online payment via Razorpay web page
+      // Online payment via react-native-razorpay native SDK
+      const rzp = res.data.razorpay
+      const rzpKey = res.data.razorpayKey
       setProcessing(false)
-      const apiBase = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/api\/?$/, '')
-      const authToken = await AsyncStorage.getItem('auth_token')
-      const paymentPageUrl = `${apiBase}/api/orders/${orderId}/payment-page?returnUrl=${encodeURIComponent('oroganix://payment')}&token=${encodeURIComponent(authToken || '')}`
 
-      // Use Linking listener — more reliable on Android than openAuthSessionAsync
-      // which sometimes fails to intercept the 302 → custom-scheme redirect
-      const deepLinkUrl = await new Promise<string | null>((resolve) => {
-        const sub = Linking.addEventListener('url', ({ url }) => {
-          if (url.startsWith('oroganix://payment')) {
-            sub.remove()
-            WebBrowser.dismissBrowser()
-            resolve(url)
-          }
+      try {
+        const paymentData = await RazorpayCheckout.open({
+          description: 'Oroganix Order Payment',
+          currency: rzp?.currency || 'INR',
+          key: rzpKey,
+          amount: rzp?.amount,
+          name: 'Oroganix',
+          order_id: rzp?.id,
+          prefill: {
+            email: user?.email || '',
+            contact: user?.phone || '',
+            name: user?.name || '',
+          },
+          theme: { color: '#1a4228' },
         })
 
-        WebBrowser.openBrowserAsync(paymentPageUrl, { showInRecents: false })
-          .then(() => {
-            // Browser closed by user without completing payment
-            sub.remove()
-            resolve(null)
-          })
-          .catch(() => {
-            sub.remove()
-            resolve(null)
-          })
-      })
-
-      if (deepLinkUrl) {
-        const params = new URLSearchParams(deepLinkUrl.split('?')[1] || '')
-        const status = params.get('status')
-
-        if (status === 'success') {
-          setProcessing(true)
-          try {
-            await api.post('/orders/verify', {
-              orderId,
-              razorpay_order_id: params.get('razorpay_order_id'),
-              razorpay_payment_id: params.get('razorpay_payment_id'),
-              razorpay_signature: params.get('razorpay_signature'),
-            })
-            setCartData({ items: [], subtotal: 0, totalItems: 0 })
-            setPaidAmount(total)
-            setOrderNo(`ORD-${orderId}`)
-            setStep(3)
-          } catch (e: any) {
-            toast.error(e?.response?.data?.message || 'Payment verification failed')
-          } finally { setProcessing(false) }
+        setProcessing(true)
+        await api.post('/orders/verify', {
+          orderId,
+          razorpay_order_id: paymentData.razorpay_order_id,
+          razorpay_payment_id: paymentData.razorpay_payment_id,
+          razorpay_signature: paymentData.razorpay_signature,
+        })
+        setCartData({ items: [], subtotal: 0, totalItems: 0 })
+        setPaidAmount(total)
+        setOrderNo(`ORD-${orderId}`)
+        setStep(3)
+      } catch (e: any) {
+        console.error('[Razorpay]', JSON.stringify(e))
+        // Razorpay error code 2 = user dismissed the payment sheet
+        if (e?.code === 2) {
+          toast.warning('Payment cancelled. Your order is pending.')
         } else {
-          toast.warning('Payment cancelled. You can try again.')
+          const msg = e?.description || e?.response?.data?.message || e?.message || 'Payment failed'
+          toast.error(msg)
         }
-      } else {
-        toast.warning('Payment not completed. Your order is pending.')
+      } finally {
+        setProcessing(false)
       }
     } catch (e: any) {
       toast.error(e?.response?.data?.message || e?.message || 'Something went wrong')
