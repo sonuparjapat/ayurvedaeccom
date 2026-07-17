@@ -723,7 +723,8 @@ if (addr.pincode) {
         grandTotal: total
       },
 
-      razorpay: razorpayOrder
+      razorpay: razorpayOrder,
+      razorpayKey: razorpayOrder ? process.env.RAZORPAY_KEY : undefined,
     });
 
   } catch (err) {

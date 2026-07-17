@@ -181,13 +181,18 @@ const handlepagechage=(page:number)=>{
   }, [page])
 
   useEffect(() => {
-    const mine = reviewsData?.data?.find((r: any) => r.user_id == loginuserdata?.id)
-    if (mine) {
-      setWRating(mine.rating)
-      setWComment(mine.comment || '')
-      setWExistingImages(mine.images || [])
-    }
-  }, [reviewsData, loginuserdata])
+    if (!loginuserdata?.id || !id) return
+    axios.get(`/shop/reviews/product/${id}`, { params: { me: 1 } })
+      .then(({ data }) => {
+        const mine = (data.data || [])[0]
+        if (mine) {
+          setWRating(mine.rating)
+          setWComment(mine.comment || '')
+          setWExistingImages(mine.images || [])
+        }
+      })
+      .catch(() => {})
+  }, [loginuserdata?.id, id])
 
   useEffect(() => {
     if (wishlistdata?.items) {
@@ -322,6 +327,12 @@ const handlepagechage=(page:number)=>{
       setWImages([])
       loadReviews(id, page)
       fetchProduct()
+      axios.get(`/shop/reviews/product/${id}`, { params: { me: 1 } })
+        .then(({ data }) => {
+          const mine = (data.data || [])[0]
+          if (mine) { setWRating(mine.rating); setWComment(mine.comment || ''); setWExistingImages(mine.images || []) }
+        })
+        .catch(() => {})
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Login required to review')
     } finally {

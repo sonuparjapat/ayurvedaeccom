@@ -179,9 +179,9 @@ export default function OrderDetailPage() {
     setReviewUrlInput('')
     setReviewFetching(true)
     try {
-      const { data } = await axios.get(`/shop/reviews/product/${productId}`)
-      const reviews = data.reviews || data.data || []
-      const mine = reviews.find((r: any) => r.user_id == loginuserdata?.id)
+      const { data } = await axios.get(`/shop/reviews/product/${productId}`, { params: { me: 1 } })
+      const reviews = data.data || []
+      const mine = reviews[0]
       if (mine) {
         setReviewRating(mine.rating || 0)
         setReviewComment(mine.comment || '')

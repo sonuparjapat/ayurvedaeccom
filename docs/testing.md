@@ -1,31 +1,30 @@
 # Testing Guide — Oroganix eCommerce
 
-## Mobile — Razorpay Payment
+## Mobile — Razorpay Payment (Native SDK)
 
 ### Prerequisites
-- A standalone Expo build (EAS build) or Expo Dev Client. **Expo Go will not work** because `oroganix://` deep link scheme is not registered in Expo Go.
-- The `oroganix` scheme must be registered in `app.json` under `"scheme"`.
+- **Expo Go will not work** — `react-native-razorpay` is a native module.
+- Build with `npx expo run:android` (local dev build using `expo-dev-client`) or `eas build`.
+- Backend `.env` must have `RAZORPAY_KEY` and `RAZORPAY_SECRET` set.
 
 ### Test steps
-1. Log in with a test account.
-2. Add any product to cart and go to Checkout.
-3. Select **Online Payment**.
-4. Tap **Place Order**.
-5. Verify: the Razorpay payment page opens inside an in-app browser tab.
-6. Complete payment with a Razorpay test card (use test mode key during development).
-7. Verify: after payment, the browser closes automatically and the Order Confirmation screen (step 3) is shown.
-8. Go to **My Orders** and verify the order status is `Paid` / `Processing`.
+1. Build the app with `npx expo run:android`.
+2. Log in with a test account.
+3. Add any product to cart and go to Checkout.
+4. Select **Online Payment**.
+5. Tap **Pay ₹X Securely**.
+6. Verify: the Razorpay native payment sheet opens (bottom sheet, not a browser tab).
+7. Complete payment with a Razorpay test card / UPI (use test mode key during development).
+8. Verify: sheet closes automatically and the Order Confirmation screen is shown.
+9. Go to **My Orders** and verify the order status is `Paid` / `Processing`.
 
 ### Edge cases
 | Scenario | Expected behaviour |
 |---|---|
-| User closes browser mid-payment | Toast: "Payment not completed. Your order is pending." |
-| Payment fails (card declined) | Razorpay shows error; user can retry. Status stays Pending. |
-| Network drops after payment but before redirect | Verify endpoint called on re-open; if signature valid, order confirms. |
-| JWT older than 2h at payment time | 401 response from `/payment-page` — user sees auth error; re-login required. |
-
-### Android-specific check
-On Android, after payment confirm, the `Linking` event must fire and the browser must dismiss automatically. If the browser stays open after payment, the `Linking.addEventListener` is not receiving the `oroganix://` URL — check that the EAS build's intent filters include the scheme.
+| User dismisses payment sheet | Toast: "Payment cancelled. Your order is pending." |
+| Payment fails (card declined) | Razorpay shows error in sheet; user can retry. Status stays Pending. |
+| Network drops after payment but before `/orders/verify` | Order stays `payment_status = unpaid`. User can retry from My Orders. |
+| `razorpayKey` missing in backend response | `RazorpayCheckout.open` will throw — check `RAZORPAY_KEY` env var on backend. |
 
 ---
 
@@ -34,13 +33,21 @@ On Android, after payment confirm, the `Linking` event must fire and the browser
 1. Go to `/orders/<delivered-order-id>` (order with status = Delivered).
 2. Verify each item row has an "⭐ Review" button.
 3. Click "⭐ Review" on an item — verify it expands an inline review form for that specific product.
-4. If the user already reviewed this product, verify the form is pre-filled (stars, comment, existing photos).
+4. If the user already reviewed this product, verify the form is pre-filled (stars, comment, existing photos). Pre-fill uses `GET /shop/reviews/product/:id?me=1` which returns only the current user's own review regardless of pagination.
 5. Select stars, write a comment, upload a photo via file picker — verify image thumbnail appears.
 6. Paste an image URL into the URL field and click "Add" — verify it appears as a thumbnail.
 7. Remove a photo (hover → ✕) — verify it disappears from the form.
 8. Submit — verify toast "Review saved!" and form collapses.
 9. Re-open the review form for the same item — verify the updated review pre-fills.
 10. Click "✕ Close" — verify form collapses without submitting.
+
+### Web — Product Detail Review Pre-fill
+
+1. Navigate to `/product/:id` while logged in.
+2. Scroll to the Reviews tab — if the user has already reviewed, the "Write a Review" form should auto-fill with their existing stars, comment, and photos.
+3. Pre-fill triggers via `GET /shop/reviews/product/:id?me=1` (fires when `loginuserdata` becomes available).
+4. Verify the pre-fill works even if the user's review is buried on page 2+ of the public review list (the `me=1` fetch is independent of the paginated list).
+5. Submit an edited review — verify the form immediately reflects the new server-stored image URLs (re-fetched after submit).
 
 ---
 

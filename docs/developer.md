@@ -1,39 +1,38 @@
 # Developer Notes — Oroganix eCommerce
 
-## Mobile Payment Flow (Razorpay)
+## Mobile Payment Flow (Razorpay — Native SDK)
 
 ### Architecture
 ```
-Mobile checkout → GET /api/orders/:id/payment-page?returnUrl=oroganix://payment&token=<jwt>
-  → backend renders Razorpay checkout HTML
-  → user pays in browser tab
-  → Razorpay JS: window.location = /api/orders/payment-redirect?...
-  → backend 302 → oroganix://payment?status=success&...
-  → Linking listener fires → app processes result
+Mobile checkout
+  → POST /api/orders/create  (paymentMethod: 'online')
+  → backend creates Razorpay order, returns { orderId, razorpay: { id, amount }, razorpayKey }
+  → RazorpayCheckout.open({ key, order_id, amount, ... })   ← native bottom sheet
+  → user pays (UPI / card / netbanking) inside native sheet
+  → SDK returns { razorpay_payment_id, razorpay_order_id, razorpay_signature }
+  → POST /api/orders/verify   ← HMAC signature check
+  → show success screen
 ```
 
 ### Key files
 | File | Role |
 |---|---|
-| `ayurveda-app/src/app/checkout/index.tsx` | Mobile checkout — opens payment page, listens for deep link |
-| `backend/src/modules/orders/order.controller.js` | `getPaymentPage` + `paymentRedirect` |
-| `backend/src/modules/orders/order.routes.js` | Routes: `/payment-page` (auth) + `/payment-redirect` (no auth) |
-| `backend/src/middlewares/auth.js` | Reads JWT from cookie → Authorization header → `?token=` query param |
+| `ayurveda-app/src/app/checkout/index.tsx` | Mobile checkout — calls native Razorpay SDK |
+| `backend/src/modules/orders/order.controller.js` | `createOrder` returns `razorpayKey` + `razorpay` object; `verifyPayment` validates HMAC |
+| `backend/src/modules/orders/order.routes.js` | Routes: `/create`, `/verify` |
 
-### Why `Linking` + `openBrowserAsync` instead of `openAuthSessionAsync`
-`WebBrowser.openAuthSessionAsync` on Android uses Chrome Custom Tabs. When the Razorpay JS redirects to the backend (`/payment-redirect`) and the backend responds with HTTP 302 to `oroganix://`, Chrome Custom Tabs does **not** reliably fire the intent back to the Expo app — it may show ERR_UNKNOWN_URL_SCHEME instead.
+### Why switched from WebBrowser approach
+The previous `WebBrowser.openBrowserAsync` + `Linking.addEventListener` approach was unreliable — the `oroganix://` deep link 302 redirect was returning 404 in production. The native SDK (`react-native-razorpay` v2.3.1) renders a native bottom sheet entirely within the app — no browser tab, no deep link, no 404 risk.
 
-The fix (`ayurveda-app/src/app/checkout/index.tsx`):
-- Register a `Linking.addEventListener('url', ...)` listener **before** opening the browser.
-- Open with `WebBrowser.openBrowserAsync` (standard in-app browser).
-- When the deep link fires (the `oroganix://payment?...` URL), the listener resolves the promise with the URL, calls `WebBrowser.dismissBrowser()`, and the app processes the payment result.
-- If the user closes the browser (`.then()` resolves with no URL), the promise resolves `null` and a warning toast is shown.
-
-### Auth token in payment URL
-The mobile app passes the JWT as `?token=<encoded>` in the payment page URL because the in-app browser has no access to the app's cookie jar. The auth middleware checks cookies → Authorization header → `req.query.token` in that order.
+### Native SDK notes
+- Package: `react-native-razorpay` (installed v2.3.1)
+- **Requires a native build** — does NOT work in Expo Go. Run `npx expo run:android` or `eas build`.
+- `expo-dev-client` is already in the project so a local dev build (`expo run:android`) is sufficient for testing.
+- The Razorpay key (`RAZORPAY_KEY` from backend env) is returned by `createOrder` as `razorpayKey`. It is the **publishable key** (safe to return to clients).
+- Error code `2` from the SDK = user dismissed the payment sheet (treat as cancellation, not failure).
 
 ### `req.protocol` on Render
-`backend/src/app.js` sets `app.set('trust proxy', 1)` so that `req.protocol` returns `https` even behind Render's reverse proxy. This is required for building the correct `callbackUrl` inside `getPaymentPage`.
+`backend/src/app.js` sets `app.set('trust proxy', 1)` so that `req.protocol` returns `https` even behind Render's reverse proxy.
 
 ---
 
@@ -70,6 +69,15 @@ Premium animation upgrade applied — all logic and state management unchanged. 
 - Order summary items now show product thumbnail images (`item.images?.[0]`) with staggered `x: 12→0` entrance
 - Trust badges upgraded to pill-style with `var(--mist)` background and `motion.div` staggered entrance
 - Success page: `FloatingParticles` component shows 9 emoji particles (`🌿 ✨ 🍃 ⭐ 🌱`) with `particle-float` keyframe; success icon replaced with animated SVG (circle draws in, then checkmark draws, both using `pathLength` motion values); success card top border now has a shimmer sweep matching the brand gradient
+
+### Review Pre-fill Bug Fix
+
+**Root cause**: `getProductReviews` SQL SELECT does not include `r.user_id` in its output columns. The frontend was matching `r.user_id == loginuserdata?.id`, which always resolved to `undefined == id` = `false`.
+
+**Fix**:
+- Order detail page (`orders/[id]/page.tsx`): `openReviewForm` now calls `GET /shop/reviews/product/:id?me=1` (filters to the current user's review on the backend). Takes `reviews[0]` as the pre-fill — no client-side user matching needed.
+- Product detail page (`product/[id]/page.tsx`): Separate `useEffect([loginuserdata?.id, id])` calls `GET /shop/reviews/product/:id?me=1` independently of the paginated public review list. Fires whenever the user logs in and also re-runs after a successful review submit to sync server-stored image URLs.
+- The `is_mine` boolean already returned by the API is reliable if the user is authenticated and the review is in the current page — the dedicated `me=1` fetch is preferred because it is pagination-independent.
 
 ### Old checkout note
 Premium UI upgrade applied — all logic and state management unchanged. Key visual changes:
