@@ -68,12 +68,13 @@ export default function TicketDetailPage() {
   }, [messages])
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !loginuserdata?.id) return
     const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
       transports: ['websocket', 'polling'],
     })
     socketRef.current = socket
     socket.emit('join_ticket', id)
+    // All new_message events come from socket (sendReply does not add to state via HTTP)
     socket.on('new_message', (msg: Message) => {
       setMessages(prev => [...prev, msg])
     })
@@ -81,7 +82,7 @@ export default function TicketDetailPage() {
       socket.emit('leave_ticket', id)
       socket.disconnect()
     }
-  }, [id])
+  }, [id, loginuserdata?.id])
 
   const sendReply = async (e: React.FormEvent) => {
     e.preventDefault()

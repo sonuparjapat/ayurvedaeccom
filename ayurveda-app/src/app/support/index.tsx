@@ -68,6 +68,7 @@ export default function SupportScreen() {
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
   const flatRef = useRef<FlatList>(null)
+  const socketRef = useRef<any>(null)
 
   const loadTickets = async () => {
     setLoading(true)
@@ -90,6 +91,33 @@ export default function SupportScreen() {
     if (!user) { router.replace('/auth'); return }
     loadTickets()
   }, [user])
+
+  // Real-time: connect socket when in chat view and disconnect when leaving
+  useEffect(() => {
+    if (view !== 'chat' || !selectedTicket?.id) return
+    const API_BASE = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '')
+    let sock: any = null
+    const connect = async () => {
+      try {
+        const { io } = await import('socket.io-client')
+        sock = io(API_BASE, { transports: ['websocket'], reconnectionAttempts: 3 })
+        socketRef.current = sock
+        sock.emit('join_ticket', selectedTicket.id)
+        sock.on('new_message', (msg: Message) => {
+          // Only add admin messages via socket; user's own messages come from sendReply HTTP response
+          if (msg.sender_type === 'admin') {
+            setMessages(prev => [...prev, msg])
+          }
+        })
+      } catch {}
+    }
+    connect()
+    return () => {
+      sock?.emit('leave_ticket', selectedTicket.id)
+      sock?.disconnect()
+      socketRef.current = null
+    }
+  }, [view, selectedTicket?.id])
 
   useEffect(() => {
     if (messages.length > 0) {

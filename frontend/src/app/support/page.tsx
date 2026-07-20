@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { io, Socket } from 'socket.io-client'
 import Link from 'next/link'
 import { MessageSquare, Plus, ChevronRight, Clock, CheckCircle, AlertCircle, XCircle, Headphones, Shield, Zap, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -37,6 +38,7 @@ export default function SupportPage() {
   const { loginuserdata, loading: authLoading, setOpenauth } = useAuth() as any
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
+  const socketRef = useRef<Socket | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ subject: '', category: 'general', priority: 'medium', message: '' })
   const [submitting, setSubmitting] = useState(false)
@@ -57,6 +59,23 @@ export default function SupportPage() {
     if (!loginuserdata) { setOpenauth(true); return }
     load()
   }, [loginuserdata, authLoading, filterStatus])
+
+  // Real-time: update ticket list when admin replies or changes status
+  useEffect(() => {
+    if (!loginuserdata?.id) return
+    const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
+      transports: ['websocket', 'polling'],
+    })
+    socketRef.current = socket
+    socket.emit('join_user', loginuserdata.id)
+    socket.on('admin_replied', () => { load() })
+    socket.on('ticket_status_updated', (data: any) => {
+      setTickets(prev => prev.map(t =>
+        t.id === data.ticket_id ? { ...t, status: data.status } : t
+      ))
+    })
+    return () => { socket.disconnect() }
+  }, [loginuserdata?.id])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()

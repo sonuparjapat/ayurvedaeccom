@@ -121,7 +121,10 @@ export default function AdminSupportPage() {
     if (selected) {
       socket.emit('join_ticket', selected.id)
       socket.on('new_message', (msg: Message) => {
-        setMessages(prev => [...prev, msg])
+        // Only add incoming user messages via socket; admin's own replies come from the HTTP response
+        if (msg.sender_type === 'user') {
+          setMessages(prev => [...prev, msg])
+        }
       })
     }
     return () => {
