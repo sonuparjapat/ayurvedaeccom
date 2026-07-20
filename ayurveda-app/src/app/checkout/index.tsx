@@ -520,8 +520,8 @@ export default function CheckoutScreen() {
                 {/* Available coupons list */}
                 {availableCoupons.length > 0 && !appliedCoupon && (() => {
                   const cartBase = subtotal + tax
-                  const usable = availableCoupons.filter((c: any) => cartBase >= Number(c.min_order || 0))
-                  const locked = availableCoupons.filter((c: any) => cartBase < Number(c.min_order || 0))
+                  const usable = availableCoupons.filter((c: any) => cartBase >= Number(c.min_order_amount || 0))
+                  const locked = availableCoupons.filter((c: any) => cartBase < Number(c.min_order_amount || 0))
                   return (
                     <>
                       {usable.length > 0 && (
@@ -529,18 +529,18 @@ export default function CheckoutScreen() {
                           {usable.map((c: any) => (
                             <TouchableOpacity key={c.id} onPress={() => { setCouponInput(c.code); setCouponError('') }} style={ss.couponChip}>
                               <Text style={ss.couponChipCode}>{c.code}</Text>
-                              <Text style={ss.couponChipVal}>{c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`}</Text>
+                              <Text style={ss.couponChipVal}>{c.discount_type === 'percent' ? `${c.discount_value}% OFF` : `₹${c.discount_value} OFF`}</Text>
                               {c.valid_to && <Text style={ss.couponChipExpiry}>Till {new Date(c.valid_to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</Text>}
                             </TouchableOpacity>
                           ))}
                         </ScrollView>
                       )}
                       {locked.map((c: any) => {
-                        const need = (Number(c.min_order) - cartBase).toFixed(2)
+                        const need = (Number(c.min_order_amount) - cartBase).toFixed(2)
                         return (
                           <View key={c.id} style={ss.couponLocked}>
                             <Text style={ss.couponLockedCode}>🔒 {c.code}</Text>
-                            <Text style={ss.couponLockedHint}>Add ₹{need} more · {c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`}</Text>
+                            <Text style={ss.couponLockedHint}>Add ₹{need} more · {c.discount_type === 'percent' ? `${c.discount_value}% OFF` : `₹${c.discount_value} OFF`}</Text>
                           </View>
                         )
                       })}

@@ -589,13 +589,13 @@ function WhyUsSection() {
 }
 
 // ─── OFFER BANNER — shows first active coupon from API ────────────────────────
-interface ActiveCoupon { code: string; type: string; value: number; min_order: number; description?: string }
+interface ActiveCoupon { code: string; discount_type: string; discount_value: number; min_order_amount: number; description?: string }
 function OfferBanner({ coupon }: { coupon: ActiveCoupon | null }) {
   if (!coupon) return null
-  const label = coupon.type === 'percent'
-    ? `${coupon.value}% OFF`
-    : `₹${coupon.value} OFF`
-  const sub = coupon.description || (coupon.min_order > 0 ? `On orders above ₹${coupon.min_order}` : 'No minimum order')
+  const label = coupon.discount_type === 'percent'
+    ? `${coupon.discount_value}% OFF`
+    : `₹${coupon.discount_value} OFF`
+  const sub = coupon.description || (coupon.min_order_amount > 0 ? `On orders above ₹${coupon.min_order_amount}` : 'No minimum order')
   return (
     <Animated.View entering={FadeInDown.delay(100)} style={{ marginHorizontal: 16, marginBottom: 8 }}>
       <LinearGradient colors={[Colors.gold, '#a07830']} style={ss.offerBanner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>

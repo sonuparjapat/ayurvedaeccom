@@ -136,3 +136,29 @@ The notifications page has been updated with a premium green-themed design.
 ## Loading Indicator
 
 Throughout the site, loading states now show a **leaf spinner** — a rotating emerald arc with an Ayurvedic leaf icon in the centre — consistent with the Oroganix brand and the mobile app's leaf animation.
+
+---
+
+## Mobile App — Coupons & Checkout
+
+Coupon discount labels in checkout and the home screen offer banner now display correctly (e.g. **20% OFF** or **₹50 OFF**). Previously these showed "undefined% OFF" due to a field name mismatch.
+
+- **Home screen banner**: Shows the best available coupon at the top of the home screen. Tap the banner to go to checkout.
+- **Checkout coupon chips**: Usable coupons appear as tappable chips above the coupon code input. Tap a chip to auto-fill the code.
+- **Locked coupons**: Coupons you haven't yet qualified for (minimum order not met) appear below, showing exactly how much more you need to add.
+
+---
+
+## Mobile App — Notifications
+
+The Notifications screen now matches the app's dark forest theme:
+- Header uses the same dark gradient as other screens.
+- Unread notifications are highlighted with a green left border instead of blue.
+- The 🌿 leaf animation plays while notifications load.
+
+---
+
+## Mobile App — Blog
+
+- Blog articles now render with proper formatting: headings appear larger and bolder, bullet lists have `•` markers, and blockquotes appear in a styled card.
+- The 🌿 leaf animation plays while articles load.

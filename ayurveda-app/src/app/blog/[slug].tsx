@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import {
-  ActivityIndicator, Dimensions, ScrollView, Share, StatusBar,
+  Dimensions, ScrollView, Share, StatusBar,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
+import { LeafLoader } from '../../components/ui/LeafLoader'
 import { Image as ExpoImage } from 'expo-image'
 import { useWindowDimensions } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -10,6 +11,63 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import api from '../../api/axios'
 import { Colors, Fonts } from '../../constants/theme'
+
+// ─── Simple HTML-to-native block renderer ────────────────────────────────────
+type Block = { type: 'h1' | 'h2' | 'h3' | 'p' | 'li' | 'quote'; text: string }
+
+function stripInline(html: string): string {
+  return html
+    .replace(/<strong>([\s\S]*?)<\/strong>/gi, '$1')
+    .replace(/<b>([\s\S]*?)<\/b>/gi, '$1')
+    .replace(/<em>([\s\S]*?)<\/em>/gi, '$1')
+    .replace(/<i>([\s\S]*?)<\/i>/gi, '$1')
+    .replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&#39;/g, "'").replace(/&quot;/g, '"')
+    .trim()
+}
+
+function parseHtml(html: string): Block[] {
+  const blocks: Block[] = []
+  const blockRe = /<(h[1-6]|p|li|blockquote)[^>]*>([\s\S]*?)<\/\1>/gi
+  let m: RegExpExecArray | null
+  while ((m = blockRe.exec(html)) !== null) {
+    const tag = m[1].toLowerCase()
+    const text = stripInline(m[2])
+    if (!text) continue
+    if (tag === 'h1') blocks.push({ type: 'h1', text })
+    else if (tag === 'h2') blocks.push({ type: 'h2', text })
+    else if (tag === 'h3' || tag === 'h4' || tag === 'h5' || tag === 'h6') blocks.push({ type: 'h3', text })
+    else if (tag === 'blockquote') blocks.push({ type: 'quote', text })
+    else if (tag === 'li') blocks.push({ type: 'li', text })
+    else blocks.push({ type: 'p', text })
+  }
+  if (blocks.length === 0) {
+    const plain = stripInline(html)
+    if (plain) blocks.push({ type: 'p', text: plain })
+  }
+  return blocks
+}
+
+function HtmlContent({ html }: { html: string }) {
+  const blocks = parseHtml(html)
+  return (
+    <View style={{ gap: 2 }}>
+      {blocks.map((b, i) => {
+        if (b.type === 'h1') return <Text key={i} style={{ fontFamily: Fonts.displayBold, fontSize: 22, color: Colors.forest, lineHeight: 30, marginTop: 16, marginBottom: 4 }}>{b.text}</Text>
+        if (b.type === 'h2') return <Text key={i} style={{ fontFamily: Fonts.bold, fontSize: 18, color: Colors.forest, lineHeight: 26, marginTop: 14, marginBottom: 4 }}>{b.text}</Text>
+        if (b.type === 'h3') return <Text key={i} style={{ fontFamily: Fonts.bold, fontSize: 15, color: Colors.dark, lineHeight: 22, marginTop: 10, marginBottom: 2 }}>{b.text}</Text>
+        if (b.type === 'li')  return <Text key={i} style={{ fontFamily: Fonts.regular, fontSize: 15, color: '#374151', lineHeight: 24, paddingLeft: 12 }}>{'• '}{b.text}</Text>
+        if (b.type === 'quote') return (
+          <View key={i} style={{ borderLeftWidth: 3, borderLeftColor: Colors.emerald, paddingLeft: 12, marginVertical: 8, backgroundColor: Colors.mint, borderRadius: 4, padding: 10 }}>
+            <Text style={{ fontFamily: Fonts.regular, fontSize: 14, color: Colors.sage, lineHeight: 22, fontStyle: 'italic' }}>{b.text}</Text>
+          </View>
+        )
+        return <Text key={i} style={{ fontFamily: Fonts.regular, fontSize: 15, color: '#374151', lineHeight: 26, marginTop: 8 }}>{b.text}</Text>
+      })}
+    </View>
+  )
+}
 
 export default function BlogPostScreen() {
   const { slug } = useLocalSearchParams()
@@ -34,12 +92,13 @@ export default function BlogPostScreen() {
     } catch {}
   }
 
-  // Content rendered as stripped text (no WebView dependency needed)
+  // Parse HTML into styled blocks (no external HTML renderer needed)
+
 
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.cream, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={Colors.emerald} />
+        <LeafLoader size="lg" text="Loading article…" />
       </View>
     )
   }
@@ -112,9 +171,7 @@ export default function BlogPostScreen() {
         {/* Content */}
         {post.content && (
           <View style={{ paddingHorizontal: 20 }}>
-            <Text style={{ fontFamily: Fonts.regular, fontSize: 15, color: '#374151', lineHeight: 26 }}>
-              {post.content.replace(/<[^>]*>/g, '\n').replace(/\n{3,}/g, '\n\n').trim()}
-            </Text>
+            <HtmlContent html={post.content} />
           </View>
         )}
 

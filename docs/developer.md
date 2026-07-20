@@ -294,3 +294,52 @@ Visual overhaul — all WebSocket, pagination and API logic unchanged.
 - **Read chips**: forest gradient active, white inactive.
 - **Loading**: `<LeafLoader size={48} text="Loading notifications…" />`.
 - **Pagination**: forest gradient active page button, white inactive.
+
+---
+
+## Mobile — Coupon Field Name Fix
+
+**Bug**: Mobile checkout and home screen OfferBanner used `c.type`, `c.value`, `c.min_order` to read coupon data from the API. After the backend change that added SQL aliases, the API now returns `discount_type`, `discount_value`, `min_order_amount` — so all coupon labels rendered as `undefined% OFF` / `₹undefined OFF`.
+
+**Fix — Checkout** (`ayurveda-app/src/app/checkout/index.tsx`):
+- Filter logic: `c.min_order` → `c.min_order_amount`
+- Label render: `c.type === 'percent'`, `c.value` → `c.discount_type`, `c.discount_value`
+- Locked hint: same fields updated
+
+**Fix — Home OfferBanner** (`ayurveda-app/src/app/index.tsx`):
+- `ActiveCoupon` interface: updated field names to `discount_type`, `discount_value`, `min_order_amount`
+- `OfferBanner` component: updated all field reads to match
+
+---
+
+## Mobile — LeafLoader Shared Component (`ayurveda-app/src/components/ui/LeafLoader.tsx`)
+Shared mobile leaf loading indicator. Uses `react-native-reanimated` for a pulsing opacity + scale animation on the 🌿 emoji.
+
+**Props**:
+- `size`: `'sm'` (28px) | `'md'` (44px) | `'lg'` (64px) — default `'md'`
+- `text`: optional caption
+- `color`: accent color (unused in current impl, reserved for future ring version)
+
+**Used in**: `blog/index.tsx`, `blog/[slug].tsx`, `account/notifications.tsx`
+
+---
+
+## Mobile — Notifications Premium Theme (`ayurveda-app/src/app/account/notifications.tsx`)
+
+- **Header**: Changed from plain `Colors.cream` `View` to `LinearGradient colors={[Colors.forest, Colors.moss]}` header — matches other screens (Support, Blog, etc.)
+- **Header buttons**: Back button, filter button, mark-all-read button now use `rgba(255,255,255,0.15)` glass style with white text/icons — consistent with gradient header
+- **Unread card**: `backgroundColor` changed from `#eff6ff` (blue) to `rgba(16,185,129,0.06)` (emerald tint); `borderLeftColor` changed from `#3b82f6` (blue) to `Colors.emerald`
+- **Type metadata**: `order_update` dot color changed from `#3b82f6` (blue) to `Colors.emerald`; `broadcast` dot changed to `Colors.gold`
+- **Loading state**: Replaced `ActivityIndicator` with `<LeafLoader size="md" text="Loading notifications…" />`
+
+---
+
+## Mobile — Blog HTML Content Fix (`ayurveda-app/src/app/blog/[slug].tsx`)
+
+**Bug**: Content was rendered with `post.content.replace(/<[^>]*>/g, '\n')` — stripped all HTML tags to plain text, losing headings, bullet points, blockquotes, and paragraph structure.
+
+**Fix**: Added a custom `HtmlContent` component with:
+- `parseHtml(html)` — regex extracts block elements (`h1`-`h6`, `p`, `li`, `blockquote`) with their inner text
+- `stripInline(html)` — cleans inline tags (`<strong>`, `<em>`, `<a>`, etc.) and HTML entities from each block's text
+- Each block type rendered with appropriate `Text` style (h1 = `Fonts.displayBold` 22px forest, h2 = `Fonts.bold` 18px, li = bullet prefix, blockquote = emerald left border card)
+- Loading state replaced with `<LeafLoader size="lg" />`

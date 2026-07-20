@@ -1,20 +1,22 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator, FlatList, Modal, ScrollView,
+  FlatList, Modal, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import api from '../../api/axios'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
+import { LeafLoader } from '../../components/ui/LeafLoader'
 
 /* ─── Type metadata ─── */
 const TYPE_META: Record<string, { emoji: string; bg: string; dot: string; label: string }> = {
-  order_update:  { emoji: '📦', bg: '#dbeafe', dot: '#3b82f6', label: 'Order' },
+  order_update:  { emoji: '📦', bg: '#d1fae5', dot: Colors.emerald, label: 'Order' },
   support_reply: { emoji: '💬', bg: '#ede9fe', dot: '#7c3aed', label: 'Support' },
   ticket_status: { emoji: '🎫', bg: '#fef3c7', dot: '#d97706', label: 'Ticket' },
-  broadcast:     { emoji: '📢', bg: '#d1fae5', dot: '#059669', label: 'Announcement' },
+  broadcast:     { emoji: '📢', bg: '#fef9ec', dot: Colors.gold,   label: 'Announcement' },
 }
 
 const TYPE_OPTIONS = [
@@ -301,7 +303,7 @@ export default function NotificationsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
       {/* Header */}
-      <View style={[s.topBar, { paddingTop: insets.top + 10 }]}>
+      <LinearGradient colors={[Colors.forest, Colors.moss]} style={[s.topBar, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <Text style={s.backArrow}>‹</Text>
         </TouchableOpacity>
@@ -329,7 +331,7 @@ export default function NotificationsScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Tabs */}
       <View style={s.tabRow}>
@@ -378,7 +380,9 @@ export default function NotificationsScreen() {
 
       {/* List */}
       {loading ? (
-        <ActivityIndicator color={Colors.forest} style={{ marginTop: 60 }} />
+        <View style={{ marginTop: 80, alignItems: 'center' }}>
+          <LeafLoader size="md" text="Loading notifications…" />
+        </View>
       ) : flatData.length === 0 ? (
         <View style={s.empty}>
           <Text style={s.emptyEmoji}>{tab === 'announcements' ? '📢' : '🔔'}</Text>
@@ -409,7 +413,7 @@ export default function NotificationsScreen() {
           onEndReachedThreshold={0.3}
           ListFooterComponent={
             loadingMore ? (
-              <ActivityIndicator color={Colors.forest} style={{ marginTop: 16 }} />
+              <View style={{ marginTop: 16, alignItems: 'center' }}><LeafLoader size="sm" /></View>
             ) : tab === 'all' && !pagination.has_next && flatData.length > 10 ? (
               <Text style={s.endText}>You've seen all notifications</Text>
             ) : null
@@ -432,17 +436,17 @@ export default function NotificationsScreen() {
 }
 
 const s = StyleSheet.create({
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 12, gap: 10 },
-  backBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...Shadows.sm },
-  backArrow: { fontSize: 24, color: Colors.forest, lineHeight: 28 },
-  title: { fontFamily: Fonts.bold, fontSize: 18, color: Colors.forest },
-  subTitle: { fontFamily: Fonts.medium, fontSize: 11, color: '#3b82f6', marginTop: 1 },
-  iconBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...Shadows.sm },
-  iconBtnActive: { backgroundColor: Colors.forest },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 14, gap: 10 },
+  backBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  backArrow: { fontSize: 24, color: '#fff', lineHeight: 28 },
+  title: { fontFamily: Fonts.bold, fontSize: 18, color: '#fff' },
+  subTitle: { fontFamily: Fonts.medium, fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
+  iconBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  iconBtnActive: { backgroundColor: 'rgba(255,255,255,0.28)' },
   filterBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#ef4444', borderRadius: 6, width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
   filterBadgeText: { fontFamily: Fonts.bold, fontSize: 8, color: '#fff' },
-  markAllBtn: { paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', ...Shadows.sm },
-  markAllText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.forest },
+  markAllBtn: { paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+  markAllText: { fontFamily: Fonts.medium, fontSize: 12, color: '#fff' },
   tabRow: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 10, backgroundColor: '#fff', borderRadius: 14, padding: 4, ...Shadows.sm },
   tab: { flex: 1, paddingVertical: 9, borderRadius: 11, alignItems: 'center' },
   tabActive: { backgroundColor: Colors.forest },
@@ -458,7 +462,7 @@ const s = StyleSheet.create({
   dateLine: { flex: 1, height: 1, backgroundColor: '#e5e7eb' },
   dateCount: { fontFamily: Fonts.regular, fontSize: 11, color: '#d1d5db' },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 10, ...Shadows.sm },
-  cardUnread: { backgroundColor: '#eff6ff', borderLeftWidth: 3, borderLeftColor: '#3b82f6' },
+  cardUnread: { backgroundColor: 'rgba(16,185,129,0.06)', borderLeftWidth: 3, borderLeftColor: Colors.emerald },
   emojiBox: { width: 46, height: 46, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   cardTitle: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.dark },
   cardBody: { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textDim, lineHeight: 18, marginTop: 4 },

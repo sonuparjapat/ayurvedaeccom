@@ -311,3 +311,51 @@ Expected: `{ success: true, referral_code: "XXXX", referrals: [...], total: N, r
 8. Verify "Mark all read" button appears in hero bar when unread count > 0.
 9. Verify the loading state shows the leaf spinner (not a plain spinner).
 10. Verify the announcements tab works — switch tab and verify broadcasts display.
+
+---
+
+## Mobile — Coupon Field Name Fix
+
+### Checkout screen
+1. Add items to cart on the mobile app.
+2. Proceed to checkout.
+3. If any coupons are available, verify they render as e.g. `20% OFF` or `₹50 OFF` — NOT `undefined% OFF` or `₹undefined OFF`.
+4. Verify "Add ₹X more" locked coupon hint shows a correct rupee amount — not `₹NaN more`.
+5. Tap a usable coupon chip — verify the code is auto-filled into the coupon input.
+
+### Home screen OfferBanner
+1. Open the app home screen.
+2. If a coupon is active, verify the offer banner shows a readable label (e.g. `10% OFF`) and a correct min-order sub-line (e.g. `On orders above ₹500`).
+3. Verify the code text is not `undefined`.
+
+---
+
+## Mobile — LeafLoader Component
+
+1. Open the Blog list screen — verify a pulsing 🌿 emoji appears while posts load (not a circular spinner).
+2. Open a blog post detail — verify 🌿 loading animation appears while the article loads.
+3. Open Notifications screen — verify 🌿 loading animation appears while notifications load.
+4. Verify the animation pulses in opacity and scale (not just opacity alone).
+
+---
+
+## Mobile — Notifications Theme Fix
+
+1. Open the Notifications screen on mobile.
+2. Verify the header has a dark forest/moss gradient (not plain cream background).
+3. Verify header buttons (back arrow, filter, mark-all-read) use white/glass style — not dark buttons on a cream background.
+4. Verify unread notification cards have an emerald green left border and green-tinted background — NOT a blue left border and blue background.
+5. Verify the 📦 Order notification icon badge background is emerald green — not blue.
+6. Verify the 📢 Announcement icon badge uses a gold dot.
+7. Switch to the Announcements tab — verify it still loads broadcast notifications correctly.
+
+---
+
+## Mobile — Blog HTML Content
+
+1. Open any blog post in the mobile app.
+2. If the post has headings (`<h1>`, `<h2>`), verify they render in larger/bolder text in forest green — not as plain body text.
+3. If the post has bullet lists (`<li>`), verify each item has a `•` prefix.
+4. If the post has blockquotes, verify they render with an emerald left border and a mint card background.
+5. Verify paragraph text renders at 15px with 26px line height.
+6. Verify HTML entities (`&amp;`, `&nbsp;`, `&#39;`) are decoded correctly (e.g. `&amp;` renders as `&`).

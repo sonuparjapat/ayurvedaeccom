@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import {
   Dimensions, FlatList, StatusBar, StyleSheet, Text,
-  TouchableOpacity, View, ActivityIndicator,
+  TouchableOpacity, View,
 } from 'react-native'
+import { LeafLoader } from '../../components/ui/LeafLoader'
 import { Image as ExpoImage } from 'expo-image'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -99,7 +100,7 @@ export default function BlogListScreen() {
 
       {loading && page === 1 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={Colors.emerald} />
+          <LeafLoader size="lg" text="Loading articles…" />
         </View>
       ) : posts.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
