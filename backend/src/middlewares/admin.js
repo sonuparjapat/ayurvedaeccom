@@ -17,6 +17,7 @@ exports.admin  = (req, res, next) => {
     }
 
     req.admin = decoded
+    req.user  = decoded   // controllers that use req.user work for admin routes too
     next()
 
   } catch {

@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import {
-  Dimensions, ScrollView, Share, StatusBar,
+  ScrollView, Share, StatusBar,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
 import { LeafLoader } from '../../components/ui/LeafLoader'
 import { Image as ExpoImage } from 'expo-image'
-import { useWindowDimensions } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
