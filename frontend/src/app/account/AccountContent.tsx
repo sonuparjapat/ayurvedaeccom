@@ -422,8 +422,6 @@ export default function AccountContent() {
   const [reviewLoading, setReviewLoading] = useState(false)
   const [oldImages, setOldImages] = useState([]);
   const [images, setImages] = useState<any[]>([])
-  const { loadReviews, reviewsData } = useAuth()
-
   /* ===== TRACKING ===== */
   const [trackingOpenId, setTrackingOpenId] = useState<number | null>(null)
   const [trackingData, setTrackingData] = useState<Record<number, any>>({})
@@ -1052,9 +1050,15 @@ const handleSaveAddress = async (data: any) => {
                                 size="sm"
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1.5 text-xs"
                                 onClick={async () => {
-                                  const newdata = await loadReviews(order?.items?.map((item: any) => item?.product_id), 1, 10, 1)
+                                  const reviewResults = await Promise.all(
+                                    order.items.map((item: any) =>
+                                      axios.get(`/shop/reviews/product/${item.product_id}`, { params: { me: 1 } })
+                                        .then(r => ({ product_id: item.product_id, review: (r.data?.data || [])[0] || null }))
+                                        .catch(() => ({ product_id: item.product_id, review: null }))
+                                    )
+                                  )
                                   const data2 = order.items.map((item: any) => {
-                                    const mine = newdata?.find((item2: any) => item2?.product_id == item?.product_id)
+                                    const mine = reviewResults.find(r => r.product_id == item.product_id)?.review
                                     return {
                                       ...item,
                                       rating: mine?.rating ?? 0,
