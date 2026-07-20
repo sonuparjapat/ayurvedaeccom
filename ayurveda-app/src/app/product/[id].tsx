@@ -283,6 +283,20 @@ export default function ProductDetailScreen() {
   const wishStyle = useAnimatedStyle(() => ({ transform: [{ scale: wishScale.value }] }))
 
   useEffect(() => {
+    if (!user?.id || !id) return
+    api.get(`/shop/reviews/product/${id}`, { params: { me: 1 } })
+      .then(r => {
+        const mine = (r.data?.data || [])[0]
+        if (mine) {
+          setMyRating(mine.rating || 0)
+          setMyComment(mine.comment || '')
+          setMyExistingImages(mine.images || [])
+        }
+      })
+      .catch(() => {})
+  }, [user?.id, id])
+
+  useEffect(() => {
     if (!id) return
     fetchProduct()
     fetchReviews(1)
@@ -453,6 +467,9 @@ export default function ProductDetailScreen() {
       await api.post('/shop/reviews/product', form, { headers: { 'Content-Type': 'multipart/form-data' } })
       setMyImages([])
       fetchReviews(1); fetchProduct()
+      api.get(`/shop/reviews/product/${id}`, { params: { me: 1 } })
+        .then(r => { const mine = (r.data?.data || [])[0]; if (mine) { setMyRating(mine.rating || 0); setMyComment(mine.comment || ''); setMyExistingImages(mine.images || []) } })
+        .catch(() => {})
       toast.success('Review submitted!')
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to submit review')

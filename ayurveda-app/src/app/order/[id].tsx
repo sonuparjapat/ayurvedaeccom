@@ -375,12 +375,12 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
   const loadExistingReviews = async () => {
     try {
       const results = await Promise.allSettled(
-        orderItems.map(item => api.get(`/shop/reviews/product/${item.product_id}`, { params: { limit: 50 } }))
+        orderItems.map(item => api.get(`/shop/reviews/product/${item.product_id}`, { params: { me: 1 } }))
       )
       setItems(prev => prev.map((it, idx) => {
         const r = results[idx]
         if (r.status !== 'fulfilled') return it
-        const mine = (r.value.data?.data || []).find((rv: any) => rv.is_mine)
+        const mine = (r.value.data?.data || [])[0]
         if (!mine) return it
         return { ...it, rating: mine.rating || 0, comment: mine.comment || '', existingImages: mine.images || [] }
       }))
