@@ -43,6 +43,7 @@ export function Footer() {
   const quickLinks = [
     { name: 'About Us', href: '/about' },
     { name: 'Contact', href: '/contact' },
+    { name: 'Support', href: '/support' },
     { name: 'Blog', href: '/blog' },
     { name: 'FAQs', href: '/faq' },
     { name: 'Privacy Policy', href: '/privacy' },
