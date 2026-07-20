@@ -34,7 +34,7 @@ const FILTERS = ['', 'open', 'in_progress', 'resolved', 'closed']
 
 export default function SupportPage() {
   const router = useRouter()
-  const { loginuserdata, setOpenauth } = useAuth() as any
+  const { loginuserdata, loading: authLoading, setOpenauth } = useAuth() as any
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -53,9 +53,10 @@ export default function SupportPage() {
   }
 
   useEffect(() => {
+    if (authLoading) return
     if (!loginuserdata) { setOpenauth(true); return }
     load()
-  }, [loginuserdata, filterStatus])
+  }, [loginuserdata, authLoading, filterStatus])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -39,7 +39,7 @@ const STATUS_META: Record<string, { bg: string; text: string; border: string }> 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const { loginuserdata, setOpenauth } = useAuth() as any
+  const { loginuserdata, loading: authLoading, setOpenauth } = useAuth() as any
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,9 +58,10 @@ export default function TicketDetailPage() {
   }
 
   useEffect(() => {
+    if (authLoading) return
     if (!loginuserdata) { setOpenauth(true); return }
     load()
-  }, [id, loginuserdata])
+  }, [id, loginuserdata, authLoading])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

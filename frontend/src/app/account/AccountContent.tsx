@@ -44,6 +44,7 @@ import {
   TrendingUp,
   ShoppingBag,
   Wallet,
+  MessageSquare,
 } from 'lucide-react'
 
 import Link from 'next/link'
@@ -755,7 +756,7 @@ const handleSaveAddress = async (data: any) => {
     { href: '/account?tab=addresses', tab: 'addresses', icon: MapPin, label: 'Addresses' },
     { href: '/wishlist', tab: 'wishlist', icon: Heart, label: 'Wishlist' },
     { href: '/account?tab=wallet', tab: 'wallet', icon: Wallet, label: 'Wallet & Points' },
-    // Payment Methods — disabled until Razorpay tokenization is activated
+    { href: '/support', tab: 'support', icon: MessageSquare, label: 'Customer Support' },
     { href: '/account?tab=settings', tab: 'settings', icon: Settings, label: 'Settings' },
   ]
 

@@ -1201,7 +1201,9 @@ const {
                   <span className="nav-new-badge">New</span>
                 </Link>
                 <Link href="/about" className="nav-link">About Us</Link>
-                <Link href="/support" className="nav-link">Support</Link>
+                {loginuserdata?.id && (
+                  <Link href="/support" className="nav-link">Support</Link>
+                )}
                 <Link href="/offers" className="nav-link special">✦ Offers</Link>
               </div>
             </nav>
@@ -1274,10 +1276,12 @@ const {
                     <Link href="/contact" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
                       <span>Contact Us</span>
                     </Link>
-                    <Link href="/support" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
-                      <span>Support</span>
-                      <MessageSquare size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
-                    </Link>
+                    {loginuserdata?.id && (
+                      <Link href="/support" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link">
+                        <span>Support</span>
+                        <MessageSquare size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
+                      </Link>
+                    )}
                     <Link href="/offers" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link special">
                       <span>✦ Offers & Deals</span>
                     </Link>
