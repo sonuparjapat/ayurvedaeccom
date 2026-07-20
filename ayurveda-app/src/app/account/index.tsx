@@ -188,6 +188,11 @@ export default function AccountScreen() {
   const [editAddrForm, setEditAddrForm] = useState({ street: '', city: '', state: '', pincode: '', type: 'Home', email: '' })
   const [savingEditAddr, setSavingEditAddr] = useState(false)
 
+  const [referralStats, setReferralStats] = useState<{
+    total: number; rewarded: number; earned: number;
+    referrals: { referred_name: string; status: string; created_at: string; reward_amount: number }[]
+  } | null>(null)
+
   useFocusEffect(useCallback(() => {
     if (!user) return
     fetchOrders()
@@ -198,6 +203,9 @@ export default function AccountScreen() {
         setUser(fullUser)
         AsyncStorage.setItem('stored_user', JSON.stringify(fullUser)).catch(() => {})
       }
+    }).catch(() => {})
+    api.get('/users/referral').then(res => {
+      if (res.data?.success) setReferralStats(res.data)
     }).catch(() => {})
   }, [user?.id]))
 
@@ -482,9 +490,11 @@ export default function AccountScreen() {
             {/* Referral Code Card */}
             {(user as any)?.referral_code && (
               <LinearGradient colors={['#0a1f14', '#0d2a1a']} style={{ borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(201,168,76,0.2)' }}>
-                <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.gold, marginBottom: 6 }}>🎁 Your Referral Code</Text>
-                <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 10 }}>Share with friends — they get a discount and you earn wallet credits.</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.gold, marginBottom: 4 }}>🎁 Your Referral Code</Text>
+                <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 10 }}>Share with friends — they get a discount and you earn ₹50 wallet credits.</Text>
+
+                {/* Code row */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                   <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: 'rgba(201,168,76,0.3)' }}>
                     <Text style={{ fontFamily: Fonts.bold, fontSize: 16, color: Colors.gold, letterSpacing: 2, textAlign: 'center' }}>{(user as any).referral_code}</Text>
                   </View>
@@ -501,6 +511,47 @@ export default function AccountScreen() {
                     <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>Share</Text>
                   </TouchableOpacity>
                 </View>
+
+                {/* Stats row */}
+                {referralStats && (
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: referralStats.referrals.length > 0 ? 12 : 0 }}>
+                    {[
+                      { label: 'Invited', value: String(referralStats.total) },
+                      { label: 'Rewarded', value: String(referralStats.rewarded) },
+                      { label: 'Earned', value: `₹${referralStats.earned}` },
+                    ].map(s => (
+                      <View key={s.label} style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 8, alignItems: 'center', borderWidth: 0.5, borderColor: 'rgba(201,168,76,0.15)' }}>
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 15, color: Colors.gold }}>{s.value}</Text>
+                        <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{s.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Referral history (last 5) */}
+                {referralStats && referralStats.referrals.length > 0 && (
+                  <View style={{ borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 10 }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Recent Referrals</Text>
+                    {referralStats.referrals.slice(0, 5).map((r, i) => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: i < Math.min(referralStats.referrals.length, 5) - 1 ? 0.5 : 0, borderBottomColor: 'rgba(255,255,255,0.06)' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ fontSize: 13 }}>{r.status === 'rewarded' ? '✅' : '🕐'}</Text>
+                          </View>
+                          <View>
+                            <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: '#fff' }}>{r.referred_name}</Text>
+                            <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+                              {r.status === 'rewarded' ? `Rewarded ₹${r.reward_amount}` : 'Pending first order'}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
+                          {new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </LinearGradient>
             )}
 

@@ -486,10 +486,11 @@ exports.setDefaultAddress = async (req, res) => {
 exports.getReferralStats = async (req, res) => {
   try {
     const userId = req.user.id
-    const [userRes, referralsRes] = await Promise.all([
-      pool.query('SELECT referral_code FROM users WHERE id=$1', [userId]),
+    const [userRes, referralsRes, earnedRes] = await Promise.all([
+      pool.query('SELECT referral_code, wallet_balance FROM users WHERE id=$1', [userId]),
       pool.query(
-        `SELECT r.status, r.created_at, u.name AS referred_name, u.email AS referred_email
+        `SELECT r.status, r.reward_amount, r.created_at, r.rewarded_at,
+                u.name AS referred_name, u.email AS referred_email
          FROM referrals r
          JOIN users u ON u.id = r.referred_id
          WHERE r.referrer_id = $1
@@ -497,16 +498,21 @@ exports.getReferralStats = async (req, res) => {
          LIMIT 50`,
         [userId]
       ),
+      pool.query(
+        `SELECT COALESCE(SUM(reward_amount), 0) AS total_earned
+         FROM referrals WHERE referrer_id = $1 AND status = 'rewarded'`,
+        [userId]
+      ),
     ])
     const referrals = referralsRes.rows
-    const earned = referrals.filter(r => r.status === 'rewarded').length * 50
     res.json({
       success: true,
       referral_code: userRes.rows[0]?.referral_code || null,
+      wallet_balance: parseFloat(userRes.rows[0]?.wallet_balance || 0),
       referrals,
       total: referrals.length,
       rewarded: referrals.filter(r => r.status === 'rewarded').length,
-      earned,
+      earned: parseFloat(earnedRes.rows[0]?.total_earned || 0),
     })
   } catch (err) {
     console.error('[REFERRAL STATS]', err)

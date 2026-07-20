@@ -248,3 +248,66 @@ Expected: `{ success: true, referral_code: "XXXX", referrals: [...], total: N, r
 4. If the product is a bestseller, verify the Bestseller pill uses a gradient gold background.
 5. Verify the bottom sticky CTA bar has a mint-glass gradient background.
 6. Verify the price in the bottom CTA bar is in emerald green.
+
+---
+
+## Support Page — Header/Footer Fix
+
+### List page (`/support`)
+1. Visit https://oroganix.com/support.
+2. Verify the site Header (with logo, nav links, cart) is visible at the top.
+3. Verify the site Footer is visible at the bottom.
+4. Verify the dark-forest hero banner with "Customer Support" heading renders.
+5. While logged in, verify the ticket list loads with status-coloured left borders.
+6. Click "New Ticket" — verify the form slides in with subject, category, priority, message fields.
+7. Submit the form — verify it redirects to the ticket detail page.
+8. Filter by status pill (Open, In Progress, Resolved, Closed) — verify the list updates.
+
+### Ticket detail (`/support/:id`)
+1. Click any ticket from the support list.
+2. Verify the site Header is present at the top.
+3. Verify the dark-forest sub-header shows the ticket subject, status badge, and Close button.
+4. Verify chat messages render — user messages are dark green (right-aligned), admin messages are white (left-aligned).
+5. Type a reply and press Enter or click Send — verify the message appears in the chat.
+6. Click Close — verify the ticket status updates to "closed" and the reply box shows "This ticket is closed".
+7. Verify the site Footer is visible below the reply box.
+
+---
+
+## Leaf Loader Component
+
+1. Trigger a page that uses `<LeafLoader>` (support detail loading, blog, notifications).
+2. Verify the loading indicator shows a spinning arc ring with a leaf icon in the center — NOT a plain circle.
+3. Verify the ring color is emerald green (`#10b981`).
+4. When `fullPage` prop is passed, verify it centres in 60vh of space.
+5. When `text` prop is passed, verify the caption appears below the spinner.
+
+---
+
+## Blog Page — Premium Overhaul
+
+1. Navigate to https://oroganix.com/blog.
+2. Verify the dark-forest hero (not light emerald-50) with white headline "Wisdom of Ancient Ayurveda".
+3. Verify the search bar has a glass-dark input with a gold Submit button.
+4. Verify the featured post (first result, no filters) shows a large 50/50 card at the top.
+5. Verify the category pills appear below the featured card.
+6. Click a category pill — verify posts filter and the pill turns the category's colour.
+7. Verify each card has a cover image overlay badge with the category name.
+8. Hover a card — verify it lifts slightly (`translateY(-2px)`).
+9. Verify the CTA section at the bottom has a dark-forest background (not plain `bg-emerald-600`).
+10. Verify the `<LeafLoader>` appears while fetching (not a `animate-spin` circle).
+
+---
+
+## Notifications Page — Premium Overhaul
+
+1. Navigate to https://oroganix.com/notifications (logged in).
+2. Verify the dark-forest hero bar at the top (not plain white `text-gray-900` heading).
+3. Verify unread count badge on the Bell icon uses gold colour (`#c9a84c`).
+4. Verify active tab uses forest gradient (not `bg-blue-500`).
+5. Verify unread notification cards use `rgba(16,185,129,0.04)` green tint and emerald border-left (not `bg-blue-50`).
+6. Verify the order notification icon is emerald/green (not blue).
+7. Verify filter bar shows a `#10b981` badge for active filter count.
+8. Verify "Mark all read" button appears in hero bar when unread count > 0.
+9. Verify the loading state shows the leaf spinner (not a plain spinner).
+10. Verify the announcements tab works — switch tab and verify broadcasts display.

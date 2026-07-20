@@ -37,7 +37,11 @@ exports.getActiveCoupons = async (req, res) => {
     const params = userId ? [userId] : [];
 
     const result = await pool.query(`
-      SELECT id, code, type, value, min_order, max_discount, valid_to, description, user_id
+      SELECT id, code,
+             type AS discount_type,
+             value AS discount_value,
+             min_order AS min_order_amount,
+             max_discount, valid_to, description, user_id
       FROM coupons
       WHERE ${baseFilter} AND ${userFilter}
       ORDER BY user_id DESC NULLS LAST, min_order ASC, created_at DESC

@@ -95,3 +95,44 @@ Admins can access `/admin/dashboard` for a live operational overview:
 - **Recent Orders** — The 10 most recent orders with status badges and amounts.
 - **Top Products** — Best-selling products by revenue, with rank numbers.
 - **Low Stock Alert** — Products below the stock threshold are listed with current inventory counts and a direct "Update" link.
+
+---
+
+## Customer Support (`/support`)
+
+The support page now matches the full site design with the header, navigation, and footer visible at all times.
+
+- **View your tickets**: All your support requests are listed with colour-coded status badges (blue = Open, amber = In Progress, green = Resolved, gray = Closed).
+- **Create a ticket**: Click the **New Ticket** button (top-right) to open the form. Fill in the subject, category, priority, and message, then click **Submit Ticket**.
+- **Filter tickets**: Use the status pills at the top to filter by Open, In Progress, Resolved, or Closed.
+- **Chat with support**: Click any ticket to open the conversation thread. Messages from the support team appear on the left (white bubble) and your messages on the right (dark green bubble). Type your reply at the bottom and press Enter or click the Send button.
+- **Close a ticket**: Inside a ticket, click the **Close** button in the header if you consider your issue resolved.
+
+---
+
+## Blog (`/blog`)
+
+The blog has been redesigned with a premium look to match the rest of the Oroganix experience.
+
+- **Search**: Type keywords into the search bar at the top of the page and click **Search**.
+- **Browse by category**: Click any category pill below the featured post to filter articles (e.g. Ayurveda, Wellness, Herbs).
+- **Featured post**: The most recent article is highlighted in a large card at the top of the page.
+- **Read an article**: Click on any card's title or the **Read →** link to open the full article.
+
+---
+
+## Notifications (`/notifications`)
+
+The notifications page has been updated with a premium green-themed design.
+
+- **Activity tab**: Shows all personal notifications — order updates, support replies, and ticket status changes. Unread items are highlighted with a green-tinted background and an emerald left border.
+- **Announcements tab**: Shows store-wide announcements from the Oroganix team.
+- **Mark all read**: Click **Mark all read** (top-right of the page) to clear all unread indicators at once.
+- **Filter**: Expand the **Filters** panel to filter by type, read status, or date range.
+- **Real-time updates**: New notifications arrive automatically while you're on the page — no refresh needed.
+
+---
+
+## Loading Indicator
+
+Throughout the site, loading states now show a **leaf spinner** — a rotating emerald arc with an Ayurvedic leaf icon in the centre — consistent with the Oroganix brand and the mobile app's leaf animation.

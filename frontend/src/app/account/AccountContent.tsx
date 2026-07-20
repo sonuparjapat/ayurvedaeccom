@@ -468,6 +468,9 @@ export default function AccountContent() {
   const [walletData, setWalletData] = useState<{ balance: number; loyalty_balance: number; transactions: any[]; loyalty: any[] } | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
 
+  /* ===== REFERRAL STATS ===== */
+  const [referralStats, setReferralStats] = useState<{ total: number; rewarded: number; earned: number; referrals: any[] } | null>(null)
+
   /* ================= LOAD ================= */
 
 useEffect(() => {
@@ -491,6 +494,9 @@ useEffect(() => {
       /* Addresses */
       const addrRes = await getAddresses();
       setAddresses(addrRes.data.data);
+
+      /* Referral stats */
+      axios.get('/users/referral').then(r => { if (r.data?.success) setReferralStats(r.data) }).catch(() => {})
 
       /* Settings */
       const setRes = await getSettings();
@@ -936,9 +942,9 @@ const handleSaveAddress = async (data: any) => {
                           {/* Referral Code Card */}
                           {loginuserdata?.referral_code && (
                             <div className="mt-5 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-                              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">🎁 Your Referral Code</p>
+                              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">🎁 Your Referral Code</p>
                               <p className="text-xs text-gray-500 mb-3">Share with friends — they enter this code at sign-up. You earn ₹50 wallet credit when they place their first order.</p>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 mb-3">
                                 <div className="flex-1 bg-white border border-emerald-300 rounded-lg px-4 py-2 text-center">
                                   <span className="font-bold text-lg tracking-widest text-emerald-700">{loginuserdata.referral_code}</span>
                                 </div>
@@ -951,6 +957,40 @@ const handleSaveAddress = async (data: any) => {
                                   className="px-4 py-2 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-lg hover:bg-emerald-200 transition-colors"
                                 >Share Link</button>
                               </div>
+                              {/* Stats row */}
+                              {referralStats && (
+                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                  {[
+                                    { label: 'Friends Invited', value: referralStats.total },
+                                    { label: 'Rewarded', value: referralStats.rewarded },
+                                    { label: 'Total Earned', value: `₹${referralStats.earned}` },
+                                  ].map(s => (
+                                    <div key={s.label} className="bg-white border border-emerald-200 rounded-lg p-2 text-center">
+                                      <p className="font-bold text-emerald-700 text-base">{s.value}</p>
+                                      <p className="text-[10px] text-gray-400 mt-0.5">{s.label}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {/* Recent referrals */}
+                              {referralStats && referralStats.referrals.length > 0 && (
+                                <div className="border-t border-emerald-200 pt-2 mt-1">
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Recent Referrals</p>
+                                  <div className="space-y-1.5">
+                                    {referralStats.referrals.slice(0, 5).map((r: any, i: number) => (
+                                      <div key={i} className="flex items-center justify-between text-xs">
+                                        <div className="flex items-center gap-2">
+                                          <span>{r.status === 'rewarded' ? '✅' : '🕐'}</span>
+                                          <span className="font-medium text-gray-700">{r.referred_name}</span>
+                                        </div>
+                                        <span className={r.status === 'rewarded' ? 'text-emerald-600 font-semibold' : 'text-gray-400'}>
+                                          {r.status === 'rewarded' ? `+₹${r.reward_amount}` : 'Pending'}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                           </>

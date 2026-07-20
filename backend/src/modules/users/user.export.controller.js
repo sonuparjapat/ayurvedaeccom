@@ -23,7 +23,7 @@ exports.exportData = async (req, res) => {
         [userId]
       ),
       pool.query(
-        `SELECT r.rating, r.title, r.body, r.created_at, p.name AS product_name
+        `SELECT r.rating, r.comment, r.created_at, p.name AS product_name
          FROM reviews r JOIN products p ON p.id = r.product_id
          WHERE r.user_id=$1`,
         [userId]

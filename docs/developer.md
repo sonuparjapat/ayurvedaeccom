@@ -230,3 +230,67 @@ UI enhancement applied — all logic and state unchanged. Key visual changes:
 - **Save % pill**: replaced flat mint pill with a gradient emerald pill (matching cart's style)
 - **Bestseller pill**: replaced flat gold background with a `LinearGradient` gold pill with white text
 - **Bottom CTA bar**: adds a `LinearGradient` background layer (`rgba(255,255,255,0.96)` → `rgba(240,253,244,0.98)`) for a mint-glass frosted effect; price text uses `Colors.emerald`
+
+---
+
+## Support Page — Header/Footer & Premium Theme
+
+### Support List (`frontend/src/app/support/page.tsx`)
+- Added `<Header />` and `<Footer />` imports (previously missing — page had no site navigation).
+- Replaced plain `div.bg-gray-50` wrapper with dark-forest hero banner (`#0f2d1e → #1a3a2a` gradient) + `#f7f4eb` page background.
+- Ticket cards: `background: #fff`, `borderLeft: 4px solid <status-dot>`, hover shadow, status + priority badges.
+- New ticket form: animated `<AnimatePresence>` slide-in from `framer-motion`; forest-gradient Submit button.
+- Status colour map: `open` = blue, `in_progress` = amber, `resolved` = emerald, `closed` = gray.
+
+### Support Detail (`frontend/src/app/support/[id]/page.tsx`)
+- Added `<Header />` and `<Footer />` (previously the page had no site header/footer).
+- Replaced plain `bg-gray-50` wrapper with `#f7f4eb` page background.
+- Added branded dark-forest ticket sub-header (back arrow + ticket status + close button) below site Header.
+- Chat bubbles: user messages use `linear-gradient(135deg, #1a3a2a, #2d5a3d)` dark green; admin messages use white `#fff` with `#e8f5ee` border.
+- Reply textarea has a mint-glass background; Send button uses the forest gradient.
+- Loading state uses `<LeafLoader size={52} text="Loading ticket…" />`.
+
+---
+
+## Leaf Loader Component (`frontend/src/components/ui/leaf-loader.tsx`)
+Brand-themed loading indicator replacing generic `animate-spin` circles.
+
+**Design**: Animated SVG `strokeDasharray` arc on a circular track (emerald `#10b981`), with a static leaf SVG icon centred inside.
+
+**Props**:
+- `size` — diameter in px (default 48)
+- `text` — optional caption below spinner
+- `fullPage` — if true wraps in a centred `60vh` container
+
+**Usage**:
+```tsx
+import { LeafLoader } from '@/components/ui/leaf-loader'
+<LeafLoader size={52} text="Loading…" />
+<LeafLoader fullPage text="Loading orders…" />
+```
+
+---
+
+## Blog Page Premium Overhaul (`frontend/src/app/blog/page.tsx`)
+
+Full visual redesign — all data fetching / pagination logic unchanged.
+- **Hero**: dark-forest gradient (`#0a1f14 → #0f2d1e`) with ambient gold/emerald radial orbs. Search bar uses `rgba(255,255,255,0.08)` glass background with gold Submit button.
+- **Featured post** (first result on page 1, no filter): full-width 50/50 card with cover image left + text right; only shown when not filtering/searching.
+- **Post grid**: `repeat(auto-fill, minmax(300px, 1fr))`. Each card: white background, category overlay pill on the cover image using `categoryColor()`, hover lift effect (`translateY(-2px)`).
+- **Category pills**: active pill uses `categoryColor()` (per-category colour map — Ayurveda = emerald, Wellness = gold, etc.); inactive = `#fff` with gray border.
+- **CTA section**: dark-forest gradient with gold "wellness journey" accent and gold Shop Now button.
+- **Loading**: `<LeafLoader size={52} text="Loading articles…" />` replaces `animate-spin`.
+
+---
+
+## Notifications Page Premium Overhaul (`frontend/src/app/notifications/page.tsx`)
+
+Visual overhaul — all WebSocket, pagination and API logic unchanged.
+- **Hero bar**: dark-forest gradient header with bell icon in emerald-tinted circle and gold unread badge. "Mark all read" button uses glass-white style.
+- **Page background**: `#f7f4eb` (matches site theme) replacing `#f5f6fb`.
+- **Tabs**: forest gradient for active tab, transparent for inactive.
+- **Notification cards (`NotifCard`)**: unread state uses `rgba(16,185,129,0.04)` background + emerald border-left; icon colors updated from blue to theme palette (order = emerald, support = violet, ticket = amber, broadcast = gold).
+- **Filter bar**: white card, grid layout, `#10b981` emerald active filter count badge.
+- **Read chips**: forest gradient active, white inactive.
+- **Loading**: `<LeafLoader size={48} text="Loading notifications…" />`.
+- **Pagination**: forest gradient active page button, white inactive.
