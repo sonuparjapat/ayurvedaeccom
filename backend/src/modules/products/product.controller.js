@@ -906,8 +906,9 @@ exports.getProductReviews = async (req, res) => {
 
     /* ================= WHERE ================= */
 
-    let whereClause =req.query.me? "r.product_id= ANY($1) ": " r.product_id = $1 ";
-    let params = [req.query.me?req?.body?.productId:productId];
+    const isBulk = Array.isArray(req.body?.productId);
+    let whereClause = isBulk ? "r.product_id = ANY($1)" : "r.product_id = $1";
+    let params = [isBulk ? req.body.productId : productId];
 
     if (onlyMe) {
       whereClause += " AND r.user_id = $2";
