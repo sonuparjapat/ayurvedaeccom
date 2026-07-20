@@ -41,6 +41,15 @@
 9. Re-open the review form for the same item — verify the updated review pre-fills.
 10. Click "✕ Close" — verify form collapses without submitting.
 
+### Web — Account Orders Modal Review Pre-fill
+
+1. Go to `/account` → Orders tab, find a delivered order.
+2. Click the **Review** button — the Order Details modal opens.
+3. If the user already reviewed any item, verify the stars and comment are pre-filled.
+4. Pre-fill works even if the review was submitted from the product detail page (no `order_id` stored on that path).
+5. Submit an edited review — verify toast "Review submitted" appears.
+6. Close and re-open the same order — verify the updated data pre-fills again.
+
 ### Web — Product Detail Review Pre-fill
 
 1. Navigate to `/product/:id` while logged in.
