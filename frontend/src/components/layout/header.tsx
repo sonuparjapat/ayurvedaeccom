@@ -20,6 +20,8 @@ import {
   MessageSquare,
   Bell,
   Wallet,
+  Moon,
+  Sun,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
@@ -48,6 +50,21 @@ const {
   const [showResults, setShowResults] = useState(false)
   const [notifCount, setNotifCount] = useState(0)
   const notifSocketRef = useRef<Socket | null>(null)
+  const [darkMode, setDarkMode] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('theme')
+    const isDark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    setDarkMode(isDark)
+    document.documentElement.classList.toggle('dark', isDark)
+  }, [])
+
+  const toggleDarkMode = () => {
+    const next = !darkMode
+    setDarkMode(next)
+    document.documentElement.classList.toggle('dark', next)
+    localStorage.setItem('theme', next ? 'dark' : 'light')
+  }
 
   const searchRef = useRef(null)
 
@@ -1097,8 +1114,18 @@ const {
                   </Link>
                 )}
 
+                {/* Dark mode toggle */}
+                <button
+                  className="action-btn"
+                  onClick={toggleDarkMode}
+                  aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                  title={darkMode ? 'Light mode' : 'Dark mode'}
+                >
+                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+
                 <div className="divider-v desktop-only" />
- 
+
                 {/* Account — clearly shows login state */}
                 {loginuserdata?.id ? (
                   <>

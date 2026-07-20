@@ -56,4 +56,7 @@ router.get("/export", auth, exportData);
 /* ================= CURRENT USER ================= */
 router.get('/me',auth,controller.getMe)
 
+/* ================= REFERRAL STATS ================= */
+router.get('/referral', auth, usercontroller.getReferralStats)
+
 module.exports = router

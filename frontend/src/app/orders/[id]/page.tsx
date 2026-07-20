@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -12,6 +12,8 @@ import {
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/auth-context'
+import { Header } from '@/components/layout/header'
+import { Footer } from '@/components/layout/footer'
 
 /* ── Status meta ── */
 const STATUS_MAP: Record<number, { label: string; color: string; bg: string; icon: any; emoji: string }> = {
@@ -213,17 +215,25 @@ export default function OrderDetailPage() {
   }
 
   if (loading) return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin" />
-    </div>
+    <>
+      <Header />
+      <div style={{ minHeight: '80vh', background: 'linear-gradient(160deg,#061812 0%,#0f2d1e 40%,#0d1a08 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 40, height: 40, border: '3px solid rgba(16,185,129,0.2)', borderTopColor: '#10b981', borderRadius: '50%' }} className="animate-spin" />
+      </div>
+      <Footer />
+    </>
   )
 
   if (!order) return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
-      <AlertCircle size={52} className="text-red-400" />
-      <h2 className="text-xl font-semibold text-gray-700">Order not found</h2>
-      <Link href="/account" className="text-green-600 hover:underline text-sm">← My Orders</Link>
-    </div>
+    <>
+      <Header />
+      <div style={{ minHeight: '80vh', background: 'linear-gradient(160deg,#061812 0%,#0f2d1e 40%,#0d1a08 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <AlertCircle size={52} color="#f87171" />
+        <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 600, margin: 0 }}>Order not found</h2>
+        <Link href="/account?tab=orders" style={{ color: '#34d399', fontSize: 14, textDecoration: 'none' }}>← My Orders</Link>
+      </div>
+      <Footer />
+    </>
   )
 
   const statusMeta = STATUS_MAP[order.status] ?? STATUS_MAP[0]
@@ -240,385 +250,369 @@ export default function OrderDetailPage() {
   const carrierUrl = courier && trackingNum ? getCarrierUrl(courier, trackingNum) : null
   const eta = trackingInfo?.estimated_delivery
 
+  /* glass card style shared across sections */
+  const gc: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderRadius: 20,
+    marginBottom: 16,
+  }
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 pb-20">
-      <script src="https://checkout.razorpay.com/v1/checkout.js" async />
+    <>
+      <Header />
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#061812 0%,#0f2d1e 40%,#0d1a08 100%)', paddingBottom: 80 }}>
+        <script src="https://checkout.razorpay.com/v1/checkout.js" async />
 
-      <Link href="/account" className="inline-flex items-center gap-1.5 text-green-700 text-sm mb-6 hover:text-green-800">
-        <ChevronLeft size={15} /> My Orders
-      </Link>
+        {/* ── Page top accent ── */}
+        <div style={{ height: 3, background: 'linear-gradient(90deg,transparent,#059669 30%,#10b981 50%,#059669 70%,transparent)', boxShadow: '0 0 24px rgba(16,185,129,0.5)' }} />
 
-      {/* ── Header Card ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 flex flex-wrap justify-between items-start gap-4">
-        <div>
-          <p className="text-xs text-gray-400 mb-1">Order #{order.invoice_no || order.id}</p>
-          <p className="text-2xl font-bold text-gray-900">₹{Number(order.total_amount).toFixed(2)}</p>
-          <p className="text-xs text-gray-400 mt-1">Placed on {formatDate(order.created_at)}</p>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2" style={{ background: statusMeta.bg, borderColor: `${statusMeta.color}40` }}>
-          <span className="text-base">{statusMeta.emoji}</span>
-          <span className="text-sm font-semibold" style={{ color: statusMeta.color }}>{statusMeta.label}</span>
-        </div>
-      </div>
+        <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 16px 0' }}>
 
-      {/* ── ETA + Tracking Banner ── */}
-      {(courier || eta) && (
-        <div className="bg-gradient-to-r from-green-700 to-green-600 rounded-2xl p-4 mb-4 text-white">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <Truck size={20} />
-              </div>
+          <Link href="/account?tab=orders" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 24, textDecoration: 'none', fontWeight: 500 }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#34d399'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.5)'}
+          >
+            <ChevronLeft size={15} /> My Orders
+          </Link>
+
+          {/* ── HERO ORDER CARD ── */}
+          <div style={{ ...gc, padding: '24px', marginBottom: 16, background: 'linear-gradient(135deg,rgba(6,95,70,0.3) 0%,rgba(2,30,20,0.7) 100%)', border: '1px solid rgba(16,185,129,0.2)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
               <div>
-                {courier && <p className="font-semibold text-sm">{courier}</p>}
-                {trackingNum && <p className="text-xs text-green-200 font-mono mt-0.5">{trackingNum}</p>}
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginBottom: 4, letterSpacing: 1 }}>ORDER #{order.invoice_no || order.id}</p>
+                <p style={{ color: '#fff', fontSize: 32, fontWeight: 900, margin: '0 0 4px', letterSpacing: -1 }}>
+                  ₹{Number(order.total_amount).toFixed(2)}
+                </p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>Placed on {formatDate(order.created_at)}</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: `${statusMeta.color}20`, border: `1.5px solid ${statusMeta.color}50`, borderRadius: 12, padding: '8px 16px' }}>
+                <span style={{ fontSize: 18 }}>{statusMeta.emoji}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: statusMeta.color }}>{statusMeta.label}</span>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              {eta && (
-                <div className="text-right">
-                  <p className="text-xs text-green-200">Estimated Delivery</p>
-                  <p className="font-bold text-sm flex items-center gap-1">
-                    <Calendar size={12} /> {formatDate(eta)}
-                  </p>
-                </div>
-              )}
-              {carrierUrl && (
-                <a
-                  href={carrierUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 bg-white text-green-700 text-xs font-bold px-3 py-2 rounded-lg hover:bg-green-50 transition-colors"
-                >
-                  Track Shipment <ExternalLink size={11} />
-                </a>
-              )}
-            </div>
           </div>
-        </div>
-      )}
 
-      {/* ── Progress Steps ── */}
-      {!isCancelledOrReturned && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-          <p className="text-sm font-semibold text-gray-700 mb-5">Order Progress</p>
-          <div className="relative flex items-start">
-            {ACTIVE_STEPS.map((step, idx) => {
-              const meta = STATUS_MAP[step]
-              const done = currentStep >= step
-              const active = currentStep === step
-              const Icon = meta.icon
-              return (
-                <div key={step} className="flex-1 flex flex-col items-center relative">
-                  {idx < ACTIVE_STEPS.length - 1 && (
-                    <div className="absolute top-5 left-1/2 w-full h-0.5 transition-all duration-500"
-                      style={{ background: done && currentStep > step ? meta.color : '#e5e7eb' }} />
-                  )}
-                  <motion.div
-                    initial={{ scale: 0.8 }}
-                    animate={{ scale: active ? 1.15 : 1 }}
-                    transition={{ type: 'spring', stiffness: 300 }}
-                    className="w-10 h-10 rounded-full flex items-center justify-center z-10 relative transition-all duration-300"
-                    style={{
-                      background: done ? meta.color : '#f3f4f6',
-                      border: `3px solid ${done ? meta.color : '#e5e7eb'}`,
-                      boxShadow: active ? `0 0 0 4px ${meta.color}25` : undefined,
-                    }}
-                  >
-                    <Icon size={15} color={done ? 'white' : '#9ca3af'} />
-                  </motion.div>
-                  <p className="text-center mt-2 leading-tight" style={{ fontSize: 10, fontWeight: done ? 600 : 400, color: done ? meta.color : '#9ca3af', maxWidth: 64 }}>
-                    {meta.label}
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Status Timeline ── */}
-      {timeline.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-          <p className="text-sm font-semibold text-gray-700 mb-4">Tracking History</p>
-          <div className="space-y-0">
-            {[...timeline].reverse().map((log, idx) => {
-              const st = STATUS_MAP[log.new_status]
-              const Icon = st?.icon ?? CheckCircle2
-              return (
-                <motion.div
-                  key={log.id}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.04 }}
-                  className="flex gap-4 relative pb-5 last:pb-0"
-                >
-                  {idx < timeline.length - 1 && (
-                    <div className="absolute left-[15px] top-8 w-0.5 h-full bg-gray-100" />
-                  )}
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10"
-                    style={{ background: st ? `${st.color}18` : '#e8f5ee', border: `2px solid ${st?.color || '#4a7c5e'}` }}>
-                    <Icon size={13} style={{ color: st?.color || '#4a7c5e' }} />
+          {/* ── ETA + Tracking Banner ── */}
+          {(courier || eta) && (
+            <div style={{ ...gc, padding: 20, background: 'linear-gradient(135deg,rgba(5,150,105,0.25) 0%,rgba(2,30,20,0.7) 100%)', border: '1px solid rgba(16,185,129,0.25)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 44, height: 44, background: 'rgba(16,185,129,0.2)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(16,185,129,0.3)' }}>
+                    <Truck size={20} color="#34d399" />
                   </div>
-                  <div className="pt-0.5">
-                    <p className="text-sm font-semibold text-gray-800">{log.new_label || st?.label || 'Status Updated'}</p>
-                    {log.note && <p className="text-xs text-gray-500 mt-0.5">{log.note}</p>}
-                    <p className="text-xs text-gray-400 mt-1">{formatDateTime(log.created_at)}</p>
+                  <div>
+                    {courier && <p style={{ color: '#fff', fontWeight: 600, fontSize: 14, margin: 0 }}>{courier}</p>}
+                    {trackingNum && <p style={{ color: '#6ee7b7', fontFamily: 'monospace', fontSize: 12, margin: '2px 0 0' }}>{trackingNum}</p>}
                   </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Items ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-        <p className="text-sm font-semibold text-gray-700 mb-4">Items Ordered ({order.items?.length})</p>
-        <div className="space-y-4">
-          {order.items?.map((item: any, i: number) => (
-            <div key={i}>
-              <div className="flex gap-3 items-center">
-                <img src={item.image || '/placeholder.png'} alt={item.name}
-                  className="w-14 h-14 rounded-xl object-cover bg-green-50 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
-                  {item.variant_label && <p className="text-xs text-green-600 font-medium mt-0.5">{item.variant_label}</p>}
-                  <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
                 </div>
-                <div className="flex flex-col items-end gap-1.5 shrink-0">
-                  <p className="text-sm font-bold text-gray-800">₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}</p>
-                  {order.status === 5 && (
-                    <button
-                      onClick={() => openReviewForm(item.product_id)}
-                      className="text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors"
-                      style={reviewingProductId === item.product_id
-                        ? { color: '#92400e', background: '#fef3c7', borderColor: '#fde68a' }
-                        : { color: '#d97706', background: '#fffbeb', borderColor: '#fde68a' }
-                      }
-                    >
-                      {reviewingProductId === item.product_id ? '✕ Close' : '⭐ Review'}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Inline per-item review form */}
-              {reviewingProductId === item.product_id && (
-                <div className="mt-3 p-4 rounded-xl border border-amber-200 bg-amber-50">
-                  {reviewFetching ? (
-                    <div className="flex items-center gap-2 text-sm text-amber-600 py-2">
-                      <div className="w-4 h-4 border-2 border-amber-300 border-t-amber-600 rounded-full animate-spin" />
-                      Loading your review...
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-sm font-semibold text-amber-800 mb-3">
-                        {reviewRating > 0 ? 'Edit Your Review' : 'Write a Review'}
-                        <span className="text-amber-600 font-normal"> · {item.name}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  {eta && (
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: 0 }}>Estimated Delivery</p>
+                      <p style={{ color: '#fff', fontWeight: 700, fontSize: 13, margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Calendar size={12} /> {formatDate(eta)}
                       </p>
-                      {/* Stars */}
-                      <div className="flex gap-1 mb-3">
-                        {[1,2,3,4,5].map(s => (
-                          <Star
-                            key={s}
-                            size={24}
-                            onClick={() => setReviewRating(s)}
-                            fill={s <= reviewRating ? '#f59e0b' : 'none'}
-                            color={s <= reviewRating ? '#f59e0b' : '#d1d5db'}
-                            className="cursor-pointer"
-                          />
-                        ))}
-                      </div>
-                      {/* Comment */}
-                      <textarea
-                        className="w-full border border-amber-200 rounded-xl p-3 text-sm mb-3 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white"
-                        placeholder="Share your experience with this product..."
-                        rows={3}
-                        value={reviewComment}
-                        onChange={e => setReviewComment(e.target.value)}
-                      />
-                      {/* Existing images (from previous review) */}
-                      {reviewExistingImgs.length > 0 && (
-                        <div className="flex gap-2 flex-wrap mb-2">
-                          {reviewExistingImgs.map((url, idx) => (
-                            <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-amber-200">
-                              <img src={url} alt="review" className="w-full h-full object-cover" />
-                              <button
-                                onClick={() => setReviewExistingImgs(prev => prev.filter((_, j) => j !== idx))}
-                                className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              >✕</button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {/* New file images preview */}
-                      {reviewFileImgs.length > 0 && (
-                        <div className="flex gap-2 flex-wrap mb-2">
-                          {reviewFileImgs.map((img, idx) => (
-                            <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-amber-200">
-                              <img src={img.preview} alt="new" className="w-full h-full object-cover" />
-                              <button
-                                onClick={() => setReviewFileImgs(prev => prev.filter((_, j) => j !== idx))}
-                                className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              >✕</button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {/* Image URL input */}
-                      <div className="flex gap-2 mb-3">
-                        <input
-                          type="url"
-                          value={reviewUrlInput}
-                          onChange={e => setReviewUrlInput(e.target.value)}
-                          placeholder="Paste image URL (optional)..."
-                          className="flex-1 border border-amber-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-300"
-                        />
-                        <button
-                          onClick={() => {
-                            const url = reviewUrlInput.trim()
-                            if (url && reviewExistingImgs.length + reviewFileImgs.length < 5) {
-                              setReviewExistingImgs(prev => [...prev, url])
-                              setReviewUrlInput('')
-                            }
-                          }}
-                          disabled={!reviewUrlInput.trim() || reviewExistingImgs.length + reviewFileImgs.length >= 5}
-                          className="px-3 py-2 bg-amber-400 text-white rounded-xl text-xs font-semibold hover:bg-amber-500 disabled:opacity-40"
-                        >Add</button>
-                      </div>
-                      {/* Actions */}
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <button
-                          onClick={() => submitProductReview(item.product_id)}
-                          disabled={reviewSubmitting || !reviewRating}
-                          className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors"
-                        >
-                          {reviewSubmitting ? 'Saving...' : 'Submit Review'}
-                        </button>
-                        {reviewExistingImgs.length + reviewFileImgs.length < 5 && (
-                          <label className="cursor-pointer text-xs text-amber-700 font-semibold border border-amber-200 rounded-lg px-3 py-1.5 hover:bg-amber-100 bg-white transition-colors">
-                            + Add Photos
-                            <input type="file" multiple accept="image/*" className="hidden" onChange={e => {
-                              const files = Array.from(e.target.files || []).filter((f: any) => f.type.startsWith('image/'))
-                              const remaining = 5 - reviewExistingImgs.length - reviewFileImgs.length
-                              const toAdd = files.slice(0, remaining)
-                              setReviewFileImgs(prev => [...prev, ...toAdd.map((f: any) => ({ file: f, preview: URL.createObjectURL(f) }))])
-                              e.target.value = ''
-                            }} />
-                          </label>
-                        )}
-                        <span className="text-xs text-gray-400">{reviewExistingImgs.length + reviewFileImgs.length}/5 photos</span>
-                      </div>
-                    </>
+                    </div>
+                  )}
+                  {carrierUrl && (
+                    <a href={carrierUrl} target="_blank" rel="noopener noreferrer" style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      background: '#059669', color: '#fff', fontSize: 12, fontWeight: 700,
+                      padding: '8px 14px', borderRadius: 10, textDecoration: 'none',
+                      boxShadow: '0 4px 16px rgba(5,150,105,0.4)'
+                    }}>
+                      Track Shipment <ExternalLink size={11} />
+                    </a>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Progress Steps ── */}
+          {!isCancelledOrReturned && (
+            <div style={{ ...gc, padding: '20px 20px 24px' }}>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 20, margin: '0 0 20px' }}>Order Progress</p>
+              <div style={{ display: 'flex', alignItems: 'flex-start', position: 'relative' }}>
+                {ACTIVE_STEPS.map((step, idx) => {
+                  const meta = STATUS_MAP[step]
+                  const done = currentStep >= step
+                  const active = currentStep === step
+                  const Icon = meta.icon
+                  return (
+                    <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                      {idx < ACTIVE_STEPS.length - 1 && (
+                        <div style={{
+                          position: 'absolute', top: 20, left: '50%', width: '100%', height: 2,
+                          background: done && currentStep > step
+                            ? `linear-gradient(90deg,${meta.color},${STATUS_MAP[step + 1]?.color || meta.color})`
+                            : 'rgba(255,255,255,0.08)',
+                          transition: 'all 0.5s ease'
+                        }} />
+                      )}
+                      <motion.div
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: active ? 1.2 : 1, opacity: 1 }}
+                        transition={{ type: 'spring', stiffness: 300, delay: idx * 0.08 }}
+                        style={{
+                          width: 40, height: 40, borderRadius: '50%', position: 'relative', zIndex: 2,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: done ? meta.color : 'rgba(255,255,255,0.06)',
+                          border: `2.5px solid ${done ? meta.color : 'rgba(255,255,255,0.12)'}`,
+                          boxShadow: active ? `0 0 0 6px ${meta.color}25, 0 4px 20px ${meta.color}40` : done ? `0 2px 12px ${meta.color}40` : 'none',
+                          transition: 'all 0.4s ease'
+                        }}
+                      >
+                        <Icon size={15} color={done ? 'white' : 'rgba(255,255,255,0.25)'} />
+                      </motion.div>
+                      <p style={{ textAlign: 'center', marginTop: 8, fontSize: 9, fontWeight: done ? 700 : 400, color: done ? meta.color : 'rgba(255,255,255,0.25)', maxWidth: 64, lineHeight: 1.4 }}>
+                        {meta.label}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Status Timeline ── */}
+          {timeline.length > 0 && (
+            <div style={{ ...gc, padding: 20 }}>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', margin: '0 0 20px' }}>Tracking History</p>
+              <div>
+                {[...timeline].reverse().map((log, idx) => {
+                  const st = STATUS_MAP[log.new_status]
+                  const Icon = st?.icon ?? CheckCircle2
+                  return (
+                    <motion.div
+                      key={log.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      style={{ display: 'flex', gap: 16, position: 'relative', paddingBottom: idx < timeline.length - 1 ? 20 : 0 }}
+                    >
+                      {idx < timeline.length - 1 && (
+                        <div style={{ position: 'absolute', left: 15, top: 32, width: 2, height: '100%', background: 'rgba(255,255,255,0.06)', borderRadius: 2 }} />
+                      )}
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, background: st ? `${st.color}20` : 'rgba(16,185,129,0.15)', border: `1.5px solid ${st?.color || '#059669'}` }}>
+                        <Icon size={13} color={st?.color || '#34d399'} />
+                      </div>
+                      <div style={{ paddingTop: 2 }}>
+                        <p style={{ color: '#fff', fontSize: 13, fontWeight: 600, margin: 0 }}>{log.new_label || st?.label || 'Status Updated'}</p>
+                        {log.note && <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, margin: '3px 0 0' }}>{log.note}</p>}
+                        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, margin: '4px 0 0' }}>{formatDateTime(log.created_at)}</p>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Items ── */}
+          <div style={{ ...gc, padding: 20 }}>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', margin: '0 0 16px' }}>Items Ordered ({order.items?.length})</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {order.items?.map((item: any, i: number) => (
+                <div key={i}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <img src={item.image || '/placeholder.png'} alt={item.name} style={{ width: 56, height: 56, borderRadius: 14, objectFit: 'cover', background: 'rgba(255,255,255,0.05)', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ color: '#fff', fontSize: 13, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
+                      {item.variant_label && <p style={{ color: '#34d399', fontSize: 11, fontWeight: 600, margin: '2px 0 0' }}>{item.variant_label}</p>}
+                      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: '2px 0 0' }}>Qty: {item.quantity}</p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                      <p style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: 0 }}>₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}</p>
+                      {order.status === 5 && (
+                        <button onClick={() => openReviewForm(item.product_id)} style={{
+                          fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 8, border: '1px solid',
+                          cursor: 'pointer', transition: 'all 0.2s',
+                          ...(reviewingProductId === item.product_id
+                            ? { color: '#fde68a', background: 'rgba(245,158,11,0.2)', borderColor: 'rgba(245,158,11,0.4)' }
+                            : { color: '#fbbf24', background: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.25)' })
+                        }}>
+                          {reviewingProductId === item.product_id ? '✕ Close' : '⭐ Review'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {reviewingProductId === item.product_id && (
+                    <div style={{ marginTop: 12, padding: 16, borderRadius: 14, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                      {reviewFetching ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fbbf24', fontSize: 13 }}>
+                          <div className="animate-spin" style={{ width: 16, height: 16, border: '2px solid rgba(251,191,36,0.3)', borderTopColor: '#fbbf24', borderRadius: '50%' }} />
+                          Loading your review...
+                        </div>
+                      ) : (
+                        <>
+                          <p style={{ color: '#fde68a', fontSize: 13, fontWeight: 600, margin: '0 0 12px' }}>
+                            {reviewRating > 0 ? 'Edit Your Review' : 'Write a Review'}
+                            <span style={{ color: 'rgba(253,230,138,0.6)', fontWeight: 400 }}> · {item.name}</span>
+                          </p>
+                          <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+                            {[1,2,3,4,5].map(s => (
+                              <Star key={s} size={24} onClick={() => setReviewRating(s)} fill={s <= reviewRating ? '#f59e0b' : 'none'} color={s <= reviewRating ? '#f59e0b' : 'rgba(255,255,255,0.2)'} style={{ cursor: 'pointer' }} />
+                            ))}
+                          </div>
+                          <textarea
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12, padding: 12, fontSize: 13, color: '#fff', resize: 'none', outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
+                            placeholder="Share your experience with this product..."
+                            rows={3} value={reviewComment} onChange={e => setReviewComment(e.target.value)}
+                          />
+                          {reviewExistingImgs.length > 0 && (
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                              {reviewExistingImgs.map((url, idx) => (
+                                <div key={idx} style={{ position: 'relative', width: 60, height: 60, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(245,158,11,0.25)' }}>
+                                  <img src={url} alt="review" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  <button onClick={() => setReviewExistingImgs(prev => prev.filter((_, j) => j !== idx))} style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: 9, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {reviewFileImgs.length > 0 && (
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                              {reviewFileImgs.map((img, idx) => (
+                                <div key={idx} style={{ position: 'relative', width: 60, height: 60, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(245,158,11,0.25)' }}>
+                                  <img src={img.preview} alt="new" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  <button onClick={() => setReviewFileImgs(prev => prev.filter((_, j) => j !== idx))} style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: 9, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                            <input type="url" value={reviewUrlInput} onChange={e => setReviewUrlInput(e.target.value)} placeholder="Paste image URL (optional)..."
+                              style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#fff', outline: 'none' }} />
+                            <button onClick={() => { const url = reviewUrlInput.trim(); if (url && reviewExistingImgs.length + reviewFileImgs.length < 5) { setReviewExistingImgs(prev => [...prev, url]); setReviewUrlInput('') } }}
+                              disabled={!reviewUrlInput.trim() || reviewExistingImgs.length + reviewFileImgs.length >= 5}
+                              style={{ background: '#d97706', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: (!reviewUrlInput.trim() || reviewExistingImgs.length + reviewFileImgs.length >= 5) ? 0.4 : 1 }}>Add</button>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                            <button onClick={() => submitProductReview(item.product_id)} disabled={reviewSubmitting || !reviewRating}
+                              style={{ background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (reviewSubmitting || !reviewRating) ? 0.5 : 1 }}>
+                              {reviewSubmitting ? 'Saving...' : 'Submit Review'}
+                            </button>
+                            {reviewExistingImgs.length + reviewFileImgs.length < 5 && (
+                              <label style={{ cursor: 'pointer', fontSize: 12, color: '#fbbf24', fontWeight: 600, border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '8px 14px' }}>
+                                + Add Photos
+                                <input type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={e => {
+                                  const files = Array.from(e.target.files || []).filter((f: any) => f.type.startsWith('image/'))
+                                  const remaining = 5 - reviewExistingImgs.length - reviewFileImgs.length
+                                  const toAdd = files.slice(0, remaining)
+                                  setReviewFileImgs(prev => [...prev, ...toAdd.map((f: any) => ({ file: f, preview: URL.createObjectURL(f) }))])
+                                  e.target.value = ''
+                                }} />
+                              </label>
+                            )}
+                            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>{reviewExistingImgs.length + reviewFileImgs.length}/5 photos</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: 16, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {order.coupon_code && Number(order.discount_amount) > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: '#34d399' }}>🎁 Coupon ({order.coupon_code})</span>
+                  <span style={{ color: '#34d399', fontWeight: 700 }}>−₹{Number(order.discount_amount).toFixed(2)}</span>
+                </div>
               )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 600 }}>
+                  {order.payment_status === 'paid' ? 'Total Paid' : order.payment_method === 'cod' ? 'Pay on Delivery' : 'Order Total'}
+                </span>
+                <span style={{ color: '#fff', fontSize: 20, fontWeight: 800 }}>₹{Number(order.total_amount).toFixed(2)}</span>
+              </div>
             </div>
-          ))}
-        </div>
-        <div className="border-t border-gray-100 mt-4 pt-4 space-y-2">
-          {order.coupon_code && Number(order.discount_amount) > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-green-700 font-medium">🎁 Coupon ({order.coupon_code})</span>
-              <span className="text-green-700 font-semibold">−₹{Number(order.discount_amount).toFixed(2)}</span>
+          </div>
+
+          {/* ── Delivery Address ── */}
+          {addr && (
+            <div style={{ ...gc, padding: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <MapPin size={15} color="#34d399" />
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', margin: 0 }}>Delivery Address</p>
+              </div>
+              <p style={{ color: '#fff', fontSize: 14, fontWeight: 600, margin: 0 }}>{addr.name}</p>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.6, margin: '4px 0 0' }}>
+                {addr.address}<br />{addr.city}, {addr.state} – {addr.pincode}
+              </p>
+              {addr.phone && <p style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(255,255,255,0.3)', fontSize: 12, margin: '8px 0 0' }}><Phone size={11} />{addr.phone}</p>}
             </div>
           )}
-          <div className="flex justify-between">
-            <span className="text-sm font-semibold text-gray-700">
-              {order.payment_status === 'paid' ? 'Total Paid' : order.payment_method === 'cod' ? 'Amount to Pay on Delivery' : 'Order Total'}
-            </span>
-            <span className="text-lg font-bold text-gray-900">₹{Number(order.total_amount).toFixed(2)}</span>
-          </div>
-        </div>
-      </div>
 
-      {/* ── Delivery Address ── */}
-      {addr && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <MapPin size={15} className="text-green-600" />
-            <p className="text-sm font-semibold text-gray-700">Delivery Address</p>
-          </div>
-          <p className="text-sm font-medium text-gray-800">{addr.name}</p>
-          <p className="text-sm text-gray-500 leading-relaxed mt-1">
-            {addr.address}<br />
-            {addr.city}, {addr.state} – {addr.pincode}
-          </p>
-          {addr.phone && (
-            <p className="flex items-center gap-1.5 text-xs text-gray-400 mt-2"><Phone size={11} />{addr.phone}</p>
-          )}
-        </div>
-      )}
-
-      {/* ── Payment Status ── */}
-      {canRetryPayment && (
-        <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-amber-800">Payment Pending</p>
-              <p className="text-xs text-amber-700 mt-0.5">Your order needs payment to be confirmed.</p>
+          {/* ── Payment Pending ── */}
+          {canRetryPayment && (
+            <div style={{ ...gc, padding: 20, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <AlertCircle size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <p style={{ color: '#fde68a', fontSize: 14, fontWeight: 700, margin: 0 }}>Payment Pending</p>
+                  <p style={{ color: 'rgba(253,230,138,0.6)', fontSize: 12, margin: '3px 0 0' }}>Your order needs payment to be confirmed.</p>
+                </div>
+              </div>
+              <button onClick={retryPayment} disabled={retrying} style={{ background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: retrying ? 0.6 : 1 }}>
+                {retrying ? 'Loading...' : '💳 Pay Now'}
+              </button>
             </div>
+          )}
+
+          {/* ── Invoice ── */}
+          {order.pdf_url && (
+            <div style={{ marginBottom: 16 }}>
+              <a href={order.pdf_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+                <Download size={14} /> Download Invoice
+              </a>
+            </div>
+          )}
+
+          {/* ── Actions ── */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {isCancellable && (
+              <button onClick={cancelOrder} disabled={cancelling} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelling ? 0.5 : 1 }}>
+                <XCircle size={15} /> {cancelling ? 'Cancelling...' : 'Cancel Order'}
+              </button>
+            )}
+            {isReturnable && !showReturnForm && (
+              <button onClick={() => setShowReturnForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', color: '#fb923c', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <RotateCcw size={15} /> Request Return
+              </button>
+            )}
+            {[5, 6].includes(order.status) && (
+              <button onClick={reorderItems} disabled={reordering} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg,#059669,#10b981)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: reordering ? 0.5 : 1, boxShadow: '0 4px 16px rgba(16,185,129,0.3)' }}>
+                <RefreshCw size={15} /> {reordering ? 'Adding...' : '🛒 Re-order'}
+              </button>
+            )}
           </div>
-          <button onClick={retryPayment} disabled={retrying}
-            className="bg-amber-500 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-amber-600 disabled:opacity-50">
-            {retrying ? 'Loading...' : '💳 Pay Now'}
-          </button>
-        </div>
-      )}
 
-      {/* ── Invoice ── */}
-      {order.pdf_url && (
-        <div className="mb-4">
-          <a href={order.pdf_url} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-gray-800 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-700">
-            <Download size={14} /> Download Invoice
-          </a>
-        </div>
-      )}
+          {/* ── Return Form ── */}
+          {showReturnForm && (
+            <div style={{ ...gc, padding: 20, marginTop: 16, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)' }}>
+              <p style={{ color: '#fb923c', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Return Reason</p>
+              <textarea value={returnReason} onChange={e => setReturnReason(e.target.value)} placeholder="Please describe why you want to return..." rows={3}
+                style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 12, padding: 12, fontSize: 13, color: '#fff', resize: 'none', outline: 'none', boxSizing: 'border-box' }} />
+              <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                <button onClick={submitReturn} disabled={returning} style={{ background: '#ea580c', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: returning ? 0.5 : 1 }}>
+                  {returning ? 'Submitting...' : 'Submit Return'}
+                </button>
+                <button onClick={() => setShowReturnForm(false)} style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 20px', fontSize: 13, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
-      {/* ── Actions ── */}
-      <div className="flex flex-wrap gap-3">
-        {isCancellable && (
-          <button onClick={cancelOrder} disabled={cancelling}
-            className="flex items-center gap-2 border-2 border-red-200 text-red-600 bg-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-50 disabled:opacity-50">
-            <XCircle size={15} /> {cancelling ? 'Cancelling...' : 'Cancel Order'}
-          </button>
-        )}
-        {isReturnable && !showReturnForm && (
-          <button onClick={() => setShowReturnForm(true)}
-            className="flex items-center gap-2 border-2 border-orange-200 text-orange-600 bg-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-orange-50">
-            <RotateCcw size={15} /> Request Return
-          </button>
-        )}
-        {[5, 6].includes(order.status) && (
-          <button onClick={reorderItems} disabled={reordering}
-            className="flex items-center gap-2 bg-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-800 disabled:opacity-50">
-            <RefreshCw size={15} /> {reordering ? 'Adding...' : '🛒 Re-order'}
-          </button>
-        )}
+        </div>
       </div>
-
-      {/* ── Return Form ── */}
-      {showReturnForm && (
-        <div className="mt-4 bg-white rounded-2xl border-2 border-orange-100 p-5">
-          <p className="text-sm font-semibold text-gray-800 mb-3">Return Reason</p>
-          <textarea value={returnReason} onChange={e => setReturnReason(e.target.value)}
-            placeholder="Please describe why you want to return..." rows={3}
-            className="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" />
-          <div className="flex gap-3 mt-3">
-            <button onClick={submitReturn} disabled={returning}
-              className="bg-gray-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-700 disabled:opacity-50">
-              {returning ? 'Submitting...' : 'Submit Return'}
-            </button>
-            <button onClick={() => setShowReturnForm(false)}
-              className="border border-gray-200 text-gray-500 px-5 py-2.5 rounded-xl text-sm hover:bg-gray-50">
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      <Footer />
+    </>
   )
 }

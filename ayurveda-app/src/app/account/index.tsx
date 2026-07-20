@@ -76,7 +76,7 @@ function OrderCard({ order, index }: { order: Order; index: number }) {
       onPress={() => router.push(`/order/${order.id}` as any)}
       activeOpacity={0.88}
     >
-      <Animated.View entering={FadeInDown.delay(index * 70)} style={oc.card}>
+      <Animated.View entering={FadeInDown.delay(index * 70)} style={[oc.card, { borderLeftWidth: 3, borderLeftColor: status.color }]}>
         <View style={oc.header}>
           <View>
             <Text style={oc.orderNo}>#{order.invoice_no || `ORD-${order.id}`}</Text>
@@ -132,7 +132,7 @@ const oc = StyleSheet.create({
   moreItems: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textDim, paddingLeft: 13, paddingTop: 4 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTopWidth: 0.5, borderTopColor: Colors.border },
   totalLabel: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.textDim },
-  total: { fontFamily: Fonts.displayBold, fontSize: 20, color: Colors.forest },
+  total: { fontFamily: Fonts.displayBold, fontSize: 20, color: Colors.gold },
 })
 
 // ─── FIELD ────────────────────────────────────────────────────────────────────
@@ -391,12 +391,13 @@ export default function AccountScreen() {
         {/* Stats */}
         <Animated.View entering={FadeInDown.delay(150)} style={ss.statsRow}>
           {[
-            { label: 'Orders', val: orders.length > 0 ? String(orders.length) : '—', emoji: '📦' },
-            { label: 'Addresses', val: addresses.length > 0 ? String(addresses.length) : '—', emoji: '📍' },
-            { label: 'Wishlist', val: '❤️', emoji: '' },
+            { label: 'Orders', val: String(orders.length || 0), emoji: '📦' },
+            { label: 'Addresses', val: String(addresses.length || 0), emoji: '📍' },
+            { label: 'Wishlist', val: '—', emoji: '❤️' },
           ].map((s, i) => (
-            <View key={i} style={ss.statItem}>
-              <Text style={ss.statVal}>{s.emoji ? s.emoji + ' ' : ''}{s.val}</Text>
+            <View key={i} style={ss.statPill}>
+              <Text style={ss.statEmoji}>{s.emoji}</Text>
+              <Text style={ss.statNum}>{s.val}</Text>
               <Text style={ss.statLabel}>{s.label}</Text>
             </View>
           ))}
@@ -419,15 +420,15 @@ export default function AccountScreen() {
           <Animated.View entering={FadeInDown.duration(350)} style={ss.tabContent}>
             <View style={ss.section}>
               {[
-                { emoji: '👤', label: 'Full Name', value: user.name },
-                { emoji: '📧', label: 'Email', value: user.email },
-                { emoji: '📱', label: 'Phone', value: user.phone || 'Not set' },
-                { emoji: '🔐', label: 'Account Status', value: user.is_verified ? '✓ Verified' : '⚠ Not Verified' },
+                { emoji: '👤', label: 'Full Name', value: user.name, gradient: [Colors.forest, Colors.moss] as [string, string] },
+                { emoji: '📧', label: 'Email', value: user.email, gradient: ['#0369a1', '#0ea5e9'] as [string, string] },
+                { emoji: '📱', label: 'Phone', value: user.phone || 'Not set', gradient: ['#7c3aed', '#8b5cf6'] as [string, string] },
+                { emoji: '🔐', label: 'Account Status', value: user.is_verified ? '✓ Verified' : '⚠ Not Verified', gradient: [Colors.gold, '#a07830'] as [string, string] },
               ].map((row, i) => (
                 <Animated.View key={i} entering={FadeInRight.delay(i * 60)} style={ss.infoRow}>
-                  <View style={ss.infoIconWrap}>
+                  <LinearGradient colors={row.gradient} style={ss.infoIconWrap} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                     <Text style={{ fontSize: 18 }}>{row.emoji}</Text>
-                  </View>
+                  </LinearGradient>
                   <View style={{ flex: 1 }}>
                     <Text style={ss.infoLabel}>{row.label}</Text>
                     <Text style={ss.infoValue}>{row.value}</Text>
@@ -457,18 +458,18 @@ export default function AccountScreen() {
             <Text style={ss.sectionTitle}>Quick Access</Text>
             <View style={ss.section}>
               {[
-                { emoji: '📦', label: 'My Orders', sub: 'Track & manage orders', onPress: () => setActiveTab('Orders') },
-                { emoji: '❤️', label: 'My Wishlist', sub: 'Saved products', onPress: () => router.push('/wishlist') },
-                { emoji: '🛍️', label: 'My Cart', sub: `${cartCount} items`, onPress: () => router.push('/cart') },
-                { emoji: '💳', label: 'My Wallet', sub: 'Balance & transactions', onPress: () => router.push('/account/wallet' as any) },
-                { emoji: '🔔', label: 'Notifications', sub: 'Order updates & alerts', onPress: () => router.push('/account/notifications' as any) },
-                { emoji: '📍', label: 'Manage Addresses', sub: 'Delivery addresses', onPress: () => setActiveTab('Addresses') },
-                { emoji: '💬', label: 'Support', sub: 'Raise a ticket or enquiry', onPress: () => router.push('/support' as any) },
+                { emoji: '📦', label: 'My Orders', sub: 'Track & manage orders', onPress: () => setActiveTab('Orders'), gradient: [Colors.forest, Colors.moss] as [string, string] },
+                { emoji: '❤️', label: 'My Wishlist', sub: 'Saved products', onPress: () => router.push('/wishlist'), gradient: ['#e11d48', '#be123c'] as [string, string] },
+                { emoji: '🛍️', label: 'My Cart', sub: `${cartCount} items`, onPress: () => router.push('/cart'), gradient: ['#7c3aed', '#6d28d9'] as [string, string] },
+                { emoji: '💳', label: 'My Wallet', sub: 'Balance & transactions', onPress: () => router.push('/account/wallet' as any), gradient: ['#d97706', '#b45309'] as [string, string] },
+                { emoji: '🔔', label: 'Notifications', sub: 'Order updates & alerts', onPress: () => router.push('/account/notifications' as any), gradient: ['#0369a1', '#0e7490'] as [string, string] },
+                { emoji: '📍', label: 'Manage Addresses', sub: 'Delivery addresses', onPress: () => setActiveTab('Addresses'), gradient: ['#059669', '#065f46'] as [string, string] },
+                { emoji: '💬', label: 'Support', sub: 'Raise a ticket or enquiry', onPress: () => router.push('/support' as any), gradient: ['#4f46e5', '#3730a3'] as [string, string] },
               ].map((l, i) => (
                 <TouchableOpacity key={i} onPress={l.onPress} style={ss.linkRow} activeOpacity={0.7}>
-                  <View style={ss.linkIconWrap}>
+                  <LinearGradient colors={l.gradient} style={ss.linkIconWrap} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                     <Text style={{ fontSize: 20 }}>{l.emoji}</Text>
-                  </View>
+                  </LinearGradient>
                   <View style={{ flex: 1 }}>
                     <Text style={ss.linkLabel}>{l.label}</Text>
                     <Text style={ss.linkSub}>{l.sub}</Text>
@@ -480,27 +481,27 @@ export default function AccountScreen() {
 
             {/* Referral Code Card */}
             {(user as any)?.referral_code && (
-              <View style={{ backgroundColor: '#f0fdf4', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#bbf7d0' }}>
-                <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, marginBottom: 6 }}>🎁 Your Referral Code</Text>
-                <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, marginBottom: 10 }}>Share with friends — they get a discount and you earn wallet credits.</Text>
+              <LinearGradient colors={['#0a1f14', '#0d2a1a']} style={{ borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(201,168,76,0.2)' }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.gold, marginBottom: 6 }}>🎁 Your Referral Code</Text>
+                <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 10 }}>Share with friends — they get a discount and you earn wallet credits.</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <View style={{ flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#d1fae5' }}>
-                    <Text style={{ fontFamily: Fonts.bold, fontSize: 16, color: Colors.forest, letterSpacing: 2, textAlign: 'center' }}>{(user as any).referral_code}</Text>
+                  <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: 'rgba(201,168,76,0.3)' }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 16, color: Colors.gold, letterSpacing: 2, textAlign: 'center' }}>{(user as any).referral_code}</Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => { Clipboard.setString((user as any).referral_code); toast.success('Referral code copied!') }}
-                    style={{ backgroundColor: Colors.forest, borderRadius: 10, padding: 10 }}
+                    style={{ backgroundColor: Colors.forest, borderRadius: 10, padding: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
                   >
                     <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>Copy</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => Share.share({ message: `Use my code ${(user as any).referral_code} on AyurVeda Desi Foods to get a discount on your first order!` })}
-                    style={{ backgroundColor: Colors.sage, borderRadius: 10, padding: 10 }}
+                    style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
                   >
                     <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>Share</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </LinearGradient>
             )}
 
             <TouchableOpacity onPress={handleLogout} disabled={loggingOut} style={ss.logoutBtn}>
@@ -796,10 +797,11 @@ const ss = StyleSheet.create({
   progressTrack: { height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' },
   progressFill: { height: 4, backgroundColor: Colors.gold, borderRadius: 2 },
 
-  statsRow: { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 16, marginBottom: 18 },
-  statItem: { flex: 1, alignItems: 'center', gap: 3 },
-  statVal: { color: '#fff', fontFamily: Fonts.bold, fontSize: 16 },
-  statLabel: { color: 'rgba(255,255,255,0.45)', fontFamily: Fonts.regular, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  statsRow: { flexDirection: 'row', gap: 8, paddingTop: 12, paddingBottom: 2, marginBottom: 14 },
+  statPill: { flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', gap: 2, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.18)' },
+  statEmoji: { fontSize: 18, marginBottom: 2 },
+  statNum: { color: '#fff', fontFamily: Fonts.bold, fontSize: 20, lineHeight: 24 },
+  statLabel: { color: 'rgba(255,255,255,0.5)', fontFamily: Fonts.medium, fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'center' },
 
   tabRow: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 13, padding: 4, marginBottom: 4 },
   tab: { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center' },
@@ -808,11 +810,11 @@ const ss = StyleSheet.create({
   tabTextActive: { color: Colors.forest, fontFamily: Fonts.bold },
 
   tabContent: { padding: 16 },
-  section: { backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', marginBottom: 16, borderWidth: 0.5, borderColor: Colors.border, ...Shadows.sm },
+  section: { backgroundColor: 'rgba(255,255,255,0.97)', borderRadius: 18, overflow: 'hidden', marginBottom: 16, borderWidth: 0.5, borderColor: '#d9eedf', ...Shadows.sm },
   sectionTitle: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.textDim, marginBottom: 10, letterSpacing: 0.5, textTransform: 'uppercase' },
 
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  infoIconWrap: { width: 38, height: 38, borderRadius: 11, backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' },
+  infoIconWrap: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   infoLabel: { fontFamily: Fonts.medium, fontSize: 10, color: Colors.textDim, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
   infoValue: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest },
 
@@ -822,7 +824,7 @@ const ss = StyleSheet.create({
   halfBtnOutlineText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest },
 
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  linkIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' },
+  linkIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   linkLabel: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest },
   linkSub: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textDim, marginTop: 1 },
 

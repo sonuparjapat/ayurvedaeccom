@@ -607,22 +607,31 @@ export default function ProductDetailScreen() {
               <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: '#fff' }}>Flash Sale — {flashDiscount}% OFF</Text>
             </View>
           )}
-          {/* Price */}
-          <View style={ss.priceRow}>
-            <Text style={ss.price}>₹{effectivePrice}</Text>
-            {product.unit && <Text style={{ fontFamily: Fonts.regular, fontSize: 13, color: Colors.textDim, alignSelf: 'flex-end', marginBottom: 4 }}>({product.unit})</Text>}
-            {(flashPrice != null || product.compareprice) && <Text style={ss.mrp}>₹{flashPrice != null ? product.price : product.compareprice}</Text>}
-            {disc != null && disc > 0 && (
-              <View style={ss.savePill}>
-                <Text style={ss.saveText}>🎉 Save {disc}%</Text>
-              </View>
+          {/* Price card */}
+          <LinearGradient
+            colors={['rgba(16,185,129,0.08)', 'rgba(5,150,105,0.04)']}
+            style={{ borderRadius: 18, padding: 16, marginBottom: 18, borderWidth: 1, borderColor: 'rgba(16,185,129,0.18)' }}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          >
+            <View style={ss.priceRow}>
+              <Text style={[ss.price, { color: Colors.emerald }]}>₹{effectivePrice}</Text>
+              {product.unit && <Text style={{ fontFamily: Fonts.regular, fontSize: 13, color: Colors.textDim, alignSelf: 'flex-end', marginBottom: 4 }}>({product.unit})</Text>}
+              {(flashPrice != null || product.compareprice) && <Text style={ss.mrp}>₹{flashPrice != null ? product.price : product.compareprice}</Text>}
+              {disc != null && disc > 0 && (
+                <LinearGradient colors={[Colors.emerald, '#059669']} style={{ borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: '#fff' }}>🎉 Save {disc}%</Text>
+                </LinearGradient>
+              )}
+              {product.is_bestseller && (
+                <LinearGradient colors={[Colors.gold, '#a07830']} style={{ borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: '#fff' }}>⭐ Bestseller</Text>
+                </LinearGradient>
+              )}
+            </View>
+            {product.fssai_number && (
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: Colors.textDim, marginTop: 2 }}>FSSAI: {product.fssai_number}</Text>
             )}
-            {product.is_bestseller && (
-              <View style={{ backgroundColor: Colors.goldLight, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 0.5, borderColor: Colors.gold }}>
-                <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: '#92400e' }}>Bestseller</Text>
-              </View>
-            )}
-          </View>
+          </LinearGradient>
 
           {/* Weight */}
           {product.weight_grams != null && product.weight_grams > 0 && (
@@ -1145,8 +1154,13 @@ export default function ProductDetailScreen() {
 
       {/* Bottom CTA */}
       <Animated.View entering={FadeInUp.delay(300)} style={[ss.bottomCta, { paddingBottom: insets.bottom + 12 }]}>
+        <LinearGradient
+          colors={['rgba(255,255,255,0.96)', 'rgba(240,253,244,0.98)']}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+        />
         <View style={{ flex: 1 }}>
-          <Text style={ss.ctaPrice}>₹{effectivePrice}</Text>
+          <Text style={[ss.ctaPrice, { color: Colors.emerald }]}>₹{effectivePrice}</Text>
           {product.compareprice && Number(effectivePrice) < Number(product.compareprice) && (
             <Text style={ss.ctaMrp}>₹{product.compareprice}</Text>
           )}

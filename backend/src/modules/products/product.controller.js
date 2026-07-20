@@ -1376,7 +1376,7 @@ exports.getRecentlyViewed = async (req, res) => {
     if (!userId) return res.json({ products: [] })
 
     const result = await pool.query(`
-      SELECT p.id, p.name, p.price, p.compareprice, p.images, p.averagerating, p.inventory, p.category_name
+      SELECT p.id, p.name, p.slug, p.price, p.compareprice, p.images, p.averagerating, p.inventory, p.category_name, p.is_bestseller
       FROM recently_viewed rv
       JOIN products p ON p.id = rv.product_id
       WHERE rv.user_id = $1 AND p.status = 'active'
@@ -1387,5 +1387,30 @@ exports.getRecentlyViewed = async (req, res) => {
     res.json({ products: result.rows })
   } catch (err) {
     res.status(500).json({ products: [] })
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   TRENDING PRODUCTS
+   Scored by (reviewcount * 0.4 + avg_rating * 20 * 0.6),
+   limited to in-stock active products.
+───────────────────────────────────────────────────────── */
+exports.getTrending = async (req, res) => {
+  try {
+    const limit = Math.min(20, parseInt(req.query.limit) || 8)
+    const result = await pool.query(`
+      SELECT id, name, slug, price, compareprice, images,
+             averagerating, reviewcount, inventory, category_name, is_bestseller
+      FROM products
+      WHERE status = 'active' AND inventory > 0
+      ORDER BY
+        (COALESCE(reviewcount,0) * 0.4 + COALESCE(averagerating,0) * 20 * 0.6) DESC,
+        created_at DESC
+      LIMIT $1
+    `, [limit])
+    res.json({ success: true, products: result.rows })
+  } catch (err) {
+    console.error('[TRENDING]', err)
+    res.status(500).json({ success: false, products: [] })
   }
 }

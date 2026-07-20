@@ -50,6 +50,48 @@
 5. Submit an edited review — verify toast "Review submitted" appears.
 6. Close and re-open the same order — verify the updated data pre-fills again.
 
+### Web — Offers Page
+
+1. Navigate to `/offers`.
+2. Verify page loads with a dark forest gradient background (not the old white/gray).
+3. If flash sales exist: each sale should show a dark glassmorphism card with the large countdown timer (HH:MM:SS), product cards with stock progress bars, and a "View All Deals" end card.
+4. If coupons exist: each coupon card should show the ticket-style design with torn-edge circles and a monospace code field. Click **Copy** — verify the code is copied and a toast appears.
+5. If bundles exist: each bundle card should show the purple glassmorphism card with an image overlay. Click **Add Bundle to Cart** — verify toast "Bundle added to cart!".
+6. If no offers exist: verify the empty state orb icon and "Browse Products" CTA appear on the dark background.
+
+### Web — Account Hero Count-up
+
+1. Navigate to `/account`.
+2. On page load, verify the three stat numbers (Total Orders, Delivered, Total Spent) animate from 0 to their real values over ~1.2 seconds with cubic ease-out.
+3. Navigate away and back — verify the animation replays.
+
+### Web — Order Detail Page
+
+1. Navigate to `/orders/<id>` from My Orders.
+2. Verify a **Header** and **Footer** are visible (they were previously missing).
+3. Verify the page has a dark forest gradient background (not plain white).
+4. Verify all cards (order hero, tracking, progress stepper, timeline, items, address) use the glassmorphism dark style.
+5. If the order is not cancelled: the progress stepper should show colored step nodes with an emerald glow on the active step and gradient connector lines between completed steps.
+6. The "← My Orders" back link should be visible and navigate to `/account?tab=orders`.
+7. Review, Re-order, Cancel, Return — all functions should work identically to before the redesign.
+
+### Web — Product Detail — Sticky ATC + Lightbox
+
+1. Navigate to `/product/<id>` on a desktop browser.
+2. Scroll down past the "Add to Cart" button — verify a sticky bar slides in from the bottom showing the product thumbnail, name, price, and an "Add to Cart" button.
+3. Scroll back up until the main ATC button is visible — verify the sticky bar slides away.
+4. Click the main product image — verify a full-screen lightbox opens.
+5. If the product has multiple images, verify the prev/next arrows and dot indicators work.
+6. Click the ✕ or outside the image — verify the lightbox closes.
+7. Click the wishlist heart button — verify it does NOT open the lightbox (event propagation stopped).
+
+### Web — Flash Sale Banner
+
+1. Navigate to the home page (requires active flash sales in the database).
+2. Verify the banner has a dark forest gradient background with animated gold countdown cells.
+3. Each product card should have a glassmorphism dark style, stock progress bar (green or red depending on sold %).
+4. Verify the "View All Deals" card navigates to `/products`.
+
 ### Web — Product Detail Review Pre-fill
 
 1. Navigate to `/product/:id` while logged in.
@@ -57,6 +99,28 @@
 3. Pre-fill triggers via `GET /shop/reviews/product/:id?me=1` (fires when `loginuserdata` becomes available).
 4. Verify the pre-fill works even if the user's review is buried on page 2+ of the public review list (the `me=1` fetch is independent of the paginated list).
 5. Submit an edited review — verify the form immediately reflects the new server-stored image URLs (re-fetched after submit).
+
+---
+
+## Mobile — Account Screen UI
+
+1. Log in and navigate to the **Account** tab.
+2. Verify the three stats (Orders, Addresses, Wishlist) each appear as a **glass pill** inside the dark header — individual rounded boxes with emoji, number, and label, not flat text.
+3. Switch to the **Orders** tab — verify each order card has a **colored left border** matching its status (e.g. emerald for Delivered, blue for Confirmed, red for Cancelled).
+4. Verify the total amount on each order card is displayed in **gold** (`Colors.gold`) rather than dark green.
+5. Switch back to **Profile** tab — verify each info row (Name, Email, Phone, Status) has a **colored gradient icon container** (forest-green, blue, purple, gold respectively).
+6. In the **Quick Access** section, verify each link row icon has a **unique gradient color** (red for Wishlist, purple for Cart, amber for Wallet, etc.).
+7. If the user has a referral code, verify the referral card shows a **dark forest gradient** background with gold title and gold code text (not the old light-green card).
+8. Verify all logic (edit profile, change password, add/edit/delete address, logout) works exactly as before.
+
+## Mobile — Cart Screen UI
+
+1. Add items to cart and open the **Cart** screen.
+2. Verify each cart item card has a **3px emerald left border** accent.
+3. Verify the item price text is displayed in **emerald** (`Colors.emerald`) rather than dark forest.
+4. Verify the delivery progress bar card has a **mint-tinted glass background** (`rgba(240,253,244,0.9)`) with a soft green border.
+5. Remove all items and verify the **empty cart orb** shows a dark `forest→moss` gradient background instead of the old plain mint.
+6. Verify all cart functions (update quantity, remove item, checkout CTA) work exactly as before.
 
 ---
 
@@ -112,3 +176,75 @@ curl -s "https://api.oroganix.com/api/orders/${ORDER_ID}/payment-page?returnUrl=
 ```
 
 Expected: HTML containing `src="https://checkout.razorpay.com/v1/checkout.js"` and the order amount.
+
+---
+
+## Backend — Trending Endpoint
+
+```bash
+curl https://api.oroganix.com/api/shop/trending?limit=8
+```
+Expected: `{ success: true, products: [...] }` — at least 1 product in descending score order.
+
+---
+
+## Backend — Referral Stats Endpoint
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" https://api.oroganix.com/api/users/referral
+```
+Expected: `{ success: true, referral_code: "XXXX", referrals: [...], total: N, rewarded: N, earned: N }`.
+
+---
+
+## Web — Admin Dashboard
+
+1. Log in as admin, navigate to `/admin/dashboard`.
+2. Verify the 6 KPI cards render (Revenue, Orders, Users, Products, Pending, Low Stock).
+3. Pending and Low Stock cards should show a red pulse dot if their count > 0.
+4. Verify the Revenue & Orders area chart renders with data (try all 3 period buttons: Daily / Weekly / Monthly).
+5. In the Overview tab verify Recent Orders list shows order number, customer name, status badge, and amount.
+6. Verify Low Stock alert panel appears at bottom of Overview if any products are low-stock.
+7. **Real-time toast test**: place a new order from a different browser tab as a regular user. Within a few seconds an animated toast should pop in the bottom-right corner of the admin dashboard with the new order ID.
+
+---
+
+## Web — Dark Mode Toggle
+
+1. Open any page with the site header.
+2. Click the Moon/Sun icon in the header actions bar.
+3. Verify the `dark` class is added to `<html>` and the page switches to dark mode.
+4. Refresh the page — verify dark mode persists (localStorage key `theme = 'dark'`).
+5. Click the icon again — verify the page returns to light mode and `localStorage.theme = 'light'`.
+6. Clear localStorage, change OS to dark mode — verify the site opens in dark mode automatically.
+
+---
+
+## Mobile — Account Screen UI
+
+1. Log in on the mobile app, go to **Account**.
+2. Verify the stats row shows 3 glass pill cards in the dark header (Orders, Addresses, Wishlist count).
+3. Verify each quick-link icon has a unique gradient color.
+4. Verify order cards have a colored left border matching status (green = Delivered, blue = Confirmed, etc).
+5. If a referral code is present, verify it appears on a dark card with gold text.
+
+---
+
+## Mobile — Cart Screen UI
+
+1. Add items to cart on the mobile app.
+2. Open cart — verify each item card has a green left accent border.
+3. Verify item price text is emerald green.
+4. Verify delivery progress bar shows inside a mint-glass card.
+5. Remove all items — verify the empty cart shows a dark gradient orb with a cart emoji.
+
+---
+
+## Mobile — Product Detail UI
+
+1. Navigate to any product on mobile.
+2. Verify the price area is wrapped in an emerald-tinted glass card.
+3. If there is a discount, verify the "Save X%" pill uses a gradient emerald background.
+4. If the product is a bestseller, verify the Bestseller pill uses a gradient gold background.
+5. Verify the bottom sticky CTA bar has a mint-glass gradient background.
+6. Verify the price in the bottom CTA bar is in emerald green.

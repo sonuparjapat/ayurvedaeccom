@@ -13,6 +13,7 @@ router.get("/public/:id",controller.getsingleproduct)
 router.get("/categories", controller.getCategories)
 
 // Discovery
+router.get("/trending", controller.getTrending)
 router.get("/search/suggestions", controller.searchSuggestions)
 router.get("/related/:id", controller.getRelatedProducts)
 router.get("/variants/:id", controller.getProductVariants)

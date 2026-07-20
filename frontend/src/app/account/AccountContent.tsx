@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import { Header } from '@/components/layout/header'
@@ -104,6 +104,43 @@ const intarrdata = {
   comment: "",
   images: [],
   oldimages: []
+}
+
+/* ================= COUNT-UP ================= */
+
+function useCountUp(end: number, duration = 1200) {
+  const [count, setCount] = useState(0)
+  const frameRef = useRef<number | null>(null)
+  const startRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (end === 0) { setCount(0); return }
+    const startVal = 0
+    const step = (ts: number) => {
+      if (!startRef.current) startRef.current = ts
+      const progress = Math.min((ts - startRef.current) / duration, 1)
+      const ease = 1 - Math.pow(1 - progress, 3)
+      setCount(Math.floor(startVal + (end - startVal) * ease))
+      if (progress < 1) frameRef.current = requestAnimationFrame(step)
+    }
+    frameRef.current = requestAnimationFrame(step)
+    return () => { if (frameRef.current) cancelAnimationFrame(frameRef.current) }
+  }, [end, duration])
+
+  return count
+}
+
+function CountUpStat({ value, prefix = '', suffix = '', label, sublabel }: { value: number; prefix?: string; suffix?: string; label: string; sublabel?: string }) {
+  const animated = useCountUp(value)
+  return (
+    <div className="bg-white/10 backdrop-blur rounded-2xl px-4 py-3 text-center border border-white/20">
+      <p className="text-2xl font-black text-white tabular-nums">
+        {prefix}{animated.toLocaleString('en-IN')}{suffix}
+      </p>
+      <p className="text-xs text-emerald-100 font-medium mt-0.5">{label}</p>
+      {sublabel && <p className="text-[10px] text-emerald-200/60 mt-0.5">{sublabel}</p>}
+    </div>
+  )
 }
 
 /* ================= STAT CARD ================= */
@@ -755,18 +792,9 @@ const handleSaveAddress = async (data: any) => {
 
             {/* Stats Row */}
             <div className="grid grid-cols-3 gap-4 mt-6">
-              <div className="bg-white/10 backdrop-blur rounded-2xl px-4 py-3 text-center border border-white/20">
-                <p className="text-2xl font-black text-white">{orders?.length || 0}</p>
-                <p className="text-xs text-emerald-100 font-medium mt-0.5">Total Orders</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur rounded-2xl px-4 py-3 text-center border border-white/20">
-                <p className="text-2xl font-black text-white">{deliveredOrders}</p>
-                <p className="text-xs text-emerald-100 font-medium mt-0.5">Delivered</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur rounded-2xl px-4 py-3 text-center border border-white/20">
-                <p className="text-lg font-black text-white">{formatPrice(totalSpent)}</p>
-                <p className="text-xs text-emerald-100 font-medium mt-0.5">Total Spent</p>
-              </div>
+              <CountUpStat value={orders?.length || 0} label="Total Orders" />
+              <CountUpStat value={deliveredOrders} label="Delivered" />
+              <CountUpStat value={Math.round(totalSpent)} prefix="₹" label="Total Spent" />
             </div>
           </div>
         </div>

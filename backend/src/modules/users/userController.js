@@ -481,3 +481,35 @@ exports.setDefaultAddress = async (req, res) => {
     });
   }
 };
+
+/* ─── REFERRAL STATS ─────────────────────────────────── */
+exports.getReferralStats = async (req, res) => {
+  try {
+    const userId = req.user.id
+    const [userRes, referralsRes] = await Promise.all([
+      pool.query('SELECT referral_code FROM users WHERE id=$1', [userId]),
+      pool.query(
+        `SELECT r.status, r.created_at, u.name AS referred_name, u.email AS referred_email
+         FROM referrals r
+         JOIN users u ON u.id = r.referred_id
+         WHERE r.referrer_id = $1
+         ORDER BY r.created_at DESC
+         LIMIT 50`,
+        [userId]
+      ),
+    ])
+    const referrals = referralsRes.rows
+    const earned = referrals.filter(r => r.status === 'rewarded').length * 50
+    res.json({
+      success: true,
+      referral_code: userRes.rows[0]?.referral_code || null,
+      referrals,
+      total: referrals.length,
+      rewarded: referrals.filter(r => r.status === 'rewarded').length,
+      earned,
+    })
+  } catch (err) {
+    console.error('[REFERRAL STATS]', err)
+    res.status(500).json({ success: false, referrals: [], total: 0, earned: 0 })
+  }
+}

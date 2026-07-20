@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import { useParams, useRouter } from 'next/navigation'
 import Head from 'next/head'
@@ -163,6 +163,17 @@ export default function ProductDetailPage() {
 
   // Flash sale
   const [flashSaleInfo, setFlashSaleInfo] = useState<{ flash_price: number; ends_at: string; title: string; discount_percent: number; saleId: number } | null>(null)
+
+  // Sticky ATC bar
+  const atcBtnRef = useRef<HTMLDivElement>(null)
+  const [stickyAtc, setStickyAtc] = useState(false)
+  useEffect(() => {
+    const el = atcBtnRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(([entry]) => setStickyAtc(!entry.isIntersecting), { threshold: 0 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [product])
  const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
   } = useAuth()
 const handlepagechage=(page:number)=>{
@@ -623,12 +634,26 @@ const addToCart = async () => {
 
             <div className="space-y-6">
 
-              <div className="relative aspect-square rounded-3xl overflow-hidden group" style={{background: 'white', boxShadow: '0 24px 80px rgba(16,185,129,0.14), 0 8px 30px rgba(0,0,0,0.08), 0 0 0 1px rgba(16,185,129,0.08)'}}>
-
+              <div
+                className="relative aspect-square rounded-3xl overflow-hidden group cursor-zoom-in"
+                style={{background: 'white', boxShadow: '0 24px 80px rgba(16,185,129,0.14), 0 8px 30px rgba(0,0,0,0.08), 0 0 0 1px rgba(16,185,129,0.08)'}}
+                onClick={() => setLightbox({ images: product.images, idx: activeImg })}
+              >
                 <img
                   src={product.images[activeImg]}
                   className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
                 />
+
+                {/* Zoom hint overlay */}
+                <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <div style={{
+                    background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
+                    borderRadius: 8, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 5,
+                  }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
+                    <span style={{ fontSize: 11, color: '#fff', fontWeight: 600 }}>Zoom</span>
+                  </div>
+                </div>
 
 
                 {product.inventory === 0 && (
@@ -644,7 +669,7 @@ const addToCart = async () => {
 
 
                <button
-                        onClick={() => toggleLike(product.id)}
+                        onClick={(e) => { e.stopPropagation(); toggleLike(product.id) }}
                         className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
                         style={{
                           background: 'rgba(255,255,255,0.92)',
@@ -975,7 +1000,7 @@ const addToCart = async () => {
 
               {/* QUANTITY + CART */}
 
-              <div className="space-y-4">
+              <div className="space-y-4" ref={atcBtnRef}>
 
 
                 <label className="text-sm font-semibold uppercase text-gray-700">
@@ -1583,6 +1608,85 @@ const addToCart = async () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ═══ STICKY ATC BAR ═══ */}
+      {product && stickyAtc && effectiveInventory > 0 && (
+        <div
+          style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
+            background: 'rgba(250,248,243,0.96)',
+            backdropFilter: 'blur(24px) saturate(1.6)',
+            WebkitBackdropFilter: 'blur(24px) saturate(1.6)',
+            borderTop: '1px solid rgba(201,168,76,0.18)',
+            boxShadow: '0 -8px 40px rgba(26,58,42,0.12), 0 -1px 0 rgba(255,255,255,0.8)',
+            padding: '12px 16px',
+            paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+            transform: stickyAtc ? 'translateY(0)' : 'translateY(100%)',
+            transition: 'transform 0.35s cubic-bezier(0.22,1,0.36,1)',
+          }}
+        >
+          <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 14 }}>
+            {/* Product thumbnail */}
+            {product.images?.[0] && (
+              <div style={{
+                width: 48, height: 48, borderRadius: 12, overflow: 'hidden',
+                flexShrink: 0, border: '1px solid rgba(26,58,42,0.1)',
+              }}>
+                <img src={product.images[0]} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            )}
+
+            {/* Name + price */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#1a3a2a', lineHeight: 1.3,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {product.name}
+              </p>
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#047857', marginTop: 1 }}>
+                {flashSaleInfo
+                  ? `₹${Number(flashSaleInfo.flash_price).toFixed(0)}`
+                  : `₹${Number(effectivePrice).toFixed(0)}`}
+                {(selectedVariant?.compareprice || product.compareprice) && (
+                  <span style={{ fontSize: 12, color: '#9ca3af', textDecoration: 'line-through', marginLeft: 6, fontWeight: 400 }}>
+                    ₹{Number(selectedVariant?.compareprice || product.compareprice).toFixed(0)}
+                  </span>
+                )}
+              </p>
+            </div>
+
+            {/* ATC button */}
+            <button
+              onClick={addToCart}
+              disabled={cartLoading}
+              style={{
+                flexShrink: 0,
+                padding: '11px 24px',
+                borderRadius: 14,
+                border: 'none',
+                background: cartLoading
+                  ? 'rgba(26,58,42,0.5)'
+                  : isInCart
+                  ? 'linear-gradient(135deg,#047857,#065f46)'
+                  : 'linear-gradient(135deg,#059669,#1a3a2a)',
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: cartLoading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 20px rgba(5,150,105,0.4)',
+                display: 'flex', alignItems: 'center', gap: 8,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {cartLoading ? (
+                <span className="animate-spin" style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block' }} />
+              ) : (
+                <ShoppingCart size={16} />
+              )}
+              {isInCart ? 'In Cart' : 'Add to Cart'}
+            </button>
+          </div>
         </div>
       )}
 

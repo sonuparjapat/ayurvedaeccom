@@ -68,7 +68,7 @@ function DeliveryProgress({ subtotal, freeLimit }: { subtotal: number; freeLimit
 }
 
 const dp = StyleSheet.create({
-  wrap: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 0.5, borderColor: Colors.border },
+  wrap: { backgroundColor: 'rgba(240,253,244,0.9)', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 0.5, borderColor: '#c8e6d0' },
   label: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.forest, flex: 1 },
   pct: { fontFamily: Fonts.bold, fontSize: 11, color: Colors.sage },
   track: { height: 8, backgroundColor: '#e8f0e8', borderRadius: 4, overflow: 'visible', position: 'relative' },
@@ -157,9 +157,9 @@ function CartItem({ item, onUpdate, onRemove, updating }: {
 function EmptyCart() {
   return (
     <Animated.View entering={FadeIn.duration(500)} style={ss.emptyWrap}>
-      <View style={ss.emptyOrb}>
+      <LinearGradient colors={[Colors.forest, Colors.moss]} style={ss.emptyOrb}>
         <Text style={{ fontSize: 52 }}>🛒</Text>
-      </View>
+      </LinearGradient>
       <Text style={ss.emptyTitle}>Your cart is empty</Text>
       <Text style={ss.emptySub}>Looks like you haven't added anything yet. Explore our organic range!</Text>
       <TouchableOpacity onPress={() => router.push('/products')} activeOpacity={0.85} style={{ marginTop: 24 }}>
@@ -364,7 +364,7 @@ const ss = StyleSheet.create({
   headerBadgeText: { color: Colors.gold, fontFamily: Fonts.bold, fontSize: 14 },
 
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, backgroundColor: Colors.cream },
-  emptyOrb: { width: 120, height: 120, borderRadius: 60, backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 2, borderColor: '#bbf7d0' },
+  emptyOrb: { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 2, borderColor: '#bbf7d0', overflow: 'hidden' },
   emptyTitle: { fontFamily: Fonts.bold, fontSize: 22, color: Colors.forest, marginBottom: 8 },
   emptySub: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.textDim, textAlign: 'center', lineHeight: 21 },
   shopBtn: { paddingHorizontal: 32, paddingVertical: 15, borderRadius: 14 },
@@ -375,12 +375,13 @@ const ss = StyleSheet.create({
   cartCard: {
     backgroundColor: '#fff', borderRadius: 18, padding: 14,
     flexDirection: 'row', gap: 12, alignItems: 'flex-start',
-    borderWidth: 0.5, borderColor: Colors.border,
-    ...Shadows.sm,
+    borderWidth: 0.5, borderColor: '#c8e6d0',
+    borderLeftWidth: 3, borderLeftColor: Colors.emerald,
+    ...Shadows.md,
   },
   cartImg: { width: 88, height: 88, borderRadius: 14, backgroundColor: Colors.mint },
   cartName: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, lineHeight: 18, marginBottom: 4, flex: 1, paddingRight: 4 },
-  cartPrice: { fontFamily: Fonts.displayBold, fontSize: 20, color: Colors.forest },
+  cartPrice: { fontFamily: Fonts.displayBold, fontSize: 20, color: Colors.emerald },
   discPill: { backgroundColor: '#fee2e2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   discPillText: { color: Colors.red, fontFamily: Fonts.bold, fontSize: 9 },
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
