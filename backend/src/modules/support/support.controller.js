@@ -1,6 +1,7 @@
 const pool = require('../../config/db');
 const { emitToTicket, emitToAdmin, emitToUser } = require('../../socket');
 const { createNotification } = require('../../services/notification.service');
+const { sendToUser: sendPushToUser } = require('../../services/pushNotification');
 
 /* ── USER: list own tickets ── */
 exports.myTickets = async (req, res) => {
@@ -189,7 +190,13 @@ exports.adminReply = async (req, res) => {
     emitToTicket(id, 'new_message', fullMsg);
     if (ticket.user_id) {
       emitToUser(ticket.user_id, 'admin_replied', { ticket_id: parseInt(id), subject: ticket.subject });
-      createNotification(ticket.user_id, 'support_reply', `Support replied: ${ticket.subject}`, message.trim(), { ticket_id: parseInt(id) })
+      createNotification(ticket.user_id, 'support_reply', `Support replied: ${ticket.subject}`, message.trim(), { ticket_id: parseInt(id) });
+      sendPushToUser(
+        ticket.user_id,
+        `Support Reply 💬`,
+        `Your ticket "${ticket.subject}" has a new reply`,
+        { type: 'support_reply', ticket_id: parseInt(id) }
+      );
     }
     res.json({ success: true, message: fullMsg });
   } catch (e) {

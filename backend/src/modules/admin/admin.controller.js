@@ -9,6 +9,7 @@ const {
 } = require("../../utils/orderMail");
 const { emitToUser, emitToAdmin } = require('../../socket');
 const { createNotification } = require('../../services/notification.service');
+const { sendToUser: sendPushToUser } = require('../../services/pushNotification');
 const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
 const {
   uploadImageToAWS,
@@ -802,9 +803,10 @@ const oldImages = normalizeArray(body.oldImages);
 
 // 1️⃣ Get current images from DB
 const existing = await pool.query(
-  "SELECT images FROM products WHERE id=$1",
+  "SELECT images, inventory FROM products WHERE id=$1",
   [id]
 );
+const oldInventory = Number(existing.rows[0]?.inventory || 0);
 
 if (!existing.rowCount) {
   return res.status(404).json({ message: "Not found" });
@@ -985,6 +987,34 @@ const finalImages = [
 
     if (!result.rowCount) {
       return res.status(404).json({ message:'Not found' })
+    }
+
+    // Back-in-stock push notifications
+    const newInventory = Number(body.inventory);
+    if (oldInventory === 0 && newInventory > 0) {
+      try {
+        const notifs = await pool.query(
+          `SELECT user_id FROM stock_notifications WHERE product_id=$1 AND notified_at IS NULL AND user_id IS NOT NULL`,
+          [id]
+        );
+        if (notifs.rows.length > 0) {
+          const productName = body.name || `Product #${id}`;
+          for (const n of notifs.rows) {
+            sendPushToUser(
+              n.user_id,
+              '✅ Back in Stock!',
+              `${productName} is available again — order before it sells out!`,
+              { type: 'stock_alert', product_id: parseInt(id) }
+            );
+          }
+          await pool.query(
+            `UPDATE stock_notifications SET notified_at=NOW() WHERE product_id=$1 AND notified_at IS NULL`,
+            [id]
+          );
+        }
+      } catch (e) {
+        console.error('[BACK-IN-STOCK]', e.message);
+      }
     }
 
     res.json({
@@ -1532,6 +1562,12 @@ if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
           `Order #${id} — ${statusLabel}`,
           `Your order status has been updated to: ${statusLabel}`,
           { order_id: id, status }
+        );
+        sendPushToUser(
+          user_id,
+          `Order Update 📦`,
+          `Order #${id} is now: ${statusLabel}`,
+          { type: 'order_update', order_id: id, status }
         );
       }
     } catch (mailErr) {

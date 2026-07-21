@@ -312,6 +312,130 @@ Visual overhaul — all WebSocket, pagination and API logic unchanged.
 
 ---
 
+## Support System — Link Placement & Auth Guard Fix
+
+### Where Support links were added
+| Location | File | Condition |
+|---|---|---|
+| Desktop navbar | `frontend/src/components/layout/header.tsx` | Only shown when `loginuserdata?.id` is truthy |
+| Mobile hamburger menu | `frontend/src/components/layout/header.tsx` | Same auth guard |
+| Account sidebar | `frontend/src/app/account/AccountContent.tsx` | Part of `navItems` array (always visible to logged-in users) |
+| Footer quick links | `frontend/src/components/layout/footer.tsx` | Public (no auth guard) |
+
+### Auth loading race condition fix
+**Problem**: On page refresh, `loginuserdata` is `null` during the async `fetchUser()` call. The support page's `useEffect` was firing immediately with `!loginuserdata === true`, causing `setOpenauth(true)` before auth resolved → login modal flash on every refresh.
+
+**Fix pattern** (applied to `support/page.tsx` and `support/[id]/page.tsx`):
+```ts
+// Rename to avoid variable shadow with local loading state
+const { loginuserdata, loading: authLoading, setOpenauth } = useAuth()
+const [loading, setLoading] = useState(true)  // local ticket-fetch loading
+
+useEffect(() => {
+  if (authLoading) return          // wait for auth to resolve
+  if (!loginuserdata) { setOpenauth(true); return }
+  load()
+}, [loginuserdata, authLoading, filterStatus])
+```
+The `loading: authLoading` alias is critical — without it, `const [loading, setLoading] = useState(true)` in the same scope silently shadows the context value, breaking the auth guard entirely.
+
+---
+
+## Support System — Real-time WebSocket (Bidirectional)
+
+### Architecture
+```
+User browser / mobile app
+  ↕  Socket.io  (ticket_${id} room)
+Backend (support.controller.js)
+  ↕  Socket.io  (admin_room + user_${userId} room)
+Admin browser
+```
+
+### Backend events (no changes needed — already complete)
+| Emitter | Event | Target |
+|---|---|---|
+| `createTicket` | `new_ticket` | `admin_room` |
+| `replyTicket` (user) | `new_message` | `ticket_${id}` room |
+| `adminReply` | `new_message` | `ticket_${id}` room |
+| `adminReply` | `admin_replied` | `user_${user_id}` room |
+| `adminUpdateTicket` | `ticket_status_updated` | `user_${user_id}` room |
+
+### Frontend listeners
+**`frontend/src/app/support/page.tsx`** (ticket list):
+- Joins `user_${loginuserdata.id}` room via `socket.emit('join_user', id)`
+- `admin_replied` → calls `load()` to refresh ticket list (shows unread reply)
+- `ticket_status_updated` → patch single ticket status in state (no full reload)
+
+**`frontend/src/app/support/[id]/page.tsx`** (ticket chat — user side):
+- Joins `ticket_${id}` room
+- `new_message` → adds all incoming messages (user's own messages also come via socket here — not duplicated via HTTP because `sendReply` does NOT add to state from the HTTP response)
+
+**`frontend/src/app/admin/support/page.tsx`** (admin chat):
+- Joins `ticket_${selected.id}` room when a ticket is selected
+- `new_message` → only adds messages where `msg.sender_type === 'user'` (admin's own replies already added from HTTP response in `sendReply`)
+- Leaves room and removes listener on ticket deselect
+
+**`ayurveda-app/src/app/support/index.tsx`** (mobile chat):
+- Dynamic import: `const { io } = await import('socket.io-client')` (matches existing mobile socket pattern)
+- Joins `ticket_${selectedTicket.id}` room when `view === 'chat'`
+- `new_message` → only adds messages where `msg.sender_type === 'admin'` (user's own messages already added from HTTP response)
+
+### Duplicate-message prevention
+| Side | Own messages | Other party's messages |
+|---|---|---|
+| User web | from HTTP response (no socket add) | from socket `new_message` |
+| User mobile | from HTTP response (no socket add) | from socket `new_message` where `sender_type === 'admin'` |
+| Admin | from HTTP response in `sendReply` | from socket `new_message` where `sender_type === 'user'` |
+
+---
+
+## Mobile — Current Location Detection (`expo-location`)
+
+### Package
+`expo-location` — installed via `npx expo install expo-location` (SDK-compatible version auto-selected). **Free** — uses device GPS and platform geocoder; no API key required.
+
+### Permission config (`ayurveda-app/app.json`)
+```json
+[
+  "expo-location",
+  {
+    "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to auto-fill delivery address.",
+    "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to auto-fill delivery address."
+  }
+]
+```
+
+### Implementation (`ayurveda-app/src/app/account/index.tsx`)
+The `detectLocation` function is shared between the Add Address and Edit Address modals:
+```ts
+const detectLocation = async (setForm: (fn: (p: any) => any) => void) => {
+  setLocating(true)
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync()
+    if (status !== 'granted') { Alert.alert('Permission Required', '...'); return }
+    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+    const results = await Location.reverseGeocodeAsync(pos.coords)
+    if (results.length > 0) {
+      const r = results[0]
+      setForm(prev => ({
+        ...prev,
+        city: r.city || r.subregion || '',
+        state: r.region || '',
+        pincode: r.postalCode || '',
+      }))
+    }
+  } catch { Alert.alert('Error', 'Failed to get location.') }
+  finally { setLocating(false) }
+}
+```
+
+**What it fills**: `city`, `state`, `pincode` — auto-populated from platform geocoder. User still types `street` manually (reverse geocoding street numbers is unreliable across devices).
+
+**Requires native build**: `expo-location` is a native module and does not work in Expo Go. Use `npx expo run:android` or `eas build`.
+
+---
+
 ## Mobile — LeafLoader Shared Component (`ayurveda-app/src/components/ui/LeafLoader.tsx`)
 Shared mobile leaf loading indicator. Uses `react-native-reanimated` for a pulsing opacity + scale animation on the 🌿 emoji.
 
@@ -343,3 +467,119 @@ Shared mobile leaf loading indicator. Uses `react-native-reanimated` for a pulsi
 - `stripInline(html)` — cleans inline tags (`<strong>`, `<em>`, `<a>`, etc.) and HTML entities from each block's text
 - Each block type rendered with appropriate `Text` style (h1 = `Fonts.displayBold` 22px forest, h2 = `Fonts.bold` 18px, li = bullet prefix, blockquote = emerald left border card)
 - Loading state replaced with `<LeafLoader size="lg" />`
+
+---
+
+## Web — FAQ Page: API-Driven Content
+
+**File**: `frontend/src/app/faq/page.tsx`
+
+The FAQ page now loads data from the API instead of hardcoded arrays:
+- `useEffect` fetches `GET /api/faq` on mount
+- Response shape: `{ faqs: { [category: string]: [{id, question, answer}][] } }`
+- An `iconMap` maps category names to lucide icons (same categories as admin CRUD)
+- `faqLoading` state prevents premature "no results" — shows 3 skeleton bars while loading
+- Empty states differentiate between "loading", "no FAQs in DB yet", and "no search results"
+- Legacy hardcoded data const removed
+
+**Admin management**: `/admin/faq` — full CRUD with category grouping, sort order, active toggle, and create/edit modal.
+
+**Backend migration**: Run `backend/src/migrations/001_create_faqs_table.sql` once to create the `faqs` table.
+
+---
+
+## Web + Mobile — Wishlist "Add All to Cart"
+
+**Web** (`frontend/src/app/wishlist/page.tsx`):
+- New `addingAll` state, new `addAllToCart` function
+- Filters items by: `inventory > 0` AND not already in cart
+- Uses `Promise.all` to add all eligible items simultaneously
+- Button appears in the hero controls area (top right, next to search) only when wishlist is non-empty
+- Shows "Add All to Cart" → "Adding…" while in progress; shows success with count of items added
+- If all in-stock items are already in cart, shows toast "All in-stock items are already in your cart!"
+
+**Mobile** (`ayurveda-app/src/app/wishlist/index.tsx`):
+- Same `addingAll` state + `addAllToCart` function
+- Same eligibility filter: in-stock AND not already in cart
+- Button renders as a full-width gradient bar below the search box (only when items exist)
+- Uses haptics: `Heavy` impact on tap, `Success`/`Error` notification on completion
+
+---
+
+## Web — Recently Viewed Section (Home Page)
+
+**Component**: `frontend/src/components/sections/recently-viewed-section.tsx` (new file)
+**Used in**: `frontend/src/app/page.tsx` — placed between `FeaturedProductsSection` and `FeaturesSection`
+
+- Auth-gated: only fetches and renders for logged-in users
+- Fetches `GET /api/shop/recently-viewed` (auth required, returns last 10 viewed active products)
+- Returns `null` if: not logged in, still loading, or no products
+- Horizontal scroll row of product cards (200px wide each), no pagination
+- Each `RecentCard` supports: add to cart, wishlist toggle, out-of-stock state, discount badge
+
+---
+
+## Web — Subscriptions Tab in Account Page
+
+**File**: `frontend/src/app/account/AccountContent.tsx`
+
+New additions:
+- Icons: `RotateCcw`, `Pause`, `Play` added to lucide-react imports
+- States: `subscriptions: any[]`, `subLoading: boolean`
+- `loadSubscriptions()` — fetches `GET /api/subscriptions/my`
+- `pauseSubscription(id, currentStatus)` — calls `PUT /api/subscriptions/:id` with `{ status: 'paused' | 'active' }`, optimistic state update
+- `cancelSubscription(id)` — calls `DELETE /api/subscriptions/:id`, removes from state after confirmation
+- Nav item added: `{ href: '/account?tab=subscriptions', tab: 'subscriptions', icon: RotateCcw, label: 'Subscriptions' }` (between Wallet & Customer Support)
+- `TabsTrigger value="subscriptions"` added to hidden TabsList
+- `TabsContent value="subscriptions"` — renders subscription cards with status badge, frequency label, next-order date, pause/resume/cancel actions
+
+**API used**:
+- `GET /api/subscriptions/my` → `{ success, data: Subscription[] }`
+- `PUT /api/subscriptions/:id` → `{ status: 'paused' | 'active' }`
+- `DELETE /api/subscriptions/:id` → cancels subscription
+
+---
+
+## Mobile — Subscriptions Screen
+
+**File**: `ayurveda-app/src/app/account/subscriptions.tsx` (new file, expo-router auto-registered)
+**Route**: `/account/subscriptions`
+**Entry point**: Account quick-access grid — "🔁 Subscriptions" button
+
+Features:
+- Fetches `GET /subscriptions/my` on mount
+- Status badges: active (green), paused (yellow), cancelled (red)
+- Frequency label from lookup: `{ 7: 'Weekly', 14: 'Every 2 weeks', 30: 'Monthly', 60: 'Every 2 months', 90: 'Every 3 months' }`
+- Shows next order date for active subscriptions
+- Pause/Resume button: calls `PUT /subscriptions/:id` with toggled status, updates state optimistically
+- Cancel button: shows `Alert.alert` confirmation before calling `DELETE /subscriptions/:id`
+- Cancelled subs show at 60% opacity with no action buttons
+- Product image via `expo-image` with 🌿 fallback
+
+---
+
+## Mobile — FAQ Screen
+
+**File**: `ayurveda-app/src/app/faq/index.tsx` (new file)
+**Route**: `/faq`
+**Entry point**: Account quick-access grid — "❓ FAQ" button
+
+Features:
+- Fetches `GET /faq` (public endpoint) on mount
+- Groups into categories — shows horizontal scroll of category chips above the list
+- Active category chip highlighted in `Colors.forest`; FAQ items filtered to selected category
+- Search bar: debounce-free immediate filter across ALL categories when search is active (category chips hidden during search)
+- Expand/collapse individual FAQ items with `LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)` for smooth open/close
+- Category emoji map: General ❓, Products & Quality 🌿, Orders & Shipping 📦, Payment 💳, Returns & Refunds ↩️, Account 👤, Other 💬
+- Loading state: `ActivityIndicator`; empty-DB state: "No FAQs yet" message; no-results state: "No results, try different keywords"
+- `UIManager.setLayoutAnimationEnabledExperimental(true)` enabled for Android layout animations
+
+---
+
+## Mobile — Recently Viewed (Home Screen)
+
+Already implemented in `ayurveda-app/src/app/index.tsx`:
+- For logged-in users: fetches `GET /shop/recently-viewed` on focus
+- For guests: reads from AsyncStorage `recently_viewed` key (stored when visiting product detail pages)
+- Horizontal scroll row rendered with shared `ProductCard` component
+- Only shown when `recentlyViewed.length > 0`

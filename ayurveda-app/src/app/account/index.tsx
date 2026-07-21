@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import {
-  Alert, Clipboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, StatusBar,
+  ActivityIndicator, Alert, Clipboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, StatusBar,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
+import * as Location from 'expo-location'
 import { toast } from '../../components/ui/Toast'
 import Animated, { FadeIn, FadeInDown, FadeInRight } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -188,6 +189,37 @@ export default function AccountScreen() {
   const [editAddrForm, setEditAddrForm] = useState({ street: '', city: '', state: '', pincode: '', type: 'Home', email: '' })
   const [savingEditAddr, setSavingEditAddr] = useState(false)
 
+  // Location detection (shared for both add & edit modals)
+  const [locating, setLocating] = useState(false)
+
+  const detectLocation = async (setForm: (fn: (p: any) => any) => void) => {
+    setLocating(true)
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow location access to auto-fill your address.')
+        return
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+      const results = await Location.reverseGeocodeAsync(pos.coords)
+      if (results.length > 0) {
+        const r = results[0]
+        setForm(prev => ({
+          ...prev,
+          city: r.city || r.subregion || '',
+          state: r.region || '',
+          pincode: r.postalCode || '',
+        }))
+      } else {
+        Alert.alert('Not Found', 'Could not detect address. Please fill in manually.')
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to get location. Please fill in manually.')
+    } finally {
+      setLocating(false)
+    }
+  }
+
   const [referralStats, setReferralStats] = useState<{
     total: number; rewarded: number; earned: number;
     referrals: { referred_name: string; status: string; created_at: string; reward_amount: number }[]
@@ -276,7 +308,7 @@ export default function AccountScreen() {
     try {
       await api.post('/users/address', addrForm)
       setShowAddAddr(false)
-      setAddrForm({ street: '', city: '', state: '', pincode: '', type: 'Home' })
+      setAddrForm({ street: '', city: '', state: '', pincode: '', type: 'Home', email: '' })
       fetchAddresses()
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to save address')
@@ -472,6 +504,8 @@ export default function AccountScreen() {
                 { emoji: '💳', label: 'My Wallet', sub: 'Balance & transactions', onPress: () => router.push('/account/wallet' as any), gradient: ['#d97706', '#b45309'] as [string, string] },
                 { emoji: '🔔', label: 'Notifications', sub: 'Order updates & alerts', onPress: () => router.push('/account/notifications' as any), gradient: ['#0369a1', '#0e7490'] as [string, string] },
                 { emoji: '📍', label: 'Manage Addresses', sub: 'Delivery addresses', onPress: () => setActiveTab('Addresses'), gradient: ['#059669', '#065f46'] as [string, string] },
+                { emoji: '🔁', label: 'Subscriptions', sub: 'Manage repeat orders', onPress: () => router.push('/account/subscriptions' as any), gradient: ['#0891b2', '#0e7490'] as [string, string] },
+                { emoji: '❓', label: 'FAQ', sub: 'Common questions answered', onPress: () => router.push('/faq' as any), gradient: ['#7c3aed', '#6d28d9'] as [string, string] },
                 { emoji: '💬', label: 'Support', sub: 'Raise a ticket or enquiry', onPress: () => router.push('/support' as any), gradient: ['#4f46e5', '#3730a3'] as [string, string] },
               ].map((l, i) => (
                 <TouchableOpacity key={i} onPress={l.onPress} style={ss.linkRow} activeOpacity={0.7}>
@@ -737,6 +771,18 @@ export default function AccountScreen() {
                 ))}
               </View>
 
+              {/* Detect location button */}
+              <TouchableOpacity
+                onPress={() => detectLocation(setAddrForm)}
+                disabled={locating}
+                style={ms.locBtn}
+              >
+                {locating
+                  ? <ActivityIndicator size="small" color={Colors.forest} />
+                  : <Text style={ms.locBtnIcon}>📍</Text>}
+                <Text style={ms.locBtnText}>{locating ? 'Detecting location…' : 'Use my current location'}</Text>
+              </TouchableOpacity>
+
               {[
                 { label: 'Street / House No.', key: 'street', placeholder: '12A, MG Road', multi: true },
                 { label: 'City', key: 'city', placeholder: 'Mumbai' },
@@ -791,6 +837,18 @@ export default function AccountScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {/* Detect location button */}
+              <TouchableOpacity
+                onPress={() => detectLocation(setEditAddrForm)}
+                disabled={locating}
+                style={ms.locBtn}
+              >
+                {locating
+                  ? <ActivityIndicator size="small" color={Colors.forest} />
+                  : <Text style={ms.locBtnIcon}>📍</Text>}
+                <Text style={ms.locBtnText}>{locating ? 'Detecting location…' : 'Use my current location'}</Text>
+              </TouchableOpacity>
 
               {[
                 { label: 'Street / House No.', key: 'street', placeholder: '12A, MG Road', multi: true },
@@ -912,4 +970,7 @@ const ms = StyleSheet.create({
   typePillActive: { backgroundColor: Colors.forest, borderColor: Colors.forest },
   typePillText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.textDim },
   typePillTextActive: { color: '#fff', fontFamily: Fonts.bold },
+  locBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f0faf5', borderWidth: 1, borderColor: '#a7f3d0', borderRadius: 12, paddingVertical: 11, paddingHorizontal: 14, marginBottom: 16 },
+  locBtnIcon: { fontSize: 15 },
+  locBtnText: { fontFamily: Fonts.medium, fontSize: 13, color: Colors.forest, flex: 1 },
 })

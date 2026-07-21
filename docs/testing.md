@@ -359,3 +359,176 @@ Expected: `{ success: true, referral_code: "XXXX", referrals: [...], total: N, r
 4. If the post has blockquotes, verify they render with an emerald left border and a mint card background.
 5. Verify paragraph text renders at 15px with 26px line height.
 6. Verify HTML entities (`&amp;`, `&nbsp;`, `&#39;`) are decoded correctly (e.g. `&amp;` renders as `&`).
+
+---
+
+## Web — Support Link Placement & Auth Guard
+
+1. Log out completely, then visit the home page.
+   - Verify **no "Support" link** appears in the desktop navbar or mobile hamburger menu (hidden for logged-out users).
+   - Verify "Support" IS visible in the site footer under Quick Links.
+2. Log in, then reload.
+   - Verify the **login modal does NOT flash** on page load (auth loading race condition fixed).
+   - Verify "Support" now appears in the desktop navbar.
+   - Verify "Support" appears in the mobile hamburger menu's Pages section with a chat icon.
+3. Navigate to `/account` → verify "Customer Support" appears in the left sidebar nav between Wallet & Points and Settings.
+4. Click the Support link from each location and verify it navigates to `/support`.
+
+---
+
+## Web & Mobile — Support Real-time WebSocket
+
+**Prerequisites**: Backend running with Socket.io. Have two browsers open — one as a logged-in user, one as admin at `/admin/support`.
+
+### User → Admin (user sends message)
+1. User opens a support ticket at `/support/<id>`.
+2. Admin opens the same ticket in the admin panel.
+3. User types a message and sends.
+4. **Expected (admin)**: The message appears in the admin chat pane **instantly**, without refreshing.
+
+### Admin → User (admin replies)
+1. Admin types a reply and sends.
+2. **Expected (user web)**: The reply appears in the user's ticket chat **instantly**.
+3. **Expected (user list page)**: If the user is on `/support` (ticket list), the ticket card updates to reflect the new reply (triggered by `admin_replied` event).
+
+### Status update
+1. Admin changes ticket status to "Resolved" and clicks Update.
+2. **Expected (user list)**: The status badge on that ticket updates to "Resolved" **without a page refresh**.
+
+### No duplicate messages
+1. Admin sends a reply.
+2. **Expected**: The message appears exactly **once** in the admin chat (not twice — not duplicated by both HTTP response and socket).
+3. User sends a reply.
+4. **Expected**: The message appears exactly **once** in the user chat.
+
+### Mobile — Admin reply reaches mobile user
+1. User has a ticket open in the mobile app chat view.
+2. Admin sends a reply from the web admin panel.
+3. **Expected**: Reply appears in the mobile chat **without the user pulling to refresh**.
+
+---
+
+## Mobile — Current Location Detection
+
+**Prerequisites**: Requires a native build (`npx expo run:android` or `eas build`) — does not work in Expo Go.
+
+### Add Address modal
+1. Log in on the mobile app, go to **Account → Addresses → Add New Address**.
+2. Verify a green **"Use my current location"** button (with a 📍 icon) appears above the form fields.
+3. Tap the button — verify the OS location permission dialog appears.
+4. **Grant permission**: verify the button shows "Detecting location…" with a spinner, then disappears and the City, State, and PIN Code fields are auto-filled.
+5. **Deny permission**: verify an alert says "Permission Required — Please allow location access to auto-fill your address."
+6. Verify the Street field remains blank (user must type street manually).
+7. Complete the street and tap **Save Address** — verify the address is saved with the auto-detected city/state/pincode.
+
+### Edit Address modal
+1. Open any existing address for editing.
+2. Verify the same "Use my current location" button appears.
+3. Tap it — verify City, State, PIN are overwritten with detected values.
+4. Verify the Save button uses the new values.
+
+### Edge cases
+| Scenario | Expected |
+|---|---|
+| Location permission already granted (second tap) | Skips dialog, detects immediately |
+| GPS timeout / no signal | Alert: "Failed to get location. Please fill in manually." |
+| Reverse geocode returns empty results | Alert: "Could not detect address. Please fill in manually." |
+| Both modals open at the same time (impossible — only one modal shown) | N/A |
+
+---
+
+## Web — FAQ Page (API-Driven)
+
+1. Navigate to `/faq` while the page loads — verify **3 animated skeleton bars** appear (not "No results found").
+2. Once loaded, verify FAQ questions are grouped by category and the first category's accordion is shown.
+3. Click a question — verify the answer expands. Click again — verify it collapses.
+4. Type in the search box — verify questions filter across all categories.
+5. Clear search — verify category grouping returns.
+6. **Empty DB case**: If no FAQs exist in the database, verify the empty state reads "No FAQs available yet" (not "No results found").
+7. **Search no-results case**: Search for a term that doesn't match anything — verify "No results found" and a "Clear Search" button appear.
+
+---
+
+## Web — Admin FAQ Management
+
+1. Go to `/admin/faq` — verify the list loads grouped by category.
+2. Click **Add FAQ** — fill in Question, Answer, select a Category, set Sort Order 1, check Active → click Create. Verify it appears in the list.
+3. Reload `/faq` — verify the new FAQ appears in the correct category.
+4. Toggle the FAQ inactive — reload `/faq` — verify it no longer appears.
+5. Toggle active again, then click Edit — change the answer — verify the update appears immediately.
+6. Click Delete → confirm — verify it disappears from the list and from `/faq`.
+
+---
+
+## Web + Mobile — Wishlist "Add All to Cart"
+
+### Web (`/wishlist`)
+1. Add 3+ products to wishlist, ensuring at least 1 is in-stock and not already in cart.
+2. Open `/wishlist` — verify the **"Add All to Cart"** button appears in the top-right controls area.
+3. Click the button — verify it shows "Adding…" while in progress, then shows a toast like "3 items added to cart!".
+4. Open the cart — verify all in-stock non-cart items were added.
+5. Click "Add All to Cart" again — verify toast says "All in-stock items are already in your cart!".
+6. If all items are out of stock — verify the same "already in cart" toast appears (no items added, no error).
+7. Verify the button is disabled during the adding process.
+
+### Mobile (Wishlist screen)
+1. Add 2+ in-stock products to wishlist via the mobile app.
+2. Open the Wishlist screen — verify a green **"🛍️ Add All to Cart"** bar appears below the search box.
+3. Tap it — verify haptic feedback fires, toast shows count of items added.
+4. Tap again — verify "All in-stock items already in cart!" toast appears.
+5. Verify the button shows "⏳ Adding all..." while in progress.
+
+---
+
+## Web — Recently Viewed Section (Home Page)
+
+**Prerequisites**: Must be logged in.
+
+1. Browse 3+ product detail pages while logged in.
+2. Return to the home page (`/`).
+3. Scroll down to the section between Featured Products and Features — verify **"Recently Viewed"** section appears.
+4. Verify the products shown match the ones you just viewed, most recent first (up to 10).
+5. Log out — reload the home page — verify the section disappears.
+6. Add a viewed product to cart from the Recently Viewed section and verify it's added.
+7. Toggle wishlist heart on a recently viewed product and verify it updates.
+
+---
+
+## Web — Subscriptions Tab (Account Page)
+
+**Prerequisites**: Must have at least one active subscription created via the product detail page.
+
+1. Go to `/account` — verify **"Subscriptions"** appears in the left sidebar between Wallet & Points and Customer Support.
+2. Click Subscriptions — verify the tab content loads with your subscription(s).
+3. Each card should show: product image, name, status badge (ACTIVE/PAUSED/CANCELLED), frequency, quantity, price, next order date.
+4. Click **Pause** on an active subscription — verify status badge changes to PAUSED and "Next order" date disappears.
+5. Click **Resume** — verify status changes back to ACTIVE and next order date reappears.
+6. Click **Cancel** → confirm — verify the subscription disappears from the list.
+7. If no subscriptions exist: verify empty state shows "No subscriptions yet" message.
+
+---
+
+## Mobile — Subscriptions Screen
+
+1. Go to **Account** — verify **"🔁 Subscriptions"** tile appears in the Quick Access grid.
+2. Tap it — verify the Subscriptions screen opens with a back arrow.
+3. Verify subscriptions list with product image, name, status badge, frequency, price, and next order date.
+4. Tap **⏸ Pause** — verify status badge changes to PAUSED.
+5. Tap **▶ Resume** — verify status badge changes back to ACTIVE.
+6. Tap **✕ Cancel** — verify an alert appears asking for confirmation. Tap "Cancel" → verify subscription disappears.
+7. Tap "Keep it" on the alert — verify subscription remains.
+8. Empty state: if no subscriptions, verify emoji + "No subscriptions yet" message + "Browse Products" button.
+
+---
+
+## Mobile — FAQ Screen
+
+1. Go to **Account** — verify **"❓ FAQ"** tile appears in the Quick Access grid.
+2. Tap it — verify FAQ screen opens with a loading indicator then FAQ content.
+3. Verify category chips appear as a horizontal scroll row at the top.
+4. Tap each category chip — verify the FAQ list filters to that category.
+5. Tap a question — verify the answer expands with animation. Tap again — verify it collapses.
+6. Type in the search box — verify results filter across ALL categories (category chips disappear during search).
+7. Clear search — verify category chips and full list return.
+8. Search for a term with no matches — verify "No results, try different keywords" message.
+9. Empty DB case: if no FAQs exist, verify "No FAQs yet" message appears.

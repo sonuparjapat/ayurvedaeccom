@@ -45,6 +45,9 @@ import {
   ShoppingBag,
   Wallet,
   MessageSquare,
+  RotateCcw,
+  Pause,
+  Play,
 } from 'lucide-react'
 
 import Link from 'next/link'
@@ -469,6 +472,10 @@ export default function AccountContent() {
   const [walletData, setWalletData] = useState<{ balance: number; loyalty_balance: number; transactions: any[]; loyalty: any[] } | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
 
+  /* ===== SUBSCRIPTIONS ===== */
+  const [subscriptions, setSubscriptions] = useState<any[]>([])
+  const [subLoading, setSubLoading] = useState(false)
+
   /* ===== REFERRAL STATS ===== */
   const [referralStats, setReferralStats] = useState<{ total: number; rewarded: number; earned: number; referrals: any[] } | null>(null)
 
@@ -734,6 +741,32 @@ const handleSaveAddress = async (data: any) => {
     } catch { } finally { setWalletLoading(false) }
   }
 
+  const loadSubscriptions = async () => {
+    setSubLoading(true)
+    try {
+      const r = await axios.get('/subscriptions/my')
+      setSubscriptions(r.data?.data || [])
+    } catch { } finally { setSubLoading(false) }
+  }
+
+  const pauseSubscription = async (id: number, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'paused' ? 'active' : 'paused'
+      await axios.put(`/subscriptions/${id}`, { status: newStatus })
+      setSubscriptions(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s))
+      toast.success(newStatus === 'paused' ? 'Subscription paused' : 'Subscription resumed')
+    } catch { toast.error('Could not update subscription') }
+  }
+
+  const cancelSubscription = async (id: number) => {
+    if (!confirm('Cancel this subscription?')) return
+    try {
+      await axios.delete(`/subscriptions/${id}`)
+      setSubscriptions(prev => prev.filter(s => s.id !== id))
+      toast.success('Subscription cancelled')
+    } catch { toast.error('Could not cancel subscription') }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -756,6 +789,7 @@ const handleSaveAddress = async (data: any) => {
     { href: '/account?tab=addresses', tab: 'addresses', icon: MapPin, label: 'Addresses' },
     { href: '/wishlist', tab: 'wishlist', icon: Heart, label: 'Wishlist' },
     { href: '/account?tab=wallet', tab: 'wallet', icon: Wallet, label: 'Wallet & Points' },
+    { href: '/account?tab=subscriptions', tab: 'subscriptions', icon: RotateCcw, label: 'Subscriptions' },
     { href: '/support', tab: 'support', icon: MessageSquare, label: 'Customer Support' },
     { href: '/account?tab=settings', tab: 'settings', icon: Settings, label: 'Settings' },
   ]
@@ -853,6 +887,7 @@ const handleSaveAddress = async (data: any) => {
                   <TabsTrigger value="orders">Orders</TabsTrigger>
                   <TabsTrigger value="addresses">Addresses</TabsTrigger>
                   <TabsTrigger value="wallet">Wallet</TabsTrigger>
+                  <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
                   <TabsTrigger value="payment">Payment</TabsTrigger>
                   <TabsTrigger value="settings">Settings</TabsTrigger>
                 </TabsList>
@@ -1078,7 +1113,7 @@ const handleSaveAddress = async (data: any) => {
                           <div className="divide-y divide-gray-50">
                             {order.items.map((item, i) => (
                               <div key={i} className="flex gap-4 items-center px-5 py-4">
-                                <div className="w-14 h-14 rounded-xl border border-gray-100 overflow-hidden flex-shrink-0">
+                                <div className="w-14 h-14 rounded-xl border border-gray-100 overflow-hidden shrink-0">
                                   <img src={item.image || '/placeholder.png'} className="w-full h-full object-cover" alt={item.name} />
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -1288,6 +1323,81 @@ const handleSaveAddress = async (data: any) => {
                   <WalletTab data={walletData} loading={walletLoading} onMount={loadWallet} />
                 </TabsContent>
 
+                {/* ===================== SUBSCRIPTIONS TAB ===================== */}
+                <TabsContent value="subscriptions">
+                  {(() => {
+                    if (subscriptions.length === 0 && !subLoading) loadSubscriptions()
+                    const getImage = (imgs: any) => { try { const a = typeof imgs === 'string' ? JSON.parse(imgs) : imgs; return Array.isArray(a) ? a[0] : '' } catch { return '' } }
+                    const freqLabel: Record<number, string> = { 7: 'Weekly', 14: 'Every 2 weeks', 30: 'Monthly', 60: 'Every 2 months', 90: 'Every 3 months' }
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3 mb-2">
+                          <RotateCcw size={18} className="text-emerald-600" />
+                          <h2 className="font-bold text-gray-900 text-lg">My Subscriptions</h2>
+                        </div>
+                        {subLoading ? (
+                          <div className="space-y-3">
+                            {[1,2,3].map(i => <div key={i} className="h-28 bg-gray-100 rounded-2xl animate-pulse" />)}
+                          </div>
+                        ) : subscriptions.length === 0 ? (
+                          <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                            <RotateCcw size={36} className="text-gray-200 mx-auto mb-4" />
+                            <p className="font-semibold text-gray-500 mb-1">No subscriptions yet</p>
+                            <p className="text-sm text-gray-400">Subscribe to products for automatic repeat orders</p>
+                          </div>
+                        ) : (
+                          subscriptions.map(sub => (
+                            <div key={sub.id} className={`bg-white rounded-2xl border border-gray-100 overflow-hidden ${sub.status === 'cancelled' ? 'opacity-60' : ''}`}>
+                              <div className="flex gap-4 p-4">
+                                <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 shrink-0">
+                                  <img src={getImage(sub.images) || '/placeholder.png'} alt={sub.product_name} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className="font-semibold text-gray-800 text-sm leading-tight truncate">{sub.product_name}</p>
+                                    <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                      sub.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                                      sub.status === 'paused' ? 'bg-yellow-100 text-yellow-700' :
+                                      'bg-red-100 text-red-600'
+                                    }`}>
+                                      {sub.status.toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-400 mt-0.5">
+                                    {freqLabel[sub.frequency_days] || `Every ${sub.frequency_days} days`} · Qty {sub.quantity}
+                                  </p>
+                                  <p className="text-base font-bold text-gray-900 mt-1">₹{Number(sub.price || 0).toLocaleString('en-IN')}</p>
+                                  {sub.next_order_date && sub.status === 'active' && (
+                                    <p className="text-xs text-emerald-600 mt-0.5">
+                                      Next order: {new Date(sub.next_order_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              {sub.status !== 'cancelled' && (
+                                <div className="flex gap-2 px-4 pb-4">
+                                  <button
+                                    onClick={() => pauseSubscription(sub.id, sub.status)}
+                                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all"
+                                  >
+                                    {sub.status === 'paused' ? <><Play size={12} /> Resume</> : <><Pause size={12} /> Pause</>}
+                                  </button>
+                                  <button
+                                    onClick={() => cancelSubscription(sub.id)}
+                                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 transition-all"
+                                  >
+                                    <Trash2 size={12} /> Cancel
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )
+                  })()}
+                </TabsContent>
+
                 {/* ===================== PAYMENT TAB ===================== */}
                 <TabsContent value="payment">
                   <div className="space-y-4">
@@ -1320,7 +1430,7 @@ const handleSaveAddress = async (data: any) => {
                     </div>
 
                     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3 items-start">
-                      <Shield size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                      <Shield size={18} className="text-amber-600 shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm font-bold text-amber-800">Safe & Secure Payments</p>
                         <p className="text-xs text-amber-600 mt-0.5">Your payment information is encrypted with industry-standard SSL security.</p>
@@ -1587,7 +1697,7 @@ const handleSaveAddress = async (data: any) => {
 
                   {/* Product row */}
                   <div className="flex gap-4 items-center p-4">
-                    <div className="w-16 h-16 rounded-xl border border-gray-100 overflow-hidden flex-shrink-0">
+                    <div className="w-16 h-16 rounded-xl border border-gray-100 overflow-hidden shrink-0">
                       <img src={item.image || '/placeholder.png'} className="w-full h-full object-cover" alt={item.name} />
                     </div>
                     <div className="flex-1 min-w-0">

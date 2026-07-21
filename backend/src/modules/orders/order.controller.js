@@ -3,6 +3,7 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const { emitToAdmin } = require('../../socket');
 const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
+const sendOrderConfirmationEmail = require('../../services/email/orderConfirmation');
 
 /* ================= RAZORPAY ================= */
 
@@ -706,6 +707,22 @@ if (addr.pincode) {
       emitToAdmin('new_order', { order_id: orderId, user_id: userId });
     } catch (_) {}
 
+    /* ================= ORDER CONFIRMATION EMAIL ================= */
+    if (paymentMethod === 'cod' && u?.email) {
+      const invRes = await pool.query(`SELECT invoice_no, shipping_address FROM orders WHERE id=$1`, [orderId])
+      const invRow = invRes.rows[0] || {}
+      sendOrderConfirmationEmail({
+        email: u.email,
+        name: u.name,
+        orderId,
+        invoiceNo: invRow.invoice_no,
+        items: cart.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.effective_price, variant_label: i.variant_label || null })),
+        total,
+        paymentMethod: 'cod',
+        address: invRow.shipping_address,
+      })
+    }
+
     /* ================= RESPONSE ================= */
 
     res.json({
@@ -885,6 +902,29 @@ exports.verifyPayment = async (req, res) => {
     await creditReferralReward(client, userId, orderId);
 
     await client.query("COMMIT");
+
+    /* ================= ORDER CONFIRMATION EMAIL (online payment) ================= */
+    try {
+      const [userRow, orderRow, itemsRow] = await Promise.all([
+        pool.query(`SELECT name, email FROM users WHERE id=$1`, [userId]),
+        pool.query(`SELECT invoice_no, shipping_address, total_amount FROM orders WHERE id=$1`, [orderId]),
+        pool.query(`SELECT oi.quantity, oi.price, oi.variant_label, p.name as product_name FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=$1`, [orderId]),
+      ])
+      const userInfo = userRow.rows[0]
+      const orderInfo = orderRow.rows[0]
+      if (userInfo?.email) {
+        sendOrderConfirmationEmail({
+          email: userInfo.email,
+          name: userInfo.name,
+          orderId,
+          invoiceNo: orderInfo?.invoice_no,
+          items: itemsRow.rows,
+          total: orderInfo?.total_amount,
+          paymentMethod: 'online',
+          address: orderInfo?.shipping_address,
+        })
+      }
+    } catch (_) {}
 
     res.json({ success: true });
 

@@ -33,6 +33,7 @@ import {
   Mail,
   FlaskConical,
   Receipt,
+  HelpCircle,
 } from 'lucide-react'
 import { useAuth } from '@/context/auth-context'
 
@@ -280,6 +281,10 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/subscriptions" icon={<RotateCcw size={18} />}>
             Subscriptions
+          </MenuItem>
+
+          <MenuItem href="/admin/faq" icon={<HelpCircle size={18} />}>
+            FAQ
           </MenuItem>
 
           <MenuItem href="/admin/wallet" icon={<Wallet size={18} />}>

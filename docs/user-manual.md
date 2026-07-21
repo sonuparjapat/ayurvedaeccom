@@ -139,6 +139,42 @@ Throughout the site, loading states now show a **leaf spinner** — a rotating e
 
 ---
 
+## Managing Addresses (Mobile App)
+
+Go to **Account → Manage Addresses** to view, add, edit, or delete delivery addresses.
+
+### Auto-detect your location
+When adding or editing an address, a green **"Use my current location"** button appears at the top of the form (with a 📍 pin icon). Tapping it:
+1. Asks for location permission the first time (tap **Allow**).
+2. Detects your GPS position and automatically fills in **City**, **State**, and **PIN Code**.
+3. You only need to type your **Street / House No.** — everything else is filled for you.
+
+> If location detection fails (poor GPS signal or permission denied), fill in the fields manually as usual.
+
+---
+
+## Customer Support (Mobile App)
+
+The Support section is available in the mobile app the same way as on the web:
+
+- Go to **Account** and tap **Customer Support** (listed in the quick access section).
+- View all your tickets, filter by status, and open any ticket to chat.
+- **Real-time replies**: When the support team sends you a reply, it appears in the chat instantly — no need to close and reopen the ticket.
+
+---
+
+## Customer Support — How to Find It (Web)
+
+- **Navbar**: The "Support" link appears in the top navigation bar when you are logged in.
+- **Account sidebar**: Go to **My Account** — "Customer Support" is listed in the left sidebar, between Wallet & Points and Settings.
+- **Footer**: The Support link is always visible in the site footer under Quick Links (even when not logged in, clicking it will prompt you to log in).
+
+### Real-time ticket updates (Web)
+- When the support team replies to your ticket, the reply appears in the chat **instantly** without refreshing.
+- If you are on the support ticket list page, your ticket's status updates live when the team changes it.
+
+---
+
 ## Mobile App — Coupons & Checkout
 
 Coupon discount labels in checkout and the home screen offer banner now display correctly (e.g. **20% OFF** or **₹50 OFF**). Previously these showed "undefined% OFF" due to a field name mismatch.
@@ -162,3 +198,74 @@ The Notifications screen now matches the app's dark forest theme:
 
 - Blog articles now render with proper formatting: headings appear larger and bolder, bullet lists have `•` markers, and blockquotes appear in a styled card.
 - The 🌿 leaf animation plays while articles load.
+
+---
+
+## FAQ Page (Web)
+
+The FAQ page at `/faq` is now fully managed by the admin team — questions and answers are updated in real-time without any code changes.
+
+- **Browse by category**: Use the category filter at the top of the page to view questions by topic (e.g. Orders & Shipping, Payment, Returns).
+- **Search**: Type any keyword in the search bar to find relevant questions across all categories.
+- **Expand answers**: Click any question to see the full answer. Click again to collapse it.
+
+---
+
+## Wishlist — Add All to Cart
+
+On the Wishlist page (web and mobile app), you can now add all available products to your cart in one tap:
+
+**Web (`/wishlist`)**:
+- Click the **"Add All to Cart"** button in the top-right area of the page.
+- Only in-stock items that are not already in your cart will be added.
+- A confirmation toast tells you how many items were added.
+
+**Mobile App (Wishlist screen)**:
+- Tap the **"🛍️ Add All to Cart"** bar that appears below the search box.
+- Same logic applies: only in-stock items not already in your cart.
+
+---
+
+## Recently Viewed (Web Home Page)
+
+When you're logged in and have browsed product pages, a **"Recently Viewed"** section appears on the home page (between Featured Products and Features).
+
+- Shows up to 10 products you visited most recently.
+- You can add items to cart or wishlist directly from this section.
+- The section only appears when logged in and disappears if you haven't viewed any products yet.
+
+---
+
+## Subscriptions (Web)
+
+If you have active subscriptions for any products, you can manage them from your account page:
+
+1. Go to **My Account** (top-right menu or `/account`).
+2. Click **Subscriptions** in the left sidebar.
+3. Each subscription card shows:
+   - Product name and image
+   - Delivery frequency (e.g. Monthly, Weekly)
+   - Status: **Active**, **Paused**, or **Cancelled**
+   - Next order date (for active subscriptions)
+4. **Pause**: Temporarily stop automatic orders. You can resume anytime.
+5. **Resume**: Restart a paused subscription — the next order date recalculates from today.
+6. **Cancel**: Permanently stops the subscription.
+
+---
+
+## Subscriptions (Mobile App)
+
+1. Go to **Account** in the bottom navigation.
+2. Tap **"🔁 Subscriptions"** in the Quick Access grid.
+3. All your subscriptions are listed with their current status.
+4. **Pause / Resume**: Tap the Pause or Resume button on any active/paused subscription.
+5. **Cancel**: Tap the ✕ Cancel button — you'll be asked to confirm before it's cancelled.
+
+---
+
+## FAQ (Mobile App)
+
+1. Go to **Account** in the bottom navigation.
+2. Tap **"❓ FAQ"** in the Quick Access grid.
+3. Browse questions by category using the chips at the top, or use the search bar to find a specific question.
+4. Tap any question to see the answer. Tap again to close it.

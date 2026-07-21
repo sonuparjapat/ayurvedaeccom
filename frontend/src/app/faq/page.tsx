@@ -21,10 +21,11 @@ import {
   HelpCircle
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import axios from '@/lib/axios'
 
-const faqData = [
+const _LEGACY_REMOVED = [
   {
     category: "Products & Quality",
     icon: Package,
@@ -135,12 +136,38 @@ const faqData = [
       }
     ]
   }
-]
+] // eslint-disable-line @typescript-eslint/no-unused-vars
 
 export default function FAQPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
   const [expandedQuestions, setExpandedQuestions] = useState<string[]>([])
+  const [faqData, setFaqData] = useState<{ category: string; icon: any; questions: { q: string; a: string }[] }[]>([])
+  const [faqLoading, setFaqLoading] = useState(true)
+
+  useEffect(() => {
+    axios.get('/faq')
+      .then(res => {
+        const grouped: Record<string, { q: string; a: string }[]> = res.data.faqs || {}
+        const iconMap: Record<string, any> = {
+          'Products & Quality': Package,
+          'Orders & Shipping': Truck,
+          'Payment': CreditCard,
+          'Returns & Refunds': RefreshCw,
+          'Account': Users,
+          'General': HelpCircle,
+          'Other': MessageCircle,
+        }
+        const mapped = Object.entries(grouped).map(([category, items]) => ({
+          category,
+          icon: iconMap[category] || HelpCircle,
+          questions: items.map((item: any) => ({ q: item.question, a: item.answer })),
+        }))
+        setFaqData(mapped)
+      })
+      .catch(() => {})
+      .finally(() => setFaqLoading(false))
+  }, [])
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => 
@@ -237,18 +264,26 @@ export default function FAQPage() {
         <section className="py-16 bg-gray-50">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
-              {filteredFAQ.length === 0 ? (
+              {faqLoading ? (
+                <div className="space-y-4">
+                  {[1,2,3].map(i => <div key={i} className="h-20 bg-gray-200 rounded-xl animate-pulse" />)}
+                </div>
+              ) : filteredFAQ.length === 0 ? (
                 <div className="text-center py-12">
                   <HelpCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    No results found
+                    {faqData.length === 0 ? 'No FAQs available yet' : 'No results found'}
                   </h3>
                   <p className="text-gray-600 mb-6">
-                    Try searching with different keywords or browse all categories below.
+                    {faqData.length === 0
+                      ? 'Check back soon — our support team is adding answers.'
+                      : 'Try searching with different keywords or browse all categories below.'}
                   </p>
-                  <Button onClick={() => setSearchTerm('')}>
-                    Clear Search
-                  </Button>
+                  {faqData.length > 0 && (
+                    <Button onClick={() => setSearchTerm('')}>
+                      Clear Search
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-6">

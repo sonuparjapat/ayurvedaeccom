@@ -53,6 +53,7 @@ export default function WishlistScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [removingId, setRemovingId] = useState<number | null>(null)
   const [addingId, setAddingId] = useState<number | null>(null)
+  const [addingAll, setAddingAll] = useState(false)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const searchTimer = React.useRef<any>(null)
@@ -113,6 +114,24 @@ export default function WishlistScreen() {
   }
 
   const inCart = (id: number) => cartData.items.some(i => i.product_id === id)
+
+  const addAllToCart = async () => {
+    const eligible = items.filter(i => i.inventory > 0 && !inCart(i.id))
+    if (eligible.length === 0) { toast.success('All in-stock items already in cart!'); return }
+    impact(Haptics.ImpactFeedbackStyle.Heavy)
+    setAddingAll(true)
+    try {
+      await Promise.all(eligible.map(i => api.post('/cart', { productId: i.id, quantity: 1 })))
+      const res = await api.get('/cart')
+      const cartItems = res.data?.items || []
+      setCartData({ items: cartItems, subtotal: res.data?.subtotal || 0, totalItems: cartItems.length })
+      notify(Haptics.NotificationFeedbackType.Success)
+      toast.success(`${eligible.length} item${eligible.length > 1 ? 's' : ''} added to cart!`)
+    } catch {
+      toast.error('Some items could not be added')
+      notify(Haptics.NotificationFeedbackType.Error)
+    } finally { setAddingAll(false) }
+  }
 
   const renderItem = ({ item: p, index }: { item: WishlistItem; index: number }) => {
     const disc = p.compareprice ? Math.round(((p.compareprice - p.price) / p.compareprice) * 100) : null
@@ -262,6 +281,27 @@ export default function WishlistScreen() {
         </View>
       </View>
 
+      {/* Add all to cart strip */}
+      {!loading && items.length > 0 && (
+        <View style={ss.addAllWrap}>
+          <TouchableOpacity
+            onPress={addAllToCart}
+            disabled={addingAll}
+            style={{ borderRadius: 12, overflow: 'hidden', flex: 1 }}
+          >
+            <LinearGradient
+              colors={[Colors.forest, Colors.moss]}
+              style={ss.addAllBtn}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            >
+              <Text style={ss.addAllText}>
+                {addingAll ? '⏳ Adding all...' : '🛍️ Add All to Cart'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={Colors.forest} size="large" />
@@ -327,4 +367,7 @@ const ss = StyleSheet.create({
   mrp: { fontFamily: Fonts.regular, fontSize: 10, color: Colors.textDim, textDecorationLine: 'line-through' },
   addBtn: { paddingVertical: 9, alignItems: 'center' },
   addBtnText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 11 },
+  addAllWrap: { paddingHorizontal: 16, paddingBottom: 10, backgroundColor: Colors.cream, flexDirection: 'row' },
+  addAllBtn: { paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
+  addAllText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 14 },
 })

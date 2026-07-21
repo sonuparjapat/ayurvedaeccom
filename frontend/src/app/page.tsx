@@ -8,6 +8,7 @@ import { CategoriesSection } from '@/components/sections/categories-section'
 import { TestimonialsSection } from '@/components/sections/testimonials-section'
 import { FlashSaleBanner } from '@/components/sections/flash-sale-banner'
 import { FeaturedProductsSection } from '@/components/sections/featured-products-section'
+import { RecentlyViewedSection } from '@/components/sections/recently-viewed-section'
 
 export default function Home() {
   return (
@@ -61,6 +62,7 @@ export default function Home() {
         <BannerCarousel />
         <CategoriesSection />
         <FeaturedProductsSection />
+        <RecentlyViewedSection />
         <FeaturesSection />
         <TestimonialsSection />
       </main>

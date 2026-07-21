@@ -83,6 +83,7 @@ export default function WishlistPage() {
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [processingId, setProcessingId] = useState<number | null>(null)
+  const [addingAll, setAddingAll] = useState(false)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
   /* ── Fetch ── */
@@ -113,6 +114,22 @@ export default function WishlistPage() {
       fetchCart(loginuserdata?.id)
     } catch {
       toast.error("Add to cart failed")
+    }
+  }
+
+  /* ── Add all to cart ── */
+  const addAllToCart = async () => {
+    const eligible = items.filter(i => i.inventory > 0 && !cartdata?.items?.some((c: any) => c.product_id === i.id))
+    if (eligible.length === 0) { toast.success("All in-stock items are already in your cart!"); return }
+    setAddingAll(true)
+    try {
+      await Promise.all(eligible.map(i => axios.post("/cart", { productId: i.id, quantity: 1 })))
+      fetchCart(loginuserdata?.id)
+      toast.success(`${eligible.length} item${eligible.length > 1 ? "s" : ""} added to cart!`)
+    } catch {
+      toast.error("Some items could not be added")
+    } finally {
+      setAddingAll(false)
     }
   }
 
@@ -180,6 +197,18 @@ export default function WishlistPage() {
 
           {/* Controls */}
           <div style={s.controls}>
+            {/* Add all to cart */}
+            {items.length > 0 && (
+              <button
+                style={s.addAllBtn}
+                className="wl-addAllBtn"
+                onClick={addAllToCart}
+                disabled={addingAll}
+              >
+                <ShoppingCart style={{ width: 14, height: 14 }} />
+                <span>{addingAll ? "Adding…" : "Add All to Cart"}</span>
+              </button>
+            )}
             {/* Search */}
             <div style={s.searchBar}>
               <Search style={{ width: 15, height: 15, color: "#3d7a5a", flexShrink: 0 }} />
@@ -630,6 +659,16 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   controls: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
+  addAllBtn: {
+    display: "inline-flex", alignItems: "center", gap: 7,
+    background: "linear-gradient(135deg, #1a2e1a, #3d7a5a)",
+    color: "#f7f5f0", border: "none",
+    padding: "10px 20px", borderRadius: 50,
+    fontSize: 13, fontWeight: 600, cursor: "pointer",
+    fontFamily: "'Outfit', sans-serif", letterSpacing: "0.03em",
+    boxShadow: "0 4px 14px rgba(26,46,26,0.2)",
+    transition: "all 0.25s ease",
+  },
   searchBar: {
     display: "flex", alignItems: "center", gap: 10,
     background: "#fff", border: "1.5px solid rgba(61,122,90,0.18)",
@@ -938,6 +977,10 @@ const css = `
 
   /* Empty CTA hover */
   .wl-emptyBtn:hover { background: #3d7a5a !important; transform: translateY(-2px) !important; box-shadow: 0 10px 28px rgba(61,122,90,0.25) !important; }
+
+  /* Add all btn hover */
+  .wl-addAllBtn:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 8px 20px rgba(26,46,26,0.28) !important; }
+  .wl-addAllBtn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
 
   input::placeholder { color: #9aa89a !important; }
   * { box-sizing: border-box; }
