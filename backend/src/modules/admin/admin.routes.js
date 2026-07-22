@@ -117,8 +117,6 @@ router.put(
   controller.update
 )
 
-router.put('/products/:id', auth, admin, controller.update)
-
 router.delete('/products/:id', auth, admin, controller.remove)
 router.get('/top-products', auth, admin, controller.topProducts)
 router.get('/low-stock', auth, admin, controller.getLowStockProducts)
@@ -227,5 +225,9 @@ router.get('/brands', auth, admin, controller.adminListBrands)
 router.post('/brands', auth, admin, upload.single('logo'), controller.adminCreateBrand)
 router.put('/brands/:id', auth, admin, upload.single('logo'), controller.adminUpdateBrand)
 router.delete('/brands/:id', auth, admin, controller.adminDeleteBrand)
+
+/* ─── PRODUCT PERFORMANCE + FUNNEL ANALYTICS ─── */
+router.get('/analytics/products', auth, admin, controller.getProductPerformance)
+router.get('/analytics/funnel', auth, admin, controller.getFunnelAnalytics)
 
 module.exports = router

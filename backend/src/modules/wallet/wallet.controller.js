@@ -1,6 +1,13 @@
 const pool = require('../../config/db')
 const { getLoyaltySettings, invalidateCache } = require('../../services/loyaltySettings.service')
 
+const TIERS = [
+  { name: 'bronze',   min: 0,     max: 4999,  label: 'Bronze',   emoji: '🥉', color: '#cd7f32', benefits: ['5% cashback on wallet topups'] },
+  { name: 'silver',   min: 5000,  max: 19999, label: 'Silver',   emoji: '🥈', color: '#9e9e9e', benefits: ['7% cashback', 'Free delivery on all orders'] },
+  { name: 'gold',     min: 20000, max: 49999, label: 'Gold',     emoji: '🥇', color: '#ffd700', benefits: ['10% cashback', 'Free delivery', 'Priority support'] },
+  { name: 'platinum', min: 50000, max: null,  label: 'Platinum', emoji: '💎', color: '#b5a0d8', benefits: ['15% cashback', 'Free delivery', 'Dedicated support', 'Early access to sales'] },
+]
+
 /* ─── Get wallet balance + recent transactions (user) ─── */
 exports.getWallet = async (req, res) => {
   try {
@@ -239,5 +246,40 @@ exports.adminSaveLoyaltySettings = async (req, res) => {
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ message: 'Save failed' })
+  }
+}
+
+/* ─── Loyalty Tier (user) ─── */
+exports.getTier = async (req, res) => {
+  try {
+    const userId = req.user.id
+    const r = await pool.query(
+      `SELECT loyalty_tier, total_spent,
+              COALESCE((SELECT SUM(total_amount) FROM orders WHERE user_id=$1 AND status=5), 0) AS computed_spent
+       FROM users WHERE id=$1`,
+      [userId]
+    )
+    const user = r.rows[0]
+    if (!user) return res.status(404).json({ message: 'User not found' })
+
+    const spent = Number(user.computed_spent || 0)
+    const currentIdx = TIERS.findIndex(t => t.name === (user.loyalty_tier || 'bronze'))
+    const tier = TIERS[currentIdx] || TIERS[0]
+    const nextTier = TIERS[currentIdx + 1] || null
+
+    // Sync tier if stale
+    const computedTier = TIERS.slice().reverse().find(t => spent >= t.min) || TIERS[0]
+    if (computedTier.name !== tier.name) {
+      await pool.query(`UPDATE users SET loyalty_tier=$1, total_spent=$2 WHERE id=$3`, [computedTier.name, spent, userId])
+    }
+
+    res.json({
+      success: true,
+      tier: { ...computedTier, spent },
+      next_tier: nextTier ? { ...nextTier, remaining: Math.max(0, nextTier.min - spent) } : null,
+      all_tiers: TIERS,
+    })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' })
   }
 }

@@ -14,6 +14,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '@/context/auth-context'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import Script from 'next/script'
 
 /* ── Status meta ── */
 const STATUS_MAP: Record<number, { label: string; color: string; bg: string; icon: any; emoji: string }> = {
@@ -274,7 +275,7 @@ export default function OrderDetailPage() {
     <>
       <Header />
       <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#061812 0%,#0f2d1e 40%,#0d1a08 100%)', paddingBottom: 80 }}>
-        <script src="https://checkout.razorpay.com/v1/checkout.js" async />
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
 
         {/* ── Page top accent ── */}
         <div style={{ height: 3, background: 'linear-gradient(90deg,transparent,#059669 30%,#10b981 50%,#059669 70%,transparent)', boxShadow: '0 0 24px rgba(16,185,129,0.5)' }} />

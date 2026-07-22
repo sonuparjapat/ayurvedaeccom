@@ -121,6 +121,28 @@ exports.couponCampaign = ({ subject, couponCode, description, discountType, disc
   }
 }
 
+/* ── Back in Stock ── */
+exports.backInStock = ({ productName, productUrl }) => ({
+  subject: `✅ "${productName}" is back in stock — grab it before it's gone!`,
+  html: baseWrapper(`
+    <div style="text-align:center;margin-bottom:20px;">
+      <span style="background:#f0fdf4;color:#166534;padding:6px 18px;border-radius:50px;font-size:13px;font-weight:bold;letter-spacing:1px;">✅ BACK IN STOCK</span>
+    </div>
+    <h2 style="margin:0 0 12px;color:#1a3a2a;font-size:24px;text-align:center;line-height:1.3;">${productName} is available again!</h2>
+    <p style="color:#6b7280;font-size:15px;text-align:center;margin:0 0 28px;line-height:1.7;">
+      You asked us to notify you — and the wait is over. This product is back in stock now. Grab it before it sells out again!
+    </p>
+    <div style="text-align:center;">
+      <a href="${productUrl}" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;text-decoration:none;border-radius:12px;font-weight:bold;font-size:15px;">
+        Shop Now →
+      </a>
+    </div>
+    <p style="margin-top:24px;font-size:13px;color:#9ca3af;text-align:center;">
+      Stocks are limited — order soon!
+    </p>
+  `, `You received this because you signed up for a restock alert on ${APP_NAME()}`)
+})
+
 /* ── Custom Campaign (plain subject + body from admin) ── */
 exports.customCampaign = ({ subject, heading, body, ctaText, ctaUrl }) => ({
   subject,

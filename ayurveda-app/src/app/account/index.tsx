@@ -163,6 +163,9 @@ export default function AccountScreen() {
     return TABS.includes(requested as string) ? (requested as string) : 'Profile'
   })
   const [orders, setOrders] = useState<Order[]>([])
+  const [ordersPage, setOrdersPage] = useState(1)
+  const [ordersMeta, setOrdersMeta] = useState<{ total: number; pages: number } | null>(null)
+  const [ordersLoading, setOrdersLoading] = useState(false)
   const [addresses, setAddresses] = useState<Address[]>([])
   const [loading, setLoading] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -227,7 +230,7 @@ export default function AccountScreen() {
 
   useFocusEffect(useCallback(() => {
     if (!user) return
-    fetchOrders()
+    fetchOrders(1)
     fetchAddresses()
     api.get('/users/me').then(res => {
       const fullUser = res.data?.user
@@ -243,7 +246,7 @@ export default function AccountScreen() {
 
   useEffect(() => {
     if (!user) return
-    if (activeTab === 'Orders') fetchOrders()
+    if (activeTab === 'Orders') fetchOrders(1)
     if (activeTab === 'Addresses') fetchAddresses()
   }, [activeTab])
 
@@ -254,11 +257,15 @@ export default function AccountScreen() {
     }
   }, [user])
 
-  const fetchOrders = async () => {
-    setLoading(true)
-    try { const res = await api.get('/orders/my-orders'); setOrders(res.data?.data || []) }
-    catch { }
-    finally { setLoading(false) }
+  const fetchOrders = async (page = 1) => {
+    setOrdersLoading(true)
+    try {
+      const res = await api.get(`/orders/my-orders?page=${page}&limit=5`)
+      setOrders(res.data?.data || [])
+      setOrdersMeta(res.data?.meta || null)
+      setOrdersPage(page)
+    } catch { }
+    finally { setOrdersLoading(false) }
   }
 
   const fetchAddresses = async () => {
@@ -431,7 +438,7 @@ export default function AccountScreen() {
         {/* Stats */}
         <Animated.View entering={FadeInDown.delay(150)} style={ss.statsRow}>
           {[
-            { label: 'Orders', val: String(orders.length || 0), emoji: '📦' },
+            { label: 'Orders', val: String(ordersMeta?.total ?? orders.length), emoji: '📦' },
             { label: 'Addresses', val: String(addresses.length || 0), emoji: '📍' },
             { label: 'Wishlist', val: '—', emoji: '❤️' },
           ].map((s, i) => (
@@ -598,7 +605,7 @@ export default function AccountScreen() {
         {/* ── ORDERS ── */}
         {activeTab === 'Orders' && (
           <Animated.View entering={FadeInDown.duration(350)} style={ss.tabContent}>
-            {loading ? (
+            {ordersLoading ? (
               <View style={{ alignItems: 'center', paddingVertical: 48 }}>
                 <Text style={{ fontSize: 36, marginBottom: 12 }}>📦</Text>
                 <Text style={{ fontFamily: Fonts.medium, color: Colors.textDim, fontSize: 13 }}>Loading orders...</Text>
@@ -614,8 +621,30 @@ export default function AccountScreen() {
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
-            ) : orders.map((order, i) => <OrderCard key={order.id} order={order} index={i} />)
-            }
+            ) : (
+              <>
+                {orders.map((order, i) => <OrderCard key={order.id} order={order} index={i} />)}
+                {ordersMeta && ordersMeta.pages > 1 && (
+                  <View style={ss.paginationRow}>
+                    <TouchableOpacity
+                      onPress={() => fetchOrders(ordersPage - 1)}
+                      disabled={ordersPage <= 1}
+                      style={[ss.pageBtn, ordersPage <= 1 && ss.pageBtnDisabled]}
+                    >
+                      <Text style={[ss.pageBtnText, ordersPage <= 1 && ss.pageBtnTextDisabled]}>‹ Prev</Text>
+                    </TouchableOpacity>
+                    <Text style={ss.pageInfo}>{ordersPage} / {ordersMeta.pages}</Text>
+                    <TouchableOpacity
+                      onPress={() => fetchOrders(ordersPage + 1)}
+                      disabled={ordersPage >= ordersMeta.pages}
+                      style={[ss.pageBtn, ordersPage >= ordersMeta.pages && ss.pageBtnDisabled]}
+                    >
+                      <Text style={[ss.pageBtnText, ordersPage >= ordersMeta.pages && ss.pageBtnTextDisabled]}>Next ›</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
+            )}
           </Animated.View>
         )}
 
@@ -946,6 +975,13 @@ const ss = StyleSheet.create({
 
   addAddrBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14 },
   addAddrText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 14 },
+  paginationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
+  pageBtn: { backgroundColor: Colors.forest, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 9 },
+  pageBtnDisabled: { backgroundColor: Colors.border },
+  pageBtnText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 13 },
+  pageBtnTextDisabled: { color: Colors.textDim },
+  pageInfo: { fontFamily: Fonts.medium, fontSize: 13, color: Colors.textDim },
+
   addrCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 0.5, borderColor: Colors.border, gap: 12, ...Shadows.sm },
   addrIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' },
   defaultBadge: { backgroundColor: Colors.mint, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },

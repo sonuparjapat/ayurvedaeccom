@@ -1,9 +1,18 @@
 const router = require('express').Router()
+const rateLimit = require('express-rate-limit')
 const controller = require('./newsletter.controller')
 const { auth } = require('../../middlewares/auth')
 const { admin } = require('../../middlewares/admin')
 
-router.post('/subscribe', controller.subscribe)
+const subscribeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many subscription attempts. Please try again later.' },
+})
+
+router.post('/subscribe', subscribeLimiter, controller.subscribe)
 router.post('/unsubscribe', controller.unsubscribe)
 router.get('/admin', auth, admin, controller.adminList)
 router.get('/admin/export', auth, admin, controller.adminExportCSV)

@@ -414,7 +414,7 @@ useEffect(() => {
       setAddresses(list);
 
       // Auto select default
-      const def = list.find((a: any) => a.isDefault) || list[0];
+      const def = list.find((a: any) => a.is_default) || list[0];
 
       if (def) {
 
@@ -445,7 +445,6 @@ useEffect(() => {
   init();
 
 }, [loginuserdata, authLoading]);
-console.log(cartdata,"cartdata",settings,"settings")
 
 /* ================= SETTINGS → MAP ================= */
 
@@ -543,11 +542,11 @@ const handleAddAddress = async () => {
   if (!/^\d{6}$/.test(pincode)) { toast.error('Enter valid 6-digit pincode'); return }
   setAddingAddr(true)
   try {
-    await axios.post('/users/address', { ...newAddr, isDefault: addresses.length === 0 })
+    await axios.post('/users/address', { ...newAddr, is_default: addresses.length === 0 })
     const res = await axios.get('/users/address')
     const list = res.data?.data || []
     setAddresses(list)
-    const def = list.find((a: any) => a.isDefault) || list[0]
+    const def = list.find((a: any) => a.is_default) || list[0]
     if (def) {
       setSelectedAddressId(def.id)
       setShipping({
@@ -835,16 +834,28 @@ if (checkingAddress) {
               Your Ayurvedic essentials are being lovingly prepared and will arrive soon.
             </motion.p>
 
-            <motion.button
-              className="shop-btn"
-              onClick={() => window.location.href = '/'}
+            <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.85 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
             >
-              <Sparkles size={16} />
-              Continue Exploring
-            </motion.button>
+              <button
+                className="shop-btn"
+                onClick={() => window.location.href = '/products'}
+                style={{ width: '100%' }}
+              >
+                <Sparkles size={16} />
+                Continue Shopping
+              </button>
+              <button
+                onClick={() => window.location.href = '/account?tab=orders'}
+                style={{ width: '100%', padding: '14px 24px', borderRadius: 50, background: 'transparent', border: '1.5px solid var(--border)', color: 'var(--ink)', fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              >
+                <Package size={16} />
+                View My Order
+              </button>
+            </motion.div>
           </motion.div>
         </div>
         <Footer />

@@ -48,11 +48,11 @@ export default function AdminReturnsPage() {
     String(o.id).includes(search) || (o.invoice_no || '').includes(search)
   )
 
-  const approve = async (id: number, refundToWallet = true) => {
+  const approve = async (id: number, refundMethod: 'wallet' | 'razorpay' = 'wallet') => {
     setProcessing(true)
     try {
-      await axios.put(`/admin/returns/${id}/approve`, { refund_to_wallet: refundToWallet })
-      notify.success('Return approved — wallet credited')
+      const res = await axios.put(`/admin/returns/${id}/approve`, { refund_method: refundMethod })
+      notify.success(res.data?.message || 'Return approved')
       setViewOpen(false)
       load()
     } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
@@ -264,18 +264,19 @@ export default function AdminReturnsPage() {
                 <Button
                   className="w-full bg-green-600 hover:bg-green-700 gap-2"
                   disabled={processing}
-                  onClick={() => approve(selected.id, true)}
+                  onClick={() => approve(selected.id, 'wallet')}
                 >
-                  <CheckCircle size={16} /> Approve & Credit Wallet (₹{Number(selected.total_amount).toLocaleString()})
+                  <CheckCircle size={16} /> Approve — Credit Wallet (₹{Number(selected.total_amount).toLocaleString()})
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  disabled={processing}
-                  onClick={() => approve(selected.id, false)}
-                >
-                  <CheckCircle size={16} /> Approve (No Wallet Credit)
-                </Button>
+                {selected.payment_method === 'online' && (
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
+                    disabled={processing}
+                    onClick={() => approve(selected.id, 'razorpay')}
+                  >
+                    <CheckCircle size={16} /> Approve — Razorpay Bank Refund (5–7 days)
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="w-full text-red-600 border-red-200 hover:bg-red-50 gap-2"

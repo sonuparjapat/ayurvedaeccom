@@ -262,6 +262,10 @@ export default function ProductDetailScreen() {
   // Related products
   const [relatedProducts, setRelatedProducts] = useState<any[]>([])
 
+  // Frequently Bought Together (bundles)
+  const [bundles, setBundles] = useState<any[]>([])
+  const [bundleAdding, setBundleAdding] = useState<string | null>(null)
+
   // Flash sale
   const [flashPrice, setFlashPrice] = useState<number | null>(null)
   const [flashDiscount, setFlashDiscount] = useState(0)
@@ -303,6 +307,7 @@ export default function ProductDetailScreen() {
     // wishlist check moved to after product loads (id may be slug)
     api.get(`/shop/variants/${id}`).then(r => setVariants(r.data?.variants || [])).catch(() => {})
     api.get(`/shop/related/${id}`).then(r => setRelatedProducts(r.data?.products || [])).catch(() => {})
+    api.get(`/bundles/by-product/${id}`).then(r => setBundles(r.data?.bundles || [])).catch(() => {})
     api.get(`/qa/product/${id}`).then(r => setQuestions(r.data?.questions || [])).catch(() => {})
     api.get('/flash-sales/active').then(r => {
       const sales = r.data?.sales || []
@@ -1096,6 +1101,54 @@ export default function ProductDetailScreen() {
                   <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, paddingHorizontal: 12, paddingBottom: 12, lineHeight: 18 }}>A: {faq.answer}</Text>
                 </View>
               ))}
+            </View>
+          )}
+
+          {/* ── Frequently Bought Together ───────────────────── */}
+          {bundles.length > 0 && (
+            <View style={{ marginTop: 24 }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 16, color: Colors.forest, marginBottom: 4 }}>Frequently Bought Together</Text>
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, marginBottom: 12 }}>Curated bundles with this product</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {bundles.map((bundle: any) => {
+                  const prods = bundle.products || []
+                  const savePercent = bundle.discount_percent ? Math.round(bundle.discount_percent) : null
+                  const isAdding = bundleAdding === bundle.id
+                  return (
+                    <View key={bundle.id} style={{ width: 240, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(26,58,42,0.15)', backgroundColor: '#fff' }}>
+                      <View style={{ backgroundColor: Colors.forest, padding: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: '#fff', flex: 1 }} numberOfLines={1}>{bundle.name}</Text>
+                        {savePercent ? <Text style={{ fontSize: 10, color: Colors.gold, fontFamily: Fonts.bold }}>Save {savePercent}%</Text> : null}
+                      </View>
+                      <View style={{ padding: 10 }}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', gap: 4, marginBottom: 10 }}>
+                          {prods.map((p: any, idx: number) => (
+                            <React.Fragment key={p.id}>
+                              {idx > 0 && <Text style={{ color: Colors.textDim, fontSize: 14 }}>+</Text>}
+                              <Image source={{ uri: p.images?.[0] }} style={{ width: 44, height: 44, borderRadius: 8 }} resizeMode="cover" />
+                            </React.Fragment>
+                          ))}
+                        </ScrollView>
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest, marginBottom: 8 }}>₹{bundle.total_price || bundle.price || '–'}</Text>
+                        <TouchableOpacity
+                          onPress={async () => {
+                            if (isAdding) return
+                            setBundleAdding(bundle.id)
+                            try {
+                              await api.post('/bundles/add-to-cart', { bundleId: bundle.id })
+                              toast.success('Bundle added to cart!')
+                            } catch { toast.error('Failed to add bundle') }
+                            finally { setBundleAdding(null) }
+                          }}
+                          style={{ backgroundColor: isAdding ? Colors.moss : Colors.forest, borderRadius: 8, padding: 8, alignItems: 'center' }}
+                        >
+                          <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 12 }}>{isAdding ? 'Adding…' : '+ Add Bundle'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )
+                })}
+              </ScrollView>
             </View>
           )}
 

@@ -7,6 +7,7 @@ const crypto = require("crypto")
 const axios = require("axios")
 
 const mailer = require("../../config/mail")
+const { sendOTP: sendOTPSms } = require('../../services/sms')
 
 
 
@@ -44,11 +45,16 @@ exports.userRegister = async (req, res) => {
       });
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return res.status(400).json({
         success: false,
-        message:
-          "Password must be at least 6 characters long."
+        message: "Password must be at least 8 characters long."
+      });
+    }
+    if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must contain at least one letter and one number."
       });
     }
 
@@ -183,33 +189,32 @@ exports.userRegister = async (req, res) => {
     }
   ],
 
-  subject: "Verify your email address",
+  subject: `Welcome to ${process.env.APP_NAME || 'Oroganix'} 🌿 — Verify your email`,
 
-  htmlContent: `
-    <div style="font-family:Arial;padding:20px;">
-      <h2>Welcome to ${process.env.APP_NAME}</h2>
-
-      <p>Your account has been created successfully.</p>
-
-      <p>Please verify your email address to continue.</p>
-
-      <a href="${verifyLink}"
-         style="
-           background:#2874f0;
-           color:#fff;
-           padding:12px 18px;
-           text-decoration:none;
-           border-radius:6px;
-           display:inline-block;
-         ">
-         Verify Email
-      </a>
-
-      <p style="margin-top:15px;">
-        If you did not create this account, ignore this email.
-      </p>
-    </div>
-  `
+  htmlContent: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f0f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+      <div style="background:linear-gradient(135deg,#1a3a2a,#3d7a5a);padding:32px 28px;text-align:center;">
+        <p style="color:rgba(255,255,255,0.7);font-size:12px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 8px;">🌿 Welcome</p>
+        <h1 style="color:#fff;margin:0;font-size:26px;font-weight:700;">${process.env.APP_NAME || 'Oroganix'}</h1>
+        <p style="color:rgba(255,255,255,0.6);font-size:13px;margin:8px 0 0;">Natural Ayurvedic Wellness</p>
+      </div>
+      <div style="padding:28px;">
+        <h2 style="font-size:20px;color:#1a2e1a;margin:0 0 12px;">Hey ${cleanName.split(' ')[0]}, welcome aboard! 🎉</h2>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 20px;">
+          Your account has been created. Please verify your email address to unlock all features and start your Ayurvedic wellness journey.
+        </p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${verifyLink}" style="display:inline-block;background:linear-gradient(135deg,#1a3a2a,#3d7a5a);color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:15px;font-weight:700;">Verify My Email →</a>
+        </div>
+        <p style="font-size:12px;color:#aaa;text-align:center;margin:0;">
+          Button not working? <a href="${verifyLink}" style="color:#3d7a5a;">Click here</a><br>
+          Didn't create this account? You can safely ignore this email.
+        </p>
+      </div>
+      <div style="background:#f8faf8;padding:16px 28px;text-align:center;border-top:1px solid #eee;">
+        <p style="font-size:11px;color:#bbb;margin:0;">&copy; ${new Date().getFullYear()} ${process.env.APP_NAME || 'Oroganix'} · Natural Ayurvedic Wellness</p>
+      </div>
+    </div></body></html>`
 });
     await client.query("COMMIT");
 
@@ -406,7 +411,7 @@ exports.userLogin = async (req, res) => {
         role: user.role
       },
       process.env.JWT_SECRET,
-      { expiresIn: "2h" }
+      { expiresIn: "7d" }
     );
 
     /* ================= COOKIE ================= */
@@ -922,7 +927,7 @@ exports.verifyLoginOtp = async (req, res) => {
         role: user.role
       },
       process.env.JWT_SECRET,
-      { expiresIn: "2h" }
+      { expiresIn: "7d" }
     );
 
     res.cookie("token", token, {
@@ -1086,26 +1091,18 @@ if (attempts >= 3) {
   ]
 );
 
-    /* Dev mode only */
+    /* Send via SMS (fire-and-forget) */
+    sendOTPSms(cleanPhone, otp).catch(() => {})
 
-    if (
-      process.env.NODE_ENV !==
-      "production"
-    ) {
-      console.log(
-        "MOBILE OTP:",
-        otp
-      );
+    /* Dev mode only — also log to console */
+    if (process.env.NODE_ENV !== "production") {
+      console.log("MOBILE OTP:", otp)
     }
 
     return res.status(200).json({
       success: true,
-      message:
-        "OTP sent successfully.",
-      ...(process.env.NODE_ENV !==
-      "production"
-        ? { otp }
-        : {})
+      message: "OTP sent successfully.",
+      ...(process.env.NODE_ENV !== "production" ? { otp } : {})
     });
 
   } catch (err) {
@@ -1251,7 +1248,7 @@ exports.verifyMobileOtp = async (req, res) => {
         role: user.role
       },
       process.env.JWT_SECRET,
-      { expiresIn: "2h" }
+      { expiresIn: "7d" }
     );
 
     res.cookie("token", token, {
@@ -1438,11 +1435,10 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
-    if (password.length < 6) {
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Password must be at least 6 characters long."
+        message: "Password must be at least 8 characters long and contain at least one letter and one number."
       });
     }
 

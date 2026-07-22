@@ -16,16 +16,25 @@ const TX_COLORS: Record<string, { bg: string; color: string; sign: string }> = {
   cashback: { bg: '#dbeafe', color: '#1e40af', sign: '+' },
 }
 
+const TIER_COLORS: Record<string, { color: string; bg: string; emoji: string }> = {
+  bronze:   { color: '#cd7f32', bg: '#fdf6ee', emoji: '🥉' },
+  silver:   { color: '#9e9e9e', bg: '#f5f5f5', emoji: '🥈' },
+  gold:     { color: '#d4a017', bg: '#fffde7', emoji: '🥇' },
+  platinum: { color: '#7c5cba', bg: '#f3f0ff', emoji: '💎' },
+}
+
 export default function WalletScreen() {
   const insets = useSafeAreaInsets()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'wallet' | 'loyalty'>('wallet')
   const [cfg, setCfg] = useState({ loyalty_earn_rate: 0.1, loyalty_redeem_rate: 0.1, loyalty_min_redeem_points: 50, loyalty_max_redeem_percent: 20 })
+  const [tierData, setTierData] = useState<any>(null)
 
   useEffect(() => {
     api.get('/wallet').then(r => setData(r.data)).catch(() => {}).finally(() => setLoading(false))
     api.get('/wallet/settings').then(r => { if (r.data?.settings) setCfg(r.data.settings) }).catch(() => {})
+    api.get('/wallet/tier').then(r => { if (r.data) setTierData(r.data) }).catch(() => {})
   }, [])
 
   const ptsPerRupee = cfg.loyalty_earn_rate > 0 ? Math.round(1 / cfg.loyalty_earn_rate) : 10
@@ -65,6 +74,53 @@ export default function WalletScreen() {
         <View style={s.infoBanner}>
           <Text style={s.infoText}>💡 Use wallet balance at checkout to save on your orders</Text>
         </View>
+
+        {/* Loyalty Tier Card */}
+        {tierData?.tier && (() => {
+          const tier = tierData.tier
+          const nextTier = tierData.next_tier
+          const tc = TIER_COLORS[tier.name] || TIER_COLORS.bronze
+          const spent = Number(tier.total_spent || 0)
+          const progress = nextTier
+            ? Math.min(1, (spent - (tier.min_spend || 0)) / (nextTier.min_spend - (tier.min_spend || 0)))
+            : 1
+          return (
+            <View style={{ marginHorizontal: 16, marginBottom: 16, backgroundColor: tc.bg, borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: tc.color + '40' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text style={{ fontSize: 32 }}>{tc.emoji}</Text>
+                  <View>
+                    <Text style={{ fontFamily: Fonts.medium, fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6 }}>Your Tier</Text>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 20, color: tc.color }}>{tier.label || 'Bronze'}</Text>
+                  </View>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: '#9ca3af' }}>Total spent</Text>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 15, color: '#374151' }}>₹{spent.toLocaleString('en-IN')}</Text>
+                </View>
+              </View>
+              {nextTier && (
+                <>
+                  <View style={{ height: 6, backgroundColor: '#e5e7eb', borderRadius: 99, marginBottom: 6, overflow: 'hidden' }}>
+                    <View style={{ height: '100%', width: `${Math.round(progress * 100)}%` as any, backgroundColor: tc.color, borderRadius: 99 }} />
+                  </View>
+                  <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: '#6b7280' }}>
+                    Spend ₹{(nextTier.min_spend - spent).toLocaleString('en-IN')} more to reach {nextTier.label}
+                  </Text>
+                </>
+              )}
+              {tier.benefits?.length > 0 && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                  {tier.benefits.map((b: string, i: number) => (
+                    <View key={i} style={{ backgroundColor: tc.color + '20', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}>
+                      <Text style={{ fontFamily: Fonts.medium, fontSize: 11, color: tc.color }}>✓ {b}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )
+        })()}
 
         {/* How it works */}
         <View style={s.howSection}>

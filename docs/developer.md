@@ -583,3 +583,251 @@ Already implemented in `ayurveda-app/src/app/index.tsx`:
 - For guests: reads from AsyncStorage `recently_viewed` key (stored when visiting product detail pages)
 - Horizontal scroll row rendered with shared `ProductCard` component
 - Only shown when `recentlyViewed.length > 0`
+
+---
+
+## Bug Fix — Tracking Routes Uncommenting
+
+**Problem**: Order timeline route (`GET /orders/:id/timeline`) was commented out in `backend/src/modules/orders/order.routes.js`, causing 404 on the tracking page.
+
+**Fix**: Uncommented `router.get("/:id/timeline", auth, controller.getOrderTimeline)` in order routes.
+
+---
+
+## Order Confirmation Email (COD + Online)
+
+**Service**: Brevo (SIB) — `backend/src/services/email/orderConfirmation.js` → `sendOrderConfirmationEmail({ user, order, items, paymentMethod })`
+
+### COD flow
+In `createOrder` (order.controller.js): after committing the transaction, fetch user + order + items and call `sendOrderConfirmationEmail({ paymentMethod: 'cod' })`.
+
+### Online flow (verify)
+In `verifyPayment`: after the COMMIT block, `Promise.all([fetchUser, fetchOrder, fetchItems])` then call `sendOrderConfirmationEmail({ paymentMethod: 'online' })`.
+
+### Webhook flow
+`razorpayWebhook` (see below) also calls `sendOrderConfirmationEmail({ paymentMethod: 'online' })` after marking the order paid.
+
+---
+
+## Razorpay Webhook Endpoint
+
+**Problem**: Standard `express.json()` parses the body, destroying the raw bytes needed for HMAC signature verification.
+
+**Solution in `backend/src/app.js`**: Register the webhook route BEFORE `express.json()`:
+```js
+app.post(
+  '/api/orders/webhook',
+  express.raw({ type: 'application/json' }),
+  require('./modules/orders/order.controller').razorpayWebhook
+);
+```
+
+**Environment variable**: `RAZORPAY_WEBHOOK_SECRET` (separate from `RAZORPAY_SECRET` — set in Razorpay dashboard → Webhooks).
+
+**Handler** (`exports.razorpayWebhook`):
+1. Verify `X-Razorpay-Signature` HMAC-SHA256 against `RAZORPAY_WEBHOOK_SECRET`
+2. On `payment.captured` event: reduce variant-aware stock, mark order paid, clear cart, credit referral, send confirmation email, emit socket `order_status_change`
+
+---
+
+## Web — Search Page Rebuild (`frontend/src/app/search/page.tsx`)
+
+Full rewrite replacing the old placeholder page.
+
+**Features**:
+- Debounced search input (350ms), syncs with `?q=` URL param
+- Filters panel: category dropdown, min/max price, in-stock toggle, discount-only toggle — toggled via `SlidersHorizontal` button with active-filter count badge
+- Sort dropdown: Relevance, Price low/high, Newest, Top Rated, Most Popular
+- 12-per-page grid with 12 animated skeleton placeholders during load
+- `ProductCard`: wishlist toggle, add-to-cart, OOS state, discount badge
+- Pagination with ellipsis for large page counts
+- Popular searches shown when query is empty
+
+---
+
+## Web — Inline Add Address at Checkout (`frontend/src/app/checkout/page.tsx`)
+
+**Before**: when no address existed, redirected to `/account?tab=addresses`.
+
+**After**: inline form appears directly in the checkout step:
+- States: `showAddressForm`, `newAddr` (`{street, city, state, pincode, type, email}`), `addingAddr`
+- `handleAddAddress()`: validates all fields + 6-digit pincode, POSTs to `/users/address`, reloads address list, auto-selects new address, closes form
+- In `placeOrder()`: replaces redirect with `setShowAddressForm(true)` + scroll to step 1
+- "Add New Address" / "+ Add Delivery Address" toggle button, inline form with Address Type / PIN / Street / City / State / Email + "Save Address & Continue" CTA
+
+---
+
+## Mobile — Inline Add Address at Checkout (`ayurveda-app/src/app/checkout/index.tsx`)
+
+Same pattern as web:
+- States: `showAddrForm`, `newAddr`, `addingAddr`
+- Removed `Alert.alert` redirect → `setShowAddrForm(true)`
+- `handleAddAddress()`: validates all fields + 6-digit pincode, POSTs to `/users/address`, reloads list, selects default
+- "Add New Address" gold dashed-border `TouchableOpacity`, inline form with `FadeInDown` animation + TextInput fields for street, city, state, pincode, email
+
+---
+
+## Web + Mobile — Frequently Bought Together (PDP)
+
+**New API endpoint**: `GET /api/bundles/by-product/:productId`
+- Controller: `backend/src/modules/bundles/bundle.controller.js` → `getBundlesByProduct`
+- Returns up to 4 active bundles that contain the given product (via EXISTS subquery on `bundle_products`)
+- Route: `backend/src/modules/bundles/bundle.routes.js`
+
+**Web** (`frontend/src/app/product/[id]/page.tsx`):
+- States: `bundles`, `bundleLoading`, `bundleAdding`
+- Fetches on mount; section inserted before Related Products
+- Each bundle card: dark green header with name + save %, mini product image row with + separators, price row, "Add Bundle to Cart" button
+
+**Mobile** (`ayurveda-app/src/app/product/[id].tsx`):
+- Same fetch + state pattern
+- Bundle cards rendered in a horizontal scroll row on the PDP
+
+---
+
+## Web — Review Sort + Star Filter (PDP)
+
+**File**: `frontend/src/app/product/[id]/page.tsx`
+
+- States: `reviewSort` (default `'created_at'`), `reviewRating` (default `0`), `filteredReviews`, `filterLoading`
+- When sort/rating ≠ defaults: fetches `GET /shop/reviews/product/:id?sortBy=X&rating=Y` directly (bypasses auth-context paginated data)
+- When at defaults: shows context data (`loadReviews` result)
+- Review list: `(filteredReviews ?? reviewsData?.data)?.map(...)`
+- UI: sort dropdown + 5 star-filter buttons above review write form; empty state text adapts when star filter is active
+
+**Backend** (`GET /shop/reviews/product/:id`): already supports `sortBy` (created_at, rating_desc, rating_asc, helpful) and `rating` query params.
+
+---
+
+## Mobile OTP — Coming Soon State
+
+**File**: `ayurveda-app/src/app/auth/index.tsx`
+
+- `sendMobileOtp`: replaced API call with `toast.error('Mobile OTP login is coming soon. Please sign in with your email.')`
+- `verifyMobileOtp`: same toast
+- OTP info box changed to orange "🚧 Coming soon" banner (`color: '#c2410c'`, `backgroundColor: '#fff7ed'`)
+
+No backend changes — SMS gateway not yet integrated.
+
+---
+
+## Web — Cart Save for Later + Stock Badges (`frontend/src/app/cart/page.tsx`)
+
+**Save for Later**:
+- `saveForLater(item)`: POSTs to `/shop/wishlist`, DELETEs `/cart/:productId`, updates local state
+- `moveToCart(productId)`: POSTs to `/cart`, DELETEs `/shop/wishlist/:productId`
+- "Saved for Later" section above Order Summary shows wishlist items with "Move to Cart" buttons (disabled when OOS)
+
+**Stock badges** (per cart item):
+- `inventory === 0`: red "Out of stock" badge
+- `1 ≤ inventory ≤ 5`: orange "⚠ Only X left!" badge
+- `inventory > 5`: no badge
+
+---
+
+## Product Comparison
+
+### Hook (`frontend/src/hooks/useCompare.ts`)
+- `useCompare()` — reads/writes compare list (max 4 items) from `localStorage` key `compare_list`
+- Emits `compare-update` custom event so all hook instances stay in sync
+- API: `{ list, add, remove, toggle, clear, has, count }`
+
+### Floating Bar (`frontend/src/components/compare/CompareBar.tsx`)
+- Client component added to root layout inside `<Suspense>`
+- Renders fixed bar at `bottom: 0` when `count > 0`
+- Shows product thumbnails + names; "Compare Now →" link to `/compare?ids=1,2,3`
+
+### Compare Page (`frontend/src/app/compare/page.tsx`)
+- Reads `ids` query param, fetches each product from `GET /shop/public/:id`
+- Renders comparison table for fields: price, category, brand, weight, FSSAI, returnable, rating, reviews, ingredients, benefits, usage, storage, warnings
+- Lowest price column gets a "BEST" badge
+
+### Product Detail Page (`frontend/src/app/product/[id]/page.tsx`)
+- "Add to Compare" button calls `compareToggle()` — turns green when product is in compare list
+
+---
+
+## Loyalty Tier System
+
+### Backend (`backend/src/modules/wallet/wallet.controller.js`)
+- `GET /wallet/tier` → queries sum of delivered order amounts for the user, maps to bronze/silver/gold/platinum tier
+- Syncs stale `users.loyalty_tier` and `users.total_spent` columns on each call
+- Returns `{ tier: { name, label, min_spend, total_spent, benefits }, next_tier, all_tiers }`
+
+### Schema (`backend/src/database/init.js`)
+- `ALTER TABLE users ADD COLUMN IF NOT EXISTS loyalty_tier VARCHAR(20) DEFAULT 'bronze'`
+- `ALTER TABLE users ADD COLUMN IF NOT EXISTS total_spent NUMERIC(12,2) DEFAULT 0`
+
+### Web (`frontend/src/app/account/AccountContent.tsx`)
+- `WalletTab` component fetches `/wallet/tier` on mount
+- Renders tier card with progress bar above "How it works" section
+
+### Mobile (`ayurveda-app/src/app/account/wallet.tsx`)
+- Fetches `/wallet/tier` on mount
+- Renders tier card between balance card and "How it works"
+
+---
+
+## Subscription Auto-Billing
+
+### Service (`backend/src/services/subscriptionBilling.js`)
+- Runs daily at 6am via `node-cron` (`backend/src/jobs/index.js`)
+- Queries subscriptions where `next_order_date <= CURRENT_DATE` and `status = 'active'`
+- For each: checks stock, calculates pricing + expected delivery date from `serviceable_pincodes.delivery_days`, inserts order + items, deducts inventory, advances `next_order_date`
+- Out-of-stock: pushes `next_order_date` +1 day, skips order silently
+
+---
+
+## SMS Service
+
+### Service (`backend/src/services/sms.js`)
+- ENV-gated: reads `FAST2SMS_API_KEY`. Without it, all functions log to console and return `{ sent: false }`
+- `sendOTP(phone, otp)` — used in mobile OTP login
+- `sendOrderStatusSMS(phone, orderNo, status)` — order status updates
+- `sendDeliveryOTP(phone, otp, orderNo)` — COD delivery OTP
+
+---
+
+## Reorder Endpoint
+
+### Backend (`backend/src/modules/orders/order.controller.js`)
+- `POST /orders/:id/reorder` — copies items from an existing order into the user's cart
+- Uses `ON CONFLICT (user_id, product_id, COALESCE(variant_id, -1)) DO UPDATE SET quantity = cart.quantity + EXCLUDED.quantity`
+
+### Web (`frontend/src/app/account/AccountContent.tsx`)
+- "Reorder" button in orders list calls `POST /orders/:id/reorder` then shows toast
+
+### Mobile (`ayurveda-app/src/app/order/[id].tsx`)
+- `handleReorder()` already implemented — calls same endpoint
+
+---
+
+## Admin Analytics
+
+### Backend endpoints (`backend/src/modules/admin/admin.controller.js`)
+- `GET /admin/analytics/products?sortBy=revenue|units|orders|returns&from=&to=` — aggregation join on order_items + products
+- `GET /admin/analytics/funnel?from=&to=` — queries `analytics_events` and `orders` tables for 5-stage funnel with step conversion rates
+
+### Web (`frontend/src/app/admin/analytics/page.tsx`)
+- Product performance table: sortable by revenue/units/orders/returns, top 20 products
+- Conversion funnel: horizontal progress bars with percentage of top-of-funnel + step conversion rate
+
+---
+
+## Return Request — Photo Upload
+
+### Backend (`backend/src/modules/orders/order.controller.js` + `order.routes.js`)
+
+- Route: `POST /:id/return` uses `upload.array("images", 5)` (multer)
+- `returnOrder` controller: uploads `req.files` to S3 under `'returns'` folder via `uploadImageToAWS`, accepts `imageUrls` JSON string, runs `ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_images TEXT`, stores JSON array of S3 URLs
+
+### Web (`frontend/src/app/orders/[id]/page.tsx`)
+
+- States: `returnFiles`, `returnUrlInput`, `returnUrlImages`
+- `submitReturn`: builds `FormData` with `reason`, `images[]` files, `imageUrls` JSON; sends `multipart/form-data`
+- UI: image preview grid (files + URL images) with ✕ remove, "📁 Upload Photos" file input, URL paste + "Add" button, "Max 5 photos · JPG, PNG, WEBP" hint
+
+### Mobile (`ayurveda-app/src/app/order/[id].tsx`)
+
+- `handleReturn(reason, urlImages, fileImages)`: builds `FormData`, appends files as RN file objects, posts `multipart/form-data`
+- `ReturnModal` updated: states `urlInput`, `urlImages`, `fileImages`; `pickImages` via `ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: remaining })`; image preview grid with ✕ remove; URL paste + Add button; max 5 total

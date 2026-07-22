@@ -182,8 +182,9 @@ exports.adminSendCampaign = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Unknown campaign type' })
     }
 
-    const count = await broadcastToSubscribers(emailSubject, emailHtml)
-    res.json({ success: true, message: `Campaign sent to ${count} subscriber${count !== 1 ? 's' : ''}`, count })
+    // Respond immediately; broadcast runs async so large lists don't timeout the request
+    res.json({ success: true, message: 'Campaign queued — emails are being sent to subscribers.' })
+    broadcastToSubscribers(emailSubject, emailHtml).catch(e => console.error('[Newsletter broadcast]', e.message))
   } catch (err) {
     console.error('[Newsletter campaign]', err)
     res.status(500).json({ success: false, message: 'Failed to send campaign' })

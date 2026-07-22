@@ -269,3 +269,148 @@ If you have active subscriptions for any products, you can manage them from your
 2. Tap **"❓ FAQ"** in the Quick Access grid.
 3. Browse questions by category using the chips at the top, or use the search bar to find a specific question.
 4. Tap any question to see the answer. Tap again to close it.
+
+---
+
+## Search (`/search`)
+
+The Search page lets you find products with powerful filters and sorting.
+
+- **Search bar**: Type any keyword — results update automatically after a short pause. The URL updates so you can share or bookmark your search.
+- **Filters** (sliders icon): Click to expand the filter panel:
+  - Category
+  - Min and max price
+  - In-stock only toggle
+  - Discount only toggle
+- **Sort**: Choose from Relevance, Price Low/High, Newest, Top Rated, or Most Popular.
+- **Results**: Shown in a 12-item grid. Add items to cart or wishlist directly from the card.
+- **Pagination**: Navigate pages at the bottom of the results.
+
+---
+
+## Adding a Delivery Address at Checkout (Web)
+
+If you have no saved addresses when you reach checkout, the address form now appears **directly on the checkout page** — no redirect needed.
+
+1. Go to Checkout — if no address is saved, a "+ Add Delivery Address" button appears.
+2. Click it to expand the form: Address Type, PIN Code, Street, City, State, and Email.
+3. Fill in the details and click **"Save Address & Continue"** — the address is saved to your account and auto-selected.
+4. You can also add a new address anytime using the **"+ Add New Address"** button even if you already have saved addresses.
+
+---
+
+## Adding a Delivery Address at Checkout (Mobile App)
+
+Same experience as on web — no screen redirect needed:
+
+1. In Checkout, if no address is saved, a dashed **"Add New Address"** button appears.
+2. Tap it to reveal the address form with street, city, state, pincode, and email fields.
+3. Fill in all fields and tap **"Save & Continue"** — your address is saved and auto-selected for this order.
+
+---
+
+## Frequently Bought Together (Product Detail)
+
+On any product detail page, scroll down to find the **"Frequently Bought Together"** section. This shows bundles that include the product you're viewing.
+
+- Each bundle card shows the products included, the total price, and how much you save compared to buying separately.
+- Click or tap **"Add Bundle to Cart"** to add all bundle items at once.
+- The section only appears when active bundles exist for that product.
+
+---
+
+## Review Sort + Star Filter (Product Detail — Web)
+
+On the Product Detail page, scroll to the **Reviews** tab to find sort and filter controls:
+
+- **Sort**: Choose from Newest, Top Rated, Lowest Rated, or Most Helpful.
+- **Star filter buttons** (★1 through ★5): Tap any star to show only reviews of that rating. Tap again to clear the filter.
+- Filters and sorts can be combined (e.g. "4-star reviews, sorted by Most Helpful").
+
+---
+
+## Mobile OTP Login — Coming Soon
+
+Mobile phone OTP login is **not yet available**. A "🚧 Coming soon" notice appears on the OTP login screen.
+
+To sign in, please use your **email and password** instead. Mobile OTP login will be available in a future update.
+
+---
+
+## Product Comparison (Web)
+
+You can compare up to 4 products side by side to help make a buying decision.
+
+1. On any product detail page, click **"Add to Compare"** (bar-chart icon button below the trust badges).
+2. The button turns green when the product is added. A **green bar** appears at the bottom of the screen showing all products queued for comparison.
+3. Add a second product (minimum 2 required) and click **"Compare Now →"** in the bar.
+4. The **/compare** page shows a side-by-side table with price, category, brand, weight, FSSAI, rating, ingredients, benefits, usage, and more.
+5. The lowest price among compared products is highlighted with a **BEST** badge.
+6. Click **"View Product"** on any column to go to that product's detail page.
+7. Click **"Clear"** in the compare bar (or **"Clear & Go Back"** on the compare page) to reset the list.
+
+---
+
+## Expected Delivery Date (Web)
+
+When checking delivery availability on a product page:
+1. Enter your 6-digit PIN code in the **"Check Delivery"** box.
+2. After clicking **Check**, the result now shows the **exact delivery date** (e.g., "Delivery by Mon, 28 Jul to Mumbai") along with the number of days.
+
+---
+
+## Social Sharing (Web)
+
+On any product detail page, below the trust badges:
+- **WhatsApp** — Opens a WhatsApp chat pre-filled with the product link.
+- **Copy Link** — Copies the product URL to your clipboard.
+- **Share** — (On supported browsers) Opens the native sharing dialog.
+
+---
+
+## Reorder (Web)
+
+In **My Account → Orders**, each order now has a **"Reorder"** button. Clicking it adds all items from that order to your cart automatically (quantities are added to any existing cart items).
+
+---
+
+## Loyalty Tier (Web)
+
+In **My Account → Wallet & Points**, a **tier card** is now shown above the "How it works" section:
+- Your current tier (Bronze / Silver / Gold / Platinum) with an emoji badge.
+- A progress bar showing how much more you need to spend to reach the next tier.
+- Your current tier benefits listed as chips.
+
+---
+
+## Cart — Save for Later + Stock Warnings (Web)
+
+### Save for Later
+On the Cart page, each item now has a **"Save for Later"** button (bookmark icon):
+- Tap it to move the item to your **Saved for Later** list (below the cart items).
+- Items in the Saved for Later list can be moved back to your cart with the **"Move to Cart"** button.
+- Out-of-stock saved items show a disabled "Move to Cart" button.
+
+### Stock Warnings
+- A red **"Out of stock"** badge appears on any cart item with no inventory.
+- An orange **"⚠ Only X left!"** badge appears when stock is between 1 and 5 units.
+
+---
+
+## Return Request — Photo Upload (Web + Mobile)
+
+When submitting a return request you can now attach photo evidence of the issue.
+
+**Web** (Order Detail page):
+1. Click **Return Order** and select your reason.
+2. Click **"📁 Upload Photos"** to select images from your device (JPG, PNG, WEBP).
+3. Alternatively, paste an image URL into the URL field and click **"Add"**.
+4. Up to **5 photos** can be attached. Thumbnails appear with a ✕ button to remove.
+5. Click **Submit** to send the request with your photos.
+
+**Mobile App** (Order Detail screen):
+1. Tap **Return** and pick a reason from the list.
+2. Tap **"📁 Upload Photos"** to open your photo library.
+3. Or paste an image URL into the "Or paste image URL..." field and tap **Add**.
+4. Up to 5 photos total. Remove any thumbnail by tapping the red ✕.
+5. Tap **"↩️ Submit Return Request"** — photos are uploaded automatically with your request.

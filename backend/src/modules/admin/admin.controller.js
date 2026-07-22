@@ -7,10 +7,19 @@ const orderstatus=require("../../utils/orderstatusmap")
 const {
   sendOrderStatusMail
 } = require("../../utils/orderMail");
+const {
+  sendOrderShippedEmail,
+  sendOrderDeliveredEmail,
+  sendReturnApprovedEmail,
+  sendReturnRejectedEmail,
+} = require('../../services/email/orderStatusEmail');
+const emailTemplates = require('../../utils/emailTemplates');
+const mailer = require('../../config/mail');
 const { emitToUser, emitToAdmin } = require('../../socket');
 const { createNotification } = require('../../services/notification.service');
 const { sendToUser: sendPushToUser } = require('../../services/pushNotification');
 const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
+const { sendDeliveryOTP: sendDeliveryOTPSms } = require('../../services/sms');
 const {
   uploadImageToAWS,
   deleteFromAWS
@@ -989,23 +998,35 @@ const finalImages = [
       return res.status(404).json({ message:'Not found' })
     }
 
-    // Back-in-stock push notifications
+    // Back-in-stock push + email notifications
     const newInventory = Number(body.inventory);
     if (oldInventory === 0 && newInventory > 0) {
       try {
         const notifs = await pool.query(
-          `SELECT user_id FROM stock_notifications WHERE product_id=$1 AND notified_at IS NULL AND user_id IS NOT NULL`,
+          `SELECT user_id, email FROM stock_notifications WHERE product_id=$1 AND notified_at IS NULL`,
           [id]
         );
         if (notifs.rows.length > 0) {
           const productName = body.name || `Product #${id}`;
+          const productUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/product/${id}`;
+          const { subject, html } = emailTemplates.backInStock({ productName, productUrl });
           for (const n of notifs.rows) {
-            sendPushToUser(
-              n.user_id,
-              '✅ Back in Stock!',
-              `${productName} is available again — order before it sells out!`,
-              { type: 'stock_alert', product_id: parseInt(id) }
-            );
+            if (n.user_id) {
+              sendPushToUser(
+                n.user_id,
+                '✅ Back in Stock!',
+                `${productName} is available again — order before it sells out!`,
+                { type: 'stock_alert', product_id: parseInt(id) }
+              );
+            }
+            if (n.email) {
+              mailer.sendTransacEmail({
+                sender: { email: process.env.MAIL_FROM || 'noreply@oroganix.com', name: process.env.APP_NAME || 'Oroganix' },
+                to: [{ email: n.email }],
+                subject,
+                htmlContent: html,
+              }).catch(() => {});
+            }
           }
           await pool.query(
             `UPDATE stock_notifications SET notified_at=NOW() WHERE product_id=$1 AND notified_at IS NULL`,
@@ -1544,12 +1565,18 @@ if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
     /* ================= SEND CUSTOMER MAIL + REAL-TIME SOCKET ================= */
     try {
       const userRes = await pool.query(
-        `SELECT u.id as user_id, u.email, u.name FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=$1 LIMIT 1`,
+        `SELECT u.id as user_id, u.email, u.name, o.invoice_no FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=$1 LIMIT 1`,
         [id]
       );
       if (userRes.rows.length) {
-        const { user_id, email, name } = userRes.rows[0];
-        await sendOrderStatusMail({ email, name, orderId: id, status });
+        const { user_id, email, name, invoice_no } = userRes.rows[0];
+        if (status === 3) {
+          sendOrderShippedEmail({ email, name, orderId: id, invoiceNo: invoice_no, trackingNumber: order.tracking_number, carrier: order.courier_name });
+        } else if (status === 5) {
+          sendOrderDeliveredEmail({ email, name, orderId: id, invoiceNo: invoice_no });
+        } else {
+          sendOrderStatusMail({ email, name, orderId: id, status });
+        }
         const statusLabel = orderstatus[status] || String(status)
         emitToUser(user_id, 'order_status_updated', {
           order_id: id,
@@ -1992,20 +2019,70 @@ exports.exportOrdersCSV = async (req, res) => {
     if (status && status !== 'all') { params.push(status); where += ` AND o.status = $${params.length}` }
 
     const r = await pool.query(
-      `SELECT o.id, o.order_number, u.name as customer, u.email, u.phone,
-        o.total_amount, o.payment_method, o.payment_status, o.status,
-        osm.label as status_label, o.created_at, o.courier_name, o.tracking_number
+      `SELECT
+        o.id,
+        o.invoice_no,
+        u.name         AS customer,
+        u.email,
+        u.phone,
+        o.shipping_address,
+        o.total_amount,
+        o.payment_method,
+        o.payment_status,
+        o.status,
+        o.created_at,
+        o.courier_name,
+        o.tracking_number,
+        inv.tax        AS gst_amount,
+        json_agg(
+          json_build_object(
+            'name', p.name,
+            'qty',  oi.quantity,
+            'price',oi.price
+          ) ORDER BY oi.id
+        ) AS items
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
-       LEFT JOIN order_status_master osm ON osm.code = o.status
-       ${where} ORDER BY o.created_at DESC`, params
+       LEFT JOIN order_items oi ON oi.order_id = o.id
+       LEFT JOIN products p ON p.id = oi.product_id
+       LEFT JOIN invoices inv ON inv.order_id = o.id
+       ${where}
+       GROUP BY o.id, u.name, u.email, u.phone, inv.tax
+       ORDER BY o.created_at DESC`, params
     )
 
-    const headers = ['Order ID','Order Number','Customer','Email','Phone','Total','Payment Method','Payment Status','Status','Date','Courier','Tracking']
+    const parseAddr = (raw) => {
+      try {
+        const a = typeof raw === 'string' ? JSON.parse(raw) : raw
+        return [a?.name, a?.phone, a?.address || `${a?.street || ''}, ${a?.city || ''}, ${a?.state || ''} ${a?.pincode || ''}`.trim()].filter(Boolean).join(' | ')
+      } catch { return String(raw || '') }
+    }
+
+    const formatItems = (items) => {
+      try {
+        const arr = typeof items === 'string' ? JSON.parse(items) : items
+        return (arr || []).map(i => `${i.name} x${i.qty} @₹${i.price}`).join('; ')
+      } catch { return '' }
+    }
+
+    const STATUS_LABELS = { 0:'Pending',1:'Confirmed',2:'Processing',3:'Shipped',4:'Out for Delivery',5:'Delivered',6:'Cancelled',7:'Return Requested',8:'Refund',9:'Refunded' }
+
+    const headers = ['Invoice No','Customer','Email','Phone','Shipping Address','Items','Total (₹)','GST (₹)','Payment Method','Payment Status','Order Status','Date','Courier','Tracking']
     const rows = r.rows.map(o => [
-      o.id, o.order_number, o.customer, o.email, o.phone,
-      o.total_amount, o.payment_method, o.payment_status, o.status_label,
-      new Date(o.created_at).toISOString().slice(0,10), o.courier_name || '', o.tracking_number || ''
+      o.invoice_no || `ORD-${o.id}`,
+      o.customer || '',
+      o.email || '',
+      o.phone || '',
+      parseAddr(o.shipping_address),
+      formatItems(o.items),
+      Number(o.total_amount).toFixed(2),
+      o.gst_amount ? Number(o.gst_amount).toFixed(2) : '',
+      o.payment_method || '',
+      o.payment_status || '',
+      STATUS_LABELS[o.status] || String(o.status),
+      new Date(o.created_at).toISOString().slice(0, 10),
+      o.courier_name || '',
+      o.tracking_number || '',
     ])
 
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n')
@@ -2013,6 +2090,7 @@ exports.exportOrdersCSV = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="orders_${Date.now()}.csv"`)
     res.send(csv)
   } catch (err) {
+    console.error('[exportOrdersCSV]', err)
     res.status(500).json({ message: 'Export failed' })
   }
 }
@@ -2191,6 +2269,17 @@ exports.generateDeliveryOTP = async (req, res) => {
     const { id } = req.params
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
     await pool.query(`UPDATE orders SET delivery_otp=$1 WHERE id=$2 AND status=4`, [otp, id])
+
+    // Send OTP to customer via SMS
+    const orderInfo = await pool.query(
+      `SELECT o.invoice_no, u.phone FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=$1`,
+      [id]
+    )
+    if (orderInfo.rows[0]?.phone) {
+      sendDeliveryOTPSms(orderInfo.rows[0].phone, otp, orderInfo.rows[0].invoice_no || `#${id}`)
+        .catch(() => {})
+    }
+
     res.json({ success: true, otp })
   } catch (err) {
     res.status(500).json({ message: 'Server error' })
@@ -2241,22 +2330,61 @@ exports.adminApproveReturn = async (req, res) => {
   const client = await pool.connect()
   try {
     const { id } = req.params
-    const { refund_to_wallet = true } = req.body
+    // refund_method: 'wallet' (default) | 'razorpay' (bank refund for online orders)
+    const { refund_method = 'wallet' } = req.body
     await client.query('BEGIN')
-    const ord = await client.query(`SELECT id, status, total_amount, user_id FROM orders WHERE id=$1`, [id])
-    if (!ord.rows.length) return res.status(404).json({ message: 'Order not found' })
-    if (ord.rows[0].status !== 7) return res.status(400).json({ message: 'Order is not in Return Requested state' })
+    const ord = await client.query(
+      `SELECT id, status, total_amount, user_id, payment_method, razorpay_payment_id, refund_status FROM orders WHERE id=$1`,
+      [id]
+    )
+    if (!ord.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Order not found' }) }
+    if (ord.rows[0].status !== 7) { await client.query('ROLLBACK'); return res.status(400).json({ message: 'Order is not in Return Requested state' }) }
+
+    const order = ord.rows[0]
     await client.query(`UPDATE orders SET status=8, updated_at=NOW() WHERE id=$1`, [id])
-    if (refund_to_wallet) {
-      const amount = Number(ord.rows[0].total_amount)
-      const userId = ord.rows[0].user_id
-      await client.query(`INSERT INTO wallet_transactions (user_id, amount, type, source, description) VALUES ($1,$2,'credit','refund','Return refund for order #' || $3)`, [userId, amount, id])
-      await client.query(`UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id=$2`, [amount, userId])
+
+    if (refund_method === 'razorpay' && order.payment_method === 'online' && order.razorpay_payment_id && order.refund_status !== 'processed') {
+      // Trigger Razorpay bank refund immediately
+      try {
+        const refundAmount = Math.round(Number(order.total_amount) * 100)
+        const refund = await razorpay.payments.refund(order.razorpay_payment_id, {
+          amount: refundAmount,
+          speed: 'normal',
+          notes: { order_id: id, type: 'return_refund' }
+        })
+        await client.query(
+          `UPDATE orders SET status=9, refund_id=$1, refund_amount=$2, refund_status='processed', payment_status='refunded', updated_at=NOW() WHERE id=$3`,
+          [refund.id, Number(order.total_amount), id]
+        )
+        await client.query('COMMIT')
+        try {
+          const uRow = await pool.query(`SELECT u.name, u.email, o.invoice_no, o.total_amount FROM users u JOIN orders o ON o.user_id=u.id WHERE o.id=$1`, [id])
+          if (uRow.rows[0]?.email) sendReturnApprovedEmail({ email: uRow.rows[0].email, name: uRow.rows[0].name, orderId: id, invoiceNo: uRow.rows[0].invoice_no, refundAmount: uRow.rows[0].total_amount, refundTo: 'bank' })
+        } catch (_) {}
+        return res.json({ success: true, message: 'Return approved and Razorpay refund initiated. Amount will reflect in 5-7 business days.' })
+      } catch (rzErr) {
+        console.error('[RETURN RAZORPAY REFUND ERROR]', rzErr.message)
+        // Fall through to wallet credit if Razorpay refund fails
+      }
     }
+
+    // Default: wallet credit
+    const amount = Number(order.total_amount)
+    const userId = order.user_id
+    await client.query(
+      `INSERT INTO wallet_transactions (user_id, amount, type, source, description) VALUES ($1,$2,'credit','refund','Return refund for order #' || $3)`,
+      [userId, amount, id]
+    )
+    await client.query(`UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id=$2`, [amount, userId])
     await client.query('COMMIT')
-    res.json({ success: true, message: 'Return approved, refund initiated' })
+    try {
+      const uRow = await pool.query(`SELECT u.name, u.email, o.invoice_no FROM users u JOIN orders o ON o.user_id=u.id WHERE o.id=$1`, [id])
+      if (uRow.rows[0]?.email) sendReturnApprovedEmail({ email: uRow.rows[0].email, name: uRow.rows[0].name, orderId: id, invoiceNo: uRow.rows[0].invoice_no, refundAmount: amount, refundTo: 'wallet' })
+    } catch (_) {}
+    res.json({ success: true, message: 'Return approved, wallet refund credited.' })
   } catch (err) {
     await client.query('ROLLBACK')
+    console.error('[APPROVE RETURN ERROR]', err.message)
     res.status(500).json({ message: 'Approval failed' })
   } finally { client.release() }
 }
@@ -2269,6 +2397,10 @@ exports.adminRejectReturn = async (req, res) => {
     if (!ord.rows.length) return res.status(404).json({ message: 'Order not found' })
     if (ord.rows[0].status !== 7) return res.status(400).json({ message: 'Order is not in Return Requested state' })
     await pool.query(`UPDATE orders SET status=5, return_reject_reason=$1, updated_at=NOW() WHERE id=$2`, [reason, id])
+    try {
+      const uRow = await pool.query(`SELECT u.name, u.email, o.invoice_no FROM users u JOIN orders o ON o.user_id=u.id WHERE o.id=$1`, [id])
+      if (uRow.rows[0]?.email) sendReturnRejectedEmail({ email: uRow.rows[0].email, name: uRow.rows[0].name, orderId: id, invoiceNo: uRow.rows[0].invoice_no, reason })
+    } catch (_) {}
     res.json({ success: true, message: 'Return rejected' })
   } catch (err) {
     res.status(500).json({ message: 'Rejection failed' })
@@ -2441,6 +2573,91 @@ exports.checkLowStock = async (req, res) => {
     })
   } catch (err) {
     console.error('[LowStock] Error:', err)
+    res.status(500).json({ success: false, message: 'Failed' })
+  }
+}
+
+/* ─── PRODUCT PERFORMANCE ANALYTICS ─── */
+exports.getProductPerformance = async (req, res) => {
+  try {
+    const { from, to, limit: lim = 20, sort = 'revenue' } = req.query
+    let where = `WHERE o.status NOT IN (6)` // exclude cancelled
+    const params = []
+    if (from) { params.push(from); where += ` AND o.created_at >= $${params.length}` }
+    if (to)   { params.push(to);   where += ` AND o.created_at <= $${params.length}` }
+
+    const orderByMap = {
+      revenue: 'total_revenue DESC',
+      units:   'total_units DESC',
+      orders:  'order_count DESC',
+      returns: 'return_count DESC',
+    }
+    const orderBy = orderByMap[sort] || 'total_revenue DESC'
+
+    const r = await pool.query(`
+      SELECT
+        p.id,
+        p.name,
+        p.price,
+        p.inventory,
+        p.images->0  AS image,
+        p.category_name,
+        p.averagerating,
+        p.reviewcount,
+        COUNT(DISTINCT oi.order_id)                  AS order_count,
+        COALESCE(SUM(oi.quantity), 0)                AS total_units,
+        COALESCE(SUM(oi.quantity * oi.price), 0)     AS total_revenue,
+        COUNT(CASE WHEN o.status IN (7,8) THEN 1 END) AS return_count
+      FROM products p
+      LEFT JOIN order_items oi ON oi.product_id = p.id
+      LEFT JOIN orders o       ON o.id = oi.order_id ${where}
+      GROUP BY p.id
+      ORDER BY ${orderBy}
+      LIMIT ${Number(lim)}
+    `, params)
+
+    res.json({ success: true, data: r.rows })
+  } catch (err) {
+    console.error('[ProductPerf]', err)
+    res.status(500).json({ success: false, message: 'Failed' })
+  }
+}
+
+/* ─── CHECKOUT FUNNEL ANALYTICS ─── */
+exports.getFunnelAnalytics = async (req, res) => {
+  try {
+    const { from, to } = req.query
+    let dateFilter = ''
+    const params = []
+    if (from) { params.push(from); dateFilter += ` AND created_at >= $${params.length}` }
+    if (to)   { params.push(to);   dateFilter += ` AND created_at <= $${params.length}` }
+
+    const [pageViews, cartAdds, checkoutStarts, ordersPlaced, ordersDelivered] = await Promise.all([
+      pool.query(`SELECT COUNT(*) AS c FROM analytics_events WHERE event_type='page_view'${dateFilter}`, params),
+      pool.query(`SELECT COUNT(*) AS c FROM analytics_events WHERE event_type='add_to_cart'${dateFilter}`, params).catch(() => ({ rows: [{ c: 0 }] })),
+      pool.query(`SELECT COUNT(*) AS c FROM analytics_events WHERE event_type='checkout_start'${dateFilter}`, params).catch(() => ({ rows: [{ c: 0 }] })),
+      pool.query(`SELECT COUNT(*) AS c FROM orders WHERE 1=1${dateFilter}`, params),
+      pool.query(`SELECT COUNT(*) AS c FROM orders WHERE status=5${dateFilter}`, params),
+    ])
+
+    const browse = Number(pageViews.rows[0]?.c || 0)
+    const cart   = Number(cartAdds.rows[0]?.c || 0)
+    const checkout = Number(checkoutStarts.rows[0]?.c || 0)
+    const orders = Number(ordersPlaced.rows[0]?.c || 0)
+    const delivered = Number(ordersDelivered.rows[0]?.c || 0)
+
+    res.json({
+      success: true,
+      funnel: [
+        { stage: 'Browse', count: browse, pct: 100 },
+        { stage: 'Add to Cart', count: cart, pct: browse ? +((cart / browse) * 100).toFixed(1) : 0 },
+        { stage: 'Checkout', count: checkout, pct: browse ? +((checkout / browse) * 100).toFixed(1) : 0 },
+        { stage: 'Order Placed', count: orders, pct: browse ? +((orders / browse) * 100).toFixed(1) : 0 },
+        { stage: 'Delivered', count: delivered, pct: orders ? +((delivered / orders) * 100).toFixed(1) : 0 },
+      ],
+    })
+  } catch (err) {
+    console.error('[Funnel]', err)
     res.status(500).json({ success: false, message: 'Failed' })
   }
 }

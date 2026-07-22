@@ -8,6 +8,7 @@ const { admin } = require('../../middlewares/admin')
 router.get('/', auth, ctrl.getWallet)
 router.post('/apply', auth, ctrl.applyWallet)
 router.get('/settings', ctrl.getSettings)            // public — used by checkout & wallet tab
+router.get('/tier', auth, ctrl.getTier)
 
 // Admin routes
 router.get('/admin/list', auth, admin, ctrl.adminListWallets)

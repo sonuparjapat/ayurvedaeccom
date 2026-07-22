@@ -7,6 +7,8 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/auth-context";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import PageTracker from "@/components/analytics/PageTracker";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CompareBar } from "@/components/compare/CompareBar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -102,8 +104,11 @@ export default function RootLayout({
           className={`${inter.variable} font-sans antialiased bg-background text-foreground relative z-0`}
         >
           <PageTracker />
+          <ErrorBoundary>
           {children}
+          </ErrorBoundary>
   <Suspense fallback={null}><AuthSheet /></Suspense>
+  <Suspense fallback={null}><CompareBar /></Suspense>
 
 <Toaster
   position="bottom-right"

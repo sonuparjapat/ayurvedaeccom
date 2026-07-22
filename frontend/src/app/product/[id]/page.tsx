@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import { useParams, useRouter } from 'next/navigation'
-import Head from 'next/head'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import axios from '@/lib/axios'
@@ -38,6 +37,7 @@ import { notify } from '@/app/utils/notify'
 import { useAuth } from '@/context/auth-context'
 import StarRating from '@/components/StartRatings'
 import Pagination from '@/components/Paginationcom'
+import { useCompare } from '@/hooks/useCompare'
 
 
 /* ================= TYPES ================= */
@@ -187,6 +187,7 @@ export default function ProductDetailPage() {
   }, [product])
  const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
   } = useAuth()
+  const { toggle: compareToggle, has: compareHas } = useCompare()
 const handlepagechage=(page:number)=>{
   setPage(page)
 }
@@ -535,93 +536,67 @@ const addToCart = async () => {
       <Header />
 
 
-      {/* ================= SEO ================= */}
-
-      <Head>
-
-        <title>
-          {product.meta_title || product.name}
-        </title>
-
-        <meta
-          name="description"
-          content={
-            product.meta_description ||
-            product.shortdescription
-          }
-        />
-
-        {/* Schema.org JSON-LD for Google Rich Snippets */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org/',
-              '@type': 'Product',
-              name: product.name,
-              image: product.images,
-              description: product.meta_description || product.shortdescription,
-              sku: product.sku,
-              brand: { '@type': 'Brand', name: product.brand_display_name || product.brand || process.env.NEXT_PUBLIC_APP_NAME || 'Oroganix' },
-              ...(product.barcode ? { gtin: product.barcode } : {}),
-              ...(product.weight_grams ? { weight: { '@type': 'QuantitativeValue', value: product.weight_grams, unitCode: 'GRM' } } : {}),
-              offers: {
-                '@type': 'Offer',
-                url: typeof window !== 'undefined' ? window.location.href : '',
-                priceCurrency: 'INR',
-                price: product.sale_price || product.price,
-                availability: product.inventory > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-                seller: { '@type': 'Organization', name: process.env.NEXT_PUBLIC_APP_NAME || 'Oroganix' }
-              },
-              aggregateRating: Number(product.averagerating) > 0 ? {
-                '@type': 'AggregateRating',
-                ratingValue: Number(product.averagerating).toFixed(1),
-                reviewCount: product.reviewcount || 1,
-                bestRating: '5',
-                worstRating: '1'
-              } : undefined
-            })
-          }}
-        />
-
-        {/* Breadcrumb Schema */}
+      {/* ================= JSON-LD Structured Data ================= */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org/',
+            '@type': 'Product',
+            name: product.name,
+            image: product.images,
+            description: product.meta_description || product.shortdescription,
+            sku: product.sku,
+            brand: { '@type': 'Brand', name: product.brand_display_name || product.brand || 'Oroganix' },
+            ...(product.barcode ? { gtin: product.barcode } : {}),
+            ...(product.weight_grams ? { weight: { '@type': 'QuantitativeValue', value: product.weight_grams, unitCode: 'GRM' } } : {}),
+            offers: {
+              '@type': 'Offer',
+              priceCurrency: 'INR',
+              price: product.sale_price || product.price,
+              availability: product.inventory > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+              seller: { '@type': 'Organization', name: 'Oroganix' }
+            },
+            aggregateRating: Number(product.averagerating) > 0 ? {
+              '@type': 'AggregateRating',
+              ratingValue: Number(product.averagerating).toFixed(1),
+              reviewCount: product.reviewcount || 1,
+              bestRating: '5',
+              worstRating: '1'
+            } : undefined
+          })
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: process.env.NEXT_PUBLIC_SITE_URL || '' },
+              { '@type': 'ListItem', position: 2, name: 'Products', item: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/products` },
+              { '@type': 'ListItem', position: 3, name: product.name }
+            ]
+          })
+        }}
+      />
+      {product.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               '@context': 'https://schema.org',
-              '@type': 'BreadcrumbList',
-              itemListElement: [
-                { '@type': 'ListItem', position: 1, name: 'Home', item: process.env.NEXT_PUBLIC_SITE_URL || '' },
-                { '@type': 'ListItem', position: 2, name: 'Products', item: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/products` },
-                { '@type': 'ListItem', position: 3, name: product.name }
-              ]
+              '@type': 'FAQPage',
+              mainEntity: product.faqs.map((faq: any) => ({
+                '@type': 'Question',
+                name: faq.question,
+                acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+              })),
             })
           }}
         />
-
-        {/* FAQ Schema */}
-        {product.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify({
-                '@context': 'https://schema.org',
-                '@type': 'FAQPage',
-                mainEntity: product.faqs.map((faq: any) => ({
-                  '@type': 'Question',
-                  name: faq.question,
-                  acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: faq.answer,
-                  },
-                })),
-              }),
-            }}
-          />
-        )}
-
-      </Head>
+      )}
 
 
 
@@ -1004,7 +979,12 @@ const addToCart = async () => {
                   <div style={{ marginTop: 8, fontSize: 13, color: pincodeResult.serviceable ? '#2d5a3d' : '#e05252', display: 'flex', alignItems: 'center', gap: 6 }}>
                     {pincodeResult.serviceable ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                     {pincodeResult.serviceable
-                      ? `Delivery available in ${pincodeResult.delivery_days} day${pincodeResult.delivery_days !== 1 ? 's' : ''} to ${pincodeResult.city || pincode}`
+                      ? (() => {
+                          const d = new Date()
+                          d.setDate(d.getDate() + (pincodeResult.delivery_days || 0))
+                          const dateStr = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+                          return `Delivery by ${dateStr} to ${pincodeResult.city || pincode} (${pincodeResult.delivery_days} day${pincodeResult.delivery_days !== 1 ? 's' : ''})`
+                        })()
                       : pincodeResult.message || 'Not serviceable to this pincode'}
                   </div>
                 )}
@@ -1121,6 +1101,59 @@ const addToCart = async () => {
                   </div>
                   <span className="text-xs font-semibold text-amber-800">100% Genuine</span>
                 </div>
+              </div>
+
+              {/* COMPARE BUTTON */}
+              <div style={{ paddingTop: 4 }}>
+                <button
+                  onClick={() => compareToggle({ id: product.id, name: product.name, price: product.price, image: product.images?.[0], category_name: product.category_name })}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    border: `1.5px solid ${compareHas(product.id) ? '#047857' : '#d1d5db'}`,
+                    background: compareHas(product.id) ? '#ecfdf5' : 'white',
+                    color: compareHas(product.id) ? '#047857' : '#374151',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                  {compareHas(product.id) ? '✓ Added to Compare' : 'Add to Compare'}
+                </button>
+              </div>
+
+              {/* SOCIAL SHARING */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 8 }}>
+                <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>Share:</span>
+                <button
+                  onClick={() => {
+                    const url = window.location.href
+                    const text = `Check out ${product.name} on Oroganix: ${url}`
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: '#25d366', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.555 4.122 1.53 5.853L0 24l6.335-1.51A11.957 11.957 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.882a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.981.999-3.648-.235-.374A9.86 9.86 0 012.118 12C2.118 6.978 6.978 2.118 12 2.118S21.882 6.978 21.882 12 17.022 21.882 12 21.882z"/></svg>
+                  WhatsApp
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href)
+                    toast.success('Link copied!')
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy Link
+                </button>
+                {typeof navigator !== 'undefined' && 'share' in navigator && (
+                  <button
+                    onClick={() => navigator.share({ title: product.name, url: window.location.href }).catch(() => {})}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    Share
+                  </button>
+                )}
               </div>
 
             </div>

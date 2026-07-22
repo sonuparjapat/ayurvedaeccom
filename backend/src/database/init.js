@@ -352,6 +352,10 @@ await client.query(`
 
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_reason TEXT`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_images TEXT`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS expected_delivery_date DATE`);
+    await client.query(`ALTER TABLE users  ADD COLUMN IF NOT EXISTS loyalty_tier VARCHAR(20) DEFAULT 'bronze'`);
+    await client.query(`ALTER TABLE users  ADD COLUMN IF NOT EXISTS total_spent NUMERIC(12,2) DEFAULT 0`);
     await client.query(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_status_check`);
     await client.query(`ALTER TABLE orders ADD CONSTRAINT orders_payment_status_check CHECK (payment_status IN ('pending','unpaid','paid','failed','refunded'))`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP`);

@@ -532,3 +532,296 @@ Expected: `{ success: true, referral_code: "XXXX", referrals: [...], total: N, r
 7. Clear search — verify category chips and full list return.
 8. Search for a term with no matches — verify "No results, try different keywords" message.
 9. Empty DB case: if no FAQs exist, verify "No FAQs yet" message appears.
+
+---
+
+## Bug Fix — Order Tracking Timeline
+
+1. Go to `/orders/<id>` for any order.
+2. Click/scroll to the **Order Timeline** section.
+3. Verify it loads correctly — timeline events should appear (e.g. Order Placed, Confirmed, Shipped).
+4. Verify no 404 error in the browser console for `GET /api/orders/:id/timeline`.
+
+---
+
+## Order Confirmation Email
+
+### COD order
+1. Log in, add an item to cart, and place a COD order.
+2. Check the registered email inbox — verify an order confirmation email arrives within ~30 seconds.
+3. Verify the email contains: order number, item list, total, and delivery address.
+
+### Online order (via payment verify)
+1. Complete an online payment (Razorpay test mode).
+2. Check the registered email — verify the order confirmation email arrives.
+3. Verify `paymentMethod` shows "online" context in the email body.
+
+### Razorpay webhook (async confirmation)
+1. Simulate a webhook `payment.captured` event from the Razorpay dashboard (test mode).
+2. Verify the order status updates to `paid` in the database.
+3. Verify stock is reduced correctly.
+4. Verify a confirmation email is sent.
+5. `RAZORPAY_WEBHOOK_SECRET` must match the secret configured in the Razorpay dashboard webhook settings.
+
+---
+
+## Web — Search Page (`/search`)
+
+1. Navigate to `/search` — verify popular searches are displayed (no query yet).
+2. Type a query (e.g. "ashwagandha") — verify results appear after ~350ms debounce; URL updates to `?q=ashwagandha`.
+3. Verify the result count and page indicator show above the grid.
+4. Click the **Filters** button (sliders icon) — verify the filter panel expands with category, min price, max price, in-stock, discount-only controls.
+5. Apply a category filter — verify results update and the filter button shows an active count badge.
+6. Use the Sort dropdown — switch to "Price: Low to High" — verify results re-sort.
+7. Scroll to the bottom — verify pagination controls appear; click page 2 — verify next set loads.
+8. Clear the search bar — verify popular searches return.
+9. Verify 12 skeleton placeholder cards appear during loading.
+10. Click Add to Cart on a product card — verify it's added to cart.
+11. Click the wishlist heart — verify it toggles.
+
+---
+
+## Web — Inline Add Address at Checkout
+
+1. Log in with a new account (no saved addresses).
+2. Add an item to cart and go to `/checkout`.
+3. Verify the page does NOT redirect to `/account?tab=addresses`.
+4. Verify a "+ Add Delivery Address" button appears in Step 1.
+5. Click it — verify an inline form expands with fields: Address Type, PIN Code, Street, City, State, Email.
+6. Fill in valid data and click "Save Address & Continue" — verify the address is saved and auto-selected.
+7. Verify the form collapses and the new address appears in the saved addresses list.
+8. With a saved address: click "+ Add New Address" — verify the form works again.
+9. Enter an invalid pincode (< 6 digits) — verify validation error appears.
+10. Click Place Order without an address — verify it scrolls to Step 1 and opens the form instead of redirecting.
+
+---
+
+## Mobile — Inline Add Address at Checkout
+
+1. Log in on mobile with a new account (no saved addresses).
+2. Add an item to cart and go to Checkout.
+3. Verify no `Alert` redirect appears.
+4. Verify a dashed gold "+ Add New Address" button appears.
+5. Tap it — verify the form slides in with street, city, state, pincode, email fields.
+6. Fill in all fields with valid data and tap "Save & Continue" — verify address is saved and auto-selected.
+7. Tap the dashed button again while form is visible — verify the form collapses (toggle).
+8. Enter a 5-digit pincode — verify validation error toast.
+
+---
+
+## Web + Mobile — Frequently Bought Together
+
+### Backend
+```bash
+curl https://api.oroganix.com/api/bundles/by-product/<productId>
+```
+Expected: `{ success: true, bundles: [...] }` — only active bundles containing the given product, max 4.
+
+### Web (Product Detail Page)
+1. Navigate to `/product/:id` for a product that belongs to an active bundle.
+2. Scroll down — verify a **"Frequently Bought Together"** section appears before Related Products.
+3. Each bundle card should show: bundle name, save %, mini product thumbnails with `+` separators, bundle price, and "Add Bundle to Cart" button.
+4. Click "Add Bundle to Cart" — verify all items in the bundle are added to cart (success toast).
+5. If no bundles exist for that product — verify the section is hidden entirely.
+
+### Mobile
+1. Open any product that belongs to an active bundle.
+2. Scroll to the Frequently Bought Together section — verify bundle cards appear in a horizontal scroll row.
+3. Tap "Add Bundle to Cart" — verify success toast and cart count updates.
+
+---
+
+## Web — Review Sort + Star Filter (Product Detail)
+
+1. Navigate to `/product/:id` with at least 5+ reviews of mixed ratings.
+2. Scroll to the Reviews tab.
+3. Open the **Sort** dropdown — switch to "Top Rated" — verify reviews re-sort by descending rating.
+4. Switch to "Most Helpful" — verify reviews re-sort.
+5. Switch back to "Newest" (default) — verify context data is restored (no extra API call).
+6. Click the **★ 5** filter button — verify only 5-star reviews appear; a "No 5-star reviews yet" message appears if none.
+7. Click **★ 3** — verify only 3-star reviews appear.
+8. Click the active star button again — verify filter is cleared and all reviews show.
+9. Combine: select "Top Rated" sort AND "★ 4" filter — verify only 4-star reviews in descending-rating order.
+
+---
+
+## Mobile OTP — Coming Soon
+
+1. Open the mobile app login screen.
+2. Tap "Login with OTP" (or the mobile OTP tab).
+3. Verify an orange "🚧 Coming soon" banner appears below the input.
+4. Enter a phone number and tap "Send OTP" — verify a toast appears: "Mobile OTP login is coming soon. Please sign in with your email."
+5. Verify no API call is made (check network tab / no server error).
+6. If an OTP code is entered and submitted — verify the same "coming soon" toast fires.
+
+---
+
+## Web — Cart Save for Later + Stock Badges
+
+### Save for Later
+1. Add 2 items to cart and go to `/cart`.
+2. Click **"Save for Later"** (bookmark icon) on one item — verify it disappears from the cart and reappears in a **"Saved for Later"** section below the cart items.
+3. In the Saved for Later section, click **"Move to Cart"** — verify it moves back to the cart items.
+4. For an OOS item in Saved for Later, verify "Move to Cart" button is disabled.
+
+### Stock Badges
+1. Cart an item with `inventory = 0` — verify a red **"Out of stock"** badge appears.
+2. Cart an item with `inventory` between 1 and 5 — verify an orange **"⚠ Only X left!"** badge appears.
+3. Cart an item with `inventory > 5` — verify no stock badge appears.
+
+---
+
+## Return Request — Photo Upload
+
+### Web (`/orders/:id`)
+1. Navigate to a delivered order.
+2. Click **"Return Order"** — verify the return modal / form opens.
+3. Enter a reason.
+4. Click **"📁 Upload Photos"** — verify file picker opens; select up to 5 images (JPG/PNG/WEBP).
+5. Verify selected image thumbnails appear in a grid with ✕ remove buttons.
+6. Click ✕ on a thumbnail — verify it is removed.
+7. Paste an image URL into the URL field and click **"Add"** — verify the URL image thumbnail appears.
+8. Try adding a 6th photo — verify an error toast "Maximum 5 photos allowed" appears.
+9. Click **Submit** — verify a multipart/form-data request is sent, `reason`, `images[]` files, and `imageUrls` JSON are included.
+10. Verify success toast "Return request submitted. We will contact you within 24 hours."
+11. Verify the order status updates (refresh the page — status should be "Return Requested").
+
+### Mobile (`/order/:id`)
+1. Open a delivered order on mobile.
+2. Tap **Return** — verify `ReturnModal` opens.
+3. Select a reason from the radio list.
+4. Tap **"📁 Upload Photos"** — verify the image picker opens (requires native build).
+5. Select images — verify thumbnails appear in the modal with ✕ remove buttons.
+6. Paste an image URL into "Or paste image URL..." field and tap **Add** — verify URL thumbnail appears.
+7. Try to exceed 5 total images — verify error toast.
+8. Tap **Submit Return Request** — verify multipart request is sent and success toast appears.
+9. Verify the Upload Photos button and URL input are hidden once 5 images are selected.
+
+### Backend
+```bash
+curl -X POST https://api.oroganix.com/api/orders/<id>/return \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "reason=Product damaged" \
+  -F "images=@/path/to/photo.jpg" \
+  -F 'imageUrls=["https://example.com/photo.jpg"]'
+```
+
+---
+
+## Product Comparison (Web)
+
+### Web
+1. Open any product detail page.
+2. Click **"Add to Compare"** — verify button turns green and the green compare bar appears at bottom.
+3. Navigate to another product, click "Add to Compare" again.
+4. Verify the compare bar shows both product thumbnails.
+5. Click **"Compare Now →"** — verify redirect to `/compare?ids=X,Y`.
+6. On the compare page, verify both products appear in columns with all field rows.
+7. Verify the lower-priced product has a **BEST** badge.
+8. Click **"Clear"** — verify bar disappears and compare list resets.
+9. Try adding 5 products — verify it stops at 4.
+
+### Backend
+```bash
+curl https://api.oroganix.com/api/shop/public/1
+curl https://api.oroganix.com/api/shop/public/2
+# Both should return full product data for rendering the compare page
+```
+
+---
+
+## Loyalty Tier (Web + Mobile)
+
+### Web
+1. Log in, go to **My Account → Wallet & Points**.
+2. Verify the tier card appears (Bronze/Silver/Gold/Platinum based on total delivered spend).
+3. Verify progress bar fills toward the next tier.
+4. Verify tier benefits are shown as chips.
+
+### Mobile
+1. Log in, go to **Wallet** screen.
+2. Verify tier card appears between balance card and "How it works" section.
+3. Verify progress bar and next tier info.
+
+### Backend
+```bash
+curl https://api.oroganix.com/api/wallet/tier \
+  -H "Authorization: Bearer $TOKEN"
+# Should return { tier: { name, label, ... }, next_tier, all_tiers }
+```
+
+---
+
+## Reorder (Web + Mobile)
+
+### Web
+1. Go to **My Account → Orders**.
+2. Find any order with items.
+3. Click **"Reorder"** — verify toast "Items added to cart!" appears.
+4. Open cart — verify items from that order are in the cart (quantities added).
+
+### Mobile
+1. Open any order detail screen.
+2. Tap **Reorder** — verify success toast and cart updates.
+
+### Backend
+```bash
+curl -X POST https://api.oroganix.com/api/orders/123/reorder \
+  -H "Authorization: Bearer $TOKEN"
+# Should return { success: true }
+```
+
+---
+
+## Admin Analytics (Product Performance + Funnel)
+
+1. Log in as admin, go to **Analytics** page.
+2. Scroll past the revenue chart.
+3. **Product Performance table** — verify top products appear sorted by Revenue by default.
+4. Click **Units Sold**, **Orders**, **Returns** — verify table re-sorts.
+5. **Conversion Funnel** — verify 5 stages appear with progress bars and conversion percentages.
+6. Apply a date range filter (From/To) and click Apply — verify both tables refresh.
+
+### Backend
+```bash
+curl "https://api.oroganix.com/api/admin/analytics/products?sortBy=revenue" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+curl "https://api.oroganix.com/api/admin/analytics/funnel" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+---
+
+## Social Sharing + Expected Delivery Date (Web)
+
+### Social Sharing
+1. Open any product detail page.
+2. Verify **WhatsApp**, **Copy Link**, and (on Chrome/mobile) **Share** buttons are visible below the trust badges.
+3. Click WhatsApp — verify it opens WhatsApp web with pre-filled product link.
+4. Click Copy Link — verify "Link copied!" toast appears.
+
+### Expected Delivery Date
+1. On a product detail page, enter a serviceable 6-digit PIN code.
+2. Click **Check** — verify the result shows "Delivery by [Day, Date Month] to [City] (X days)".
+
+---
+
+## Subscription Auto-Billing (Backend)
+
+1. Create a test subscription with `next_order_date = CURRENT_DATE`.
+2. Trigger the cron manually:
+   ```bash
+   node -e "require('./backend/src/services/subscriptionBilling.js')()"
+   ```
+3. Verify a new order is created for that subscription.
+4. Verify `subscriptions.next_order_date` advanced by `frequency_days`.
+5. Test out-of-stock: set product inventory to 0, verify subscription skips (+1 day) instead of ordering.
+
+---
+
+## SMS Service (Backend)
+
+1. Without `FAST2SMS_API_KEY` set: trigger mobile OTP login — verify OTP is logged to console (not sent via API).
+2. With a test `FAST2SMS_API_KEY`: trigger OTP — verify SMS is delivered to the test number.
+3. Trigger COD delivery OTP from admin panel — verify `console.log` output (or real SMS with API key).
+Expected: `{ success: true }` — images uploaded to S3 under `returns/` folder, `return_images` column updated on the order row.

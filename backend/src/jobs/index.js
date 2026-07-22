@@ -1,5 +1,7 @@
 const cron = require("node-cron");
 const pool=require("../config/db") // adjust path
+const runAbandonedCartRecovery = require('../services/abandonedCartRecovery')
+const runSubscriptionBilling = require('../services/subscriptionBilling')
 
 /* ======================
    CLEAN UNPAID ORDERS
@@ -87,6 +89,18 @@ const startJobs = () => {
   cron.schedule(
     "0 */6 * * *",
     cleanGuestCart
+  );
+
+  /* every 30 min — abandoned cart recovery emails */
+  cron.schedule(
+    "*/30 * * * *",
+    runAbandonedCartRecovery
+  );
+
+  /* daily at 6am — subscription auto-billing */
+  cron.schedule(
+    "0 6 * * *",
+    runSubscriptionBilling
   );
 
   console.log(

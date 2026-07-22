@@ -388,13 +388,11 @@ try{const res=await getCategories()
     async (id:any) => {
   try {
     setLoading(true);
-console.log("HIFDHDFDF")
     const res = await axios.get("/orders/my-orders");
 
     if (res.status != 200) {
       throw new Error("Failed");
     }
-    console.log(res?.data?.data,"coming")
 
     const formatted = res?.data?.data.map((order: any) => ({
       ...order,

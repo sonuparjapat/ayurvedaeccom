@@ -68,6 +68,7 @@ interface OrderItem {
   product_id: number
   name: string
   quantity: number
+  variant_label?: string
   price: number
   image?: string
 }
@@ -235,14 +236,25 @@ useEffect(() => {
 
 /* ================= WALLET TAB ================= */
 
+const TIER_META: Record<string, { emoji: string; color: string; bg: string; next?: string; nextMin?: number }> = {
+  bronze:   { emoji: '🥉', color: '#cd7f32', bg: '#fdf6ee', next: 'Silver',   nextMin: 5000 },
+  silver:   { emoji: '🥈', color: '#9e9e9e', bg: '#f5f5f5', next: 'Gold',     nextMin: 20000 },
+  gold:     { emoji: '🥇', color: '#ffd700', bg: '#fffde7', next: 'Platinum', nextMin: 50000 },
+  platinum: { emoji: '💎', color: '#b5a0d8', bg: '#f3f0ff' },
+}
+
 function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; onMount: () => void }) {
   useEffect(() => { onMount() }, [])
   const [tab, setTab] = useState<'wallet' | 'loyalty'>('wallet')
   const [loyaltyConfig, setLoyaltyConfig] = useState<any>({ loyalty_redeem_rate: 0.1, loyalty_min_redeem_points: 50 })
+  const [tierData, setTierData] = useState<any>(null)
 
   useEffect(() => {
     axios.get('/wallet/settings')
       .then(r => { if (r.data?.settings) setLoyaltyConfig(r.data.settings) })
+      .catch(() => {})
+    axios.get('/wallet/tier')
+      .then(r => { if (r.data) setTierData(r.data) })
       .catch(() => {})
   }, [])
 
@@ -311,6 +323,51 @@ function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; on
           </div>
         </div>
       </div>
+
+      {/* LOYALTY TIER CARD */}
+      {tierData && (() => {
+        const tier = tierData.tier || {}
+        const nextTier = tierData.next_tier || null
+        const meta = TIER_META[tier.name] || TIER_META.bronze
+        const spent = Number(tier.total_spent || 0)
+        const progress = nextTier
+          ? Math.min(100, Math.round(((spent - (tier.min_spend || 0)) / (nextTier.min_spend - (tier.min_spend || 0))) * 100))
+          : 100
+        return (
+          <div style={{ background: meta.bg, border: `1.5px solid ${meta.color}40`, borderRadius: 16, padding: '16px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 28 }}>{meta.emoji}</span>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your Tier</p>
+                  <p style={{ fontSize: 20, fontWeight: 900, color: meta.color }}>{tier.label || 'Bronze'}</p>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: 11, color: '#9ca3af' }}>Total spent</p>
+                <p style={{ fontSize: 15, fontWeight: 800, color: '#374151' }}>₹{Number(spent).toLocaleString('en-IN')}</p>
+              </div>
+            </div>
+            {nextTier && (
+              <>
+                <div style={{ height: 6, background: '#e5e7eb', borderRadius: 99, overflow: 'hidden', marginBottom: 6 }}>
+                  <div style={{ height: '100%', width: `${progress}%`, background: meta.color, borderRadius: 99, transition: 'width 0.6s ease' }} />
+                </div>
+                <p style={{ fontSize: 11, color: '#6b7280' }}>
+                  Spend ₹{(nextTier.min_spend - spent).toLocaleString('en-IN')} more to reach <strong style={{ color: TIER_META[nextTier.name]?.color }}>{nextTier.label}</strong>
+                </p>
+              </>
+            )}
+            {tier.benefits && tier.benefits.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                {tier.benefits.map((b: string, i: number) => (
+                  <span key={i} style={{ fontSize: 11, fontWeight: 600, color: meta.color, background: `${meta.color}18`, borderRadius: 20, padding: '3px 10px' }}>✓ {b}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* How it works */}
       <div className="bg-white border border-gray-100 rounded-2xl p-5">
@@ -479,6 +536,40 @@ export default function AccountContent() {
   /* ===== REFERRAL STATS ===== */
   const [referralStats, setReferralStats] = useState<{ total: number; rewarded: number; earned: number; referrals: any[] } | null>(null)
 
+  /* ===== ORDERS PAGINATION ===== */
+  const [ordersPage, setOrdersPage] = useState(1)
+  const [ordersMeta, setOrdersMeta] = useState<{ total: number; pages: number } | null>(null)
+  const [pagedOrders, setPagedOrders] = useState<Order[]>([])
+  const [ordersPageLoading, setOrdersPageLoading] = useState(false)
+
+  const statusCodeToLabel = (s: number) => {
+    const map: Record<number, string> = { 0:'pending',1:'confirmed',2:'processing',3:'shipped',4:'out_for_delivery',5:'delivered',6:'cancelled',7:'return_requested',8:'returned',9:'refunded' }
+    return map[s] || 'pending'
+  }
+
+  const loadPagedOrders = async (page = 1) => {
+    setOrdersPageLoading(true)
+    try {
+      const res = await axios.get('/orders/my-orders', { params: { page, limit: 10 } })
+      const formatted = (res.data.data || []).map((order: any) => ({
+        ...order,
+        orderNumber: order.invoice_no || `ORD-${order.id}`,
+        status: statusCodeToLabel(order.status),
+        totalAmount: Number(order.total_amount),
+        createdAt: order.created_at,
+        shipping_address: order.shipping_address,
+        items: (order.items || []).map((item: any) => ({
+          ...item,
+          image: item.image || '📦',
+        })),
+      }))
+      setPagedOrders(formatted)
+      setOrdersMeta(res.data.meta || null)
+      setOrdersPage(page)
+    } catch {}
+    finally { setOrdersPageLoading(false) }
+  }
+
   /* ================= LOAD ================= */
 
 useEffect(() => {
@@ -491,6 +582,7 @@ useEffect(() => {
       setLoading(true);
 
       await loadOrders(loginuserdata.id);
+      loadPagedOrders(1);
 
       /* Profile */
       setEditForm({
@@ -1068,10 +1160,12 @@ const handleSaveAddress = async (data: any) => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h2 className="font-bold text-gray-900 text-lg">My Orders</h2>
-                      <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-3 py-1 rounded-full">{orders?.length || 0} orders</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-3 py-1 rounded-full">{ordersMeta?.total ?? orders?.length ?? 0} orders</span>
                     </div>
 
-                    {!orders?.length ? (
+                    {ordersPageLoading ? (
+                      <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>
+                    ) : !pagedOrders?.length ? (
                       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-16 text-center">
                         <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-5">
                           <ShoppingBag size={40} className="text-gray-300" />
@@ -1085,7 +1179,7 @@ const handleSaveAddress = async (data: any) => {
                         </Button>
                       </div>
                     ) : (
-                      orders.map((order: Order, orderIndex?: any) => (
+                      pagedOrders.map((order: Order, orderIndex?: any) => (
                         <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:border-emerald-100 transition-all">
                           {/* Order Header */}
                           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 bg-gray-50 border-b border-gray-100">
@@ -1141,6 +1235,26 @@ const handleSaveAddress = async (data: any) => {
                             {!['shipped', 'delivered'].includes(order.status) && <div />}
 
                             <div className="flex items-center gap-2 ml-auto">
+                              {['pending', 'confirmed'].includes(order.status) && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-red-200 text-red-600 hover:bg-red-50 rounded-xl gap-1.5 text-xs"
+                                  onClick={async () => {
+                                    if (!window.confirm('Cancel this order?')) return
+                                    try {
+                                      await axios.post(`/orders/${order.id}/cancel`, { reason: 'Cancelled by customer' })
+                                      toast.success('Order cancelled')
+                                      loadOrders(loginuserdata?.id)
+                                      loadPagedOrders(ordersPage)
+                                    } catch (e: any) {
+                                      toast.error(e?.response?.data?.message || 'Cancel failed')
+                                    }
+                                  }}
+                                >
+                                  <AlertCircle size={13} /> Cancel
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1149,6 +1263,21 @@ const handleSaveAddress = async (data: any) => {
                               >
                                 <Truck size={13} />
                                 {trackingOpenId === order.id ? 'Hide Tracking' : 'Track Order'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl gap-1.5 text-xs"
+                                onClick={async () => {
+                                  try {
+                                    await axios.post(`/orders/${order.id}/reorder`)
+                                    toast.success('Items added to cart!')
+                                  } catch (e: any) {
+                                    toast.error(e?.response?.data?.message || 'Could not reorder')
+                                  }
+                                }}
+                              >
+                                <RotateCcw size={13} /> Reorder
                               </Button>
                               <Button
                                 size="sm"
@@ -1241,6 +1370,25 @@ const handleSaveAddress = async (data: any) => {
                           )}
                         </div>
                       ))
+                    )}
+
+                    {/* Pagination */}
+                    {ordersMeta && ordersMeta.pages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-2">
+                        <Button
+                          size="sm" variant="outline"
+                          className="rounded-xl text-xs"
+                          disabled={ordersPage <= 1 || ordersPageLoading}
+                          onClick={() => loadPagedOrders(ordersPage - 1)}
+                        >← Prev</Button>
+                        <span className="text-xs text-gray-500 px-2">Page {ordersPage} of {ordersMeta.pages}</span>
+                        <Button
+                          size="sm" variant="outline"
+                          className="rounded-xl text-xs"
+                          disabled={ordersPage >= ordersMeta.pages || ordersPageLoading}
+                          onClick={() => loadPagedOrders(ordersPage + 1)}
+                        >Next →</Button>
+                      </div>
                     )}
                   </div>
                 </TabsContent>
@@ -1661,9 +1809,11 @@ const handleSaveAddress = async (data: any) => {
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Invoice</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="font-bold text-gray-800 text-sm">{new Date((selectedOrder as any)?.invoice_date).toDateString()}</p>
-                      <a href={(selectedOrder as any)?.pdf_url} target="_blank" rel="noopener noreferrer">
-                        <Download size={16} className="text-emerald-500 hover:text-emerald-700 transition-colors" />
-                      </a>
+                      {(selectedOrder as any)?.pdf_url && (
+                        <a href={(selectedOrder as any)?.pdf_url} target="_blank" rel="noopener noreferrer">
+                          <Download size={16} className="text-emerald-500 hover:text-emerald-700 transition-colors" />
+                        </a>
+                      )}
                     </div>
                   </div>
                 )}

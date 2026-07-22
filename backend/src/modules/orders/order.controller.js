@@ -4,6 +4,21 @@ const crypto = require("crypto");
 const { emitToAdmin } = require('../../socket');
 const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
 const sendOrderConfirmationEmail = require('../../services/email/orderConfirmation');
+const { sendOrderCancelledEmail, sendReturnRequestedEmail } = require('../../services/email/orderStatusEmail');
+const { sendDeliveryOTP: sendDeliveryOTPSms } = require('../../services/sms');
+
+/* ── Loyalty tier helper ── */
+async function updateLoyaltyTier(userId) {
+  try {
+    const r = await pool.query(
+      `SELECT COALESCE(SUM(total_amount),0) AS spent FROM orders WHERE user_id=$1 AND status=5`,
+      [userId]
+    )
+    const spent = Number(r.rows[0]?.spent || 0)
+    const tier = spent >= 50000 ? 'platinum' : spent >= 20000 ? 'gold' : spent >= 5000 ? 'silver' : 'bronze'
+    await pool.query(`UPDATE users SET total_spent=$1, loyalty_tier=$2 WHERE id=$3`, [spent, tier, userId])
+  } catch (e) { console.error('[Tier]', e.message) }
+}
 
 /* ================= RAZORPAY ================= */
 
@@ -157,6 +172,7 @@ if (!addrRes.rows.length) {
 const addr = addrRes.rows[0];
 
 /* ================= PINCODE SERVICEABILITY CHECK ================= */
+let deliveryDays = 5
 if (addr.pincode) {
   const pincodeCheck = await client.query(
     `SELECT delivery_days FROM serviceable_pincodes WHERE pincode=$1 AND is_active=TRUE LIMIT 1`,
@@ -170,6 +186,7 @@ if (addr.pincode) {
       message: `Sorry, we don't deliver to pincode ${addr.pincode} yet. Please use a different delivery address.`
     });
   }
+  deliveryDays = pincodeCheck.rows[0].delivery_days || 5
 }
 
 /* ================= ADDRESS SNAPSHOT ================= */
@@ -382,6 +399,9 @@ if (addr.pincode) {
 
     /* ================= CREATE ORDER ================= */
 
+  const expectedDeliveryDate = new Date()
+  expectedDeliveryDate.setDate(expectedDeliveryDate.getDate() + deliveryDays)
+
    const orderRes = await client.query(`
   INSERT INTO orders
   (
@@ -395,10 +415,11 @@ if (addr.pincode) {
     expires_at,
     coupon_code,
     discount_amount,
-    wallet_discount
+    wallet_discount,
+    expected_delivery_date
   )
   VALUES
-  ($1,$2,$3,$4,$5,$6,$7,NOW() + INTERVAL '15 minutes',$8,$9,$10)
+  ($1,$2,$3,$4,$5,$6,$7,NOW() + INTERVAL '15 minutes',$8,$9,$10,$11)
   RETURNING id
 `, [
   userId,
@@ -435,7 +456,8 @@ if (addr.pincode) {
 
   appliedCouponCode,
   discountAmount,
-  walletDiscountApplied
+  walletDiscountApplied,
+  expectedDeliveryDate.toISOString().slice(0, 10),
 ]);
 
     const orderId = orderRes.rows[0].id;
@@ -668,7 +690,7 @@ if (addr.pincode) {
 
       razorpayOrder = await razorpay.orders.create({
 
-        amount: Math.round(total * 100),
+        amount: Math.round(finalTotal * 100),
 
         currency: "INR",
 
@@ -708,19 +730,27 @@ if (addr.pincode) {
     } catch (_) {}
 
     /* ================= ORDER CONFIRMATION EMAIL ================= */
-    if (paymentMethod === 'cod' && u?.email) {
-      const invRes = await pool.query(`SELECT invoice_no, shipping_address FROM orders WHERE id=$1`, [orderId])
-      const invRow = invRes.rows[0] || {}
-      sendOrderConfirmationEmail({
-        email: u.email,
-        name: u.name,
-        orderId,
-        invoiceNo: invRow.invoice_no,
-        items: cart.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.effective_price, variant_label: i.variant_label || null })),
-        total,
-        paymentMethod: 'cod',
-        address: invRow.shipping_address,
-      })
+    if (paymentMethod === 'cod') {
+      try {
+        const [uRes, invRes] = await Promise.all([
+          pool.query(`SELECT name, email FROM users WHERE id=$1`, [userId]),
+          pool.query(`SELECT invoice_no, shipping_address FROM orders WHERE id=$1`, [orderId]),
+        ])
+        const uRow = uRes.rows[0] || {}
+        const invRow = invRes.rows[0] || {}
+        if (uRow.email) {
+          sendOrderConfirmationEmail({
+            email: uRow.email,
+            name: uRow.name,
+            orderId,
+            invoiceNo: invRow.invoice_no,
+            items: cart.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.effective_price, variant_label: i.variant_label || null })),
+            total,
+            paymentMethod: 'cod',
+            address: invRow.shipping_address,
+          })
+        }
+      } catch (_) {}
     }
 
     /* ================= RESPONSE ================= */
@@ -1095,6 +1125,21 @@ exports.cancelOrder = async (req, res) => {
 
     await client.query("COMMIT");
 
+    // Send cancellation email (fire-and-forget)
+    try {
+      const uRow = await pool.query(`SELECT u.name, u.email, o.invoice_no FROM users u JOIN orders o ON o.user_id=u.id WHERE o.id=$1`, [id])
+      if (uRow.rows[0]?.email) {
+        const refundDue = order.payment_method !== 'cod' && order.payment_status === 'paid'
+        sendOrderCancelledEmail({
+          email: uRow.rows[0].email, name: uRow.rows[0].name,
+          orderId: id, invoiceNo: uRow.rows[0].invoice_no,
+          reason: reason || 'Cancelled by customer',
+          refundAmount: refundDue ? order.total_amount : null,
+          refundTo: refundDue ? 'bank' : null,
+        })
+      }
+    } catch (_) {}
+
     // Auto-refund for online orders that were already paid (runs after commit so cancellation always succeeds)
     if (order.payment_method !== 'cod' && order.payment_status === 'paid' && order.razorpay_payment_id) {
       try {
@@ -1154,9 +1199,6 @@ exports.returnOrder = async (req, res) => {
     try { extraUrls = JSON.parse(req.body.imageUrls || '[]'); } catch (_) {}
     const returnImages = [...uploadedUrls, ...extraUrls.filter((u) => typeof u === 'string' && u.startsWith('http'))];
 
-    // Ensure column exists (idempotent)
-    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_images TEXT`).catch(() => {});
-
     await client.query("BEGIN");
 
     const orderRes = await client.query(
@@ -1211,6 +1253,12 @@ exports.returnOrder = async (req, res) => {
     );
 
     await client.query("COMMIT");
+
+    // Send return-requested email (fire-and-forget)
+    try {
+      const uRow = await pool.query(`SELECT u.name, u.email, o.invoice_no FROM users u JOIN orders o ON o.user_id=u.id WHERE o.id=$1`, [id])
+      if (uRow.rows[0]?.email) sendReturnRequestedEmail({ email: uRow.rows[0].email, name: uRow.rows[0].name, orderId: id, invoiceNo: uRow.rows[0].invoice_no })
+    } catch (_) {}
 
     res.json({ success: true, message: "Return request submitted successfully" });
   } catch (err) {
@@ -1356,7 +1404,16 @@ exports.getPaymentPage = async (req, res) => {
 
 exports.getMyOrders = async (req, res) => {
   try {
-    const userId = req.user.id; // from auth middleware
+    const userId = req.user.id;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+    const offset = (page - 1) * limit;
+
+    const countRes = await pool.query(
+      `SELECT COUNT(DISTINCT o.id) FROM orders o WHERE o.user_id=$1`,
+      [userId]
+    );
+    const total = Number(countRes.rows[0].count);
 
     const result = await pool.query(
   `
@@ -1365,11 +1422,13 @@ exports.getMyOrders = async (req, res) => {
     o.invoice_no,
     o.status,
     o.total_amount,
+    o.payment_method,
     o.created_at,
     o.tracking_number,
     o.courier_name,
     o.shipped_at,
     o.shipping_address,
+    o.return_reason,
 
     /* Invoice Details */
     i.id           AS invoice_id,
@@ -1380,43 +1439,49 @@ exports.getMyOrders = async (req, res) => {
     i.total        AS invoice_total,
     i.pdf_url,
 
-    /* Order Items */
+    /* Order Items — include variant_label */
     json_agg(
       json_build_object(
-      'product_id', p.id,
+        'product_id', p.id,
         'name', p.name,
         'quantity', oi.quantity,
         'price', oi.price,
-        'image', p.images->>0
-      )
+        'image', p.images->>0,
+        'variant_label', COALESCE(pv.label, oi.variant_label, NULL)
+      ) ORDER BY oi.id
     ) AS items
 
   FROM orders o
 
-  JOIN order_items oi 
+  JOIN order_items oi
     ON oi.order_id = o.id
 
-  JOIN products p 
+  JOIN products p
     ON p.id = oi.product_id
 
+  LEFT JOIN product_variants pv
+    ON pv.id = oi.variant_id
+
   /* Invoice Join */
-  LEFT JOIN invoices i 
+  LEFT JOIN invoices i
     ON i.order_id = o.id
 
   WHERE o.user_id = $1
 
-  GROUP BY 
+  GROUP BY
     o.id,
     i.id
 
   ORDER BY o.created_at DESC
+  LIMIT $2 OFFSET $3
   `,
-  [userId]
+  [userId, limit, offset]
 );
 
     res.json({
       success: true,
       data: result.rows,
+      meta: { total, page, limit, pages: Math.ceil(total / limit) },
     });
 
   } catch (err) {
@@ -1687,5 +1752,50 @@ exports.razorpayWebhook = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Processing error' });
   } finally {
     client.release();
+  }
+};
+
+/* ================= REORDER — copy items from existing order into cart ================= */
+
+exports.reorder = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const orderRes = await pool.query(
+      `SELECT o.id FROM orders o WHERE o.id=$1 AND o.user_id=$2`,
+      [id, userId]
+    );
+    if (!orderRes.rows.length) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const itemsRes = await pool.query(
+      `SELECT oi.product_id, oi.variant_id, oi.quantity,
+              p.name, p.status,
+              COALESCE(pv.inventory, p.inventory) AS eff_inv
+       FROM order_items oi
+       JOIN products p ON p.id = oi.product_id
+       LEFT JOIN product_variants pv ON pv.id = oi.variant_id
+       WHERE oi.order_id = $1`,
+      [id]
+    );
+
+    let added = 0;
+    for (const item of itemsRes.rows) {
+      if (item.status !== 'active' || item.eff_inv <= 0) continue;
+      await pool.query(`
+        INSERT INTO cart (user_id, product_id, variant_id, quantity)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (user_id, product_id, COALESCE(variant_id, -1))
+        DO UPDATE SET quantity = cart.quantity + EXCLUDED.quantity, updated_at = NOW()
+      `, [userId, item.product_id, item.variant_id || null, item.quantity]);
+      added++;
+    }
+
+    res.json({ success: true, message: `${added} item(s) added to cart`, added });
+  } catch (err) {
+    console.error('[Reorder]', err.message);
+    res.status(500).json({ success: false, message: 'Reorder failed' });
   }
 };

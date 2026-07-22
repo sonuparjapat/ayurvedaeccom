@@ -145,7 +145,7 @@ exports.login = async (req, res) => {
         role: user.role,
       },
       process.env.JWT_SECRET,
-    { expiresIn: "2h" }
+    { expiresIn: "7d" }
     )
 
     res.cookie("token", token, {
@@ -160,7 +160,7 @@ exports.login = async (req, res) => {
 
       admin: {
         id: user.id,
-        name: user.first_name,
+        name: user.name,
         email: user.email,
         role: user.role,
       },

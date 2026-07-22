@@ -58,6 +58,15 @@ export default function AnalyticsPage() {
   const [chartData, setChartData] = useState<any[]>([])
   const [chartLoading, setChartLoading] = useState(false)
 
+  /* Product Performance */
+  const [productPerf, setProductPerf] = useState<any[]>([])
+  const [perfLoading, setPerfLoading] = useState(false)
+  const [perfSort, setPerfSort] = useState('revenue')
+
+  /* Funnel */
+  const [funnelData, setFunnelData] = useState<any[]>([])
+  const [funnelLoading, setFunnelLoading] = useState(false)
+
   const fetchAnalytics = async () => {
     try {
       setLoading(true)
@@ -86,8 +95,28 @@ export default function AnalyticsPage() {
     finally { setChartLoading(false) }
   }
 
+  const fetchProductPerf = async (sort = 'revenue') => {
+    setPerfLoading(true)
+    try {
+      const q = from && to ? `&from=${from}&to=${to}` : ''
+      const r = await axios.get(`/admin/analytics/products?sortBy=${sort}${q}`)
+      setProductPerf(r.data.data || [])
+    } catch { } finally { setPerfLoading(false) }
+  }
+
+  const fetchFunnel = async () => {
+    setFunnelLoading(true)
+    try {
+      const q = from && to ? `?from=${from}&to=${to}` : ''
+      const r = await axios.get(`/admin/analytics/funnel${q}`)
+      setFunnelData(r.data.data || [])
+    } catch { } finally { setFunnelLoading(false) }
+  }
+
   useEffect(() => { fetchAnalytics() }, [])
   useEffect(() => { fetchChart(chartPeriod) }, [chartPeriod])
+  useEffect(() => { fetchProductPerf(perfSort) }, [perfSort])
+  useEffect(() => { fetchFunnel() }, [])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -481,6 +510,92 @@ export default function AnalyticsPage() {
                 <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Total Orders</p>
                 <p className="font-black text-gray-800 text-lg">{chartData.reduce((s,d)=>s+d.orders,0)}</p>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Product Performance ── */}
+        <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-wrap gap-3">
+            <h2 className="font-bold text-gray-900 text-lg">Product Performance</h2>
+            <div className="flex gap-2">
+              {['revenue', 'units', 'orders', 'returns'].map(s => (
+                <button key={s} onClick={() => setPerfSort(s)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-all ${perfSort === s ? 'bg-indigo-600 text-white shadow' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  {s === 'units' ? 'Units Sold' : s === 'orders' ? 'Orders' : s === 'returns' ? 'Returns' : 'Revenue'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {perfLoading ? (
+            <div className="flex justify-center py-10"><div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>
+          ) : productPerf.length === 0 ? (
+            <div className="py-12 text-center text-gray-400 text-sm">No product data found</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ background: '#f8f9ff' }}>
+                    {['#', 'Product', 'Orders', 'Units Sold', 'Revenue', 'Returns'].map(h => (
+                      <th key={h} className="px-5 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {productPerf.slice(0, 20).map((p: any, i: number) => (
+                    <tr key={p.product_id} className="hover:bg-indigo-50/40 transition-colors">
+                      <td className="px-5 py-3 text-xs text-gray-400 font-bold">{i + 1}</td>
+                      <td className="px-5 py-3 font-semibold text-gray-800 max-w-xs truncate">{p.product_name}</td>
+                      <td className="px-5 py-3 font-bold text-gray-700">{p.order_count}</td>
+                      <td className="px-5 py-3 font-bold text-gray-700">{p.total_units}</td>
+                      <td className="px-5 py-3 font-black text-emerald-700">₹{Number(p.total_revenue).toLocaleString('en-IN')}</td>
+                      <td className="px-5 py-3">
+                        <span style={{ fontSize: 12, fontWeight: 700, color: p.return_count > 0 ? '#dc2626' : '#6b7280', background: p.return_count > 0 ? '#fee2e2' : '#f3f4f6', borderRadius: 20, padding: '2px 10px' }}>
+                          {p.return_count}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ── Conversion Funnel ── */}
+        <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h2 className="font-bold text-gray-900 text-lg mb-5">Conversion Funnel</h2>
+          {funnelLoading ? (
+            <div className="flex justify-center py-10"><div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>
+          ) : funnelData.length === 0 ? (
+            <div className="py-8 text-center text-gray-400 text-sm">No funnel data found</div>
+          ) : (
+            <div className="space-y-3">
+              {funnelData.map((stage: any, i: number) => {
+                const colors = ['#6366f1','#8b5cf6','#a78bfa','#10b981','#059669']
+                const color = colors[i] || '#6366f1'
+                return (
+                  <div key={stage.stage}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{stage.stage}</span>
+                      <div style={{ display: 'flex', gap: 16 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color }}>{Number(stage.count).toLocaleString()}</span>
+                        {stage.pct_of_top != null && (
+                          <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>{stage.pct_of_top}% of visitors</span>
+                        )}
+                        {stage.conversion_rate != null && i > 0 && (
+                          <span style={{ fontSize: 11, color: '#10b981', fontWeight: 700, background: '#ecfdf5', borderRadius: 20, padding: '1px 8px' }}>
+                            {stage.conversion_rate}% step conversion
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ height: 10, background: '#f3f4f6', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${stage.pct_of_top || 100}%`, background: color, borderRadius: 99, transition: 'width 0.8s ease' }} />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

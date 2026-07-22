@@ -19,4 +19,5 @@ router.post("/:id/cancel", auth, controller.cancelOrder);
 router.post("/:id/return", auth, upload.array("images", 5), controller.returnOrder);
 router.get("/:id/timeline", auth, controller.getOrderTimeline);
 router.post("/:id/retry-payment", auth, controller.retryPayment);
+router.post("/:id/reorder", auth, controller.reorder);
 module.exports = router;

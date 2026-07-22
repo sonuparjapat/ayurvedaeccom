@@ -15,6 +15,26 @@ import { useStore } from '../store'
 import { Colors } from '../constants/theme'
 import { ToastContainer, ToastRef, setToastRef } from '../components/ui/Toast'
 
+function usePushDeepLink() {
+  useEffect(() => {
+    let sub: any
+
+    ;(async () => {
+      try {
+        const Notifications = await import('expo-notifications')
+        sub = Notifications.addNotificationResponseReceivedListener((response) => {
+          const data = response.notification.request.content.data as Record<string, any>
+          if (data?.type === 'order_update' && data?.order_id) {
+            router.push(`/order/${data.order_id}`)
+          }
+        })
+      } catch { }
+    })()
+
+    return () => { sub?.remove?.() }
+  }, [])
+}
+
 function Inner() {
   const [fontsLoaded] = useFonts({
     CormorantGaramond_700Bold,
@@ -26,6 +46,7 @@ function Inner() {
   const { loading } = useBootstrap()
   const bootstrapped = useStore((s) => s.bootstrapped)
   useOrderSocket()
+  usePushDeepLink()
   const authOpen = useStore((s) => s.authOpen)
   const setAuthOpen = useStore((s) => s.setAuthOpen)
 

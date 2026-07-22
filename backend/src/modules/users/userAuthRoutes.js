@@ -1,5 +1,6 @@
 const express = require("express")
 const router = express.Router()
+const rateLimit = require('express-rate-limit')
 
 const controller=require("./userAuthController");
 const { auth } = require("../../middlewares/auth");
@@ -10,9 +11,15 @@ const {
   updateSettings,
 } = require("./user.settings.controller");
 
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many registration attempts. Please try again later.' },
+})
 
-
-router.post("/register", controller.userRegister);
+router.post("/register", registerLimiter, controller.userRegister);
 
 router.post("/login", controller.userLogin)
 router.post("/google-login", controller.googleLogin)
