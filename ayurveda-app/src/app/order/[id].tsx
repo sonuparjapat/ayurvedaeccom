@@ -270,9 +270,44 @@ function CancelModal({ visible, onClose, onConfirm, loading }: any) {
 // ─── RETURN MODAL ─────────────────────────────────────────────────────────────
 function ReturnModal({ visible, onClose, onConfirm, loading }: any) {
   const [reason, setReason] = useState('')
+  const [urlInput, setUrlInput] = useState('')
+  const [urlImages, setUrlImages] = useState<string[]>([])
+  const [fileImages, setFileImages] = useState<{ uri: string; name: string; type: string }[]>([])
   const REASONS = ['Product damaged', 'Wrong item received', 'Product not as described', 'Quality not satisfactory', 'Other']
   const [selected, setSelected] = useState('')
   const finalReason = selected === 'Other' ? reason : selected
+  const totalImages = urlImages.length + fileImages.length
+
+  const pickImages = async () => {
+    const remaining = 5 - totalImages
+    if (remaining <= 0) { toast.error('Maximum 5 photos allowed'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'] as any,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: remaining,
+    })
+    if (!result.canceled) {
+      const picked = result.assets.slice(0, remaining).map(a => ({
+        uri: a.uri,
+        name: a.fileName || `return_${Date.now()}.jpg`,
+        type: a.mimeType || 'image/jpeg',
+      }))
+      setFileImages(prev => [...prev, ...picked].slice(0, 5))
+    }
+  }
+
+  const addUrl = () => {
+    const trimmed = urlInput.trim()
+    if (!trimmed) return
+    if (totalImages >= 5) { toast.error('Maximum 5 photos allowed'); return }
+    if (!trimmed.startsWith('http')) { toast.error('Please enter a valid URL'); return }
+    setUrlImages(prev => [...prev, trimmed])
+    setUrlInput('')
+  }
+
+  const removeFile = (idx: number) => setFileImages(prev => prev.filter((_, i) => i !== idx))
+  const removeUrl = (idx: number) => setUrlImages(prev => prev.filter((_, i) => i !== idx))
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
@@ -307,8 +342,58 @@ function ReturnModal({ visible, onClose, onConfirm, loading }: any) {
               />
             )}
 
+            {/* Photo Evidence */}
+            <Text style={[m.sub, { marginBottom: 8, marginTop: 4 }]}>📷 Photo Evidence (optional)</Text>
+
+            {(fileImages.length > 0 || urlImages.length > 0) && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                {fileImages.map((f, i) => (
+                  <View key={`f-${i}`} style={{ position: 'relative' }}>
+                    <ExpoImage source={{ uri: f.uri }} style={{ width: 72, height: 72, borderRadius: 8 }} contentFit="cover" />
+                    <TouchableOpacity onPress={() => removeFile(i)} style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#ef4444', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                {urlImages.map((u, i) => (
+                  <View key={`u-${i}`} style={{ position: 'relative' }}>
+                    <ExpoImage source={{ uri: u }} style={{ width: 72, height: 72, borderRadius: 8 }} contentFit="cover" />
+                    <TouchableOpacity onPress={() => removeUrl(i)} style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#ef4444', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {totalImages < 5 && (
+              <TouchableOpacity onPress={pickImages} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: Colors.forest, borderStyle: 'dashed', marginBottom: 10 }}>
+                <Text style={{ fontSize: 18 }}>📁</Text>
+                <Text style={{ color: Colors.forest, fontSize: 14, fontWeight: '600' }}>Upload Photos</Text>
+              </TouchableOpacity>
+            )}
+
+            {totalImages < 5 && (
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
+                <TextInput
+                  style={[m.input, { flex: 1, marginBottom: 0 }]}
+                  placeholder="Or paste image URL..."
+                  placeholderTextColor={Colors.textDim}
+                  value={urlInput}
+                  onChangeText={setUrlInput}
+                  onSubmitEditing={addUrl}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                />
+                <TouchableOpacity onPress={addUrl} style={{ backgroundColor: Colors.forest, borderRadius: 10, paddingHorizontal: 14, justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Add</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            <Text style={{ color: Colors.textDim, fontSize: 12, marginBottom: 16 }}>Max 5 photos · JPG, PNG, WEBP</Text>
+
             <TouchableOpacity
-              onPress={() => { if (finalReason) onConfirm(finalReason) }}
+              onPress={() => { if (finalReason) onConfirm(finalReason, urlImages, fileImages) }}
               disabled={!finalReason || loading}
               style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}
             >
@@ -679,10 +764,14 @@ export default function OrderDetailScreen() {
     } finally { setActionLoading(false) }
   }
 
-  const handleReturn = async (reason: string) => {
+  const handleReturn = async (reason: string, urlImages: string[] = [], fileImages: { uri: string; name: string; type: string }[] = []) => {
     setActionLoading(true)
     try {
-      await api.post(`/orders/${id}/return`, { reason })
+      const form = new FormData()
+      form.append('reason', reason)
+      fileImages.forEach(f => form.append('images', f as any))
+      form.append('imageUrls', JSON.stringify(urlImages))
+      await api.post(`/orders/${id}/return`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
       setShowReturn(false)
       toast.success('Return request submitted. We will contact you within 24 hours.')
       fetchOrder()

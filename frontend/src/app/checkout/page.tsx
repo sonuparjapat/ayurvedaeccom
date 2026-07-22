@@ -379,7 +379,10 @@ export default function CheckoutPage() {
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)   
   const {fetchCart, loginuserdata, cartdata,cartloading,settings, loading: authLoading}=useAuth()
   const [paidAmount, setPaidAmount] = useState<number>(0)
-const [checkingAddress, setCheckingAddress] = useState(true);
+const [checkingAddress, setCheckingAddress] = useState(true)
+const [showAddressForm, setShowAddressForm] = useState(false)
+const [newAddr, setNewAddr] = useState({ street: '', city: '', state: '', pincode: '', type: 'home', email: '' })
+const [addingAddr, setAddingAddr] = useState(false)
 useEffect(() => {
 
   if (authLoading) return;
@@ -403,14 +406,9 @@ useEffect(() => {
 
       const list = res.data?.data || [];
 
-      // ❌ NO ADDRESS → REDIRECT
+      // No address → show inline form instead of redirecting
       if (!list.length) {
-
-        toast.error("Please add address before checkout");
-
-        window.location.href = "/account?tab=addresses";
-
-        return;
+        setShowAddressForm(true)
       }
 
       setAddresses(list);
@@ -535,7 +533,40 @@ const applyCoupon = async () => {
 }
 
 const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); setCouponError('') }
-  
+
+const handleAddAddress = async () => {
+  const { street, city, state, pincode, email } = newAddr
+  if (!street.trim() || !city.trim() || !state.trim() || !pincode.trim() || !email.trim()) {
+    toast.error('All address fields are required')
+    return
+  }
+  if (!/^\d{6}$/.test(pincode)) { toast.error('Enter valid 6-digit pincode'); return }
+  setAddingAddr(true)
+  try {
+    await axios.post('/users/address', { ...newAddr, isDefault: addresses.length === 0 })
+    const res = await axios.get('/users/address')
+    const list = res.data?.data || []
+    setAddresses(list)
+    const def = list.find((a: any) => a.isDefault) || list[0]
+    if (def) {
+      setSelectedAddressId(def.id)
+      setShipping({
+        name: loginuserdata?.name || '',
+        phone: loginuserdata?.phone || '',
+        address: `${def.street}, ${def.city}, ${def.state} - ${def.pincode}`,
+      })
+    }
+    setShowAddressForm(false)
+    setNewAddr({ street: '', city: '', state: '', pincode: '', type: 'home', email: '' })
+    toast.success('Address added successfully!')
+  } catch (e: any) {
+    toast.error(e?.response?.data?.message || 'Failed to add address')
+  } finally {
+    setAddingAddr(false)
+  }
+}
+
+
 
   const validateShipping = () => {
     if (!shipping.name.trim()) { toast.error('Full name is required'); return false }
@@ -546,9 +577,10 @@ const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); setCoup
 
 const placeOrder = async () => {
 if (!addresses.length) {
-  toast.error("Please add an address in your profile first");
-  window.location.href = "/account?tab=addresses";
-  return;
+  setShowAddressForm(true)
+  toast.error("Please add a delivery address first")
+  setStep(1)
+  return
 }
 
 if (!validateShipping()) return;
@@ -952,6 +984,99 @@ if (checkingAddress) {
 
   </div>
 )}
+
+                      {/* ─── Add New Address toggle ─── */}
+                      <div style={{ marginBottom: 20 }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddressForm(s => !s)}
+                          style={{ fontSize: 12, fontWeight: 700, color: 'var(--gold-dark)', background: 'var(--parchment)', border: '1px dashed var(--border)', borderRadius: 10, padding: '8px 16px', cursor: 'pointer', letterSpacing: '0.06em', textTransform: 'uppercase' }}
+                        >
+                          {showAddressForm ? '✕ Cancel' : addresses.length === 0 ? '+ Add Delivery Address' : '+ Add New Address'}
+                        </button>
+                      </div>
+
+                      {/* ─── Inline Add Address Form ─── */}
+                      {showAddressForm && (
+                        <div style={{ padding: '20px', background: 'var(--parchment)', border: '1px solid var(--border)', borderRadius: 16, marginBottom: 24 }}>
+                          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gold-dark)', marginBottom: 16 }}>New Delivery Address</p>
+                          <div style={{ display: 'grid', gap: 14 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                              <div>
+                                <label className="input-label">Address Type</label>
+                                <select
+                                  className="gold-input"
+                                  value={newAddr.type}
+                                  onChange={e => setNewAddr(a => ({ ...a, type: e.target.value }))}
+                                >
+                                  <option value="home">Home</option>
+                                  <option value="work">Work</option>
+                                  <option value="other">Other</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="input-label">PIN Code</label>
+                                <input
+                                  className="gold-input"
+                                  placeholder="6-digit PIN"
+                                  maxLength={6}
+                                  value={newAddr.pincode}
+                                  onChange={e => setNewAddr(a => ({ ...a, pincode: e.target.value.replace(/\D/g, '') }))}
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="input-label">Street / House No.</label>
+                              <input
+                                className="gold-input"
+                                placeholder="House no., building, street, area"
+                                value={newAddr.street}
+                                onChange={e => setNewAddr(a => ({ ...a, street: e.target.value }))}
+                              />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                              <div>
+                                <label className="input-label">City</label>
+                                <input
+                                  className="gold-input"
+                                  placeholder="City"
+                                  value={newAddr.city}
+                                  onChange={e => setNewAddr(a => ({ ...a, city: e.target.value }))}
+                                />
+                              </div>
+                              <div>
+                                <label className="input-label">State</label>
+                                <input
+                                  className="gold-input"
+                                  placeholder="State"
+                                  value={newAddr.state}
+                                  onChange={e => setNewAddr(a => ({ ...a, state: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="input-label">Email (for order updates)</label>
+                              <input
+                                className="gold-input"
+                                type="email"
+                                placeholder="your@email.com"
+                                value={newAddr.email}
+                                onChange={e => setNewAddr(a => ({ ...a, email: e.target.value }))}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleAddAddress}
+                              disabled={addingAddr}
+                              className="cta-btn"
+                              style={{ marginTop: 4 }}
+                            >
+                              {addingAddr ? 'Saving…' : 'Save Address & Continue'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       <div style={{ display: 'grid', gap: 20 }}>
 
                         <div>

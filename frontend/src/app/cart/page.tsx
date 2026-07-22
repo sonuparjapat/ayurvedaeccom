@@ -11,6 +11,7 @@ import {
 import { useAuth } from '@/context/auth-context'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
+import { Bookmark } from 'lucide-react'
 
 interface CartItem {
   cart_item_id: number
@@ -41,8 +42,9 @@ interface CouponResult {
 
 export default function CartPage() {
   const router = useRouter()
-  const { cartdata, fetchCart, loginuserdata, settings } = useAuth()
+  const { cartdata, fetchCart, loginuserdata, settings, getwishlist, wishlistdata } = useAuth()
   const [items, setItems] = useState<CartItem[]>([])
+  const [savingId, setSavingId] = useState<number | null>(null)
   const [couponCode, setCouponCode] = useState('')
   const [coupon, setCoupon] = useState<CouponResult | null>(null)
   const [couponLoading, setCouponLoading] = useState(false)
@@ -120,6 +122,39 @@ export default function CartPage() {
       toast.error('Failed to remove item')
     } finally {
       setUpdatingId(null)
+    }
+  }
+
+  const saveForLater = async (item: CartItem) => {
+    if (!loginuserdata?.id) { toast.error('Please login to save items'); return }
+    setSavingId(item.product_id)
+    try {
+      // Add to wishlist (idempotent — backend upserts)
+      await axios.post('/shop/wishlist', { productId: item.product_id })
+      // Remove from cart
+      const params: any = {}
+      if (item.variant_id) params.variantId = item.variant_id
+      await axios.delete(`/cart/${item.product_id}`, { params })
+      setItems((prev) => prev.filter((i) => i.cart_item_id !== item.cart_item_id))
+      fetchCart()
+      getwishlist()
+      toast.success('Saved for later!')
+    } catch {
+      toast.error('Failed to save for later')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const moveToCart = async (productId: number) => {
+    try {
+      await axios.post('/cart', { productId, quantity: 1 })
+      await axios.delete(`/shop/wishlist/${productId}`)
+      fetchCart()
+      getwishlist()
+      toast.success('Moved to cart!')
+    } catch {
+      toast.error('Failed to move to cart')
     }
   }
 
@@ -257,16 +292,77 @@ export default function CartPage() {
                     </div>
                   </div>
 
-                  {item.inventory <= 5 && (
-                    <div style={{ marginTop: 6, fontSize: 11, color: '#e07a2a', fontWeight: 500 }}>
-                      Only {item.inventory} left in stock
-                    </div>
-                  )}
+                  {/* Stock warning + Save for Later row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, flexWrap: 'wrap', gap: 6 }}>
+                    {item.inventory <= 5 && item.inventory > 0 ? (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#c2410c', background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 6, padding: '3px 8px' }}>
+                        ⚠ Only {item.inventory} left!
+                      </span>
+                    ) : item.inventory === 0 ? (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#dc2626', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '3px 8px' }}>
+                        Out of stock
+                      </span>
+                    ) : <span />}
+
+                    <button
+                      onClick={() => saveForLater(item)}
+                      disabled={savingId === item.product_id}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#4a7c5e', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}
+                    >
+                      <Bookmark size={13} />
+                      {savingId === item.product_id ? 'Saving…' : 'Save for Later'}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
+
+        {/* Saved for Later */}
+        {wishlistdata?.items?.length > 0 && (
+          <div style={{ background: 'white', borderRadius: 16, border: '1px solid rgba(26,58,42,0.1)', padding: '16px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <Bookmark size={16} style={{ color: '#4a7c5e' }} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#1a3a2a' }}>Saved for Later</span>
+              <span style={{ fontSize: 12, color: '#888', marginLeft: 4 }}>({wishlistdata.items.length})</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {wishlistdata.items.map((wItem: any) => (
+                <div key={wItem.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: '1px solid rgba(26,58,42,0.06)' }}>
+                  <Link href={`/product/${wItem.slug || wItem.id}`}>
+                    <img
+                      src={wItem.images?.[0] || '/placeholder.png'}
+                      alt={wItem.name}
+                      style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 10, flexShrink: 0, background: '#e8f5ee' }}
+                    />
+                  </Link>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Link href={`/product/${wItem.slug || wItem.id}`} style={{ textDecoration: 'none' }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#1a3a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wItem.name}</p>
+                    </Link>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#2d5a3d', marginTop: 3 }}>₹{Number(wItem.price).toLocaleString('en-IN')}</p>
+                    {wItem.inventory <= 0 && <p style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>Out of stock</p>}
+                  </div>
+                  <button
+                    onClick={() => moveToCart(wItem.id)}
+                    disabled={wItem.inventory <= 0}
+                    style={{
+                      fontSize: 12, fontWeight: 600, color: wItem.inventory <= 0 ? '#aaa' : '#1a3a2a',
+                      background: wItem.inventory <= 0 ? '#f5f5f5' : '#e8f5ee',
+                      border: '1.5px solid',
+                      borderColor: wItem.inventory <= 0 ? '#e5e5e5' : 'rgba(26,58,42,0.2)',
+                      borderRadius: 8, padding: '6px 12px', cursor: wItem.inventory <= 0 ? 'not-allowed' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {wItem.inventory <= 0 ? 'Out of Stock' : '+ Move to Cart'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Order Summary */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

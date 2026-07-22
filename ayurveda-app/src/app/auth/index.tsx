@@ -259,24 +259,13 @@ export default function AuthScreen() {
   }
 
   const sendMobileOtp = async () => {
-    if (!mobileForm.phone) { toast.warning('Please enter your phone number'); return }
-    setLoading(true)
-    try {
-      await api.post('/users/send-mobile-otp', { phone: mobileForm.phone })
-      setMobileOtpSent(true); setOtpTimer(30)
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed to send OTP')
-    } finally { setLoading(false) }
+    // Mobile OTP login is not yet connected — SMS gateway not integrated
+    toast.error('Mobile OTP login is coming soon. Please sign in with your email.')
   }
 
   const verifyMobileOtp = async () => {
-    setLoading(true)
-    try {
-      const res = await api.post('/users/verify-mobile-otp', mobileForm)
-      await afterLogin(res.data.user)
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Invalid OTP, please try again')
-    } finally { setLoading(false) }
+    // Mobile OTP login is not yet connected — SMS gateway not integrated
+    toast.error('Mobile OTP login is coming soon. Please sign in with your email.')
   }
 
   const sendForgot = async () => {
@@ -472,9 +461,11 @@ export default function AuthScreen() {
             {/* ── MOBILE OTP ── */}
             {mode === 'mobileOtp' && (
               <>
-                <View style={ss.infoBox}>
-                  <Text style={ss.infoBoxIcon}>📱</Text>
-                  <Text style={ss.infoBoxText}>Enter your mobile number to receive a one-time SMS code.</Text>
+                <View style={[ss.infoBox, { backgroundColor: '#fff7ed', borderColor: '#fdba74' }]}>
+                  <Text style={ss.infoBoxIcon}>🚧</Text>
+                  <Text style={[ss.infoBoxText, { color: '#c2410c' }]}>
+                    Mobile OTP login is coming soon. Please use Email or Email OTP to sign in for now.
+                  </Text>
                 </View>
                 <Field label="Mobile Number" placeholder="+91 98765 43210" emoji="📱"
                   value={mobileForm.phone} keyboardType="phone-pad"

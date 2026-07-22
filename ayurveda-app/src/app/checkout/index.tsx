@@ -187,6 +187,10 @@ export default function CheckoutScreen() {
   const [loyaltyBalance, setLoyaltyBalance] = useState(0)
   const [loyaltyApplied, setLoyaltyApplied] = useState(false)
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)
+  // Inline add address form
+  const [showAddrForm, setShowAddrForm] = useState(false)
+  const [newAddr, setNewAddr] = useState({ street: '', city: '', state: '', pincode: '', type: 'home', email: '' })
+  const [addingAddr, setAddingAddr] = useState(false)
 
   useEffect(() => {
     if (!user) { setAuthOpen(true); router.back(); return }
@@ -211,15 +215,35 @@ export default function CheckoutScreen() {
         const def = list.find(a => a.isDefault) || list[0]
         if (def) setSelectedAddr(def)
         if (list.length === 0) {
-          Alert.alert('No Address', 'Please add a delivery address to continue.', [
-            { text: 'Add Address', onPress: () => router.replace('/account?tab=Addresses') }
-          ])
+          setShowAddrForm(true) // auto-open inline form when no address
         }
       }
       if (settingRes.status === 'fulfilled') {
         setSettings(settingRes.value.data?.data || [])
       }
     } catch { } finally { setLoadingInit(false) }
+  }
+
+  const handleAddAddress = async () => {
+    const { street, city, state, pincode, email } = newAddr
+    if (!street.trim() || !city.trim() || !state.trim() || !pincode.trim() || !email.trim()) {
+      toast.show('All address fields are required', 'error'); return
+    }
+    if (!/^\d{6}$/.test(pincode)) { toast.show('Enter valid 6-digit pincode', 'error'); return }
+    setAddingAddr(true)
+    try {
+      await api.post('/users/address', { ...newAddr, isDefault: addresses.length === 0 })
+      const res = await api.get('/users/address')
+      const list: Address[] = res.data?.data || []
+      setAddresses(list)
+      const def = list.find(a => a.isDefault) || list[0]
+      if (def) setSelectedAddr(def)
+      setShowAddrForm(false)
+      setNewAddr({ street: '', city: '', state: '', pincode: '', type: 'home', email: '' })
+      toast.show('Address added!', 'success')
+    } catch (e: any) {
+      toast.show(e?.response?.data?.message || 'Failed to add address', 'error')
+    } finally { setAddingAddr(false) }
   }
 
   const chargesMap = useMemo(() => {
@@ -392,16 +416,63 @@ export default function CheckoutScreen() {
             <Animated.View entering={FadeInDown.duration(350)}>
               <Text style={ss.stepTitle}>Select Delivery Address</Text>
 
-              {addresses.length === 0 ? (
+              {/* ── Add New Address Button ── */}
+              <TouchableOpacity
+                onPress={() => setShowAddrForm(s => !s)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: Colors.gold, borderStyle: 'dashed' }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: Colors.gold, fontFamily: Fonts.bold, fontSize: 12 }}>
+                  {showAddrForm ? '✕ Cancel' : addresses.length === 0 ? '+ Add Delivery Address' : '+ Add New Address'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* ── Inline Add Address Form ── */}
+              {showAddrForm && (
+                <Animated.View entering={FadeInDown.duration(300)} style={{ backgroundColor: '#f0fdf4', borderRadius: 14, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)' }}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, marginBottom: 12 }}>New Delivery Address</Text>
+
+                  {[
+                    { label: 'Street / House No.', key: 'street', placeholder: 'House no., building, street' },
+                    { label: 'City', key: 'city', placeholder: 'City' },
+                    { label: 'State', key: 'state', placeholder: 'State' },
+                    { label: 'PIN Code', key: 'pincode', placeholder: '6-digit PIN', keyboardType: 'number-pad' as const },
+                    { label: 'Email (for updates)', key: 'email', placeholder: 'your@email.com', keyboardType: 'email-address' as const },
+                  ].map(f => (
+                    <View key={f.key} style={{ marginBottom: 10 }}>
+                      <Text style={{ fontSize: 11, color: '#6b7280', fontFamily: Fonts.medium, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{f.label}</Text>
+                      <TextInput
+                        value={(newAddr as any)[f.key]}
+                        onChangeText={t => setNewAddr(a => ({ ...a, [f.key]: f.key === 'pincode' ? t.replace(/\D/g, '') : t }))}
+                        placeholder={f.placeholder}
+                        placeholderTextColor="#9ca3af"
+                        keyboardType={f.keyboardType || 'default'}
+                        maxLength={f.key === 'pincode' ? 6 : undefined}
+                        style={{ backgroundColor: 'white', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, fontFamily: Fonts.regular, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)', color: '#111' }}
+                      />
+                    </View>
+                  ))}
+
+                  <TouchableOpacity
+                    onPress={handleAddAddress}
+                    disabled={addingAddr}
+                    style={{ borderRadius: 12, overflow: 'hidden', marginTop: 4 }}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient colors={[Colors.forest, Colors.moss]} style={{ paddingVertical: 13, alignItems: 'center' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                      <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 14 }}>
+                        {addingAddr ? 'Saving…' : 'Save Address & Continue'}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+
+              {addresses.length === 0 && !showAddrForm ? (
                 <View style={ss.noAddrBox}>
                   <Text style={{ fontSize: 36, marginBottom: 10 }}>📍</Text>
                   <Text style={ss.noAddrTitle}>No saved addresses</Text>
-                  <Text style={ss.noAddrSub}>Please add a delivery address from your account</Text>
-                  <TouchableOpacity onPress={() => router.replace('/account?tab=Addresses')} style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden' }}>
-                    <LinearGradient colors={[Colors.forest, Colors.moss]} style={{ paddingHorizontal: 24, paddingVertical: 12 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                      <Text style={{ color: '#fff', fontFamily: Fonts.bold }}>Add Address</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
+                  <Text style={ss.noAddrSub}>Add a delivery address above to continue checkout</Text>
                 </View>
               ) : (
                 <View style={{ gap: 10, marginBottom: 16 }}>

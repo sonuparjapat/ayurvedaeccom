@@ -151,6 +151,17 @@ export default function ProductDetailPage() {
   // Related products
   const [relatedProducts, setRelatedProducts] = useState<any[]>([])
 
+  // Bundles (Frequently Bought Together)
+  const [bundles, setBundles] = useState<any[]>([])
+  const [bundleLoading, setBundleLoading] = useState(false)
+  const [bundleAdding, setBundleAdding] = useState<string | null>(null)
+
+  // Review sort + filter
+  const [reviewSort, setReviewSort] = useState<string>('created_at')
+  const [reviewRating, setReviewRating] = useState<number>(0)
+  const [filteredReviews, setFilteredReviews] = useState<any[] | null>(null)
+  const [filterLoading, setFilterLoading] = useState(false)
+
   // Write review
   const [wRating, setWRating] = useState(0)
   const [wComment, setWComment] = useState('')
@@ -189,7 +200,24 @@ const handlepagechage=(page:number)=>{
   }, [id])
   useEffect(() => {
     loadReviews(id, page)
+    setFilteredReviews(null) // reset filter when page changes
   }, [page])
+
+  // Re-fetch reviews with sort/rating filter applied
+  useEffect(() => {
+    if (!id) return
+    if (reviewSort === 'created_at' && reviewRating === 0) {
+      setFilteredReviews(null) // use context data
+      return
+    }
+    setFilterLoading(true)
+    axios.get(`/shop/reviews/product/${id}`, {
+      params: { sortBy: reviewSort, rating: reviewRating || undefined, page: 1, limit: 50 }
+    })
+      .then(r => setFilteredReviews(r.data?.data || []))
+      .catch(() => {})
+      .finally(() => setFilterLoading(false))
+  }, [reviewSort, reviewRating, id])
 
   useEffect(() => {
     if (!loginuserdata?.id || !id) return
@@ -218,6 +246,8 @@ const handlepagechage=(page:number)=>{
     axios.get(`/shop/variants/${id}`).then((r) => setVariants(r.data?.variants || [])).catch(() => {})
     axios.get(`/shop/rating/${id}`).then((r) => setRatingBreakdown(r.data || null)).catch(() => {})
     axios.get(`/shop/related/${id}`).then((r) => setRelatedProducts(r.data?.products || [])).catch(() => {})
+    setBundleLoading(true)
+    axios.get(`/bundles/by-product/${id}`).then((r) => setBundles(r.data?.bundles || [])).catch(() => {}).finally(() => setBundleLoading(false))
     // Check flash sale
     axios.get('/flash-sales/active').then((r) => {
       const sales = r.data?.sales || []
@@ -1297,6 +1327,106 @@ const addToCart = async () => {
         </div>
       )}
 
+      {/* ================= FREQUENTLY BOUGHT TOGETHER ================= */}
+      {(bundleLoading || bundles.length > 0) && (
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 16px 0' }}>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 6, letterSpacing: '-0.01em' }}>Frequently Bought Together</h2>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 24 }}>Curated bundles with this product at a special price</p>
+
+          {bundleLoading ? (
+            <div style={{ display: 'flex', gap: 16 }}>
+              {[1,2].map(i => (
+                <div key={i} style={{ width: 320, background: '#f8f8f8', borderRadius: 16, height: 180, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+              {bundles.map((bundle: any) => {
+                const prods = bundle.products || []
+                const originalTotal = prods.reduce((s: number, p: any) => s + Number(p.price) * (p.quantity || 1), 0)
+                let bundlePrice = originalTotal
+                if (bundle.discount_type === 'percent') bundlePrice = originalTotal * (1 - Number(bundle.discount_value) / 100)
+                else if (bundle.discount_type === 'flat') bundlePrice = Math.max(0, originalTotal - Number(bundle.discount_value))
+                const savePct = originalTotal > 0 ? Math.round(((originalTotal - bundlePrice) / originalTotal) * 100) : 0
+
+                return (
+                  <div key={bundle.id} style={{ background: 'white', border: '1.5px solid rgba(16,185,129,0.15)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
+                    {/* Bundle header */}
+                    <div style={{ background: 'linear-gradient(135deg,#064e3b,#047857)', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 2 }}>{bundle.name}</p>
+                        {savePct > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#6ee7b7', background: 'rgba(255,255,255,0.15)', borderRadius: 20, padding: '2px 8px', letterSpacing: '0.06em' }}>SAVE {savePct}%</span>}
+                      </div>
+                      {bundle.image_url && <img src={bundle.image_url} alt={bundle.name} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />}
+                    </div>
+
+                    {/* Products in bundle */}
+                    <div style={{ padding: '14px 16px', flex: 1 }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                        {prods.map((p: any, i: number) => (
+                          <div key={p.product_id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {i > 0 && <span style={{ color: '#10b981', fontSize: 16, fontWeight: 700 }}>+</span>}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <img
+                                src={p.images?.[0] || '/placeholder.png'}
+                                alt={p.name}
+                                style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover', border: '1px solid rgba(16,185,129,0.15)' }}
+                              />
+                              <p style={{ fontSize: 9, color: '#6b7280', marginTop: 4, textAlign: 'center', maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</p>
+                              {p.quantity > 1 && <p style={{ fontSize: 9, color: '#10b981', fontWeight: 700 }}>×{p.quantity}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Price row */}
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+                        <span style={{ fontSize: 20, fontWeight: 800, color: '#047857' }}>₹{bundlePrice.toFixed(0)}</span>
+                        {savePct > 0 && <span style={{ fontSize: 13, color: '#94a3b8', textDecoration: 'line-through' }}>₹{originalTotal.toFixed(0)}</span>}
+                        {savePct > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>(-{savePct}%)</span>}
+                      </div>
+
+                      {bundle.description && (
+                        <p style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5, marginBottom: 12 }}>{bundle.description}</p>
+                      )}
+                    </div>
+
+                    {/* Add bundle to cart */}
+                    <div style={{ padding: '0 16px 16px' }}>
+                      <button
+                        disabled={bundleAdding === bundle.id}
+                        onClick={async () => {
+                          if (!loginuserdata?.id) { toast.error('Please login to add bundles'); return }
+                          setBundleAdding(bundle.id)
+                          try {
+                            await axios.post('/bundles/add-to-cart', { bundleId: bundle.id })
+                            toast.success(`Bundle added to cart! You saved ₹${(originalTotal - bundlePrice).toFixed(0)}`)
+                            fetchCart(loginuserdata.id)
+                          } catch (e: any) {
+                            toast.error(e?.response?.data?.message || 'Failed to add bundle')
+                          } finally {
+                            setBundleAdding(null)
+                          }
+                        }}
+                        style={{
+                          width: '100%', padding: '11px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
+                          background: bundleAdding === bundle.id ? '#d1fae5' : 'linear-gradient(135deg,#064e3b,#047857)',
+                          color: bundleAdding === bundle.id ? '#065f46' : 'white',
+                          fontWeight: 700, fontSize: 13, letterSpacing: '0.02em',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {bundleAdding === bundle.id ? 'Adding…' : '🛍️ Add Bundle to Cart'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ================= RELATED PRODUCTS ================= */}
       {relatedProducts.length > 0 && (
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 16px 0' }}>
@@ -1377,6 +1507,53 @@ const addToCart = async () => {
             </span>
           )}
         </h2>
+
+        {/* ── Sort + Star Filter Controls ── */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>
+          {/* Sort */}
+          <select
+            value={reviewSort}
+            onChange={e => setReviewSort(e.target.value)}
+            style={{ padding: '8px 12px', borderRadius: 10, border: '1.5px solid rgba(16,185,129,0.2)', background: 'white', fontSize: 13, color: '#1a3a2a', fontWeight: 500, cursor: 'pointer', outline: 'none' }}
+          >
+            <option value="created_at">Newest First</option>
+            <option value="rating_desc">Highest Rated</option>
+            <option value="rating_asc">Lowest Rated</option>
+            <option value="helpful">Most Helpful</option>
+          </select>
+
+          {/* Star filter */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: '#888', fontWeight: 500 }}>Filter:</span>
+            {[0,5,4,3,2,1].map(s => (
+              <button
+                key={s}
+                onClick={() => setReviewRating(reviewRating === s ? 0 : s)}
+                style={{
+                  padding: '6px 10px', borderRadius: 8, border: '1.5px solid',
+                  borderColor: reviewRating === s ? '#f59e0b' : 'rgba(16,185,129,0.15)',
+                  background: reviewRating === s ? '#fef3c7' : 'white',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  color: reviewRating === s ? '#92400e' : '#6b7280',
+                  transition: 'all 0.15s ease',
+                  display: 'flex', alignItems: 'center', gap: 3,
+                }}
+              >
+                {s === 0 ? 'All' : <><span style={{ color: '#f59e0b' }}>★</span>{s}</>}
+              </button>
+            ))}
+          </div>
+
+          {filterLoading && <span style={{ fontSize: 12, color: '#10b981' }}>Loading…</span>}
+          {(reviewSort !== 'created_at' || reviewRating > 0) && (
+            <button
+              onClick={() => { setReviewSort('created_at'); setReviewRating(0) }}
+              style={{ fontSize: 12, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
 
         {/* Write review form — visible to logged-in users only */}
         {loginuserdata ? (
@@ -1478,7 +1655,7 @@ const addToCart = async () => {
         )}
 
         <div className="space-y-4">
-          {reviewsData?.data?.map((r: any) => {
+          {(filteredReviews ?? reviewsData?.data)?.map((r: any) => {
             const initials = (r.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
             const colors = ['#2d5a3d', '#1e40af', '#7c3aed', '#b45309', '#0e7490']
             const avatarColor = colors[r.id % colors.length]
@@ -1533,10 +1710,12 @@ const addToCart = async () => {
             )
           })}
 
-          {reviewsData?.data?.length === 0 && (
+          {(filteredReviews ?? reviewsData?.data)?.length === 0 && (
             <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
               <Star size={32} className="mx-auto mb-3 text-gray-200" />
-              <p className="font-medium text-gray-500">No reviews yet</p>
+              <p className="font-medium text-gray-500">
+                {reviewRating > 0 ? `No ${reviewRating}-star reviews yet` : 'No reviews yet'}
+              </p>
               <p className="text-sm text-gray-400 mt-1">Be the first to review this product after your purchase.</p>
             </div>
           )}

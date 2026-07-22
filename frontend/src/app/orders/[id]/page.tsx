@@ -75,6 +75,9 @@ export default function OrderDetailPage() {
   const [returnReason, setReturnReason] = useState('')
   const [showReturnForm, setShowReturnForm] = useState(false)
   const [returning, setReturning] = useState(false)
+  const [returnFiles, setReturnFiles] = useState<{ file: File; preview: string }[]>([])
+  const [returnUrlInput, setReturnUrlInput] = useState('')
+  const [returnUrlImages, setReturnUrlImages] = useState<string[]>([])
   const [retrying, setRetrying] = useState(false)
   const [reordering, setReordering] = useState(false)
 
@@ -159,9 +162,16 @@ export default function OrderDetailPage() {
     if (!returnReason.trim()) { toast.error('Please provide a return reason'); return }
     setReturning(true)
     try {
-      await axios.post(`/orders/${id}/return`, { reason: returnReason })
+      const form = new FormData()
+      form.append('reason', returnReason)
+      returnFiles.forEach(f => form.append('images', f.file))
+      form.append('imageUrls', JSON.stringify(returnUrlImages))
+      await axios.post(`/orders/${id}/return`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
       toast.success('Return request submitted')
       setShowReturnForm(false)
+      setReturnFiles([])
+      setReturnUrlImages([])
+      setReturnUrlInput('')
       window.location.reload()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed')
@@ -596,14 +606,82 @@ export default function OrderDetailPage() {
           {/* ── Return Form ── */}
           {showReturnForm && (
             <div style={{ ...gc, padding: 20, marginTop: 16, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)' }}>
-              <p style={{ color: '#fb923c', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Return Reason</p>
+              <p style={{ color: '#fb923c', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Return Request</p>
+
+              {/* Reason */}
               <textarea value={returnReason} onChange={e => setReturnReason(e.target.value)} placeholder="Please describe why you want to return..." rows={3}
                 style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 12, padding: 12, fontSize: 13, color: '#fff', resize: 'none', outline: 'none', boxSizing: 'border-box' }} />
-              <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+
+              {/* Photo evidence */}
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 600, margin: '14px 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                📷 Photo Evidence <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional — helps speed up approval)</span>
+              </p>
+
+              {/* Uploaded previews */}
+              {(returnFiles.length > 0 || returnUrlImages.length > 0) && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                  {returnFiles.map((f, i) => (
+                    <div key={i} style={{ position: 'relative' }}>
+                      <img src={f.preview} alt="" style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(249,115,22,0.3)' }} />
+                      <button onClick={() => setReturnFiles(prev => prev.filter((_, idx) => idx !== i))}
+                        style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#dc2626', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                    </div>
+                  ))}
+                  {returnUrlImages.map((url, i) => (
+                    <div key={`u${i}`} style={{ position: 'relative' }}>
+                      <img src={url} alt="" style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(249,115,22,0.3)' }} />
+                      <button onClick={() => setReturnUrlImages(prev => prev.filter((_, idx) => idx !== i))}
+                        style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#dc2626', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* File upload + URL input */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'rgba(249,115,22,0.15)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 8, fontSize: 12, color: '#fb923c', cursor: 'pointer', fontWeight: 600 }}>
+                  📁 Upload Photos
+                  <input type="file" multiple accept="image/*" style={{ display: 'none' }}
+                    onChange={e => {
+                      const files = Array.from(e.target.files || [])
+                      const toAdd = files.slice(0, 5 - returnFiles.length - returnUrlImages.length)
+                      setReturnFiles(prev => [...prev, ...toAdd.map(f => ({ file: f, preview: URL.createObjectURL(f) }))])
+                      e.target.value = ''
+                    }} />
+                </label>
+                <div style={{ display: 'flex', gap: 6, flex: 1, minWidth: 200 }}>
+                  <input
+                    value={returnUrlInput}
+                    onChange={e => setReturnUrlInput(e.target.value)}
+                    placeholder="Or paste image URL..."
+                    style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 8, padding: '7px 12px', fontSize: 12, color: '#fff', outline: 'none' }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && returnUrlInput.startsWith('http') && returnFiles.length + returnUrlImages.length < 5) {
+                        setReturnUrlImages(prev => [...prev, returnUrlInput])
+                        setReturnUrlInput('')
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (returnUrlInput.startsWith('http') && returnFiles.length + returnUrlImages.length < 5) {
+                        setReturnUrlImages(prev => [...prev, returnUrlInput])
+                        setReturnUrlInput('')
+                      }
+                    }}
+                    style={{ padding: '7px 12px', background: 'rgba(249,115,22,0.2)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 8, color: '#fb923c', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                    Add
+                  </button>
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 14 }}>Max 5 photos · JPG, PNG, WEBP</p>
+
+              <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={submitReturn} disabled={returning} style={{ background: '#ea580c', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: returning ? 0.5 : 1 }}>
                   {returning ? 'Submitting...' : 'Submit Return'}
                 </button>
-                <button onClick={() => setShowReturnForm(false)} style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 20px', fontSize: 13, cursor: 'pointer' }}>
+                <button onClick={() => { setShowReturnForm(false); setReturnFiles([]); setReturnUrlImages([]); setReturnUrlInput('') }}
+                  style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 20px', fontSize: 13, cursor: 'pointer' }}>
                   Cancel
                 </button>
               </div>

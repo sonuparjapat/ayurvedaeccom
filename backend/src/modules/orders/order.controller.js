@@ -1130,6 +1130,7 @@ exports.cancelOrder = async (req, res) => {
 exports.returnOrder = async (req, res) => {
   const client = await pool.connect();
   try {
+    const { uploadImageToAWS } = require('../../utils/awsImageUpload');
     const userId = req.user.id;
     const { id } = req.params;
     const { reason } = req.body;
@@ -1137,6 +1138,24 @@ exports.returnOrder = async (req, res) => {
     if (!reason) {
       return res.status(400).json({ success: false, message: "Return reason is required" });
     }
+
+    // Upload any attached files to S3
+    const uploadedUrls = [];
+    if (req.files?.length) {
+      for (const file of req.files) {
+        try {
+          const url = await uploadImageToAWS(file, 'returns');
+          uploadedUrls.push(url);
+        } catch (_) {}
+      }
+    }
+    // Also accept pre-uploaded URLs sent as JSON array string
+    let extraUrls = [];
+    try { extraUrls = JSON.parse(req.body.imageUrls || '[]'); } catch (_) {}
+    const returnImages = [...uploadedUrls, ...extraUrls.filter((u) => typeof u === 'string' && u.startsWith('http'))];
+
+    // Ensure column exists (idempotent)
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_images TEXT`).catch(() => {});
 
     await client.query("BEGIN");
 
@@ -1187,8 +1206,8 @@ exports.returnOrder = async (req, res) => {
     }
 
     await client.query(
-      `UPDATE orders SET status=7, return_reason=$1, updated_at=NOW() WHERE id=$2`,
-      [reason, id]
+      `UPDATE orders SET status=7, return_reason=$1, return_images=$2, updated_at=NOW() WHERE id=$3`,
+      [reason, JSON.stringify(returnImages), id]
     );
 
     await client.query("COMMIT");
@@ -1525,5 +1544,148 @@ exports.retryPayment = async (req, res) => {
   } catch (err) {
     console.error("[RETRY PAYMENT]", err);
     res.status(500).json({ success: false, message: "Failed to initiate payment retry" });
+  }
+};
+
+/* ================= RAZORPAY WEBHOOK ================= */
+// Mounted BEFORE express.json() using express.raw() so raw body is preserved for signature check.
+// RAZORPAY_WEBHOOK_SECRET must be set in .env and match the secret configured in Razorpay dashboard.
+
+exports.razorpayWebhook = async (req, res) => {
+  const sig = req.headers['x-razorpay-signature'];
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+  if (!secret) {
+    console.warn('[WEBHOOK] RAZORPAY_WEBHOOK_SECRET not set — skipping');
+    return res.status(200).json({ received: true });
+  }
+
+  // Verify signature using raw body (Buffer from express.raw())
+  const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  if (expected !== sig) {
+    console.warn('[WEBHOOK] Invalid Razorpay signature');
+    return res.status(400).json({ success: false, message: 'Invalid signature' });
+  }
+
+  let event;
+  try {
+    event = JSON.parse(rawBody.toString());
+  } catch {
+    return res.status(400).json({ success: false, message: 'Bad payload' });
+  }
+
+  // Only handle payment.captured — ignore everything else silently
+  if (event.event !== 'payment.captured') {
+    return res.status(200).json({ received: true });
+  }
+
+  const payment = event?.payload?.payment?.entity;
+  if (!payment?.order_id) {
+    return res.status(200).json({ received: true });
+  }
+
+  const razorpay_order_id = payment.order_id;
+  const razorpay_payment_id = payment.id;
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Find order by razorpay_order_id — lock row
+    const orderRes = await client.query(
+      `SELECT id, user_id, payment_status, expires_at FROM orders WHERE razorpay_order_id=$1 FOR UPDATE`,
+      [razorpay_order_id]
+    );
+    if (!orderRes.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(200).json({ received: true }); // Unknown order — ack anyway
+    }
+
+    const order = orderRes.rows[0];
+
+    // Idempotency — already processed (browser verify beat us)
+    if (order.payment_status === 'paid') {
+      await client.query('ROLLBACK');
+      return res.status(200).json({ received: true });
+    }
+
+    const orderId = order.id;
+    const userId = order.user_id;
+
+    // Reduce stock (variant-aware) — same logic as verifyPayment
+    const items = await client.query(
+      `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id=$1`,
+      [orderId]
+    );
+    for (const item of items.rows) {
+      if (item.variant_id) {
+        const rv = await client.query(
+          `UPDATE product_variants SET inventory = inventory - $1 WHERE id=$2 AND inventory >= $1 RETURNING id`,
+          [item.quantity, item.variant_id]
+        );
+        if (!rv.rows.length) throw new Error(`Variant ${item.variant_id} stock mismatch`);
+      } else {
+        const rp = await client.query(
+          `UPDATE products SET inventory = inventory - $1 WHERE id=$2 AND inventory >= $1 RETURNING id`,
+          [item.quantity, item.product_id]
+        );
+        if (!rp.rows.length) throw new Error(`Product ${item.product_id} stock mismatch`);
+      }
+    }
+
+    // Mark order paid
+    await client.query(
+      `UPDATE orders SET payment_status='paid', status=1, razorpay_payment_id=$1 WHERE id=$2`,
+      [razorpay_payment_id, orderId]
+    );
+
+    // Clear cart
+    await client.query(`DELETE FROM cart WHERE user_id=$1`, [userId]);
+
+    // Credit referral reward
+    await creditReferralReward(client, userId, orderId);
+
+    await client.query('COMMIT');
+
+    // Fire admin socket notification
+    try { emitToAdmin('new_order', { orderId }); } catch (_) {}
+
+    // Send order confirmation email
+    try {
+      const [userRow, orderRow, itemsRow] = await Promise.all([
+        pool.query(`SELECT name, email FROM users WHERE id=$1`, [userId]),
+        pool.query(`SELECT invoice_no, shipping_address, total_amount FROM orders WHERE id=$1`, [orderId]),
+        pool.query(
+          `SELECT oi.quantity, oi.price, oi.variant_label, p.name as product_name
+           FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=$1`,
+          [orderId]
+        ),
+      ]);
+      const userInfo = userRow.rows[0];
+      const orderInfo = orderRow.rows[0];
+      if (userInfo?.email) {
+        sendOrderConfirmationEmail({
+          email: userInfo.email,
+          name: userInfo.name,
+          orderId,
+          invoiceNo: orderInfo?.invoice_no,
+          items: itemsRow.rows,
+          total: orderInfo?.total_amount,
+          paymentMethod: 'online',
+          address: orderInfo?.shipping_address,
+        });
+      }
+    } catch (_) {}
+
+    return res.status(200).json({ received: true });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[WEBHOOK] Error processing payment.captured:', err.message);
+    // Return 500 so Razorpay retries delivery
+    return res.status(500).json({ success: false, message: 'Processing error' });
+  } finally {
+    client.release();
   }
 };

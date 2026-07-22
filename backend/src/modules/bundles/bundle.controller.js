@@ -357,3 +357,42 @@ exports.addBundleToCart = async (req, res) => {
     client.release()
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   PUBLIC — BUNDLES CONTAINING A SPECIFIC PRODUCT
+═══════════════════════════════════════════════════════ */
+exports.getBundlesByProduct = async (req, res) => {
+  try {
+    const { productId } = req.params
+    const result = await pool.query(`
+      SELECT pb.*,
+        (
+          SELECT json_agg(json_build_object(
+            'product_id', p.id,
+            'name', p.name,
+            'slug', p.slug,
+            'price', p.price,
+            'compareprice', p.compareprice,
+            'images', p.images,
+            'quantity', bp.quantity
+          ) ORDER BY bp.id)
+          FROM bundle_products bp
+          JOIN products p ON p.id = bp.product_id
+          WHERE bp.bundle_id = pb.id
+        ) AS products,
+        (SELECT COUNT(*) FROM bundle_products WHERE bundle_id = pb.id) AS product_count
+      FROM product_bundles pb
+      WHERE pb.is_active = TRUE
+        AND EXISTS (
+          SELECT 1 FROM bundle_products bp2
+          WHERE bp2.bundle_id = pb.id AND bp2.product_id = $1
+        )
+      ORDER BY pb.created_at DESC
+      LIMIT 4
+    `, [productId])
+    res.json({ success: true, bundles: result.rows })
+  } catch (err) {
+    console.error('[Bundles] getBundlesByProduct error:', err)
+    res.status(500).json({ success: false, message: 'Failed to fetch bundles' })
+  }
+}

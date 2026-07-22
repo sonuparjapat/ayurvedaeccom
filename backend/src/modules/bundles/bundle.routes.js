@@ -5,6 +5,7 @@ const { admin } = require('../../middlewares/admin')
 const upload = require('../../config/multer')
 
 router.get('/public', controller.getPublicBundles)
+router.get('/by-product/:productId', controller.getBundlesByProduct)
 router.get('/public/:id', controller.getBundleById)
 router.get('/admin', auth, admin, controller.adminListBundles)
 router.post('/admin', auth, admin, upload.single('image'), controller.adminCreateBundle)

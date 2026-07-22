@@ -81,6 +81,14 @@ app.use(
 );
 
 
+/* ================= WEBHOOK (raw body — must be before express.json()) ================= */
+// Razorpay sends raw JSON; we need the Buffer to verify the HMAC signature.
+app.post(
+  '/api/orders/webhook',
+  express.raw({ type: 'application/json' }),
+  require('./modules/orders/order.controller').razorpayWebhook
+);
+
 /* ================= MIDDLEWARE ================= */
 
 app.use(cookieParser());
