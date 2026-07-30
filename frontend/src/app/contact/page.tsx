@@ -292,7 +292,7 @@ export default function ContactPage() {
                 {/* Why Choose Us */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-xl">Why Choose AyurVeda Desi Foods?</CardTitle>
+                    <CardTitle className="text-xl">Why Choose Oroganix?</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-start gap-3">

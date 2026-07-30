@@ -122,7 +122,7 @@ export default function DeveloperDocsPage() {
             <Code2 size={16} className="text-green-400" />
             <div>
               <p className="font-bold text-white text-sm">Developer Docs</p>
-              <p className="text-xs text-slate-500">AyurVeda Desi Foods</p>
+              <p className="text-xs text-slate-500">Oroganix</p>
             </div>
           </div>
         </div>
@@ -155,11 +155,11 @@ export default function DeveloperDocsPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold font-mono">Developer Documentation</h1>
-              <p className="text-gray-400 text-sm">AyurVeda Desi Foods · Backend + Frontend + Mobile</p>
+              <p className="text-gray-400 text-sm">Oroganix · Backend + Frontend + Mobile</p>
             </div>
           </div>
           <p className="text-gray-400 text-sm leading-relaxed max-w-2xl">
-            Complete technical reference for the AyurVeda Desi Foods platform. Covers all database tables, API endpoints, authentication, WebSocket events, order state machine, background jobs, and frontend structure.
+            Complete technical reference for the Oroganix platform. Covers all database tables, API endpoints, authentication, WebSocket events, order state machine, background jobs, and frontend structure.
           </p>
           <div className="flex flex-wrap gap-2 mt-5">
             {['Node.js + Express', 'PostgreSQL', 'Next.js 14', 'React Native Expo 56', 'Socket.io', 'Razorpay', 'Brevo Email', 'Bull + Redis'].map(t => (
@@ -239,7 +239,7 @@ RAZORPAY_KEY_SECRET=your_secret_here
 # Brevo (email service — formerly Sendinblue)
 BREVO_API_KEY=xkeysib-xxxxxxxxxxxx
 BREVO_SENDER_EMAIL=noreply@yourstore.com
-BREVO_SENDER_NAME=AyurVeda Desi Foods
+BREVO_SENDER_NAME=Oroganix
 
 # Redis (for Bull job queues)
 REDIS_URL=redis://localhost:6379
@@ -985,7 +985,7 @@ import { Share } from 'react-native'
 
 // Handler:
 Share.share({
-  message: \`\${product.name} — AyurVeda Desi Foods\nCheck it out: \${API_BASE}/products/\${id}\`,
+  message: \`\${product.name} — Oroganix\nCheck it out: \${API_BASE}/products/\${id}\`,
 })
 // Opens native share sheet: WhatsApp, email, SMS, copy link, etc.`}</Code>
           <H3>Referral system — full flow</H3>
@@ -1487,7 +1487,7 @@ CREATE SCHEMA public;
 
         {/* Footer */}
         <div className="mt-12 border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
-          <p>AyurVeda Desi Foods — Developer Documentation · Last updated 2026 · For end-user help see User Manual</p>
+          <p>Oroganix — Developer Documentation · Last updated 2026 · For end-user help see User Manual</p>
         </div>
 
       </main>

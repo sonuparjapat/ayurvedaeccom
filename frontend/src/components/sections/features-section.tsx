@@ -277,7 +277,7 @@ function SectionHeader({ isInView }: { isInView: boolean }) {
       >
         Why choose{' '}
         <span className="relative inline-block">
-          AyurVeda Desi Foods
+          Oroganix
           <svg
             className="absolute left-0 w-full"
             style={{ bottom: -5 }}

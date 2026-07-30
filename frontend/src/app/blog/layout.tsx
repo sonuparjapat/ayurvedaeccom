@@ -3,11 +3,11 @@ import type { Metadata } from 'next'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com'
 
 export const metadata: Metadata = {
-  title: 'Ayurveda & Wellness Blog',
-  description: 'Explore Ayurvedic health tips, herb guides, and wellness articles from Oroganix experts. Learn about the benefits of organic herbs, traditional Ayurvedic remedies, and healthy living.',
+  title: 'Oroganix Wellness Blog',
+  description: 'Explore health tips, herb guides, and wellness articles from Oroganix experts. Learn about the benefits of organic herbs, Ayurvedic remedies, and healthy living.',
   alternates: { canonical: `${SITE_URL}/blog` },
   openGraph: {
-    title: 'Ayurveda & Wellness Blog | Oroganix',
+    title: 'Oroganix Wellness Blog',
     description: 'Explore Ayurvedic health tips, herb guides, and wellness articles from Oroganix experts.',
     type: 'website',
     url: `${SITE_URL}/blog`,
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Ayurveda & Wellness Blog | Oroganix',
+    title: 'Oroganix Wellness Blog',
     description: 'Health tips, herb guides, and wellness articles from Oroganix experts.',
   },
 }

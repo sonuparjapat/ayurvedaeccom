@@ -571,7 +571,7 @@ export default function AccountScreen() {
                     <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>Copy</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => Share.share({ message: `Use my code ${(user as any).referral_code} on AyurVeda Desi Foods to get a discount on your first order!` })}
+                    onPress={() => Share.share({ message: `Use my code ${(user as any).referral_code} on Oroganix to get a discount on your first order!` })}
                     style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
                   >
                     <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>Share</Text>

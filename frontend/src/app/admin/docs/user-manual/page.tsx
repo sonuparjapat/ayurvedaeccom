@@ -154,7 +154,7 @@ export default function UserManualPage() {
             <BookOpen size={18} className="text-green-600" />
             <div>
               <p className="font-bold text-gray-900 text-sm">User Manual</p>
-              <p className="text-xs text-gray-400">AyurVeda Desi Foods</p>
+              <p className="text-xs text-gray-400">Oroganix</p>
             </div>
           </div>
         </div>
@@ -188,11 +188,11 @@ export default function UserManualPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold">User Manual</h1>
-              <p className="text-green-200 text-sm">AyurVeda Desi Foods Platform</p>
+              <p className="text-green-200 text-sm">Oroganix Platform</p>
             </div>
           </div>
           <p className="text-green-100 text-sm leading-relaxed max-w-2xl">
-            This comprehensive guide covers every feature of the AyurVeda Desi Foods platform — from how customers browse and buy products, to how administrators manage the entire store. Anyone reading this document will have a complete understanding of how the system works.
+            This comprehensive guide covers every feature of the Oroganix platform — from how customers browse and buy products, to how administrators manage the entire store. Anyone reading this document will have a complete understanding of how the system works.
           </p>
           <div className="flex flex-wrap gap-3 mt-5">
             {['Customer Guide', 'Admin Guide', 'Order Tracking', 'Wallet & Loyalty', 'Support System'].map(tag => (
@@ -204,7 +204,7 @@ export default function UserManualPage() {
         {/* ═══ 1. INTRODUCTION ═══ */}
         <Section id="intro" title="Introduction" icon={BookOpen}>
           <p className="text-gray-600 text-sm leading-relaxed">
-            <strong>AyurVeda Desi Foods</strong> is a full-featured eCommerce platform specialising in authentic Ayurvedic and traditional Indian food products. The platform consists of three parts:
+            <strong>Oroganix</strong> is a full-featured eCommerce platform specialising in authentic Ayurvedic and traditional Indian food products. The platform consists of three parts:
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
             {[
@@ -1117,7 +1117,7 @@ export default function UserManualPage() {
 
         {/* ═══ 17. MOBILE APP ═══ */}
         <Section id="mobile-app" title="Mobile App" icon={Bell} color="#7c3aed">
-          <p className="text-sm text-gray-600 leading-relaxed">The AyurVeda mobile app (React Native / Expo) provides the full shopping experience on Android and iOS.</p>
+          <p className="text-sm text-gray-600 leading-relaxed">The Oroganix mobile app (React Native / Expo) provides the full shopping experience on Android and iOS.</p>
           <Table
             headers={['Screen', 'Features']}
             rows={[
@@ -1177,7 +1177,7 @@ export default function UserManualPage() {
 
         {/* Footer */}
         <div className="mt-12 border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
-          <p>AyurVeda Desi Foods — User Manual · Last updated 2026 · For technical queries see Developer Docs</p>
+          <p>Oroganix — User Manual · Last updated 2026 · For technical queries see Developer Docs</p>
         </div>
 
       </main>

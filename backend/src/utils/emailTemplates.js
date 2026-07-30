@@ -47,7 +47,7 @@ exports.newsletterWelcome = ({ email }) => ({
     <p style="margin-top:28px;font-size:13px;color:#9ca3af;text-align:center;">
       Subscribed as <strong>${email}</strong>
     </p>
-  `, `Pure Ayurveda · Lab Tested · Farm Direct`)
+  `, `Oroganix · Lab Tested · Farm Direct`)
 })
 
 /* ── Flash Sale Announcement ── */

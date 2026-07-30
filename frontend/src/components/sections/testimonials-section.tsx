@@ -288,7 +288,7 @@ export function TestimonialsSection() {
           className="flex justify-center mb-6"
         >
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-emerald-700/50 bg-emerald-950/60 text-emerald-400 text-sm font-semibold tracking-wide uppercase">
-            <Leaf className="w-3.5 h-3.5" /> Why AyurVeda Foods
+            <Leaf className="w-3.5 h-3.5" /> Why Oroganix
           </span>
         </motion.div>
 

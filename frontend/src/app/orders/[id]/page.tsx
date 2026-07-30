@@ -129,7 +129,7 @@ export default function OrderDetailPage() {
       const rzp = new (window as any).Razorpay({
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY,
         amount, currency: 'INR', order_id: razorpayOrderId,
-        name: 'AyurVeda', description: `Order #${orderId}`,
+        name: 'Oroganix', description: `Order #${orderId}`,
         handler: async (response: any) => {
           try {
             await axios.post('/orders/verify', { orderId, ...response })

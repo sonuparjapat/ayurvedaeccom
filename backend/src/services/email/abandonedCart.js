@@ -2,7 +2,7 @@ const mailer = require('../../config/mail')
 
 module.exports = async function sendAbandonedCartEmail(email, name, items) {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
-  const appName = process.env.APP_NAME || 'AyurVeda Desi Foods'
+  const appName = process.env.APP_NAME || 'Oroganix'
 
   const itemRows = (items || []).map(item => `
     <tr>

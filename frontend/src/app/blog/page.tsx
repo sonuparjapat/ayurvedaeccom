@@ -88,7 +88,7 @@ export default function BlogPage() {
         <div style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center', position: 'relative' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.28)', borderRadius: 99, padding: '5px 15px', marginBottom: 20 }}>
             <Feather size={12} color="#c9a84c" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#c9a84c', letterSpacing: '0.09em', textTransform: 'uppercase' }}>Ayurveda & Wellness</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#c9a84c', letterSpacing: '0.09em', textTransform: 'uppercase' }}>Oroganix Wellness</span>
           </div>
           <h1 style={{ fontSize: 'clamp(30px, 6vw, 46px)', fontWeight: 900, color: '#fff', margin: '0 0 14px', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
             Wisdom of <span style={{ color: '#c9a84c' }}>Ancient Ayurveda</span>

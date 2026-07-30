@@ -686,7 +686,7 @@ export default function ProductDetailScreen() {
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => Share.share({ message: `${product.name} — ₹${effectivePrice}\n\nAyurVeda Desi Foods`, title: product.name })} style={ss.topBtn}>
+          <TouchableOpacity onPress={() => Share.share({ message: `${product.name} — ₹${effectivePrice}\n\nOroganix`, title: product.name })} style={ss.topBtn}>
             <Text style={{ fontSize: 17 }}>↗️</Text>
           </TouchableOpacity>
           <Animated.View style={wishStyle}>
