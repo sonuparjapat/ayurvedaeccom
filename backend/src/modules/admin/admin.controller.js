@@ -398,10 +398,10 @@ exports.sparklines = async (req, res) => {
       `),
     ])
 
-    const toSeries = (rows: any[]) => {
-      const map: Record<string, number> = {}
+    const toSeries = (rows) => {
+      const map = {}
       rows.forEach(r => { map[r.day.toISOString().slice(0, 10)] = Number(r.value) })
-      const series: number[] = []
+      const series = []
       for (let i = 6; i >= 0; i--) {
         const d = new Date(); d.setDate(d.getDate() - i)
         series.push(map[d.toISOString().slice(0, 10)] || 0)
