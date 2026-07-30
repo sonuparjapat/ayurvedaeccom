@@ -576,6 +576,28 @@ export default function OrderDetailPage() {
             </div>
           )}
 
+          {/* ── Refund Tracking ── */}
+          {(order.refund_status || order.status === 9 || order.status === 6) && order.refund_amount && (
+            <div style={{ ...gc, padding: 20, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 18 }}>💰</span>
+                <p style={{ color: '#34d399', fontSize: 13, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', margin: 0 }}>Refund Status</p>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ color: '#fff', fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>
+                    ₹{Number(order.refund_amount).toFixed(2)}
+                    <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 500, padding: '2px 10px', borderRadius: 20, background: order.refund_status === 'processed' ? 'rgba(16,185,129,0.2)' : order.refund_status === 'failed' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)', color: order.refund_status === 'processed' ? '#34d399' : order.refund_status === 'failed' ? '#f87171' : '#fcd34d' }}>
+                      {order.refund_status === 'processed' ? '✓ Processed' : order.refund_status === 'failed' ? '✗ Failed' : order.refund_status === 'cod_manual' ? '💵 COD (Manual)' : '⏳ Pending'}
+                    </span>
+                  </p>
+                  {order.refund_id && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: 0 }}>Ref: {order.refund_id}</p>}
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: '4px 0 0' }}>Refunds credited to your original payment method within 5-7 business days.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Invoice ── */}
           {order.pdf_url && (
             <div style={{ marginBottom: 16 }}>

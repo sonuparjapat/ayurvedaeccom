@@ -758,7 +758,7 @@ const addToCart = async () => {
 
               {/* BRAND LINK */}
               {(product.brand_display_name || product.brand) && (
-                <Link href={product.brand_slug ? `/products?brand=${product.brand_slug}` : '/products'} className="text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:underline">
+                <Link href={product.brand_slug ? `/brand/${product.brand_slug}` : '/products'} className="text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:underline">
                   {product.brand_display_name || product.brand}
                 </Link>
               )}

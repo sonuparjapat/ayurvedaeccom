@@ -20,6 +20,7 @@ interface DashboardStats {
   totalRevenue: number; totalOrders: number; totalUsers: number
   totalProducts: number; pendingOrders: number; lowStockItems: number
 }
+interface Sparklines { revenue: number[]; orders: number[]; users: number[] }
 interface ChartPoint { label: string; revenue: number; orders: number }
 interface Order { id: string; order_number: string; customer: string; amount: number; status: string }
 interface TopProduct { name: string; sales: number; revenue: number; stock: number }
@@ -42,6 +43,7 @@ export default function AdminDashboard() {
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([])
+  const [sparklines, setSparklines] = useState<Sparklines>({ revenue: [], orders: [], users: [] })
   const [chartData, setChartData] = useState<ChartPoint[]>([])
   const [chartPeriod, setChartPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily')
   const [chartLoading, setChartLoading] = useState(false)
@@ -79,16 +81,18 @@ export default function AdminDashboard() {
 
   const loadDashboard = async () => {
     try {
-      const [s, o, p, l] = await Promise.all([
+      const [s, o, p, l, sp] = await Promise.all([
         axios.get('/admin/stats'),
         axios.get('/admin/recent-orders'),
         axios.get('/admin/top-products'),
         axios.get('/admin/low-stock'),
+        axios.get('/admin/sparklines'),
       ])
       setStats(s.data)
       setRecentOrders(o.data)
       setTopProducts(p.data)
       setLowStockProducts(l.data?.products || [])
+      if (sp.data?.success) setSparklines(sp.data.data)
     } catch { } finally { setLoading(false) }
   }
 
@@ -147,9 +151,9 @@ export default function AdminDashboard() {
 
       {/* ── KPI Stat Cards ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiCard title="Revenue" value={fmt(stats.totalRevenue)} icon={<DollarSign size={18} />} gradient="from-emerald-600 to-teal-600" sub="All time" />
-        <KpiCard title="Orders" value={String(stats.totalOrders)} icon={<ShoppingCart size={18} />} gradient="from-blue-600 to-indigo-600" sub="Total" />
-        <KpiCard title="Users" value={String(stats.totalUsers)} icon={<Users size={18} />} gradient="from-violet-600 to-purple-600" sub="Registered" />
+        <KpiCard title="Revenue" value={fmt(stats.totalRevenue)} icon={<DollarSign size={18} />} gradient="from-emerald-600 to-teal-600" sub="All time" sparkline={sparklines.revenue} sparkColor="#059669" />
+        <KpiCard title="Orders" value={String(stats.totalOrders)} icon={<ShoppingCart size={18} />} gradient="from-blue-600 to-indigo-600" sub="Total" sparkline={sparklines.orders} sparkColor="#6366f1" />
+        <KpiCard title="Users" value={String(stats.totalUsers)} icon={<Users size={18} />} gradient="from-violet-600 to-purple-600" sub="Registered" sparkline={sparklines.users} sparkColor="#9333ea" />
         <KpiCard title="Products" value={String(stats.totalProducts)} icon={<Package size={18} />} gradient="from-orange-500 to-amber-500" sub="Active" />
         <KpiCard title="Pending" value={String(stats.pendingOrders)} icon={<Clock size={18} />} gradient="from-yellow-500 to-orange-500" sub="Awaiting" alert={stats.pendingOrders > 0} pulse={stats.pendingOrders > 0} />
         <KpiCard title="Low Stock" value={String(stats.lowStockItems)} icon={<AlertTriangle size={18} />} gradient="from-red-500 to-rose-600" sub="Products" alert={stats.lowStockItems > 0} pulse={stats.lowStockItems > 0} />
@@ -337,8 +341,30 @@ function useCountUp(target: number, duration = 900) {
   return display
 }
 
+/* ─── MINI SPARKLINE ─────────────────────────────────────── */
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  if (!data || data.length < 2) return null
+  const W = 80, H = 28, pad = 2
+  const max = Math.max(...data) || 1
+  const min = Math.min(...data)
+  const range = max - min || 1
+  const pts = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * (W - pad * 2)
+    const y = H - pad - ((v - min) / range) * (H - pad * 2)
+    return `${x},${y}`
+  }).join(' ')
+  const lastX = pad + ((data.length - 1) / (data.length - 1)) * (W - pad * 2)
+  const lastY = H - pad - ((data[data.length - 1] - min) / range) * (H - pad * 2)
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" opacity={0.7} />
+      <circle cx={lastX} cy={lastY} r={2.5} fill={color} />
+    </svg>
+  )
+}
+
 /* ─── KPI CARD ───────────────────────────────────────────── */
-function KpiCard({ title, value, icon, gradient, sub, alert, pulse }: { title: string; value: string; icon: React.ReactNode; gradient: string; sub: string; alert?: boolean; pulse?: boolean }) {
+function KpiCard({ title, value, icon, gradient, sub, alert, pulse, sparkline, sparkColor }: { title: string; value: string; icon: React.ReactNode; gradient: string; sub: string; alert?: boolean; pulse?: boolean; sparkline?: number[]; sparkColor?: string }) {
   const rawNum = parseFloat(value.replace(/[^0-9.]/g, '')) || 0
   const isMonetary = value.startsWith('₹')
   const counted = useCountUp(rawNum)
@@ -367,6 +393,12 @@ function KpiCard({ title, value, icon, gradient, sub, alert, pulse }: { title: s
       <p style={{ fontSize: 20, fontWeight: 800, color: '#1a2e1e', margin: 0, lineHeight: 1.1 }}>{displayValue}</p>
       <p style={{ fontSize: 12, color: '#6b7280', margin: '4px 0 0', fontWeight: 500 }}>{title}</p>
       <p style={{ fontSize: 10, color: '#9ca3af', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sub}</p>
+      {sparkline && sparkline.length > 1 && (
+        <div style={{ marginTop: 8, opacity: 0.85 }}>
+          <Sparkline data={sparkline} color={sparkColor || '#059669'} />
+          <p style={{ fontSize: 9, color: '#9ca3af', margin: '2px 0 0' }}>7-day trend</p>
+        </div>
+      )}
     </motion.div>
   )
 }

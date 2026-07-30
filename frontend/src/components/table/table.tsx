@@ -135,34 +135,31 @@ export default function DynamicTable({
             ) : (
 
               <tr>
-
-                <td
-                  colSpan={columns.length}
-                  className="p-6 text-center text-gray-500"
-                  style={{
-                    padding: '56px 24px',
+                <td colSpan={columns.length} style={{ padding: 0 }}>
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    padding: '60px 24px',
+                    background: 'radial-gradient(ellipse at 50% 40%, rgba(238,240,255,0.55) 0%, transparent 70%)',
                     textAlign: 'center',
-                    color: '#9ca3af',
-                    fontSize: '0.9rem',
-                    letterSpacing: '0.01em',
-                    background: 'radial-gradient(ellipse at center, rgba(238,240,255,0.4) 0%, transparent 70%)',
-                  }}
-                >
-                  <span style={{
-                    display: 'inline-flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '10px',
                   }}>
-                    <span style={{
-                      fontSize: '2rem',
-                      filter: 'grayscale(0.3)',
-                      opacity: 0.5,
-                    }}>🗂️</span>
-                    {emptyMessage}
-                  </span>
+                    {/* Dashed circle illustration */}
+                    <div style={{
+                      width: 96, height: 96, borderRadius: '50%', marginBottom: 20,
+                      border: '2.5px dashed #c7d2fe',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'linear-gradient(135deg, rgba(238,240,255,0.7), rgba(245,243,255,0.7))',
+                      boxShadow: '0 4px 24px rgba(99,102,241,0.08)',
+                    }}>
+                      <span style={{ fontSize: '2.5rem', opacity: 0.7 }}>🗂️</span>
+                    </div>
+                    <p style={{ fontWeight: 700, fontSize: '1rem', color: '#374151', margin: '0 0 6px' }}>
+                      {emptyMessage}
+                    </p>
+                    <p style={{ fontSize: '0.82rem', color: '#9ca3af', margin: 0, maxWidth: 280 }}>
+                      Nothing matches your current filters. Try adjusting your search or filters.
+                    </p>
+                  </div>
                 </td>
-
               </tr>
 
             )}

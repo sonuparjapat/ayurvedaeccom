@@ -533,3 +533,79 @@ When a cancelled order triggers a Razorpay bank refund, the refund status is tra
 - **Admin → Returns → Return Detail**: a small badge appears next to the Refund Amount showing the Razorpay refund status (`PROCESSED` / `FAILED`).
 - Razorpay sends a webhook when the refund status changes — no manual action needed.
 - The customer also receives an in-app notification when their refund is processed or fails.
+
+---
+
+## New Features (2026-07-30)
+
+### Mobile App — Settings Screen
+A dedicated Settings screen is now accessible from **Account → Settings (⚙️)**:
+- **Account**: Edit profile, manage addresses, wallet & credits
+- **Notifications**: Toggle push notifications, order updates, promotional emails
+- **Help & Support**: Quick links to support tickets, FAQ, and user manual
+- **App**: Clear cache, rate the app, share the app, view version number
+- **Account Actions**: Logout and Delete Account (with confirmation)
+
+### Mobile App — Deals & Offers Screen
+A new Deals screen is accessible from the Home page (red **⚡ Deals & Offers** banner):
+- Shows all active **flash sales** with a live countdown timer
+- Lists all products with active discounts (sorted by discount %)
+- Each product card shows the discount badge and add-to-cart button
+- Pull-to-refresh for live updates
+
+### Mobile App — Notification Badge
+- The Account tab in the bottom navigation now shows a **red badge** with the unread notification count
+- Badge clears automatically when you open the Notifications screen
+
+### Mobile App — Notify Me (Out of Stock)
+- On any product page, if an item is **Out of Stock**, a **🔔 Notify Me When Available** button appears below the buy buttons
+- Tap it to subscribe — you'll receive a push notification and email when the item is restocked
+- Requires login
+
+### Admin Panel — Live Server Health
+A real-time **Server Health** indicator now appears in the admin header:
+- Shows **number of connected users** (via Socket.io)
+- Shows **CPU load %** with a color indicator (green/amber/red)
+- Click to expand a panel showing CPU %, Memory %, and Server Uptime
+- Updates automatically when any user connects or disconnects
+
+### Admin Panel — 7-Day KPI Sparklines
+The Revenue, Orders, and Users KPI cards on the admin dashboard now show a **mini sparkline chart** of the last 7 days of activity directly on each card.
+
+### Admin Panel — Big Screen Layout Fix
+Admin pages now use full-width layouts on large monitors (1080p+). Previously, content was centered within a narrow 1280px max-width, leaving large empty margins on both sides of big screens.
+
+### Admin Panel — Table Empty States
+Admin data tables now show a polished empty state with a dashed circle illustration and helpful hint text when no results are found.
+
+## Refund Tracking
+When your order is cancelled or refunded, the order detail page (Account → My Orders → Order) shows a **Refund Status** card with:
+- Refund amount
+- Status: Processed / Pending / COD Manual
+- Razorpay reference ID (for online orders)
+- Note that refunds are credited within 5–7 business days
+
+## Brand Pages (Web)
+Each brand now has a dedicated page at `/brand/[slug]`. On a product page, clicking the brand name takes you to that brand's page showing all their products, logo, description, product count, and average rating. Sort by Newest, Price, or Rating.
+
+## Admin: Customer Segments
+Admin → Customer Segments (sidebar or ⌘K search). Shows five customer cohorts:
+- **New Users**: Registered in last 30 days, no orders yet
+- **Loyal Customers**: 3+ delivered orders
+- **High-Value Orders**: Any single order > ₹5,000
+- **VIP Customers**: Lifetime spend > ₹10,000
+- **At-Risk / Inactive**: No activity in 90+ days
+
+Includes recommended actions (win-back, VIP rewards, conversion) and a Top 10 Spenders leaderboard.
+
+## Admin: Real-time Alerts
+The admin header now shows instant toast notifications for:
+- ⚠️ Low stock: when any product inventory drops to ≤10 units
+- 🛍️ New orders: immediately when a customer places an order
+- 💬 Support tickets: when a user opens a new support ticket
+
+All three also update the bell counter in real time without page refresh.
+
+## Display on Large Monitors
+
+The website now expands properly on large monitors and 2K/4K screens. Previously, the header and page content were limited to 1280px wide even on wide screens. The layout now expands to 1600px on 1600px+ monitors and up to 1920px on full-HD and larger displays, making full use of the available screen space.

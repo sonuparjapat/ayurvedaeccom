@@ -159,6 +159,7 @@ export default function ProductsScreen() {
   const insets = useSafeAreaInsets()
   const params = useLocalSearchParams()
   const categoryId = params.id as string | undefined
+  const categorySlug = params.slug as string | undefined
   const initialSearch = params.q as string || ''
 
   const { cartData, cartCount, setCartData, user, setAuthOpen, wishlistData } = useStore()
@@ -207,7 +208,7 @@ export default function ProductsScreen() {
     setSelectedSubcat(null)
   }, [categoryId])
 
-  useEffect(() => { fetchProducts(1) }, [search, selectedSort, minPrice, maxPrice, minRating, inStockOnly, categoryId, selectedSubcat])
+  useEffect(() => { fetchProducts(1) }, [search, selectedSort, minPrice, maxPrice, minRating, inStockOnly, categoryId, categorySlug, selectedSubcat])
 
   const fetchProducts = async (pg: number) => {
     if (pg === 1) setLoading(true); else setLoadingMore(true)
@@ -221,7 +222,7 @@ export default function ProductsScreen() {
           ...(maxPrice && { maxPrice }),
           ...(minRating > 0 && { rating: minRating }),
           ...(inStockOnly && { inStock: true }),
-          ...(selectedSubcat ? { category_id: selectedSubcat } : categoryId ? { category_id: categoryId } : {}),
+          ...(selectedSubcat ? { category_id: selectedSubcat } : categoryId ? { category_id: categoryId } : categorySlug ? { category_slug: categorySlug } : {}),
         }
       })
       const newProducts = res.data?.products || []

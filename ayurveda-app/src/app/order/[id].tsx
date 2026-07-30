@@ -56,6 +56,7 @@ interface OrderDetail {
   shipping_address: any; razorpay_payment_id?: string; cancel_reason?: string; return_reason?: string
   invoice_id?: number; invoice_number?: string; invoice_date?: string; pdf_url?: string
   coupon_code?: string; discount_amount?: string
+  refund_id?: string; refund_amount?: string; refund_status?: string
   items: OrderItem[]
 }
 
@@ -915,6 +916,17 @@ export default function OrderDetailScreen() {
                 <Text style={[ss.specialTitle, { color: statusInfo.color }]}>{statusInfo.label}</Text>
                 {order.cancel_reason && <Text style={ss.specialSub}>Reason: {order.cancel_reason}</Text>}
                 {order.return_reason && <Text style={ss.specialSub}>Reason: {order.return_reason}</Text>}
+                {/* Refund tracking */}
+                {order.refund_amount && (
+                  <View style={{ marginTop: 12, backgroundColor: 'rgba(16,185,129,0.1)', borderRadius: 10, padding: 12, width: '100%' }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#065f46', marginBottom: 4 }}>💰 Refund: ₹{parseFloat(order.refund_amount).toFixed(2)}</Text>
+                    <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: '#6b7280' }}>
+                      Status: {order.refund_status === 'processed' ? '✓ Processed' : order.refund_status === 'failed' ? '✗ Failed' : order.refund_status === 'cod_manual' ? 'COD Manual' : '⏳ Pending'}
+                    </Text>
+                    {order.refund_id && <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: '#9ca3af', marginTop: 2 }}>Ref: {order.refund_id}</Text>}
+                    <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Credited to original payment within 5–7 business days.</Text>
+                  </View>
+                )}
               </Animated.View>
             )}
 

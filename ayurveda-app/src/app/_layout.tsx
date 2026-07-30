@@ -26,8 +26,20 @@ function usePushDeepLink() {
         const Notifications = await import('expo-notifications')
         sub = Notifications.addNotificationResponseReceivedListener((response) => {
           const data = response.notification.request.content.data as Record<string, any>
+          // Route based on notification type
           if (data?.type === 'order_update' && data?.order_id) {
-            router.push(`/order/${data.order_id}`)
+            router.push(`/order/${data.order_id}` as any)
+          } else if (data?.type === 'product' && data?.product_id) {
+            router.push(`/product/${data.product_id}` as any)
+          } else if (data?.type === 'category' && data?.category_id) {
+            router.push(`/category/${data.category_id}` as any)
+          } else if (data?.type === 'blog' && data?.slug) {
+            router.push(`/blog/${data.slug}` as any)
+          } else if (data?.type === 'support_reply' && data?.ticket_id) {
+            router.push('/support' as any)
+          } else if (data?.url) {
+            // Generic deep link fallback
+            router.push(data.url as any)
           }
         })
       } catch { }
@@ -89,6 +101,9 @@ function Inner() {
       <Stack.Screen name="account/subscriptions" options={{ presentation: 'card' }} />
       <Stack.Screen name="quiz/index" options={{ presentation: 'card', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="onboarding/index" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
+      <Stack.Screen name="settings/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />
+      <Stack.Screen name="deals/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />
+      <Stack.Screen name="compare/index" options={{ presentation: 'card', animation: 'slide_from_bottom' }} />
     </Stack>
   )
 }

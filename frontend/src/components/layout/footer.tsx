@@ -99,7 +99,7 @@ export function Footer() {
           background: linear-gradient(90deg, transparent 0%, rgba(16,185,129,0.3) 30%, rgba(245,158,11,0.25) 70%, transparent 100%);
         }
         .footer-newsletter-inner {
-          max-width: 1280px; margin: 0 auto; padding: 0 24px;
+          max-width: 1600px; margin: 0 auto; padding: 0 24px;
         }
         @media (min-width: 1024px) { .footer-newsletter-inner { padding: 0 48px; } }
         .footer-newsletter-content {
@@ -161,7 +161,7 @@ export function Footer() {
           padding: 56px 0 40px;
         }
         .footer-body-inner {
-          max-width: 1280px; margin: 0 auto; padding: 0 24px;
+          max-width: 1600px; margin: 0 auto; padding: 0 24px;
         }
         @media (min-width: 1024px) { .footer-body-inner { padding: 0 48px; } }
         .footer-grid {
@@ -263,7 +263,7 @@ export function Footer() {
           background: linear-gradient(90deg, transparent 0%, rgba(16,185,129,0.2) 50%, transparent 100%);
         }
         .footer-bottom-inner {
-          max-width: 1280px; margin: 0 auto; padding: 0 24px;
+          max-width: 1600px; margin: 0 auto; padding: 0 24px;
           display: flex; flex-direction: column; align-items: center; gap: 10px;
         }
         @media (min-width: 768px) { .footer-bottom-inner { flex-direction: row; justify-content: space-between; padding: 0 48px; } }

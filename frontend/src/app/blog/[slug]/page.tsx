@@ -13,6 +13,7 @@ import {
   Eye,
   ArrowLeft,
   BookOpen,
+  Clock,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -40,16 +41,31 @@ export default function BlogPostPage() {
   const slug = params?.slug as string
 
   const [post, setPost] = useState<BlogPost | null>(null)
+  const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+
+  const readTime = (content: string) => {
+    const words = content.replace(/<[^>]+>/g, '').trim().split(/\s+/).length
+    return Math.max(1, Math.round(words / 200))
+  }
 
   useEffect(() => {
     if (!slug) return
     setLoading(true)
     axios.get(`/blog/public/${slug}`)
       .then(res => {
-        setPost(res.data.data)
+        const p = res.data.data
+        setPost(p)
         setError(false)
+        // Fetch related posts by category
+        if (p?.category) {
+          axios.get(`/blog/public?category=${encodeURIComponent(p.category)}&limit=4`)
+            .then(r => {
+              const all: BlogPost[] = r.data?.data?.rows || r.data?.data || []
+              setRelatedPosts(all.filter(x => x.slug !== p.slug).slice(0, 3))
+            }).catch(() => {})
+        }
       })
       .catch(() => {
         setError(true)
@@ -158,6 +174,10 @@ export default function BlogPostPage() {
                   <Eye size={15} />
                   {post.views_count} views
                 </span>
+                <span className="flex items-center gap-1.5">
+                  <Clock size={15} />
+                  {readTime(post.content)} min read
+                </span>
               </div>
 
               {/* Post Content */}
@@ -181,6 +201,31 @@ export default function BlogPostPage() {
                       <Badge key={i} variant="outline" className="text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 transition">
                         {tag}
                       </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Related Posts */}
+              {relatedPosts.length > 0 && (
+                <div className="mt-12 pt-10 border-t border-gray-200">
+                  <h2 className="text-xl font-bold text-gray-900 mb-6">Related Articles</h2>
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    {relatedPosts.map(rp => (
+                      <Link key={rp.id} href={`/blog/${rp.slug}`} className="group block rounded-xl overflow-hidden border border-gray-100 hover:border-emerald-200 shadow-sm hover:shadow-md transition-all">
+                        {rp.cover_image && (
+                          <div className="overflow-hidden h-36 bg-gray-100">
+                            <img src={rp.cover_image} alt={rp.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          </div>
+                        )}
+                        <div className="p-4">
+                          <Badge className="bg-emerald-50 text-emerald-700 text-xs mb-2 border-0">{rp.category}</Badge>
+                          <p className="font-semibold text-gray-800 text-sm leading-snug line-clamp-2 group-hover:text-emerald-700 transition-colors">{rp.title}</p>
+                          <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                            <Clock size={11} /> {readTime(rp.content)} min read
+                          </p>
+                        </div>
+                      </Link>
                     ))}
                   </div>
                 </div>

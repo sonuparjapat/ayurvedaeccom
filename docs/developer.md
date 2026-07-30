@@ -1101,3 +1101,90 @@ Uses `expo-haptics` via shared utility at `ayurveda-app/src/utils/haptics.ts`.
 ### Admin Returns (`frontend/src/app/admin/returns/page.tsx`)
 - Small inline badge next to Refund Amount in the return detail modal:
   - Purple `PROCESSED` or red `FAILED` from `selected.refund_status`
+
+---
+
+## Feature Additions (2026-07-30)
+
+### MF04 — In-app notification badge count (mobile)
+- **Store** (`store/index.ts`): Added `unreadNotificationCount: number` and `setUnreadNotificationCount(n)` to `AppState`.
+- **`useBootstrap.ts`**: After user session is restored, calls `fetchUnreadNotifs()` → `GET /notifications?is_read=false&limit=1` → sets store count.
+- **`account/notifications.tsx`**: Calls `setUnreadNotificationCount(0)` on mount to clear the badge.
+- **`BottomNav.tsx`**: Reads `unreadNotificationCount` from store; shows red badge on Account tab when > 0.
+
+### PG03 — Mobile settings screen
+- New screen at `ayurveda-app/src/app/settings/index.tsx`.
+- Registered in `_layout.tsx` as `settings/index`.
+- Accessible from Account screen → "⚙️ Settings" row.
+- Features: profile edit links, notification toggles, help links, clear cache, share app, logout, delete account.
+
+### PG01 — Mobile deals/offers screen
+- New screen at `ayurveda-app/src/app/deals/index.tsx`.
+- Pulls from `GET /flash-sales/active` and `GET /shop?discount=true`.
+- Shows live countdown timer for flash sales.
+- Registered in `_layout.tsx` as `deals/index`.
+- Linked from home screen as a red CTA banner.
+
+### PG04 — Mobile notify-me on PDP (product detail page)
+- `NotifyMeButton` component added to `product/[id].tsx`, shown when `effectiveInventory === 0`.
+- Posts to `POST /products/notify-stock` with `product_id` and optional `variant_id`.
+- Shows subscribed state after success.
+
+### BE07 + UA02 — Admin sparklines endpoint + dashboard KPI sparklines
+- **BE** (`admin.controller.js`): Added `exports.sparklines` — queries 7-day rolling data for revenue (from `payments`), orders, and users; returns arrays of 7 daily totals.
+- **Route** (`admin.routes.js`): `GET /admin/sparklines` (auth + admin).
+- **Frontend** (`admin/dashboard/page.tsx`): Added `Sparkline` SVG component; `KpiCard` accepts `sparkline` and `sparkColor` props; dashboard fetches `/admin/sparklines` on load.
+
+### Admin live server stats
+- **`socket.js`**: Added `connectedCount` counter; emits `server_stats` to `admin_room` on connect/disconnect; `getLiveStats()` returns `{ connectedUsers, cpu, memory, uptime }` using `os.loadavg()` and `os.freemem()`.
+- **`admin.controller.js`**: Added `exports.serverStats` — returns `getLiveStats()`.
+- **Route**: `GET /admin/server-stats`.
+- **`admin/layout.tsx`**: Socket subscribes to `server_stats` event; shows live badge in header with CPU % and online user count; click to expand full metrics panel.
+
+### Admin responsive layout (big screens)
+- Removed `max-w-7xl mx-auto` / `max-w-6xl mx-auto` from: `dashboard`, `invoices`, `banners`, `categories`, `coupons`, `settings`, `stock-notifications`, `faq` admin pages.
+- Pages now use `w-full` so content fills the available main area on any monitor width.
+
+### UA09 — Admin table empty states
+- Updated `frontend/src/components/table/table.tsx` `DynamicTable` empty state: now shows a dashed circle illustration (CSS-drawn), bold title, and helpful subtitle text.
+
+### Real-time admin alerts (low-stock, new order, new ticket)
+- **`admin.controller.js`**: After product inventory update, if `newInventory <= 10`, emits `low_stock_alert` to `admin_room` with `{ productId, productName, inventory }`.
+- **`admin/layout.tsx`**: Socket listens for `low_stock_alert`, `new_order`, `new_ticket` events — each shows a styled toast and increments the respective bell counter in real-time.
+
+### SMS order status notifications (F7)
+- **`admin.controller.js`**: Imported `sendOrderStatusSMS`; calls it after order status update for statuses 2, 3, 4, 5, 6, 9 using the customer's phone number.
+- **`services/sms.js`**: `sendOrderStatusSMS(phone, orderNo, status)` already implemented with Fast2SMS; requires `FAST2SMS_API_KEY` env var.
+
+### Refund tracking (F24)
+- **`order.controller.js`** (`getOrderById`): Added `o.refund_id`, `o.refund_amount`, `o.refund_status` to the SELECT query.
+- **`frontend/src/app/orders/[id]/page.tsx`**: Shows "Refund Status" card with amount, status badge, Razorpay ref ID, and credit timeline note.
+- **`ayurveda-app/src/app/order/[id].tsx`**: Shows refund info inside the special status banner (for statuses 6, 7, 8, 9) with amount, status, and ref ID.
+
+### Brand pages (PG07)
+- **BE**: Added `GET /brands/:slug` → `getPublicBrandBySlug`: returns brand details + product count + avg rating.
+- **Frontend**: Created `frontend/src/app/brand/[slug]/page.tsx` — shows brand hero with logo, description, stats; paginated product grid with sort; links from product page brand name.
+
+### Customer Segments dashboard (PG08)
+- **BE**: Added `GET /admin/customer-segments` → `exports.customerSegments`: queries 5 cohort counts (new users, loyal, high-value, VIP, inactive) + top 10 spenders.
+- **Frontend**: Created `frontend/src/app/admin/segments/page.tsx` — KPI cards per segment, recommended action cards, top spenders table.
+- Added "Customer Segments" to admin sidebar and command palette.
+
+### PG05 — Mobile product compare
+- **`store/index.ts`**: Added `compareIds: number[]`, `toggleCompare(id)` (max 3), `clearCompare()` to AppState.
+- **`app/compare/index.tsx`** (NEW): Compare screen; fetches product details for all compareIds in parallel; renders horizontal scrollable table with FIELDS row labels on left and product columns on right; best price highlighted in green.
+- **`app/_layout.tsx`**: Registered `compare/index` route with `slide_from_bottom` animation.
+- **`app/product/[id].tsx`**: Added Compare button below CTAs; toggles `compareIds` in store; shows "View (N)" link to navigate to compare screen.
+
+### UA08 — Drag-and-drop product image reorder (admin)
+- **`frontend/src/app/admin/products/AdminProductForm.tsx`**: Imported `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`.
+- Added `SortableImageItem` component using `useSortable`; shows drag handle (GripVertical icon), "MAIN" badge on first image, remove button on hover.
+- Added `SortableImageGrid` component with `DndContext` + `SortableContext` + `rectSortingStrategy`; reorders the `form.images` array via `arrayMove` on `DragEnd`.
+- Image order determines upload order; first image becomes the main product image.
+
+### Wide-screen responsive layout fix
+- **Problem**: Header and footer had `max-width: 1280px` on content wrappers. On 1920px+ monitors this left ~320px dead space on each side, making the site look narrow.
+- **Header fix** (`frontend/src/components/layout/header.tsx`): Changed `.header-inner` and `.top-bar-inner` from `max-width: 1280px` → `1600px`. Added `@media (min-width: 1920px)` breakpoint setting both to `1920px` with `padding: 0 48px`.
+- **Footer fix** (`frontend/src/components/layout/footer.tsx`): Changed all three inner wrappers (newsletter, body, bottom) from `max-width: 1280px` → `1600px`.
+- **Tailwind config** (`frontend/tailwind.config.ts`): Added `3xl: '1920px'` to `screens`.
+- **Global CSS** (`frontend/src/app/globals.css`): Added `@media (min-width: 1600px)` rule capping `.container` at `1600px`, and `@media (min-width: 1920px)` at `1920px`.

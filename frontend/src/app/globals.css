@@ -122,6 +122,18 @@
   }
 }
 
+/* Wide-screen container expansion — prevents narrow content on 1920px+ monitors */
+@media (min-width: 1920px) {
+  .container {
+    max-width: 1920px !important;
+  }
+}
+@media (min-width: 1600px) and (max-width: 1919px) {
+  .container {
+    max-width: 1600px !important;
+  }
+}
+
 .input {
   @apply w-full border px-4 py-2 rounded focus:ring-2 focus:ring-indigo-500;
 }

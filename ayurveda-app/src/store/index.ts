@@ -113,6 +113,11 @@ interface AppState {
   // Notifications
   unreadNotificationCount: number
   setUnreadNotificationCount: (n: number) => void
+
+  // Product Compare (max 3)
+  compareIds: number[]
+  toggleCompare: (id: number) => void
+  clearCompare: () => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -149,4 +154,13 @@ export const useStore = create<AppState>((set) => ({
 
   unreadNotificationCount: 0,
   setUnreadNotificationCount: (n) => set({ unreadNotificationCount: n }),
+
+  compareIds: [],
+  toggleCompare: (id) => set((s) => {
+    const exists = s.compareIds.includes(id)
+    if (exists) return { compareIds: s.compareIds.filter(x => x !== id) }
+    if (s.compareIds.length >= 3) return s // max 3
+    return { compareIds: [...s.compareIds, id] }
+  }),
+  clearCompare: () => set({ compareIds: [] }),
 }))

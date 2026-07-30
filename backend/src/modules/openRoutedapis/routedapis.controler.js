@@ -669,6 +669,26 @@ exports.getPublicBrands = async (req, res) => {
   }
 };
 
+exports.getPublicBrandBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params
+    const brandRes = await pool.query(
+      'SELECT id, name, slug, logo_url, description FROM brands WHERE slug=$1 AND is_active=TRUE LIMIT 1',
+      [slug]
+    )
+    if (!brandRes.rows.length) return sendError(res, 404, 'Brand not found')
+    const brand = brandRes.rows[0]
+    const stats = await pool.query(
+      `SELECT COUNT(*) AS total_products, AVG(averagerating) AS avg_rating FROM products WHERE brand_id=$1 AND status='active'`,
+      [brand.id]
+    )
+    return sendSuccess(res, { ...brand, total_products: Number(stats.rows[0].total_products), avg_rating: parseFloat(stats.rows[0].avg_rating || 0).toFixed(1) })
+  } catch (err) {
+    console.error('Brand by slug error:', err)
+    return sendError(res, 500, 'Failed to fetch brand')
+  }
+};
+
 
 /* ================= DELETE ================= */
 

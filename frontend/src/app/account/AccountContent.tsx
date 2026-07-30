@@ -265,8 +265,9 @@ function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; on
     </div>
   )
 
-  const balance = Number(data?.balance || 0)
-  const loyaltyBalance = Number(data?.loyalty_balance || 0)
+  // API returns wallet_balance and loyalty_points (not balance / loyalty_balance)
+  const balance = Number(data?.wallet_balance ?? data?.balance ?? 0)
+  const loyaltyBalance = Number(data?.loyalty_points ?? data?.loyalty_balance ?? 0)
   const earnRate = Number(loyaltyConfig?.loyalty_earn_rate || 0.1)
   const redeemRate = Number(loyaltyConfig?.loyalty_redeem_rate || 0.1)
   const minRedeemPts = Number(loyaltyConfig?.loyalty_min_redeem_points || 50)
@@ -274,7 +275,7 @@ function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; on
   const rupeePerPtEarned = earnRate > 0 ? Math.round(1 / earnRate) : 10
   const loyaltyValueInRupees = +(loyaltyBalance * redeemRate).toFixed(2)
   const transactions: any[] = data?.transactions || []
-  const loyalty: any[] = data?.loyalty || []
+  const loyalty: any[] = data?.loyalty_history ?? data?.loyalty ?? []
 
   return (
     <div className="space-y-5">
@@ -330,9 +331,14 @@ function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; on
         const tier = tierData.tier || {}
         const nextTier = tierData.next_tier || null
         const meta = TIER_META[tier.name] || TIER_META.bronze
-        const spent = Number(tier.total_spent || 0)
+        // BE returns tier.spent (not total_spent) and tier.min (not min_spend)
+        const spent = Number(tier.spent ?? tier.total_spent ?? 0)
+        const tierMin = Number(tier.min ?? tier.min_spend ?? 0)
+        const nextMin = Number(nextTier?.min ?? nextTier?.min_spend ?? 0)
+        const remaining = Number(nextTier?.remaining ?? Math.max(0, nextMin - spent))
+        const denominator = nextMin - tierMin
         const progress = nextTier
-          ? Math.min(100, Math.round(((spent - (tier.min_spend || 0)) / (nextTier.min_spend - (tier.min_spend || 0))) * 100))
+          ? denominator > 0 ? Math.min(100, Math.round(((spent - tierMin) / denominator) * 100)) : 0
           : 100
         return (
           <div style={{ background: meta.bg, border: `1.5px solid ${meta.color}40`, borderRadius: 16, padding: '16px 20px' }}>
@@ -355,7 +361,7 @@ function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; on
                   <div style={{ height: '100%', width: `${progress}%`, background: meta.color, borderRadius: 99, transition: 'width 0.6s ease' }} />
                 </div>
                 <p style={{ fontSize: 11, color: '#6b7280' }}>
-                  Spend ₹{(nextTier.min_spend - spent).toLocaleString('en-IN')} more to reach <strong style={{ color: TIER_META[nextTier.name]?.color }}>{nextTier.label}</strong>
+                  Spend ₹{remaining.toLocaleString('en-IN')} more to reach <strong style={{ color: TIER_META[nextTier.name]?.color }}>{nextTier.label}</strong>
                 </p>
               </>
             )}

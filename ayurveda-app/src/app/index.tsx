@@ -1029,6 +1029,18 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Deals CTA */}
+        <TouchableOpacity onPress={() => router.push('/deals' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
+          <LinearGradient colors={['#7c1d1d', '#dc2626']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <Text style={{ fontSize: 36 }}>⚡</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Today's Deals & Offers</Text>
+              <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>Flash sales, discounts & exclusive offers</Text>
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* Dosha Quiz CTA */}
         <TouchableOpacity onPress={() => router.push('/quiz')} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 20, overflow: 'hidden' }}>
           <LinearGradient colors={['#0a1f14', '#1a4228']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>

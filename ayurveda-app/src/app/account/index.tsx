@@ -538,6 +538,7 @@ export default function AccountScreen() {
                 { emoji: '🔁', label: 'Subscriptions', sub: 'Manage repeat orders', onPress: () => router.push('/account/subscriptions' as any), gradient: ['#0891b2', '#0e7490'] as [string, string] },
                 { emoji: '❓', label: 'FAQ', sub: 'Common questions answered', onPress: () => router.push('/faq' as any), gradient: ['#7c3aed', '#6d28d9'] as [string, string] },
                 { emoji: '💬', label: 'Support', sub: 'Raise a ticket or enquiry', onPress: () => router.push('/support' as any), gradient: ['#4f46e5', '#3730a3'] as [string, string] },
+                { emoji: '⚙️', label: 'Settings', sub: 'App preferences & security', onPress: () => router.push('/settings' as any), gradient: ['#374151', '#1f2937'] as [string, string] },
               ].map((l, i) => (
                 <TouchableOpacity key={i} onPress={l.onPress} style={ss.linkRow} activeOpacity={0.7}>
                   <LinearGradient colors={l.gradient} style={ss.linkIconWrap} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>

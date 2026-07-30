@@ -181,7 +181,7 @@ const {
         }
  
         .top-bar-inner {
-          max-width: 1280px;
+          max-width: 1600px;
           margin: 0 auto;
           padding: 0 16px;
           display: flex;
@@ -270,7 +270,7 @@ const {
         }
  
         .header-inner {
-          max-width: 1280px;
+          max-width: 1600px;
           margin: 0 auto;
           padding: 0 16px;
         }
@@ -866,6 +866,12 @@ const {
           .top-bar-inner { padding: 0 32px; }
           .header-main-row { height: 72px; }
           .logo-title { font-size: 22px; }
+        }
+
+        /* XL desktop (1920px+) — wider content area */
+        @media (min-width: 1920px) {
+          .header-inner { max-width: 1920px; padding: 0 48px; }
+          .top-bar-inner { max-width: 1920px; padding: 0 48px; }
         }
 
         /* Tablet */

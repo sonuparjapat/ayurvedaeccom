@@ -312,12 +312,56 @@ const rls = StyleSheet.create({
   mrp: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textDim, textDecorationLine: 'line-through' },
 })
 
+// ─── NOTIFY ME BUTTON (out-of-stock) ──────────────────────────────────────────
+function NotifyMeButton({ productId, variantId }: { productId: number; variantId?: number }) {
+  const user = useStore(s => s.user)
+  const [subscribed, setSubscribed] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const handleNotify = async () => {
+    if (!user) { toast.error('Please login to get notified'); return }
+    if (subscribed) return
+    setLoading(true)
+    try {
+      await api.post('/products/notify-stock', { product_id: productId, variant_id: variantId || null })
+      setSubscribed(true)
+      toast.success('You will be notified when back in stock!')
+    } catch { toast.error('Could not subscribe to notification') }
+    setLoading(false)
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={handleNotify}
+      disabled={loading || subscribed}
+      style={{
+        marginTop: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        borderWidth: 1.5,
+        borderColor: subscribed ? Colors.emerald : Colors.sage,
+        borderRadius: 14,
+        paddingVertical: 12,
+        backgroundColor: subscribed ? '#ecfdf5' : 'transparent',
+      }}
+      activeOpacity={0.75}
+    >
+      <Text style={{ fontSize: 16 }}>{subscribed ? '✅' : '🔔'}</Text>
+      <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: subscribed ? Colors.emerald : Colors.forest }}>
+        {loading ? 'Subscribing…' : subscribed ? 'You\'ll be notified!' : 'Notify Me When Available'}
+      </Text>
+    </TouchableOpacity>
+  )
+}
+
 // ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams()
   const insets = useSafeAreaInsets()
   const scrollY = useSharedValue(0)
-  const { user, cartData, cartCount, wishlistData, setCartData, setAuthOpen } = useStore()
+  const { user, cartData, cartCount, wishlistData, setCartData, setAuthOpen, compareIds, toggleCompare } = useStore()
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
@@ -1377,6 +1421,34 @@ export default function ProductDetailScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </View>
+        {/* Notify Me — shown only when out of stock */}
+        {effectiveInventory === 0 && <NotifyMeButton productId={product.id} variantId={selectedVariant?.id} />}
+
+        {/* Compare button */}
+        {product && (
+          <TouchableOpacity
+            onPress={() => {
+              if (compareIds.includes(product.id)) {
+                toggleCompare(product.id)
+              } else if (compareIds.length >= 3) {
+                toast.warning('Max 3 products for comparison')
+              } else {
+                toggleCompare(product.id)
+                toast.success(`Added to compare (${compareIds.length + 1}/3)`)
+              }
+            }}
+            style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: compareIds.includes(product.id) ? Colors.emerald : Colors.border, backgroundColor: compareIds.includes(product.id) ? 'rgba(16,185,129,0.08)' : 'transparent' }}
+          >
+            <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: compareIds.includes(product.id) ? Colors.emerald : Colors.textDim }}>
+              {compareIds.includes(product.id) ? '✓ Added to Compare' : '⚖️ Add to Compare'}
+            </Text>
+            {compareIds.length > 0 && (
+              <TouchableOpacity onPress={() => router.push('/compare' as any)} style={{ marginLeft: 6 }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 11, color: Colors.emerald, textDecorationLine: 'underline' }}>View ({compareIds.length})</Text>
+              </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+        )}
       </Animated.View>
     </View>
   )

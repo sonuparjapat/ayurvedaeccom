@@ -999,6 +999,9 @@ exports.getOrderById = async (req, res) => {
         o.razorpay_payment_id,
         o.cancel_reason,
         o.return_reason,
+        o.refund_id,
+        o.refund_amount,
+        o.refund_status,
 
         i.id           AS invoice_id,
         i.invoice_no   AS invoice_number,

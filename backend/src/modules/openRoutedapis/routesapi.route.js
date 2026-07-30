@@ -10,6 +10,7 @@ router.get('/categories', categoryCtrl.getCategories)
 router.get('/categories/tree', categoryCtrl.getCategoryTree)
 router.get('/categories/slug/:slug', categoryCtrl.getCategoryBySlug)
 router.get('/brands', categoryCtrl.getPublicBrands)
+router.get('/brands/:slug', categoryCtrl.getPublicBrandBySlug)
 router.get('/categories/:id', categoryCtrl.getCategoryById)
 
 router.post('/categories',upload.single('image'), categoryCtrl.createCategory)

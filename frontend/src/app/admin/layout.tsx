@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Toaster } from 'react-hot-toast'
+import { useState, useEffect, useCallback } from 'react'
+import { Toaster, toast } from 'react-hot-toast'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { Command } from 'cmdk'
@@ -37,9 +37,6 @@ import {
   HelpCircle,
   Clock,
   AlertCircle,
-  Activity,
-  Cpu,
-  MemoryStick,
 } from 'lucide-react'
 import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
@@ -70,7 +67,6 @@ export default function AdminLayout({
   // Live server stats via socket
   const [serverStats, setServerStats] = useState<{ connectedUsers: number; cpu: number; memory: number; uptime: number } | null>(null)
   const [statsOpen, setStatsOpen] = useState(false)
-  const socketRef = useRef<any>(null)
 
   useEffect(() => {
     const fetchAlerts = () => {
@@ -91,9 +87,29 @@ export default function AdminLayout({
     const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '')
     import('socket.io-client').then(({ io }) => {
       socket = io(API_ROOT, { transports: ['websocket', 'polling'] })
-      socketRef.current = socket
       socket.on('connect', () => socket.emit('join_admin'))
       socket.on('server_stats', (data: any) => setServerStats(data))
+      socket.on('low_stock_alert', (data: any) => {
+        toast(`⚠️ Low stock: "${data.productName}" — only ${data.inventory} left`, {
+          duration: 6000,
+          style: { background: '#fef2f2', color: '#991b1b', fontWeight: 600, border: '1px solid #fecaca' },
+        })
+        setBellAlerts(prev => ({ ...prev, lowStock: prev.lowStock + 1 }))
+      })
+      socket.on('new_order', (data: any) => {
+        toast(`🛍️ New order #${data.order_id} received!`, {
+          duration: 5000,
+          style: { background: '#ecfdf5', color: '#065f46', fontWeight: 600, border: '1px solid #a7f3d0' },
+        })
+        setBellAlerts(prev => ({ ...prev, pendingOrders: prev.pendingOrders + 1 }))
+      })
+      socket.on('new_ticket', (data: any) => {
+        toast(`💬 New support ticket: "${data.subject}" from ${data.user_name}`, {
+          duration: 5000,
+          style: { background: '#f5f3ff', color: '#5b21b6', fontWeight: 600, border: '1px solid #ddd6fe' },
+        })
+        setBellAlerts(prev => ({ ...prev, openTickets: prev.openTickets + 1 }))
+      })
     }).catch(() => {})
     // Also fetch via REST as fallback
     axios.get('/admin/server-stats').then((r: any) => setServerStats(r.data?.data)).catch(() => {})
@@ -134,6 +150,7 @@ export default function AdminLayout({
     { label: 'Wallet & Credits', href: '/admin/wallet', emoji: '💰' },
     { label: 'Push Notifications', href: '/admin/push-notifications', emoji: '🔔' },
     { label: 'Export Data', href: '/admin/export', emoji: '📤' },
+    { label: 'Customer Segments', href: '/admin/segments', emoji: '🎯' },
   ]
 
 
@@ -339,6 +356,10 @@ export default function AdminLayout({
             Analytics
           </MenuItem>
 
+          <MenuItem href="/admin/segments" icon={<Users size={18} />}>
+            Customer Segments
+          </MenuItem>
+
           <MenuItem href="/admin/visitors" icon={<Eye size={18} />}>
             Visitors
           </MenuItem>
@@ -510,6 +531,51 @@ export default function AdminLayout({
               <span>🔍 Search…</span>
               <kbd style={{ fontSize: 11, background: '#e5e7eb', borderRadius: 5, padding: '1px 6px', fontFamily: 'inherit', color: '#374151' }}>⌘K</kbd>
             </button>
+
+            {/* Live Server Stats Badge */}
+            {serverStats !== null && (
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setStatsOpen(o => !o)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', fontSize: 12, color: '#374151' }}
+                  title="Live server status"
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: 4, background: serverStats.cpu > 80 ? '#ef4444' : serverStats.cpu > 60 ? '#f59e0b' : '#10b981', display: 'inline-block', animation: 'pulse 2s infinite' }} />
+                  <span style={{ fontWeight: 600 }}>{serverStats.connectedUsers}</span>
+                  <span style={{ color: '#9ca3af' }}>online</span>
+                  <span style={{ color: '#d1d5db' }}>|</span>
+                  <span style={{ color: serverStats.cpu > 80 ? '#ef4444' : serverStats.cpu > 60 ? '#f59e0b' : '#6b7280' }}>CPU {serverStats.cpu}%</span>
+                </button>
+                {statsOpen && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setStatsOpen(false)} />
+                    <div style={{ position: 'absolute', right: 0, top: 44, width: 260, background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', zIndex: 999, overflow: 'hidden', padding: '14px 16px' }}>
+                      <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 13, color: '#1a2e1e' }}>⚡ Live Server Health</p>
+                      {[
+                        { label: 'Online Users', value: `${serverStats.connectedUsers} connected`, color: '#10b981', pct: null },
+                        { label: 'CPU Load', value: `${serverStats.cpu}%`, color: serverStats.cpu > 80 ? '#ef4444' : serverStats.cpu > 60 ? '#f59e0b' : '#10b981', pct: serverStats.cpu },
+                        { label: 'Memory', value: `${serverStats.memory}%`, color: serverStats.memory > 85 ? '#ef4444' : serverStats.memory > 70 ? '#f59e0b' : '#10b981', pct: serverStats.memory },
+                      ].map(row => (
+                        <div key={row.label} style={{ marginBottom: 10 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                            <span style={{ color: '#6b7280' }}>{row.label}</span>
+                            <span style={{ fontWeight: 600, color: row.color }}>{row.value}</span>
+                          </div>
+                          {row.pct !== null && (
+                            <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${row.pct}%`, background: row.color, borderRadius: 3, transition: 'width 0.5s ease' }} />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <p style={{ margin: '8px 0 0', fontSize: 11, color: '#9ca3af' }}>
+                        Uptime: {Math.floor(serverStats.uptime / 3600)}h {Math.floor((serverStats.uptime % 3600) / 60)}m
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Notification Bell */}
             <div style={{ position: 'relative' }}>

@@ -80,9 +80,13 @@ export default function WalletScreen() {
           const tier = tierData.tier
           const nextTier = tierData.next_tier
           const tc = TIER_COLORS[tier.name] || TIER_COLORS.bronze
-          const spent = Number(tier.total_spent || 0)
+          const spent = Number(tier.spent ?? tier.total_spent ?? 0)
+          const tierMin = Number(tier.min ?? tier.min_spend ?? 0)
+          const nextMin = Number(nextTier?.min ?? nextTier?.min_spend ?? 0)
+          const remaining = Number(nextTier?.remaining ?? Math.max(0, nextMin - spent))
+          const denominator = nextMin - tierMin
           const progress = nextTier
-            ? Math.min(1, (spent - (tier.min_spend || 0)) / (nextTier.min_spend - (tier.min_spend || 0)))
+            ? denominator > 0 ? Math.min(1, (spent - tierMin) / denominator) : 0
             : 1
           return (
             <View style={{ marginHorizontal: 16, marginBottom: 16, backgroundColor: tc.bg, borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: tc.color + '40' }}>
@@ -105,7 +109,7 @@ export default function WalletScreen() {
                     <View style={{ height: '100%', width: `${Math.round(progress * 100)}%` as any, backgroundColor: tc.color, borderRadius: 99 }} />
                   </View>
                   <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: '#6b7280' }}>
-                    Spend ₹{(nextTier.min_spend - spent).toLocaleString('en-IN')} more to reach {nextTier.label}
+                    Spend ₹{remaining.toLocaleString('en-IN')} more to reach {nextTier.label}
                   </Text>
                 </>
               )}

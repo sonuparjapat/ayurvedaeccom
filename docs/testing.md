@@ -1163,3 +1163,86 @@ curl -X POST http://localhost:5000/api/orders/webhook \
 ### User notification
 1. After the webhook fires, log in as the affected customer.
 2. Check notifications — verify "Refund Processed 💚 — Your refund of ₹500 has been processed" appears.
+
+---
+
+## Feature Testing (2026-07-30)
+
+### MF04 — Notification badge
+1. Log in on mobile app.
+2. Post a test notification via admin `POST /notifications/broadcast`.
+3. Navigate to the home screen.
+4. **Expected**: Account tab in bottom nav shows a red badge with the unread count.
+5. Open Notifications screen.
+6. **Expected**: Badge disappears.
+
+### PG03 — Settings screen
+1. Open mobile app → Account tab → tap "Settings ⚙️".
+2. **Expected**: Settings screen opens with sections: Account, Notifications, Help & Support, App, Account Actions.
+3. Toggle "Push Notifications" switch.
+4. Tap "Clear Cache" → **Expected**: toast "Cache cleared".
+5. Tap "Logout" → **Expected**: confirmation dialog → logs out and redirects to home.
+
+### PG01 — Deals screen
+1. On home screen tap the red "⚡ Deals & Offers" banner.
+2. **Expected**: Deals screen opens; shows discounted products.
+3. If a flash sale is active → **Expected**: flash sale card appears with countdown timer.
+4. Pull to refresh → list reloads.
+
+### PG04 — Notify Me
+1. Find a product with inventory = 0 (or set inventory to 0 in admin).
+2. Open the product page on mobile.
+3. **Expected**: "🔔 Notify Me When Available" button appears below the Buy Now button.
+4. Tap it while logged in → **Expected**: "You'll be notified!" confirmation.
+5. Verify `stock_notifications` table has a row for the product + user.
+
+### Admin — Live Server Health
+1. Open admin panel → look at the header.
+2. **Expected**: A small badge showing "N online" and "CPU X%" appears.
+3. Click the badge → **Expected**: dropdown with CPU %, Memory %, and Uptime bars.
+4. Open a new browser tab to the site → **Expected**: the online count increases by 1.
+
+### Admin — Sparklines
+1. Open admin dashboard.
+2. **Expected**: Revenue, Orders, and Users KPI cards show a small sparkline chart below the value.
+3. Hover over the chart to confirm the data represents 7 days.
+
+### Admin — Responsive layout
+1. Open admin dashboard on a large monitor (1440px+ width).
+2. **Expected**: Content fills the full available width (no narrow 1280px-wide centered box with large blank margins).
+3. Verify sidebar is still correctly positioned.
+
+### Admin — Table empty states
+1. In Admin → Orders, filter by a status that has no orders.
+2. **Expected**: Table body shows a dashed circle illustration with "No data found" and a helpful subtitle.
+
+## Refund Tracking
+- Place an order (online payment), admin cancels with status 6 → admin sets refund status 9 → customer order page shows Refund Status card with amount and ref ID
+- COD order refunded: shows "COD Manual" status badge
+
+## Brand Pages
+- Admin → Brands: create a brand with slug `test-brand`
+- Visit `/brand/test-brand` → should show hero, product grid
+- On product page, brand name should link to `/brand/[brand-slug]`
+
+## Customer Segments
+- Admin → Customer Segments: all 5 cohort cards load with numbers
+- Top Spenders table shows customer names, order counts, total spent
+- Recommended Actions links navigate correctly
+
+## Real-time Admin Alerts
+- Product: update inventory to 5 → admin layout shows orange toast "Low stock: X — only 5 left"
+- Place a new order → admin shows green toast "New order #X received!"
+- Submit support ticket → admin shows purple toast "New support ticket: Y from Z"
+- Bell counter increments for each event type
+
+## SMS Notifications
+- Set FAST2SMS_API_KEY in .env
+- Update order status to Shipped (3) → user's registered phone receives SMS
+- Without API key, message is logged to console only (dev mode)
+
+## Wide-screen Layout Test
+- Open the website on a 1920px+ width monitor or set browser window to full width on a large screen.
+- **Verify**: Header (navbar), footer, and page content all expand to fill more of the screen — no 300+ px empty gutters on both sides.
+- **Check breakpoints**: At 1600px the content expands to ~1600px wide; at 1920px it expands to 1920px.
+- **Mobile/laptop unchanged**: On screens below 1600px the layout should look identical to before.

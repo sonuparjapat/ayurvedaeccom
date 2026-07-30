@@ -19,7 +19,7 @@ const { emitToUser, emitToAdmin, emitToAll, getLiveStats } = require('../../sock
 const { createNotification } = require('../../services/notification.service');
 const { sendToUser: sendPushToUser } = require('../../services/pushNotification');
 const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
-const { sendDeliveryOTP: sendDeliveryOTPSms } = require('../../services/sms');
+const { sendDeliveryOTP: sendDeliveryOTPSms, sendOrderStatusSMS } = require('../../services/sms');
 const {
   uploadImageToAWS,
   deleteFromAWS
@@ -372,6 +372,54 @@ exports.stats = async (req, res) => {
   } catch (err) {
     console.error('[STATS ERROR]', err)
     res.status(500).json({ success: false, message: 'Failed to fetch stats' })
+  }
+}
+
+
+/* SPARKLINES — last 7 days per KPI */
+
+exports.sparklines = async (req, res) => {
+  try {
+    const [revRows, orderRows, userRows] = await Promise.all([
+      pool.query(`
+        SELECT date_trunc('day', created_at) AS day, COALESCE(SUM(amount),0) AS value
+        FROM payments WHERE status='success' AND created_at >= NOW() - INTERVAL '7 days'
+        GROUP BY day ORDER BY day
+      `),
+      pool.query(`
+        SELECT date_trunc('day', created_at) AS day, COUNT(*) AS value
+        FROM orders WHERE created_at >= NOW() - INTERVAL '7 days'
+        GROUP BY day ORDER BY day
+      `),
+      pool.query(`
+        SELECT date_trunc('day', created_at) AS day, COUNT(*) AS value
+        FROM users WHERE created_at >= NOW() - INTERVAL '7 days'
+        GROUP BY day ORDER BY day
+      `),
+    ])
+
+    const toSeries = (rows: any[]) => {
+      const map: Record<string, number> = {}
+      rows.forEach(r => { map[r.day.toISOString().slice(0, 10)] = Number(r.value) })
+      const series: number[] = []
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i)
+        series.push(map[d.toISOString().slice(0, 10)] || 0)
+      }
+      return series
+    }
+
+    res.json({
+      success: true,
+      data: {
+        revenue: toSeries(revRows.rows),
+        orders: toSeries(orderRows.rows),
+        users: toSeries(userRows.rows),
+      },
+    })
+  } catch (err) {
+    console.error('[SPARKLINES]', err)
+    res.status(500).json({ success: false })
   }
 }
 
@@ -1061,6 +1109,11 @@ const finalImages = [
     // Broadcast stock update to all connected web clients for real-time badge
     if (body.inventory !== undefined) {
       emitToAll('product_stock_update', { productId: parseInt(id), inventory: newInventory })
+      // Emit low-stock alert to admin room when inventory drops to threshold
+      if (newInventory !== null && newInventory <= 10) {
+        const prodName = result.rows[0]?.name || `Product #${id}`
+        emitToAdmin('low_stock_alert', { productId: parseInt(id), productName: prodName, inventory: newInventory })
+      }
     }
 
     res.json({
@@ -1635,6 +1688,12 @@ if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
           `Order #${id} is now: ${statusLabel}`,
           { type: 'order_update', order_id: id, status }
         );
+        // Send SMS for key status changes
+        const phoneRow = await pool.query(`SELECT phone FROM users WHERE id=$1`, [user_id])
+        const phone = phoneRow.rows[0]?.phone
+        if (phone && [2, 3, 4, 5, 6, 9].includes(status)) {
+          sendOrderStatusSMS(phone, invoice_no || `#${id}`, statusLabel).catch(() => {})
+        }
       }
       emitToAdmin('order_status_changed', { order_id: id, new_status: status });
     } catch (mailErr) {
@@ -2808,6 +2867,46 @@ exports.serverStats = async (req, res) => {
   try {
     res.json({ success: true, data: getLiveStats() })
   } catch (err) {
+    res.status(500).json({ success: false })
+  }
+}
+
+exports.customerSegments = async (req, res) => {
+  try {
+    const [newUsers, loyal, highValue, inactive, vip, topSpenders] = await Promise.all([
+      // New users (registered in last 30 days, no orders yet)
+      pool.query(`SELECT COUNT(*) AS count FROM users WHERE role=3 AND created_at >= NOW()-INTERVAL '30 days'
+        AND id NOT IN (SELECT DISTINCT user_id FROM orders WHERE user_id IS NOT NULL)`),
+      // Loyal (3+ orders, status=5 delivered)
+      pool.query(`SELECT COUNT(*) AS count FROM (
+        SELECT user_id FROM orders WHERE status=5 GROUP BY user_id HAVING COUNT(*)>=3) t`),
+      // High-value (single order >5000)
+      pool.query(`SELECT COUNT(DISTINCT user_id) AS count FROM orders WHERE total_amount::numeric > 5000`),
+      // Inactive (registered > 60 days, last order > 90 days ago or never ordered)
+      pool.query(`SELECT COUNT(*) AS count FROM users u WHERE role=3 AND u.created_at < NOW()-INTERVAL '60 days'
+        AND (NOT EXISTS (SELECT 1 FROM orders o WHERE o.user_id=u.id)
+          OR (SELECT MAX(created_at) FROM orders o WHERE o.user_id=u.id) < NOW()-INTERVAL '90 days')`),
+      // VIP (lifetime spend >10000)
+      pool.query(`SELECT COUNT(*) AS count FROM (
+        SELECT user_id FROM orders WHERE status=5 GROUP BY user_id HAVING SUM(total_amount::numeric)>10000) t`),
+      // Top 10 spenders
+      pool.query(`SELECT u.id, u.name, u.email, COUNT(o.id) AS orders, SUM(o.total_amount::numeric) AS total_spent
+        FROM orders o JOIN users u ON u.id=o.user_id WHERE o.status=5
+        GROUP BY u.id, u.name, u.email ORDER BY total_spent DESC LIMIT 10`),
+    ])
+    res.json({
+      success: true,
+      segments: {
+        new_users: Number(newUsers.rows[0].count),
+        loyal: Number(loyal.rows[0].count),
+        high_value: Number(highValue.rows[0].count),
+        inactive: Number(inactive.rows[0].count),
+        vip: Number(vip.rows[0].count),
+      },
+      top_spenders: topSpenders.rows,
+    })
+  } catch (err) {
+    console.error('[customerSegments]', err.message)
     res.status(500).json({ success: false })
   }
 }

@@ -30,6 +30,8 @@ router.get('/users',auth,
   controller.users)
 router.get('/stats', auth, admin, controller.stats)
 router.get('/server-stats', auth, admin, controller.serverStats)
+router.get('/customer-segments', auth, admin, controller.customerSegments)
+router.get('/sparklines', auth, admin, controller.sparklines)
 
 router.get('/recent-orders', auth, admin, controller.recentOrders)
 router.get('/products', auth, admin, controller.getAll)

@@ -3,7 +3,71 @@
 import { useEffect, useState, useRef } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
-import { Loader2 } from 'lucide-react'
+import { Loader2, GripVertical } from 'lucide-react'
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext, useSortable, arrayMove, rectSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+/* ─── Sortable image item ─────────────────────────────────────────────────── */
+function SortableImageItem({ id, file, index, disabled, onRemove }: any) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const url = typeof file === 'string' ? file : URL.createObjectURL(file)
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: 'relative' }}
+      className="group border rounded-lg overflow-hidden"
+    >
+      {!disabled && (
+        <div
+          {...attributes} {...listeners}
+          style={{ position: 'absolute', top: 4, left: 4, zIndex: 10, cursor: 'grab', background: 'rgba(0,0,0,0.4)', borderRadius: 4, padding: '2px 4px', display: 'flex', alignItems: 'center' }}
+          title="Drag to reorder"
+        >
+          <GripVertical size={14} color="#fff" />
+        </div>
+      )}
+      {index === 0 && (
+        <span style={{ position: 'absolute', bottom: 4, left: 4, zIndex: 10, background: '#059669', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: 4, padding: '2px 6px' }}>MAIN</span>
+      )}
+      <img src={url} alt="" className="h-24 w-full object-cover" />
+      {!disabled && (
+        <button type="button" onClick={onRemove}
+          style={{ position: 'absolute', top: 4, right: 4, background: '#dc2626', color: '#fff', width: 20, height: 20, borderRadius: '50%', fontSize: 10, border: 'none', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="group-hover:opacity-100!"
+        >✕</button>
+      )}
+    </div>
+  )
+}
+
+function SortableImageGrid({ images, disabled, onReorder, onRemove }: any) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const ids = images.map((_: any, i: number) => String(i))
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      const from = ids.indexOf(String(active.id))
+      const to = ids.indexOf(String(over.id))
+      onReorder(arrayMove(images, from, to))
+    }
+  }
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={ids} strategy={rectSortingStrategy}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+          {images.map((file: any, i: number) => (
+            <SortableImageItem key={i} id={String(i)} file={file} index={i} disabled={disabled} onRemove={() => onRemove(i)} />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  )
+}
 
 export default function AdminProductForm({
   onSuccess,
@@ -801,67 +865,12 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
 
         {form.images.length > 0 && (
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-
-            {form.images.map((file: any, i: number) => {
-
-              const url =
-                typeof file === 'string'
-                  ? file
-                  : URL.createObjectURL(file)
-
-              return (
-
-                <div
-                  key={i}
-                  className="relative group border rounded-lg overflow-hidden"
-                >
-
-                  <img
-                    src={url}
-                    className="h-24 w-full object-cover"
-                  />
-
-
-                  {!isView && (
-
-                    <button
-                      type="button"
-                      onClick={() => {
-
-                        const arr =
-                          form.images.filter(
-                            (_: any, index: number) =>
-                              index !== i
-                          )
-
-                        setForm({
-                          ...form,
-                          images: arr,
-                        })
-
-                      }}
-                      className="
-                        absolute top-1 right-1
-                        bg-red-600 text-white
-                        w-6 h-6 rounded-full text-xs
-                        opacity-0 group-hover:opacity-100
-                      "
-                    >
-                      ✕
-
-                    </button>
-
-                  )}
-
-                </div>
-
-              )
-
-            })}
-
-          </div>
+          <SortableImageGrid
+            images={form.images}
+            disabled={!!isView}
+            onReorder={(next: any[]) => setForm({ ...form, images: next })}
+            onRemove={(i: number) => setForm({ ...form, images: form.images.filter((_: any, idx: number) => idx !== i) })}
+          />
 
         )}
 
