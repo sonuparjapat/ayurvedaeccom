@@ -20,5 +20,8 @@ Disallow: /orders/
 Disallow: /wishlist/
 Disallow: /support/
 Disallow: /adminauth/
+Disallow: /api/
+Disallow: /_next/
 
 Sitemap: https://oroganix.com/sitemap.xml
+Host: oroganix.com

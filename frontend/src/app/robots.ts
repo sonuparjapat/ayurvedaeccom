@@ -6,11 +6,22 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
+        userAgent: 'Googlebot',
+        allow: '/',
+        disallow: ['/admin/', '/checkout/', '/account/', '/cart/', '/orders/', '/wishlist/', '/support/', '/adminauth/', '/api/'],
+      },
+      {
+        userAgent: 'Bingbot',
+        allow: '/',
+        disallow: ['/admin/', '/checkout/', '/account/', '/cart/', '/orders/', '/wishlist/', '/support/', '/adminauth/', '/api/'],
+      },
+      {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin/', '/checkout', '/api/', '/account'],
+        disallow: ['/admin/', '/checkout/', '/account/', '/cart/', '/orders/', '/wishlist/', '/support/', '/adminauth/', '/api/'],
       },
     ],
     sitemap: `${BASE_URL}/sitemap.xml`,
+    host: BASE_URL,
   }
 }

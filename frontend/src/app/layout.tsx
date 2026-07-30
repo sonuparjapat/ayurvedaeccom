@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     default: "Oroganix - Premium Ayurvedic & Organic Products | Buy Natural Herbs Online",
     template: "%s | Oroganix",
   },
-  description: "Shop authentic Ayurvedic herbs, organic supplements, premium dry fruits, and natural wellness products. 100% organic, lab-tested, farm-direct. Free delivery above ₹499.",
+  description: "Shop authentic Ayurvedic herbs, organic supplements & dry fruits. 100% organic, lab-tested, farm-direct. Free delivery above ₹499.",
   keywords: [
     "Ayurvedic products online",
     "buy organic herbs India",

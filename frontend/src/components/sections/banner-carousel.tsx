@@ -127,7 +127,7 @@ export function BannerCarousel() {
                 {s.subtitle}
               </p>
             )}
-            <Link href={s.cta_link}>
+            <Link href={s.cta_link || '/products'}>
               <button className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all hover:scale-105 active:scale-100"
                 style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(255,255,255,0.3)', color: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
                 {s.cta_text}
