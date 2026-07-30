@@ -34,6 +34,7 @@ import {
   Mail,
   FlaskConical,
   Receipt,
+  CreditCard,
   HelpCircle,
   Clock,
   AlertCircle,
@@ -294,6 +295,9 @@ export default function AdminLayout({
           </MenuItem>
           <MenuItem href="/admin/price-logs" icon={<Receipt size={18} />} perm="price_logs.view">
             Price Logs
+          </MenuItem>
+          <MenuItem href="/admin/payment-logs" icon={<CreditCard size={18} />} perm="price_logs.view">
+            Payment Logs
           </MenuItem>
           <MenuItem href="/admin/products/bulk-status" icon={<Package size={18} />} perm="products.bulk">
             Bulk Status

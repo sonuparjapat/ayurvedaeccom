@@ -259,4 +259,10 @@ router.put('/user/:id/department', auth, allowRoles(1), deptCtrl.assignUserDepar
 const orderCtrl = require('../orders/order.controller')
 router.post('/orders/:id/refund', auth, admin, orderCtrl.adminRefundOrder)
 
+/* ─── ROLES ─── */
+router.get('/roles', auth, admin, controller.getRoles)
+
+/* ─── PAYMENT LOGS ─── */
+router.get('/payment-logs', auth, admin, controller.getPaymentLogs)
+
 module.exports = router

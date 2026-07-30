@@ -103,8 +103,8 @@ exports.createUser = async (req, res) => {
        (prevent invalid roles)
     ========================= */
 
-    const allowedRoles = [0, 1, 2]
-    const finalRole = allowedRoles.includes(Number(role)) ? Number(role) : 0
+    const allowedRoles = [1, 2, 3]
+    const finalRole = allowedRoles.includes(Number(role)) ? Number(role) : 3
 
     /* Prevent role-2 admins from creating superadmin accounts */
     if (Number(req.user.role) === 2 && finalRole === 1) {
@@ -177,35 +177,31 @@ exports.updateUser = async (req, res) => {
     const { id } = req.params
 
     const {
-   name,
-    
+      name,
       email,
       phone,
       role,
       is_verified,
+      department_id,
     } = req.body
 
     let fields = []
     let values = []
     let i = 1
 
-
     if (name) {
       fields.push(`name=$${i++}`)
       values.push(name)
     }
-
-  
-
 
     if (email) {
       fields.push(`email=$${i++}`)
       values.push(email)
     }
 
-    if (phone) {
+    if (phone !== undefined) {
       fields.push(`phone=$${i++}`)
-      values.push(phone)
+      values.push(phone || null)
     }
 
     if (role) {
@@ -216,6 +212,20 @@ exports.updateUser = async (req, res) => {
     if (is_verified !== undefined) {
       fields.push(`is_verified=$${i++}`)
       values.push(is_verified)
+    }
+
+    // Update department_id: set to the value for role=2, clear for other roles
+    if (department_id !== undefined || role !== undefined) {
+      const newRole = role ? Number(role) : null
+      if (newRole === 2 && department_id !== undefined) {
+        fields.push(`department_id=$${i++}`)
+        values.push(department_id ? Number(department_id) : null)
+      } else if (newRole && newRole !== 2) {
+        fields.push(`department_id=NULL`)
+      } else if (department_id !== undefined) {
+        fields.push(`department_id=$${i++}`)
+        values.push(department_id ? Number(department_id) : null)
+      }
     }
 
     if (!fields.length) {
@@ -2926,5 +2936,97 @@ exports.customerSegments = async (req, res) => {
   } catch (err) {
     console.error('[customerSegments]', err.message)
     res.status(500).json({ success: false })
+  }
+}
+
+/* ================= ROLES ================= */
+
+exports.getRoles = async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT id, name FROM roles ORDER BY id ASC`)
+    res.json({ success: true, roles: r.rows })
+  } catch (err) {
+    console.error('[getRoles]', err.message)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/* ================= PAYMENT LOGS ================= */
+
+exports.getPaymentLogs = async (req, res) => {
+  try {
+    const {
+      order_id,
+      event_type,
+      initiated_by,
+      status,
+      from,
+      to,
+      page = 1,
+      limit = 50,
+    } = req.query
+
+    const pageNum = Math.max(1, parseInt(page))
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)))
+    const offset = (pageNum - 1) * limitNum
+
+    let where = 'WHERE 1=1'
+    const values = []
+    let i = 1
+
+    if (order_id) {
+      where += ` AND pl.order_id = $${i++}`
+      values.push(parseInt(order_id))
+    }
+    if (event_type) {
+      where += ` AND pl.event_type = $${i++}`
+      values.push(event_type)
+    }
+    if (initiated_by) {
+      where += ` AND pl.initiated_by = $${i++}`
+      values.push(initiated_by)
+    }
+    if (status) {
+      where += ` AND pl.status = $${i++}`
+      values.push(status)
+    }
+    if (from) {
+      where += ` AND pl.created_at >= $${i++}`
+      values.push(from)
+    }
+    if (to) {
+      where += ` AND pl.created_at <= $${i++}`
+      values.push(to)
+    }
+
+    const [logs, countRes] = await Promise.all([
+      pool.query(
+        `SELECT pl.id, pl.order_id, pl.event_type, pl.amount, pl.status,
+                pl.gateway_payment_id, pl.gateway_order_id, pl.gateway_refund_id,
+                pl.gateway_event, pl.initiated_by, pl.metadata, pl.notes, pl.created_at,
+                o.invoice_no, u.name AS user_name, u.email AS user_email
+         FROM payment_logs pl
+         LEFT JOIN orders o ON o.id = pl.order_id
+         LEFT JOIN users u ON u.id = o.user_id
+         ${where}
+         ORDER BY pl.created_at DESC
+         LIMIT $${i++} OFFSET $${i++}`,
+        [...values, limitNum, offset]
+      ),
+      pool.query(
+        `SELECT COUNT(*) FROM payment_logs pl ${where}`,
+        values
+      ),
+    ])
+
+    const total = parseInt(countRes.rows[0].count)
+    res.json({
+      success: true,
+      data: logs.rows,
+      meta: { total, page: pageNum, pages: Math.ceil(total / limitNum), limit: limitNum },
+    })
+  } catch (err) {
+    console.error('[getPaymentLogs]', err.message)
+    res.status(500).json({ success: false, message: 'Server error' })
   }
 }

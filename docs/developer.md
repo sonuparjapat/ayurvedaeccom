@@ -1369,3 +1369,92 @@ New themed loading component replacing plain spinners:
 - Shimmer brand name "OROGANIX", pulsing dots
 - Props: `message`, `fullScreen`, `size` ('sm'|'md'|'lg')
 - Used in: Account page full-screen load + inline wallet tab load
+
+---
+
+## Cancel Order Modal — Account Page
+
+### Web (AccountContent.tsx)
+`frontend/src/app/account/AccountContent.tsx`
+
+**New state:**
+- `showCancelModal` — controls modal visibility
+- `cancellingOrderId` — which order is being cancelled
+- `cancelReason` — selected preset reason
+- `cancelCustomReason` — free text when reason = "Other"
+- `cancelling` — loading state during API call
+
+**Handler:** `handleCancelOrder(reason: string)` — POSTs to `/orders/:id/cancel`, then refreshes both `loadOrders` and `loadPagedOrders`.
+
+**Modal:** Inline JSX modal at bottom of component (z-50 fixed overlay). 6 preset reasons + "Other" free text textarea.
+
+**Cancel button:** Was `window.confirm()` + hardcoded reason `'Cancelled by customer'`. Now opens modal via `setCancellingOrderId(order.id)` + `setShowCancelModal(true)`.
+
+### Web (Order Detail Page)
+`frontend/src/app/orders/[id]/page.tsx`
+
+**Cancelled/Returned Banner:** Added between ETA section and Progress Steps. Shows when `isCancelledOrReturned` is true. Displays `statusMeta.emoji`, `statusMeta.label`, and `order.cancel_reason` / `order.return_reason` if present.
+
+**Mobile** (`ayurveda-app/src/app/order/[id].tsx`): No changes needed — already has `CancelModal` component and `SPECIAL STATUS BANNER` for statuses 6/7/8/9.
+
+---
+
+## Tracking Stepper — Cancelled/Refunded State
+
+### AccountContent.tsx inline tracking panel
+When `order.status` is `'cancelled'`, `'return_requested'`, `'returned'`, or `'refunded'`:
+- The 6-step stepper and courier info are replaced with a colored banner.
+- Red for cancelled, amber for return_requested/returned, green for refunded.
+- Displays `cancel_reason` from the order object (`(order as any).cancel_reason`).
+- Displays `refund_amount` and `refund_status` from the order object.
+
+The terminal-state check: `const isTerminal = ['cancelled','return_requested','returned','refunded'].includes(order.status)`
+
+---
+
+## Payment Logs System
+
+### Database: `payment_logs` table
+Created in `backend/src/database/init.js`. Migrated live via `backend/src/database/migrate_payment_logs.js`.
+
+Columns: `id, order_id, event_type, amount, status, gateway_payment_id, gateway_order_id, gateway_refund_id, gateway_event, initiated_by, metadata (JSONB), notes, created_at`.
+
+### Service: `backend/src/services/paymentLogger.js`
+`logPayment(orderId, eventType, data)` — inserts a row. **Never throws** — all errors are swallowed so logging never breaks payment flow.
+
+### Events logged automatically:
+| Event | Trigger |
+|---|---|
+| `order_placed` | COD order committed |
+| `razorpay_order_created` | Online order — Razorpay order API call |
+| `payment_captured` | `verifyPayment` — user-side signature check |
+| `payment_captured_webhook` | Razorpay `payment.captured` webhook |
+| `refund_initiated` | Customer cancels paid online order |
+| `refund_initiation_failed` | Razorpay refund API call throws |
+| `admin_refund_initiated` | Admin manual refund via `POST /admin/orders/:id/refund` |
+| `auto_cancel_refund_initiated` | Auto-cancel cron refunds a stale paid order |
+| `refund_processed` | Razorpay `refund.processed` webhook |
+| `refund_failed` | Razorpay `refund.failed` webhook |
+
+### Admin endpoint
+`GET /admin/payment-logs` — filters: `order_id`, `event_type`, `initiated_by`, `status`, `from`, `to`, `page`, `limit`.
+
+### Admin page
+`frontend/src/app/admin/payment-logs/page.tsx` — table with colour-coded event chips, expandable detail rows (full gateway IDs, metadata JSON), CSV export, date range filter.
+
+### Sidebar
+Payment Logs added to admin sidebar after Price Logs. Uses permission `price_logs.view`.
+
+---
+
+## Admin Users — Role & Department Fixes
+
+### Dynamic roles dropdown
+`AdminUserForm.tsx` now calls `GET /admin/roles` on mount and renders options dynamically. Falls back to hardcoded 3 options while loading.
+`backend/src/modules/admin/admin.routes.js`: `GET /admin/roles` → `controller.getRoles`.
+
+### `createUser` bug fix
+`allowedRoles` was `[0, 1, 2]` — role 3 (Customer) silently mapped to 0. Fixed: `[1, 2, 3]`, default `3`.
+
+### `updateUser` bug fix
+`department_id` was never extracted from `req.body` and never updated. Fixed: extracted and added to dynamic fields array. When role changes away from 2, `department_id` is cleared (set to NULL).

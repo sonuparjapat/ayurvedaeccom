@@ -681,3 +681,42 @@ All forms now support the **Enter key** for submission:
 - **Forgot Password**: Enter email → press **Enter** → sends reset link.
 
 The Enter key only fires if all required fields for that action are filled. If a required field is empty, nothing happens (no error flash — just no action until the form is ready).
+
+---
+
+## Order Cancellation — Reason Modal
+
+When cancelling an order from **My Account → Orders**, a modal now appears instead of a browser popup.
+
+**How it works:**
+1. Click **Cancel** on an order (only available for Pending or Confirmed orders).
+2. A modal appears asking "Please tell us why you want to cancel this order".
+3. Choose one of 6 preset reasons or select **Other** and type a custom reason.
+4. Click **Confirm Cancel** — the order is cancelled and your reason is saved.
+
+**Cancel reasons available:**
+- Changed my mind
+- Found a better price elsewhere
+- Ordered by mistake
+- Shipping takes too long
+- Product not needed anymore
+- Other (free text)
+
+This applies to: **My Account orders list**, **Order detail page** (`/orders/[id]`), and **Mobile order detail**.
+
+---
+
+## Order Tracking — Cancelled / Refunded State
+
+The order tracking panel now shows a clear visual state for cancelled or returned orders.
+
+**When an order is Cancelled:**
+- The progress stepper is replaced by a red **❌ Order Cancelled** banner.
+- The cancellation reason is shown below the banner (if provided).
+- If a refund was initiated, the refund status is shown: ⏳ Initiated / ✓ Processed / ✗ Failed.
+
+**When an order is Returned/Refunded:**
+- An amber (return) or green (refunded) banner replaces the progress stepper.
+- Refund amount and status are shown.
+
+This applies to: **My Account tracking panel**, **Order detail page** (`/orders/[id]`), and **Mobile order detail** (Special Status Banner).

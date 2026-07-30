@@ -6,7 +6,8 @@ const { createNotification } = require('../../services/notification.service');
 const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
 const sendOrderConfirmationEmail = require('../../services/email/orderConfirmation');
 const { sendOrderCancelledEmail, sendReturnRequestedEmail } = require('../../services/email/orderStatusEmail');
-const { sendDeliveryOTP: sendDeliveryOTPSms } = require('../../services/sms');
+const { sendDeliveryOTP: sendDeliveryOTPSms } = require('../../services/sms')
+const { logPayment } = require('../../services/paymentLogger');
 
 /* ── Loyalty tier helper ── */
 async function updateLoyaltyTier(userId) {
@@ -711,6 +712,13 @@ if (addr.pincode) {
 
     await client.query("COMMIT");
 
+    // ── Payment log ──
+    if (paymentMethod === 'cod') {
+      logPayment(orderId, 'order_placed', { amount: finalTotal, status: 'pending', initiatedBy: 'customer', metadata: { payment_method: 'cod' } });
+    } else if (razorpayOrder) {
+      logPayment(orderId, 'razorpay_order_created', { amount: finalTotal, status: 'initiated', gatewayOrderId: razorpayOrder.id, initiatedBy: 'customer', metadata: { payment_method: 'online' } });
+    }
+
     /* ================= FIRE SOCKET EVENTS (after commit — data is now visible) ================= */
     try {
       const { emitToAll } = require('../../socket')
@@ -927,6 +935,15 @@ exports.verifyPayment = async (req, res) => {
     await creditReferralReward(client, userId, orderId);
 
     await client.query("COMMIT");
+
+    // ── Payment log ──
+    logPayment(orderId, 'payment_captured', {
+      amount: orderData.total_amount,
+      status: 'success',
+      gatewayPaymentId: razorpay_payment_id,
+      gatewayOrderId: razorpay_order_id,
+      initiatedBy: 'customer',
+    });
 
     /* ================= ORDER CONFIRMATION EMAIL (online payment) ================= */
     try {
@@ -1153,9 +1170,23 @@ exports.cancelOrder = async (req, res) => {
           `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status=$3, payment_status='refunded', updated_at=NOW() WHERE id=$4`,
           [refund.id, Number(order.total_amount), rzpStatus, id]
         );
+        logPayment(id, 'refund_initiated', {
+          amount: order.total_amount,
+          status: rzpStatus,
+          gatewayPaymentId: order.razorpay_payment_id,
+          gatewayRefundId: refund.id,
+          initiatedBy: 'customer',
+          notes: req.body?.reason || 'Order cancelled by customer',
+        });
       } catch (refundErr) {
         console.error('[CANCEL REFUND ERROR]', refundErr.message);
         await pool.query(`UPDATE orders SET refund_status='failed', updated_at=NOW() WHERE id=$1`, [id]);
+        logPayment(id, 'refund_initiation_failed', {
+          status: 'failed',
+          gatewayPaymentId: order.razorpay_payment_id,
+          initiatedBy: 'customer',
+          notes: refundErr.message,
+        });
       }
     }
 
@@ -1658,6 +1689,17 @@ exports.razorpayWebhook = async (req, res) => {
         [refund.id, refundStatus, Number(refund.amount) / 100, orderId]
       );
 
+      // ── Payment log ──
+      logPayment(orderId, refundStatus === 'processed' ? 'refund_processed' : 'refund_failed', {
+        amount: Number(refund.amount) / 100,
+        status: refundStatus,
+        gatewayPaymentId: refund.payment_id,
+        gatewayRefundId: refund.id,
+        gatewayEvent: event.event,
+        initiatedBy: 'system',
+        notes: `Webhook: ${event.event}`,
+      });
+
       try {
         if (refundStatus === 'processed') {
           createNotification(userId, 'refund', `Refund Processed 💚`,
@@ -1753,6 +1795,16 @@ exports.razorpayWebhook = async (req, res) => {
     await creditReferralReward(client, userId, orderId);
 
     await client.query('COMMIT');
+
+    // ── Payment log ──
+    logPayment(orderId, 'payment_captured_webhook', {
+      status: 'success',
+      gatewayPaymentId: razorpay_payment_id,
+      gatewayOrderId: razorpay_order_id,
+      gatewayEvent: event.event,
+      initiatedBy: 'system',
+      notes: 'Captured via Razorpay webhook',
+    });
 
     // Fire admin socket notification
     try { emitToAdmin('new_order', { orderId }); } catch (_) {}
@@ -2233,6 +2285,15 @@ exports.adminRefundOrder = async (req, res) => {
       `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status=$3, payment_status='refunded', updated_at=NOW() WHERE id=$4`,
       [refund.id, Number(order.total_amount), rzpStatus, id]
     );
+
+    logPayment(id, 'admin_refund_initiated', {
+      amount: order.total_amount,
+      status: rzpStatus,
+      gatewayPaymentId: order.razorpay_payment_id,
+      gatewayRefundId: refund.id,
+      initiatedBy: 'admin',
+      notes: 'Manual refund initiated by admin',
+    });
 
     res.json({ success: true, message: 'Refund initiated successfully', refund_id: refund.id, refund_status: rzpStatus });
   } catch (err) {

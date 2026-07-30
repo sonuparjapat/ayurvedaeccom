@@ -18,6 +18,7 @@ const STATUS_LABEL: Record<number, { label: string; color: string; bg: string }>
 
 export default function AdminReturnsPage() {
   const [list, setList] = useState<any[]>([])
+  const [allStats, setAllStats] = useState<any[]>([]) // always all 7/8/9 for accurate stats
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState('7,8,9')
   const [search, setSearch] = useState('')
@@ -33,9 +34,13 @@ export default function AdminReturnsPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const res = await axios.get('/admin/returns', { params: { status: filter, page, limit: 20 } })
-      setList(res.data.data || [])
-      setMeta(res.data.meta || {})
+      const [filtered, allRes] = await Promise.all([
+        axios.get('/admin/returns', { params: { status: filter, page, limit: 20 } }),
+        axios.get('/admin/returns', { params: { status: '7,8,9', page: 1, limit: 500 } }),
+      ])
+      setList(filtered.data.data || [])
+      setMeta(filtered.data.meta || {})
+      setAllStats(allRes.data.data || [])
     } catch { notify.error('Load failed') }
     finally { setLoading(false) }
   }
@@ -85,10 +90,10 @@ export default function AdminReturnsPage() {
   }
 
   const stats = {
-    requested: list.filter(o => o.status === 7).length,
-    initiated:  list.filter(o => o.status === 8).length,
-    refunded:   list.filter(o => o.status === 9).length,
-    totalValue: list.filter(o => o.status === 7).reduce((s, o) => s + Number(o.total_amount || 0), 0),
+    requested: allStats.filter(o => o.status === 7).length,
+    initiated:  allStats.filter(o => o.status === 8).length,
+    refunded:   allStats.filter(o => o.status === 9).length,
+    totalValue: allStats.filter(o => o.status === 7).reduce((s, o) => s + Number(o.total_amount || 0), 0),
   }
 
   return (

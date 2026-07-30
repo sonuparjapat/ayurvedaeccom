@@ -29,6 +29,11 @@ interface Department {
   is_active: boolean
 }
 
+interface Role {
+  id: number
+  name: string
+}
+
 export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
   const { loginuserdata } = useAuth()
   const callerRole = Number(loginuserdata?.role)
@@ -44,6 +49,7 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
   })
 
   const [departments, setDepartments] = useState<Department[]>([])
+  const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
 
@@ -51,10 +57,13 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
   const isEdit = mode === "edit"
   const isCreate = mode === "create"
 
-  /* Load departments */
+  /* Load departments + roles from API */
   useEffect(() => {
     axios.get("/admin/departments")
       .then(r => setDepartments((r.data.departments || []).filter((d: Department) => d.is_active)))
+      .catch(() => {})
+    axios.get("/admin/roles")
+      .then(r => setRoles(r.data.roles || []))
       .catch(() => {})
   }, [])
 
@@ -169,10 +178,21 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
             disabled={isView}
             className={inputCls(!!errors.role)}
           >
-            {/* Only superadmin can assign role 1 */}
-            {callerRole === 1 && <option value="1">Super Admin</option>}
-            <option value="2">Admin / Staff</option>
-            <option value="3">Customer</option>
+            {roles.length > 0
+              ? roles
+                  .filter(r => callerRole === 1 || r.id !== 1) // only superadmin can assign role 1
+                  .map(r => (
+                    <option key={r.id} value={String(r.id)}>{r.name}</option>
+                  ))
+              : (
+                // Fallback while roles are loading
+                <>
+                  {callerRole === 1 && <option value="1">Super Admin</option>}
+                  <option value="2">Admin / Staff</option>
+                  <option value="3">Customer</option>
+                </>
+              )
+            }
           </select>
         </Field>
 

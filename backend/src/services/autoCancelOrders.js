@@ -18,6 +18,7 @@ const Razorpay = require('razorpay')
 const { sendOrderCancelledEmail } = require('./email/orderStatusEmail')
 const { createNotification } = require('./notification.service')
 const { emitToAdmin } = require('../socket')
+const { logPayment } = require('./paymentLogger')
 
 const CANCEL_REASON = 'Auto-cancelled: Order was not confirmed within the allowed time.'
 const HOURS = Number(process.env.ORDER_AUTO_CANCEL_HOURS || 24)
@@ -130,12 +131,26 @@ async function autoCancelOrders() {
         refundAmount = Number(order.total_amount)
         refundTo = 'original payment method'
         console.log(`[AutoCancel] Refund initiated for order #${order.id} — ${rzpStatus}`)
+        logPayment(order.id, 'auto_cancel_refund_initiated', {
+          amount: order.total_amount,
+          status: rzpStatus,
+          gatewayPaymentId: order.razorpay_payment_id,
+          gatewayRefundId: refund.id,
+          initiatedBy: 'system',
+          notes: CANCEL_REASON,
+        });
       } catch (refundErr) {
         console.error(`[AutoCancel] Refund failed for order #${order.id}:`, refundErr.message)
         await pool.query(
           `UPDATE orders SET refund_status = 'failed', updated_at = NOW() WHERE id = $1`,
           [order.id]
         )
+        logPayment(order.id, 'refund_initiation_failed', {
+          status: 'failed',
+          gatewayPaymentId: order.razorpay_payment_id,
+          initiatedBy: 'system',
+          notes: refundErr.message,
+        });
       }
     }
 

@@ -1384,3 +1384,47 @@ curl -X POST http://localhost:5000/api/orders/webhook \
 - **Expected**: Ayurvedic loader (lotus, rings, floating leaves, wellness tips) instead of plain spinner.
 - Tips cycle every ~2.4s with a fade transition.
 - Wallet tab: smaller `AyurvedaLoader` shows while wallet data loads.
+
+---
+
+## Cancel Order Reason Modal
+
+### My Account Orders List (`/account?tab=orders`)
+1. Log in as a user with a Pending or Confirmed order.
+2. Click the **Cancel** button on the order card.
+3. **Expected**: A modal appears with "Cancel Order" heading and 6 preset reasons + "Other".
+4. Select any reason → **Confirm Cancel** button becomes active.
+5. Select "Other" → a textarea appears for free text input.
+6. Click **Confirm Cancel** → order is cancelled, toast "Order cancelled successfully" appears, orders list refreshes.
+7. Click **Keep Order** or outside the modal → modal closes, order unchanged.
+8. If no reason is selected → Confirm Cancel button stays disabled.
+
+### Order Detail Page (`/orders/[id]`)
+- Same modal behavior. Already tested in previous session.
+
+### Mobile (Order Detail)
+- Tap Cancel Order → CancelModal sheet appears with same preset reasons.
+- Selecting reason + confirming cancels the order.
+
+---
+
+## Tracking Stepper — Cancelled / Refunded State
+
+### My Account Tracking Panel
+1. Log in as user with a Cancelled order.
+2. Click **Track Order** on the cancelled order card.
+3. **Expected**: Instead of a 6-step progress bar, a red **❌ Order Cancelled** banner shows.
+4. If the order had a `cancel_reason`, it appears below the banner heading.
+5. If a refund was initiated, refund amount + status (⏳ Initiated / ✓ Processed / ✗ Failed) shows below.
+
+For a Refunded order: green banner with ↩️ heading + refund amount.
+For a Return Requested / Returned order: amber banner.
+
+### Order Detail Page (`/orders/[id]`)
+1. Navigate to a cancelled order's detail page.
+2. **Expected**: A coloured banner (red for cancelled) shows with emoji, status label, and cancel reason if present.
+3. The 6-step progress stepper does NOT appear for cancelled/returned/refunded orders.
+
+### Mobile (Order Detail)
+- Status 6/7/8/9: "SPECIAL STATUS BANNER" shows with emoji, label, cancel reason, and refund info.
+- Progress stepper (`StatusTimeline`) is hidden for these statuses.
