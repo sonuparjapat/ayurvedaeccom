@@ -463,7 +463,7 @@ const getintdata=async(user?: User)=>{
 const getwishlist=async(params?:any)=>{
   setWishlistdata((pre:any)=>({...pre,loading:true}))
   try{
-const wishlistres=await axios.get('/shop',params&&params)
+const wishlistres=await axios.get('/shop/wishlist',params&&params)
 
 setWishlistdata({
       items: wishlistres.data.data||[],

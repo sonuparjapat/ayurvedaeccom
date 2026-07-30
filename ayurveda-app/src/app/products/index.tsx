@@ -166,6 +166,7 @@ export default function ProductsScreen() {
   const [selectedSort, setSelectedSort] = useState('created_at')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const [minRating, setMinRating] = useState(0)
   const [inStockOnly, setInStockOnly] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
   const [addingId, setAddingId] = useState<number | null>(null)
@@ -196,7 +197,7 @@ export default function ProductsScreen() {
     setSelectedSubcat(null)
   }, [categoryId])
 
-  useEffect(() => { fetchProducts(1) }, [search, selectedSort, minPrice, maxPrice, inStockOnly, categoryId, selectedSubcat])
+  useEffect(() => { fetchProducts(1) }, [search, selectedSort, minPrice, maxPrice, minRating, inStockOnly, categoryId, selectedSubcat])
 
   const fetchProducts = async (pg: number) => {
     if (pg === 1) setLoading(true); else setLoadingMore(true)
@@ -208,6 +209,7 @@ export default function ProductsScreen() {
           search, page: pg, limit: LIMIT, sortBy, sortOrder,
           ...(minPrice && { minPrice }),
           ...(maxPrice && { maxPrice }),
+          ...(minRating > 0 && { rating: minRating }),
           ...(inStockOnly && { inStock: true }),
           ...(selectedSubcat ? { category_id: selectedSubcat } : categoryId ? { category_id: categoryId } : {}),
         }
@@ -270,7 +272,7 @@ export default function ProductsScreen() {
   }
 
   const inCart = (id: number) => cartData.items.some(i => i.product_id === id)
-  const hasFilters = !!(minPrice || maxPrice || inStockOnly || selectedSort !== 'created_at')
+  const hasFilters = !!(minPrice || maxPrice || minRating > 0 || inStockOnly || selectedSort !== 'created_at')
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
@@ -375,7 +377,7 @@ export default function ProductsScreen() {
           <Text style={ss.emptySub}>Try a different search or clear your filters</Text>
           {hasFilters && (
             <TouchableOpacity
-              onPress={() => { setMinPrice(''); setMaxPrice(''); setInStockOnly(false); setSelectedSort('created_at') }}
+              onPress={() => { setMinPrice(''); setMaxPrice(''); setMinRating(0); setInStockOnly(false); setSelectedSort('created_at') }}
               style={ss.clearFiltersBtn}
             >
               <Text style={ss.clearFiltersText}>Clear Filters</Text>
@@ -418,7 +420,7 @@ export default function ProductsScreen() {
             <View style={ss.filterSheetHeader}>
               <Text style={ss.filterTitle}>Filters & Sort</Text>
               {hasFilters && (
-                <TouchableOpacity onPress={() => { setMinPrice(''); setMaxPrice(''); setInStockOnly(false); setSelectedSort('created_at') }}>
+                <TouchableOpacity onPress={() => { setMinPrice(''); setMaxPrice(''); setMinRating(0); setInStockOnly(false); setSelectedSort('created_at') }}>
                   <Text style={ss.clearAllText}>Clear All</Text>
                 </TouchableOpacity>
               )}
@@ -447,6 +449,19 @@ export default function ProductsScreen() {
                     style={[ss.filterChip, selectedSort === s.value && ss.filterChipActive]}>
                     <Text style={{ fontSize: 12 }}>{s.icon}</Text>
                     <Text style={[ss.filterChipText, selectedSort === s.value && ss.filterChipTextActive]}>{s.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={ss.filterLabel}>Minimum Rating</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+                {[0, 3, 3.5, 4, 4.5].map(r => (
+                  <TouchableOpacity key={r} onPress={() => setMinRating(r)}
+                    style={[ss.filterChip, minRating === r && ss.filterChipActive]}>
+                    <Text style={{ fontSize: 11 }}>{'★'.repeat(Math.floor(r)) || '★'}</Text>
+                    <Text style={[ss.filterChipText, minRating === r && ss.filterChipTextActive]}>
+                      {r === 0 ? 'Any' : `${r}+`}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>

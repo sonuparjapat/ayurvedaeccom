@@ -66,11 +66,13 @@ export default function AdminDashboard() {
     socket.on('new_order', (data: { order_id: number; user_id: number }) => {
       const toast: NewOrderToast = { id: Date.now(), order_id: data.order_id, user_id: data.user_id, at: Date.now() }
       setToasts(prev => [toast, ...prev].slice(0, 5))
-      // refresh stats & recent orders silently
       axios.get('/admin/stats').then(r => setStats(r.data)).catch(() => {})
       axios.get('/admin/recent-orders').then(r => setRecentOrders(r.data)).catch(() => {})
-      // auto-dismiss after 6s
       setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toast.id)), 6000)
+    })
+    socket.on('order_status_changed', () => {
+      axios.get('/admin/stats').then(r => setStats(r.data)).catch(() => {})
+      axios.get('/admin/recent-orders').then(r => setRecentOrders(r.data)).catch(() => {})
     })
     return () => { socket.disconnect() }
   }, [])

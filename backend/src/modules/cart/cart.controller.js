@@ -166,6 +166,7 @@ exports.getCart = async (req, res) => {
       c.variant_id,
       c.quantity,
       p.name,
+      p.slug,
       p.price as base_price,
       p.compareprice as base_compareprice,
       p.images,

@@ -1,5 +1,198 @@
 # Testing Guide — Oroganix eCommerce
 
+---
+
+## Phase 3 Bug-Fix Verification (2026-07-29)
+
+### Security: SQL injection — company settings update
+```bash
+# Should NOT crash or execute injected SQL
+curl -X PUT http://localhost:5000/api/admin/company/1 \
+  -H "Content-Type: application/json" \
+  -H "Cookie: token=<admin_token>" \
+  -d '{"company_name":"Test","__proto__":"injected","email":"safe@test.com"}'
+# Expected: 200 OK, only allowed fields updated; injected key ignored
+```
+
+### Security: subscription status filter
+```bash
+curl "http://localhost:5000/api/admin/subscriptions?status=active%27%20OR%201%3D1--" \
+  -H "Cookie: token=<admin_token>"
+# Expected: returns 0 or normal rows — SQL not injected; no 500 error
+```
+
+### Backend: COD marked paid on delivery
+1. Place a COD order (logged-in user).
+2. In admin panel → Orders → find the order → advance status to "Delivered" (status 5).
+3. Check the order's `payment_status` in the DB or admin order detail.
+4. **Expected**: `payment_status = 'paid'`.
+
+### Backend: createOrder response amount
+```bash
+# Place an order using wallet discount
+# Wallet deducts ₹50, original total ₹300 → finalTotal ₹250
+# Expected: response.amount = 250, response.breakup.grandTotal = 250
+# Bug was: response returned 300 instead of 250
+```
+
+### Backend: adminGetReturns no longer 500
+```bash
+curl http://localhost:5000/api/admin/returns \
+  -H "Cookie: token=<admin_token>"
+# Expected: HTTP 200, JSON with { data: [...], meta: { total, page, limit } }
+# Bug was: always HTTP 500
+```
+
+### Backend: per-user coupon limits
+1. Create a coupon with `usage_per_user = 1`.
+2. Apply and use the coupon on an order (logged-in user).
+3. Go to Coupons page (web or mobile).
+4. **Expected**: the coupon no longer appears in the list for that user.
+
+### Backend: stats / recentOrders / topProducts don't crash on DB error
+- These three admin dashboard endpoints now have try/catch. A DB error returns HTTP 500 with a JSON message instead of an unhandled crash.
+
+### Backend: getLowStockProducts returns correct products
+```bash
+curl "http://localhost:5000/api/admin/products/low-stock" \
+  -H "Cookie: token=<admin_token>"
+# Expected: returns active products with inventory <= 10
+# Bug was: status = TRUE type mismatch — returned no products
+```
+
+### Backend: product not-found returns 404
+```bash
+curl http://localhost:5000/api/shop/public/nonexistent-slug-xyz
+# Expected: HTTP 404 {"msg":"Product not found"}
+# Bug was: HTTP 204 with body (invalid per spec)
+```
+
+### Backend: wallet ROLLBACK on insufficient balance
+- Calling `POST /api/admin/wallet/debit` with an amount exceeding the user's balance should return 400 and leave the wallet unchanged. No transaction should remain open.
+
+### Backend: category subcategories by slug
+```bash
+curl http://localhost:5000/api/categories/ayurveda
+# Expected: { ...category, subcategories: [...] } — subcategories match the category
+# Bug was: raw slug string used as parent_id — subcategories always empty for slug lookups
+```
+
+### Mobile: cart delivery fee loads from public endpoint
+1. Open the mobile app (logged out or as regular user).
+2. Add an item to cart and open the Cart screen.
+3. **Expected**: delivery fee and free-delivery threshold load correctly (not always ₹0/₹500).
+
+### Mobile: "Add to Cart" / "In Cart" button — slug navigation
+1. From any list screen, tap a product to open its detail page (navigation uses slug URL).
+2. If the product is already in your cart: **Expected**: button shows "In Cart" (green).
+3. **Bug was**: button always showed "Add to Cart" because `Number("some-slug")` = NaN.
+
+### Mobile: wallet trailing slash
+1. Go to Checkout in the mobile app.
+2. **Expected**: wallet balance displays correctly.
+3. **Bug was**: `/wallet/` with trailing slash would fail on some nginx configs — balance showed ₹0.
+
+### Mobile: default address auto-selected at checkout
+1. Set an address as default in your profile.
+2. Open Checkout.
+3. **Expected**: the default address is pre-selected automatically.
+4. **Bug was**: `isDefault` (camelCase) vs `is_default` (snake_case) mismatch — no address was pre-selected.
+
+### Mobile: wishlist useEffect dependency
+1. Open the Wishlist screen.
+2. Navigate to Account screen (which refreshes user data) and come back.
+3. **Expected**: wishlist does NOT reload unnecessarily.
+4. **Bug was**: any `setUser()` call triggered a full wishlist refetch.
+
+### Web: wishlist remove works
+1. Go to Wishlist page, click the remove button on any item.
+2. **Expected**: item disappears from the list.
+3. **Bug was**: the delete request hit `/shop/${productId}` instead of `/shop/wishlist/${productId}` — silent failure.
+
+### Web: wishlist icons reflect actual wishlist
+1. Browse the site while logged in with items in your wishlist.
+2. **Expected**: heart icons are filled/highlighted for items in your wishlist.
+3. **Bug was**: `getwishlist()` called `/shop` (product catalog) instead of `/shop/wishlist`.
+
+### Web: admin panel requires login
+1. Log out of the admin panel.
+2. Navigate directly to `http://localhost:3000/admin/dashboard` in the browser.
+3. **Expected**: redirected to `/adminauth` login page.
+4. **Bug was**: admin panel layout was visible to anyone with the URL.
+
+### Web: admin login stores session correctly
+1. Go to `/adminauth`, enter correct admin credentials.
+2. **Expected**: redirected to `/admin/dashboard` and panel shows admin name.
+3. **Bug was**: `res.data.data` (undefined) used instead of `res.data.admin`.
+
+### Web: checkout Place Order — no duplicate toast
+1. On the Checkout page, click Place Order without filling in required shipping fields.
+2. **Expected**: one error toast appears.
+3. **Bug was**: `validateShipping()` called twice — two identical toasts appeared.
+
+### Web: category page cart badge updates after add
+1. On a Category page, click "Add to Cart" on any product.
+2. **Expected**: the cart badge in the header increments.
+3. **Bug was**: `fetchCart()` only called on HTTP 200 — 201 Created responses were ignored.
+
+### Web: product page Q&A section loads
+1. Open any product detail page, scroll to the Q&A section.
+2. Submit a question or view existing ones.
+3. **Expected**: Q&A loads and submits correctly.
+4. **Bug was**: `require('@/lib/axios')` inside a `'use client'` component body failed in Next.js bundler.
+
+### Web: wishlist toggle uses correct type
+- `toggleLike` now receives `String(product.id)` instead of the raw number, matching the expected function signature.
+
+### Web: product reviews reload on navigation
+1. View reviews on Product A, then navigate to Product B (client-side navigation).
+2. **Expected**: Product B's reviews load, not Product A's stale reviews.
+3. **Bug was**: `id` was missing from the reviews `useEffect` dependency array.
+
+---
+
+## Bug-Fix Verification (2026-07-23)
+
+### 1. Mobile checkout — toast validation feedback
+1. Open mobile app, add a product to cart, go to checkout.
+2. Tap **"+ Add New Address"**, leave fields blank, tap **"Save Address & Continue"**.
+3. Expected: red "All address fields are required" toast appears.
+4. Enter an invalid pincode (e.g. "123"), tap Save.
+5. Expected: red "Enter valid 6-digit pincode" toast appears.
+6. Fill all fields correctly, tap Save.
+7. Expected: green "Address added!" toast appears.
+
+### 2. Backend — 404 handler
+```bash
+curl http://localhost:5000/api/nonexistent-route
+# Expected: {"success":false,"message":"Route not found"}  HTTP 404
+```
+
+### 3. Backend — global error handler
+- Any unhandled throw inside a route should now return `{"success":false,"message":"..."}` HTTP 500 instead of an HTML error page.
+
+### 4. Backend — login rate limiter
+```bash
+for i in $(seq 1 25); do
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:5000/api/users/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"test@test.com","password":"wrong"}'
+done
+# After 20 attempts: HTTP 429 with {"success":false,"message":"Too many login attempts..."}
+```
+
+### 5. Mobile auth — no Mobile OTP tab
+1. Open mobile app → tap Sign In.
+2. Verify only 3 tabs show: **Login**, **Register**, **Email OTP**.
+3. "Mobile OTP" tab must NOT appear.
+
+### 6. Mobile navigation — subscriptions, notifications, faq screens
+1. From Account screen, tap Subscriptions — screen opens with slide animation.
+2. From Account screen, tap Notifications — screen opens.
+3. From bottom nav, navigate to FAQ — screen opens.
+
+---
+
 ## Mobile — Razorpay Payment (Native SDK)
 
 ### Prerequisites
@@ -825,3 +1018,148 @@ curl "https://api.oroganix.com/api/admin/analytics/funnel" \
 2. With a test `FAST2SMS_API_KEY`: trigger OTP — verify SMS is delivered to the test number.
 3. Trigger COD delivery OTP from admin panel — verify `console.log` output (or real SMS with API key).
 Expected: `{ success: true }` — images uploaded to S3 under `returns/` folder, `return_images` column updated on the order row.
+
+---
+
+## F14 — Bulk Order Status Update (Admin)
+
+1. Log in as admin, go to `/admin/orders`.
+2. Check any 2–3 order checkboxes — verify the bulk action toolbar appears showing count.
+3. Check the header checkbox — verify all rows are selected.
+4. Uncheck one — verify header checkbox becomes indeterminate.
+5. Select status "Shipped" from the dropdown and click **Apply to Selected**.
+6. Verify a success toast appears and the selected orders' status badges update.
+7. Check the DB or order detail: each updated order should have a new row in `order_status_logs` with `note='bulk update'`.
+8. For a COD order, bulk-update to "Delivered" (status 5) — verify `payment_status` becomes `paid`.
+9. Click **Clear selection** — verify checkboxes are cleared and toolbar disappears.
+10. Verify affected customers received notifications (push/in-app).
+
+---
+
+## F16 — Full-Screen Image Viewer (Mobile)
+
+1. Open any product with multiple images on the mobile app.
+2. Tap the main product image — verify the full-screen viewer opens.
+3. Verify the image is centred with a dark background and an image count badge (e.g. 1/3).
+4. Swipe left/right — verify you can navigate between images and dot indicators update.
+5. Pinch to zoom in (up to 4×) — verify the image zooms smoothly.
+6. Pinch out to zoom back to 1× — verify it resets.
+7. Swipe slowly downward — verify the image follows your finger and the background fades.
+8. Release while still close to origin — verify the image snaps back.
+9. Swipe quickly down (or far enough) — verify the viewer closes with a dismiss animation.
+
+---
+
+## F18 — Haptic Feedback (Mobile)
+
+Requires a physical Android/iOS device (haptics not available in emulators).
+
+1. Open any product detail page, tap **"Add to Cart"** for an item not in cart — verify a subtle success vibration.
+2. Tap **"Update Cart"** (item already in cart) — verify a medium impact vibration.
+3. Tap the heart (wishlist) icon — verify a light impact vibration before the animation.
+4. Place a COD order — verify a success vibration when the confirmation screen appears.
+5. Complete an online payment — verify a success vibration after the payment is verified.
+
+---
+
+## F19 — Rating Filter (Mobile Search)
+
+1. Open the Products / Search screen on mobile, tap the filter icon.
+2. Scroll to **Minimum Rating** chips: Any / 3+ / 3.5+ / 4+ / 4.5+.
+3. Tap **4+** — verify the chip highlights.
+4. Tap **Apply Filters** — verify only products with rating ≥ 4.0 appear in results.
+5. Open filters again, tap **Any** — verify the filter is cleared.
+6. Tap **Clear All** — verify all filters including rating reset.
+
+---
+
+## F21 — Dosha Quiz (Web + Mobile)
+
+### Web
+1. Navigate to the home page — verify the `🌿 Discover Your Dosha` banner exists below the hero.
+2. Click **Take the Quiz →** — verify redirect to `/dosha-quiz`.
+3. Verify 10 questions appear one at a time with a progress bar.
+4. Click **Back** on question 3 — verify you return to question 2 with the previous answer retained.
+5. Complete all 10 questions — verify the results page shows:
+   - Dominant dosha name (Vata, Pitta, or Kapha)
+   - Score bars for all three doshas (sum ≈ 100%)
+   - Description text + wellness tips
+   - Recommended category chips that link to product pages
+   - Retake and Shop buttons
+6. Click **Retake Quiz** — verify you return to question 1.
+
+### Mobile
+1. Open the app home screen — verify the `🌿 Discover Your Dosha` card.
+2. Tap it — verify the quiz intro screen opens with a LinearGradient background.
+3. Tap **Start Quiz** — verify question 1 appears with an animated transition.
+4. Answer all questions — verify the results screen shows score bars + tips.
+5. Disable network (airplane mode) and retake — verify a client-side result still appears (no crash).
+
+---
+
+## F22 — Safety Tags (Web + Mobile)
+
+### Admin
+1. Go to `/admin/products`, open or create a product.
+2. In the **Safety & Certifications** field, type: `Vegan, Gluten Free, Pregnancy Safe`.
+3. Verify live badge preview appears below the input.
+4. Save — verify the tags persist (prefilled correctly on re-open).
+
+### Web Product Page
+1. Navigate to a product that has safety tags.
+2. Verify green ✓ badges appear above the non-returnable notice.
+3. Verify a product without safety tags shows no badge row.
+
+### Mobile Product Screen
+1. Open the same product on mobile.
+2. Verify green horizontal badge pills appear (scroll if many).
+3. Verify a product without safety tags shows no badge row.
+
+---
+
+## F23 — Dashboard Real-time Stats (Admin)
+
+1. Open `/admin/dashboard` in two separate browser tabs (both logged in as admin).
+2. In Tab A, go to Orders and change an order's status to "Shipped".
+3. Verify Tab B's Recent Orders list and Pending Orders KPI card update within ~2 seconds — no page refresh.
+4. In a third window, place a new order as a regular user.
+5. Verify Tab A and Tab B both show the new order in Recent Orders and updated counts — and the toast notification fires on both.
+
+---
+
+## F24 — Refund Status Tracking (Admin)
+
+### Webhook simulation
+```bash
+# Simulate a refund.processed webhook (replace values)
+curl -X POST http://localhost:5000/api/orders/webhook \
+  -H "Content-Type: application/json" \
+  -H "x-razorpay-signature: <valid_hmac>" \
+  -d '{
+    "event": "refund.processed",
+    "payload": {
+      "refund": {
+        "entity": {
+          "id": "rfnd_test123",
+          "payment_id": "<razorpay_payment_id>",
+          "amount": 50000,
+          "status": "processed"
+        }
+      }
+    }
+  }'
+# Expected: 200 OK; DB: refund_status='processed', refund_amount=500, refund_id='rfnd_test123'
+```
+
+### Admin Orders page
+1. Find a cancelled order with a Razorpay payment that has been refunded.
+2. Click the order — verify a purple `REFUND: PROCESSED — ₹500` badge appears next to the payment status.
+3. For a failed refund: verify a red `REFUND: FAILED` badge appears.
+
+### Admin Returns page
+1. Open any return request (status 8 or 9) where the refund was via Razorpay.
+2. Verify the refund amount card shows a small `Razorpay: PROCESSED` badge.
+
+### User notification
+1. After the webhook fires, log in as the affected customer.
+2. Check notifications — verify "Refund Processed 💚 — Your refund of ₹500 has been processed" appears.

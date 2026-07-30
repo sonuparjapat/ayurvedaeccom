@@ -19,6 +19,7 @@ import {
   History,
   CheckCircle2,
   Clock,
+  ListChecks,
 } from 'lucide-react'
 
 import { notify } from '@/app/utils/notify'
@@ -62,6 +63,10 @@ export default function AdminOrdersPage() {
   const [trackingResults, setTrackingResults] = useState<any[]>([])
   const [trackingSearching, setTrackingSearching] = useState(false)
 
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkStatus, setBulkStatus] = useState('')
+  const [bulkUpdating, setBulkUpdating] = useState(false)
+
   const {statusList} = useAuth()
   /* ================= LOAD ================= */
 
@@ -101,8 +106,43 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     load()
+    setSelectedIds(new Set())
   }, [page, searchTerm, filterStatus])
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === list.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(list.map((o: any) => o.id)))
+    }
+  }
+
+  const bulkUpdateStatus = async () => {
+    if (selectedIds.size === 0 || !bulkStatus) return
+    try {
+      setBulkUpdating(true)
+      const res = await axios.put('/admin/orders/bulk-status', {
+        orderIds: Array.from(selectedIds),
+        status: Number(bulkStatus),
+      })
+      notify.success(res.data.message || 'Bulk update done')
+      setSelectedIds(new Set())
+      setBulkStatus('')
+      load()
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Bulk update failed')
+    } finally {
+      setBulkUpdating(false)
+    }
+  }
 
   /* ================= SYNC STATUS ================= */
 
@@ -424,6 +464,20 @@ const generateInvoice = async () => {
 
   const columns = [
 
+    {
+      key: 'select',
+      label: (
+        <input
+          type="checkbox"
+          checked={list.length > 0 && selectedIds.size === list.length}
+          onChange={toggleSelectAll}
+          className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+          title="Select all"
+        />
+      ),
+      align: 'center',
+    },
+
     { key: 'id', label: 'Order ID', align: 'center' },
 
     { key: 'user_name', label: 'Customer', align: 'left' },
@@ -447,6 +501,16 @@ const generateInvoice = async () => {
   const rows = list.map((o: any) => ({
 
     ...o,
+
+    select: (
+      <input
+        type="checkbox"
+        checked={selectedIds.has(o.id)}
+        onChange={() => toggleSelect(o.id)}
+        className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+        onClick={e => e.stopPropagation()}
+      />
+    ),
 
     id: (
 
@@ -817,6 +881,39 @@ const generateInvoice = async () => {
           )}
         </div>
 
+        {/* BULK ACTION TOOLBAR */}
+        {selectedIds.size > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex flex-wrap items-center gap-4 shadow-md">
+            <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
+              <ListChecks className="w-5 h-5" />
+              {selectedIds.size} order{selectedIds.size > 1 ? 's' : ''} selected
+            </div>
+            <select
+              value={bulkStatus}
+              onChange={e => setBulkStatus(e.target.value)}
+              className="border-2 border-blue-300 rounded-xl px-3 py-2 text-sm bg-white focus:border-blue-500 outline-none"
+            >
+              <option value="">— Set status —</option>
+              {statusList?.map((item: any) => (
+                <option key={item.code} value={item.code}>{item.label}</option>
+              ))}
+            </select>
+            <button
+              onClick={bulkUpdateStatus}
+              disabled={!bulkStatus || bulkUpdating}
+              className="px-5 py-2 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-all"
+            >
+              {bulkUpdating ? 'Updating…' : 'Apply to Selected'}
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="ml-auto text-xs text-gray-500 hover:text-gray-700 underline"
+            >
+              Clear selection
+            </button>
+          </div>
+        )}
+
         {/* TABLE */}
 
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -944,6 +1041,19 @@ const generateInvoice = async () => {
           <span className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg text-sm font-semibold">
             {current.payment_status?.toUpperCase()}
           </span>
+
+          {current.refund_status && (
+            <span className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
+              current.refund_status === 'processed'
+                ? 'bg-purple-100 text-purple-800 border-purple-200'
+                : current.refund_status === 'failed'
+                ? 'bg-red-100 text-red-700 border-red-200'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            }`}>
+              REFUND: {current.refund_status.toUpperCase()}
+              {current.refund_amount > 0 && ` — ₹${Number(current.refund_amount).toLocaleString('en-IN')}`}
+            </span>
+          )}
 
         </div>
 

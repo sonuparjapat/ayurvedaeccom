@@ -316,7 +316,6 @@ export function AuthSheet() {
     } else {
       router.refresh()
     }
-    router.refresh()
   }
 
   const handleLogin = async () => {

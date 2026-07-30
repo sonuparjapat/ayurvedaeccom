@@ -185,13 +185,10 @@ export default function CartScreen() {
 
   useEffect(() => {
     fetchCart()
-    api.get('/admin/settings').then(res => {
-      const map = (res.data?.data || []).reduce((acc: any, s: any) => {
-        acc[s.key] = s.type === 'number' ? Number(s.value) : s.value
-        return acc
-      }, {})
-      if (map.free_delivery_limit) setFreeLimit(Number(map.free_delivery_limit))
-      if (map.delivery_charge) setDeliveryCharge(Number(map.delivery_charge))
+    api.get('/wallet/settings').then(res => {
+      const d = res.data?.delivery || {}
+      if (d.free_delivery_limit) setFreeLimit(Number(d.free_delivery_limit))
+      if (d.delivery_charge) setDeliveryCharge(Number(d.delivery_charge))
     }).catch(() => {})
   }, [])
 

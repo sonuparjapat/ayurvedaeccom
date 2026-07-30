@@ -6,6 +6,9 @@ const initDB = async () => {
   try {
     await client.query("BEGIN");
 
+    /* ================= EXTENSIONS ================= */
+    await client.query(`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+
     /* ================= ROLES ================= */
     await client.query(`
       CREATE TABLE IF NOT EXISTS roles (
@@ -1170,6 +1173,26 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     /* ================= REVIEWS: nullable order_id + user-product unique index ================= */
     await client.query(`ALTER TABLE reviews ALTER COLUMN order_id DROP NOT NULL`);
     await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS unique_review_per_user_product ON reviews(user_id, product_id)`);
+
+    /* ================= SAFETY TAGS ================= */
+    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS safety_tags TEXT[] DEFAULT '{}'`);
+
+    /* ================= DOSHA QUIZ RESULTS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS quiz_results (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        session_id VARCHAR(120),
+        dosha VARCHAR(20) NOT NULL CHECK (dosha IN ('Vata','Pitta','Kapha')),
+        vata_score INTEGER DEFAULT 0,
+        pitta_score INTEGER DEFAULT 0,
+        kapha_score INTEGER DEFAULT 0,
+        answers JSONB DEFAULT '[]',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_quiz_results_user ON quiz_results(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_quiz_results_dosha ON quiz_results(dosha)`);
 
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");

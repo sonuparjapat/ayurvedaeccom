@@ -1,5 +1,111 @@
 # Developer Notes — Oroganix eCommerce
 
+---
+
+## Bug-Fix Audit — Phase 3 (2026-07-29)
+
+### Security fixes
+
+#### SQL Injection — `company.controller.js` → `updateCompany`
+- **Root cause**: `Object.keys(req.body)` was used directly as SQL column names with no allowlist.
+- **Fix**: Added `ALLOWED_FIELDS` Set; only whitelisted columns can be used in the `SET` clause. Unknown keys are silently dropped.
+- **File**: `backend/src/modules/companyDetails/company.controller.js` — `updateCompany`
+
+#### SQL Injection — `subscription.controller.js` → `adminListSubscriptions`
+- **Root cause**: The `status` query parameter was string-interpolated directly into the COUNT query via `.replace('$3', \`'${status}'\`)`, bypassing parameterization.
+- **Fix**: Replaced with a separately parameterized count query using `$1` and `[status]` params.
+- **File**: `backend/src/modules/subscriptions/subscription.controller.js` — `adminListSubscriptions`
+
+---
+
+### Backend — critical data bugs
+
+#### COD orders never marked paid — `admin.controller.js` → `updateOrderStatus`
+Two sub-bugs, both in the status-5 (Delivered) branch:
+1. `pool.query()` was used inside an open transaction instead of `client.query()` — the SELECT ran outside the transaction, causing potential race conditions and isolation issues.
+2. `payment_method` was not included in the SELECT columns, so `order.payment_method` was always `undefined` and the `if (order.payment_method === 'cod')` branch never triggered.
+- **Fix**: Changed to `client.query`; added `payment_method` to SELECT.
+- **File**: `backend/src/modules/admin/admin.controller.js` ~line 1354
+
+#### Double `client.release()` crash — `order.controller.js` → `createOrder`
+- **Root cause**: The pincode serviceability early-return path called `client.release()` manually before `BEGIN` had been issued. The outer `finally` block then called `client.release()` a second time, crashing the pg pool.
+- **Fix**: Removed the premature `client.release()` and unnecessary `ROLLBACK` from the early-return path. The `finally` block handles cleanup in all cases.
+- **File**: `backend/src/modules/orders/order.controller.js` ~line 181
+
+#### `adminGetReturns` always 500 — `admin.controller.js`
+- **Root cause**: The subquery referenced `oi.product_name` (column doesn't exist on `order_items`) and `p.thumbnail` (column doesn't exist on `products`).
+- **Fix**: `oi.product_name` → `p.name`, `p.thumbnail` → `p.images->>0`
+- **File**: `backend/src/modules/admin/admin.controller.js` — `adminGetReturns`
+
+#### Per-user coupon limits never enforced — `coupon.controller.js`
+- **Root cause**: `usage_per_user` was not included in the `SELECT` columns for the public coupon listing. `c.usage_per_user` was always `undefined`, so the per-user check always passed.
+- **Fix**: Added `usage_per_user` to the SELECT column list.
+- **File**: `backend/src/modules/coupons/coupon.controller.js`
+
+---
+
+### Backend — medium/low bugs
+
+| File | Bug | Fix |
+|---|---|---|
+| `admin.controller.js` | `getLowStockProducts`: `status = TRUE` is a boolean comparison but `status` is a text column (`'active'`/`'inactive'`) | Changed to `status = 'active'` |
+| `order.controller.js` | `createOrder` response returned `amount: total` and `grandTotal: total` (pre-wallet/loyalty) while Razorpay was charged `finalTotal` | Changed response to use `finalTotal` |
+| `admin.controller.js` | `stats`, `recentOrders`, `topProducts` had no try/catch — any DB error would crash the server | Wrapped each in try/catch |
+| `product.controller.js` | Legacy `addToCart` / `getCart` had no try/catch and accessed `req.user.id` without null-guard | Added try/catch and `req.user?.id` guard with 401 response |
+| `product.controller.js` | Product not-found returned `res.status(204).json(...)` — HTTP 204 must not have a body | Changed to `res.status(404)` |
+| `wallet.controller.js` | `adminDebitWallet` early-returned on insufficient balance without ROLLBACK after `BEGIN + FOR UPDATE` | Added `await client.query('ROLLBACK')` before early return |
+| `routedapis.controler.js` | `getCategoryById` subcategory query passed raw URL param `id` (may be a slug string) as `parent_id` | Changed to `result.rows[0].id` (resolved numeric ID) |
+| `auth.controller.js` | Admin login SELECT didn't include `name` column but response tried to send `user.name` | Added `name` to SELECT |
+
+---
+
+### Public settings endpoint — `wallet.controller.js` → `getSettings`
+The `/api/wallet/settings` endpoint (public, no auth) now returns both loyalty settings and delivery settings:
+```json
+{
+  "settings": { "loyalty_enabled": true, "loyalty_earn_rate": 0.1, ... },
+  "delivery": { "free_delivery_limit": 500, "delivery_charge": 40, "platform_fee": 0 }
+}
+```
+Mobile cart and checkout screens now use this endpoint instead of the admin-only `/admin/settings`.
+
+---
+
+### Mobile fixes
+
+| File | Bug | Fix |
+|---|---|---|
+| `cart/index.tsx` | Called `/admin/settings` (admin-only, 403 for users) to get delivery charge | Changed to `/wallet/settings` public endpoint |
+| `product/[id].tsx` | `inCart` check used `Number(slug)` = NaN — always `false` for slug-based navigation | Changed to `product?.id ?? Number(id)` |
+| `checkout/index.tsx` | `/wallet/` trailing slash broke wallet balance fetch on some nginx configs | Removed trailing slash |
+| `checkout/index.tsx` | Address interface used `isDefault` (camelCase) but backend returns `is_default` (snake_case) — default address never auto-selected | Changed to `is_default` |
+| `checkout/index.tsx` | Also called `/admin/settings` | Changed to `/wallet/settings`; settings parsed from `delivery` field |
+| `wishlist/index.tsx` | `useEffect` depended on full `user` object — spurious refetches on any `setUser()` call | Changed dep to `user?.id` |
+| `_layout.tsx` | `account/notifications` registered twice as Stack.Screen | Removed duplicate |
+| `product/[id].tsx` | Two `useEffect`s both fetched the reviews endpoint on mount — race on `is_mine` flag | Removed redundant `me: 1` effect; `fetchReviews` already detects `is_mine` |
+
+---
+
+### Web frontend fixes
+
+| File | Bug | Fix |
+|---|---|---|
+| `wishlist/page.tsx` | `axios.delete('/shop/${productId}')` — wrong path, wishlist removal non-functional | Changed to `/shop/wishlist/${productId}` |
+| `auth-context.tsx` | `axios.get('/shop', ...)` in `getwishlist()` — loaded product catalog instead of wishlist | Changed to `/shop/wishlist` |
+| `admin/layout.tsx` | No auth/role check — any unauthenticated visitor could see the admin panel UI | Added `useEffect` to redirect to `/adminauth` if `loginuserdata?.role !== 'admin'` |
+| `adminauth/page.tsx` | `login(res?.data?.data)` — wrong field; auth endpoint returns `{ admin: {...} }` | Changed to `login(res?.data?.admin)` |
+| `checkout/page.tsx` | `validateShipping()` called twice consecutively — duplicate error toasts | Removed duplicate call |
+| `checkout/page.tsx` | `axios.get('/wallet/')` trailing slash | Changed to `/wallet` |
+| `product/[id]/page.tsx` | `require('@/lib/axios').default` inside component body — unsupported in `'use client'` | Changed to top-level `axios` reference |
+| `product/[id]/page.tsx` | `toggleLike(product.id)` passed `number` to `(id: string)` function | Changed to `String(product.id)` |
+| `product/[id]/page.tsx` | `useEffect` for reviews missing `id` in dependency array — stale reviews on navigation | Added `id` to dependency array |
+| `category/[slug]/page.tsx` | `fetchCart()` only called when `res.status === 200` — missed 201 responses | Removed status check, call unconditionally |
+| `auth/AuthSheet.tsx` | `router.refresh()` called unconditionally after `handlePostLogin`, causing a race | Removed unconditional call |
+| `cart/page.tsx` | `slug` not in `CartItem` interface — always `undefined`, links always used numeric ID | Added `slug?: string` to interface |
+| `cart controller` | `p.slug` not in cart SELECT — backend never returned slug for cart items | Added `p.slug` to cartSelect query |
+
+---
+
 ## Mobile Payment Flow (Razorpay — Native SDK)
 
 ### Architecture
@@ -814,6 +920,38 @@ No backend changes — SMS gateway not yet integrated.
 
 ---
 
+## Bug Fixes — Audit Round (2026-07-23)
+
+### Mobile Checkout: `toast.show()` → correct methods
+- **File**: `ayurveda-app/src/app/checkout/index.tsx`
+- `toast.show('msg', 'type')` doesn't exist on the Toast singleton. Fixed 4 calls:
+  - `toast.show('All address fields are required', 'error')` → `toast.error('All address fields are required')`
+  - `toast.show('Enter valid 6-digit pincode', 'error')` → `toast.error('Enter valid 6-digit pincode')`
+  - `toast.show('Address added!', 'success')` → `toast.success('Address added!')`
+  - `toast.show(e?.response?.data?.message || ..., 'error')` → `toast.error(...)`
+
+### Backend: Global Error Handler + 404 Handler
+- **File**: `backend/src/app.js`
+- Added 404 handler (`app.use((req, res) => ...)`) before `module.exports`
+- Added Express 4-arg error middleware (`app.use((err, req, res, next) => ...)`) so unhandled exceptions return JSON instead of HTML
+
+### Backend: Login Rate Limiter
+- **File**: `backend/src/modules/users/userAuthRoutes.js`
+- Added `loginLimiter` (20 req / 15 min) applied to `POST /users/login`
+- Previously `/users/login` had no rate limiting; only `/users/register` was protected
+
+### Mobile Auth: Removed "Mobile OTP" Tab
+- **File**: `ayurveda-app/src/app/auth/index.tsx`
+- Removed `{ key: 'mobileOtp', label: 'Mobile OTP', icon: '📱' }` from `TAB_MODES`
+- The feature is not implemented (was showing "coming soon" toast). The tab no longer appears in the auth screen.
+
+### Mobile Layout: Registered Missing Screens
+- **File**: `ayurveda-app/src/app/_layout.tsx`
+- Added `Stack.Screen` registrations for `faq/index`, `account/subscriptions`, `account/notifications`
+- These screens existed in the filesystem but lacked Stack config, so custom transitions were missing
+
+---
+
 ## Return Request — Photo Upload
 
 ### Backend (`backend/src/modules/orders/order.controller.js` + `order.routes.js`)
@@ -831,3 +969,135 @@ No backend changes — SMS gateway not yet integrated.
 
 - `handleReturn(reason, urlImages, fileImages)`: builds `FormData`, appends files as RN file objects, posts `multipart/form-data`
 - `ReturnModal` updated: states `urlInput`, `urlImages`, `fileImages`; `pickImages` via `ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: remaining })`; image preview grid with ✕ remove; URL paste + Add button; max 5 total
+
+---
+
+## F14 — Bulk Order Status Update
+
+### Backend (`backend/src/modules/admin/admin.controller.js`)
+- `exports.adminBulkUpdateOrderStatus` — accepts `{ orderIds: number[], status: number }`
+- Validates inputs, loads existing orders, runs each update in a loop (individual transactions for per-order logic)
+- Special handling for status=5 (Delivered): sets `delivered_at`, marks COD as `payment_status='paid'`
+- Inserts to `order_status_logs` with `note='bulk update'`
+- Post-commit: sends email, push notification, Socket.io (`emitToUser`), and `emitToAdmin('order_status_changed')` for each order
+
+### Route (`backend/src/modules/admin/admin.routes.js`)
+- `PUT /admin/orders/bulk-status` registered BEFORE `GET /admin/orders/:id` to prevent Express matching `bulk-status` as an `:id` param
+
+### Admin UI (`frontend/src/app/admin/orders/page.tsx`)
+- Added select column with header checkbox (`toggleSelectAll`) and per-row checkbox (`toggleSelect`)
+- Bulk action toolbar appears when `selectedIds.size > 0`: shows count, status dropdown, Apply button
+- `bulkUpdateStatus()` calls `PUT /admin/orders/bulk-status`; resets selection after success
+
+---
+
+## F16 — Full-Screen Image Viewer with Pinch-Zoom (Mobile)
+
+### Component (`ayurveda-app/src/app/product/[id].tsx`)
+- `ImageViewerModal` replaces previous single-image `ImageZoomModal`
+- `PanResponder` captures downward swipes: `onMoveShouldSetPanResponder` returns true only when `dy > 10 && |dy| > |dx| * 1.8` (prevents conflict with FlatList horizontal swipe and ScrollView pinch-zoom)
+- Swipe-down dismiss: `translateY + bgOpacity` animated in parallel; threshold = `dy > 110 || vy > 0.8`
+- Images laid out in a horizontal `FlatList` (multi-image support)
+- Each image in a `ScrollView` with `maximumZoomScale={4}` and `minimumZoomScale={1}` (pinch-to-zoom)
+- Dot indicators and image count badge rendered as overlays
+- Swipe-up hint text appears at bottom
+
+---
+
+## F18 — Haptic Feedback (Mobile)
+
+Uses `expo-haptics` via shared utility at `ayurveda-app/src/utils/haptics.ts`.
+
+| Action | Haptic |
+|---|---|
+| Add to cart (new item) | `NotificationFeedbackType.Success` |
+| Add to cart (quantity update) | `ImpactFeedbackStyle.Medium` |
+| Wishlist toggle | `ImpactFeedbackStyle.Light` |
+| COD order success | `NotificationFeedbackType.Success` |
+| Online payment verified | `NotificationFeedbackType.Success` |
+
+---
+
+## F19 — Rating Filter (Mobile Product List)
+
+### Mobile (`ayurveda-app/src/app/products/index.tsx`)
+- `minRating` state (default `0`)
+- Added to fetch params as `rating: minRating` when `minRating > 0`
+- Cleared in both "Clear All" handlers and the empty-state clear button
+- Filter sheet UI: `[0, 3, 3.5, 4, 4.5]` chips rendered as `TouchableOpacity` rows
+
+### Backend
+- `GET /shop/products` already supports `?rating=X` param (filters by `average_rating >= X`)
+
+---
+
+## F21 — Dosha Quiz
+
+### Backend
+- `backend/src/modules/quiz/quiz.controller.js`: `QUESTIONS` array (10 questions × 3 options), `DOSHA_INFO` object (description, tips, categories, color, emoji per dosha), `getQuestions` and `submitResult` exports
+- `backend/src/modules/quiz/quiz.routes.js`: `GET /questions` (public), `POST /result` (public, no auth)
+- `backend/src/app.js`: `app.use('/api/quiz', quizRoutes)`
+- `backend/src/database/init.js`: `quiz_results` table created (`id, user_id, session_id, dosha, vata_score, pitta_score, kapha_score, answers JSONB, created_at`); indexes on `user_id` and `dosha`
+
+### Web (`frontend/src/app/dosha-quiz/page.tsx`)
+- Multi-step: intro → loading → questions (with progress bar + Back) → results
+- Results: dosha score bars (%), description, ✓ tips, recommended category links, Retake/Shop buttons
+- Entry point: `frontend/src/app/page.tsx` — `bg-linear-to-r` quiz banner section with `Link href="/dosha-quiz"`
+
+### Mobile (`ayurveda-app/src/app/quiz/index.tsx`)
+- Animated question transitions (`fadeAnim` + `slideAnim` via `Animated.parallel`)
+- Results screen with `LinearGradient` header, score bars, tips with checkmarks, Retake/Shop CTAs
+- Client-side fallback result computed locally if API call fails
+- Entry point: `ayurveda-app/src/app/index.tsx` — `LinearGradient` quiz CTA card on home screen
+
+---
+
+## F22 — Safety Tags
+
+### Backend
+- `backend/src/database/init.js`: `ALTER TABLE products ADD COLUMN IF NOT EXISTS safety_tags TEXT[] DEFAULT '{}'`
+- `admin.controller.js` `createProduct`: added `safety_tags` to destructure; converts via `safety_tags ? (Array.isArray(safety_tags) ? \`{\${safety_tags.map(t=>\`"${t}"\`).join(',')}}\` : \`{\${String(safety_tags).split(',').map(t=>t.trim()).filter(Boolean).map(t=>\`"${t}"\`).join(',')}}\`) : '{}'` for PostgreSQL `TEXT[]` syntax
+- Same conversion in `updateProduct`
+
+### Admin Form (`frontend/src/app/admin/products/AdminProductForm.tsx`)
+- `safety_tags: ''` in initial state; prefill converts `TEXT[]` to comma-separated string
+- Text input for comma-separated tags + live badge preview
+
+### Web Product Page (`frontend/src/app/product/[id]/page.tsx`)
+- `safety_tags?: string[]` added to Product interface
+- Renders green ✓ badge row before the non-returnable notice
+
+### Mobile Product Screen (`ayurveda-app/src/app/product/[id].tsx`)
+- `safety_tags?: string[]` added to Product interface
+- Horizontal `ScrollView` of green badge pills inserted before the non-returnable notice
+
+---
+
+## F23 — Dashboard Real-time Stats via Socket.io
+
+### Backend
+- `admin.controller.js` `updateOrderStatus`: added `emitToAdmin('order_status_changed', { order_id: id, new_status: status })` after user notifications
+- `admin.controller.js` `adminBulkUpdateOrderStatus`: same emit inside per-order notification loop
+
+### Admin Dashboard (`frontend/src/app/admin/dashboard/page.tsx`)
+- Added `socket.on('order_status_changed', ...)` handler alongside existing `new_order` listener
+- Both events silently call `GET /admin/stats` and `GET /admin/recent-orders` to refresh state
+
+---
+
+## F24 — Razorpay Refund Webhook Handling
+
+### Backend (`backend/src/modules/orders/order.controller.js`)
+- `razorpayWebhook` extended to handle `refund.processed` and `refund.failed` events (before the `payment.captured` check)
+- Looks up order by `razorpay_payment_id = refund.payment_id`
+- Updates `refund_id`, `refund_status` (`'processed'` or `'failed'`), `refund_amount` (converts paisa → rupees)
+- Calls `createNotification` + `emitToUser` for both statuses
+
+### Admin Orders (`frontend/src/app/admin/orders/page.tsx`)
+- Refund badge added after payment_status badge in order detail panel:
+  - Purple `REFUND: PROCESSED` + amount when `refund_status === 'processed'`
+  - Red `REFUND: FAILED` when `refund_status === 'failed'`
+
+### Admin Returns (`frontend/src/app/admin/returns/page.tsx`)
+- Small inline badge next to Refund Amount in the return detail modal:
+  - Purple `PROCESSED` or red `FAILED` from `selected.refund_status`

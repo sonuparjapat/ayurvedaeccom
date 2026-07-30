@@ -30,6 +30,7 @@ const subscriptionRoutes = require('./modules/subscriptions/subscription.routes'
 const newsletterRoutes = require('./modules/newsletter/newsletter.routes');
 const notificationsRoutes = require('./modules/notifications/notifications.routes');
 const faqRoutes = require('./modules/faq/faq.routes');
+const quizRoutes = require('./modules/quiz/quiz.routes');
 
 const app = express();
 
@@ -129,7 +130,24 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/faq', faqRoutes);
+app.use('/api/quiz', quizRoutes);
 
+
+/* ================= 404 HANDLER ================= */
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
+});
+
+/* ================= GLOBAL ERROR HANDLER ================= */
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error('[GlobalError]', err.stack || err.message || err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    success: false,
+    message: err.message || 'Internal server error',
+  });
+});
 
 /* ================= EXPORT ================= */
 

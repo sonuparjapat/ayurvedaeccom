@@ -125,7 +125,11 @@ exports.adminListSubscriptions = async (req, res) => {
        ORDER BY s.created_at DESC LIMIT $1 OFFSET $2`,
       params
     )
-    const countRes = await pool.query(`SELECT COUNT(*) FROM subscriptions s ${where ? where.replace('$3', `'${status}'`) : ''}`)
+    const countWhere = status ? 'WHERE s.status = $1' : '';
+    const countRes = await pool.query(
+      `SELECT COUNT(*) FROM subscriptions s ${countWhere}`,
+      status ? [status] : []
+    )
 
     res.json({ success: true, data: result.rows, total: Number(countRes.rows[0].count) })
   } catch (err) {

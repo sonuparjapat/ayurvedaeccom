@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
+import { useSearchParams } from 'next/navigation'
 
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
@@ -352,7 +353,7 @@ const StepNode = ({ id, label, icon: Icon, step }: { id: number; label: string; 
 /* ─────────────────────────────────────────────────────────────
    MAIN COMPONENT
    ───────────────────────────────────────────────────────────── */
-export default function CheckoutPage() {
+function CheckoutInner() {
 
   const [loading, setLoading] = useState(true)
   const [step, setStep] = useState(1)
@@ -378,6 +379,9 @@ export default function CheckoutPage() {
   const [loyaltyApplied, setLoyaltyApplied] = useState(false)
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)   
   const {fetchCart, loginuserdata, cartdata,cartloading,settings, loading: authLoading}=useAuth()
+  const searchParams = useSearchParams()
+  const isBuyNow = searchParams.get('mode') === 'buynow'
+  const [buyNowItem, setBuyNowItem] = useState<any>(null)
   const [paidAmount, setPaidAmount] = useState<number>(0)
 const [checkingAddress, setCheckingAddress] = useState(true)
 const [showAddressForm, setShowAddressForm] = useState(false)
@@ -397,6 +401,14 @@ useEffect(() => {
     try {
 
       setCheckingAddress(true);
+
+      // Load buyNow item from sessionStorage if in buyNow mode
+      if (isBuyNow) {
+        const raw = sessionStorage.getItem('buyNowItem');
+        if (raw) {
+          try { setBuyNowItem(JSON.parse(raw)); } catch (_) {}
+        }
+      }
 
       // Load cart
       await fetchCart(loginuserdata.id);
@@ -465,6 +477,13 @@ const chargesMap = useMemo(() => {
 
 /* ================= CART CALCULATIONS ================= */
 
+const effectiveItems: any[] = useMemo(() => {
+  if (isBuyNow && buyNowItem) {
+    return [{ ...buyNowItem, images: [buyNowItem.image], variant_label: buyNowItem.variantLabel }];
+  }
+  return cartdata?.items || [];
+}, [isBuyNow, buyNowItem, cartdata]);
+
 const {
   subtotal,
   tax,
@@ -477,7 +496,7 @@ const {
   let cartSubtotal = 0;
   let cartTax = 0;
 
-  (cartdata?.items || []).forEach((item: any) => {
+  effectiveItems.forEach((item: any) => {
     const price = Number(item.price) || 0;
     const qty = Number(item.quantity) || 1;
     const gstPercent = Number(item.gst_percent) || 0;
@@ -503,13 +522,13 @@ const {
     total: +finalTotal.toFixed(2)
   };
 
-}, [cartdata, chargesMap, appliedCoupon, walletDiscount, loyaltyDiscount]);
+}, [effectiveItems, chargesMap, appliedCoupon, walletDiscount, loyaltyDiscount]);
 
 // Fetch available coupons and wallet balance
 useEffect(() => {
   axios.get('/coupons/public').then(r => setAvailableCoupons(r.data.coupons || [])).catch(() => {})
   if (loginuserdata?.id) {
-    axios.get('/wallet/').then(r => {
+    axios.get('/wallet').then(r => {
       setWalletBalance(Number(r.data?.wallet_balance || 0))
       setLoyaltyBalance(Number(r.data?.loyalty_points || 0))
     }).catch(() => {})
@@ -583,7 +602,6 @@ if (!addresses.length) {
 }
 
 if (!validateShipping()) return;
-  if (!validateShipping()) return;
 
   if (processing) return;
 
@@ -592,7 +610,7 @@ if (!validateShipping()) return;
 
     /* ================= CREATE ORDER ================= */
 
-    const res = await axios.post("/orders/create", {
+    const orderPayload: any = {
       shipping,
       addressId: selectedAddressId,
       paymentMethod,
@@ -601,7 +619,16 @@ if (!validateShipping()) return;
       loyaltyDiscount: loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
       loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount * 10) : undefined,
       pricing: { subtotal, tax, delivery, platformFee, discount, total }
-    });
+    };
+
+    if (isBuyNow && buyNowItem) {
+      orderPayload.productId = buyNowItem.productId;
+      orderPayload.quantity = buyNowItem.quantity;
+      if (buyNowItem.variantId) orderPayload.variantId = buyNowItem.variantId;
+    }
+
+    const endpoint = isBuyNow && buyNowItem ? '/orders/buy-now' : '/orders/create';
+    const res = await axios.post(endpoint, orderPayload);
 
     if (!res?.data?.success) {
       throw new Error(res?.data?.message || "Order creation failed");
@@ -612,13 +639,12 @@ if (!validateShipping()) return;
     /* ================= COD FLOW ================= */
 
     if (paymentMethod === "cod") {
-
       toast.success("Order placed successfully");
-setPaidAmount(total);
+      setPaidAmount(total);
       setOrderNo("ORD" + orderId);
-
       setOrderPlaced(true);
- fetchCart(loginuserdata?.id)
+      if (isBuyNow) sessionStorage.removeItem('buyNowItem');
+      fetchCart(loginuserdata?.id)
       return;
     }
 
@@ -674,8 +700,9 @@ setPaidAmount(total);
             toast.success("Payment successful");
 
             setOrderNo("ORD" + orderId);
-setPaidAmount(total);
+            setPaidAmount(total);
             setOrderPlaced(true);
+            if (isBuyNow) sessionStorage.removeItem('buyNowItem');
             fetchCart(loginuserdata?.id)
 
           } else {
@@ -1497,7 +1524,7 @@ if (checkingAddress) {
               <div style={{ padding: '24px' }}>
 
                 {/* Cart items with thumbnails */}
-                {cartdata?.items?.map((item: any, i: number) => (
+                {effectiveItems.map((item: any, i: number) => (
                   <motion.div
                     key={i}
                     className="cart-item-row"
@@ -1624,5 +1651,13 @@ if (checkingAddress) {
         <Footer />
       </div>
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense>
+      <CheckoutInner />
+    </Suspense>
   )
 }

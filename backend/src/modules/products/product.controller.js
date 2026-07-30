@@ -159,14 +159,31 @@ exports.getAllPublic = async (req, res) => {
     `
 
     const count = await pool.query(countQuery, values)
+    const total = Number(count.rows[0].count)
+
+    // Spell correction: if search term returned 0 results, suggest closest product name
+    let suggestion = null
+    if (search && total === 0) {
+      try {
+        const suggestRes = await pool.query(
+          `SELECT name FROM products WHERE status='active'
+           ORDER BY similarity(name, $1) DESC LIMIT 1`,
+          [search]
+        )
+        if (suggestRes.rows.length && suggestRes.rows[0].name) {
+          suggestion = suggestRes.rows[0].name
+        }
+      } catch (_) {}
+    }
 
     res.json({
       success: true,
       products: data.rows,
-      total: Number(count.rows[0].count),
+      total,
       page,
       limit,
-      totalPages: Math.ceil(Number(count.rows[0].count) / limit),
+      totalPages: Math.ceil(total / limit),
+      suggestion,
     })
 
   } catch (err) {
@@ -192,7 +209,7 @@ const data= await pool.query(
 if(data?.rows?.length>=1){
   res?.status(200).json({data:data?.rows[0],status:200})
 }else{
-  res?.status(204).json({msg:"No Data found",status:204})
+  res.status(404).json({msg:"Product not found"})
 }
 }catch(err){
     console.error(err)
@@ -946,10 +963,16 @@ exports.getProductReviews = async (req, res) => {
         r.images,
         r.created_at,
         r.product_id,
-r.order_id,
+        r.order_id,
         u.name AS user_name,
-
-        (r.user_id = $${reviewQueryParams.length}) AS is_mine
+        (r.user_id = $${reviewQueryParams.length}) AS is_mine,
+        EXISTS (
+          SELECT 1 FROM order_items oi
+          JOIN orders o ON o.id = oi.order_id
+          WHERE oi.product_id = r.product_id
+            AND o.user_id = r.user_id
+            AND o.status = 5
+        ) AS is_verified_purchase
 
       FROM reviews r
 
@@ -1059,66 +1082,45 @@ exports.deleteReview = async (req, res) => {
 /* ================== CART ================== */
 
 exports.addToCart = async (req, res) => {
+  try {
+    const userId = req.user?.id
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' })
+    const { productId, quantity } = req.body
 
-  const userId = req.user.id
-  const { productId, quantity } = req.body
+    await pool.query(`
+      INSERT INTO cart (id,user_id,product_id,quantity)
+      VALUES($1,$2,$3,$4)
+      ON CONFLICT(user_id,product_id)
+      DO UPDATE SET quantity = cart.quantity + $4
+    `, [uuid(), userId, productId, quantity || 1])
 
-
-  await pool.query(`
-
-    INSERT INTO cart
-    (id,user_id,product_id,quantity)
-
-    VALUES($1,$2,$3,$4)
-
-    ON CONFLICT(user_id,product_id)
-
-    DO UPDATE SET
-      quantity = cart.quantity + $4
-
-  `, [
-    uuid(),
-    userId,
-    productId,
-    quantity || 1,
-  ])
-
-
-  res.json({ success: true })
-
+    res.json({ success: true })
+  } catch (err) {
+    console.error('[addToCart]', err)
+    res.status(500).json({ success: false, message: 'Failed to add to cart' })
+  }
 }
 
 
 /* ================== GET CART ================== */
 
 exports.getCart = async (req, res) => {
+  try {
+    const userId = req.user?.id
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' })
 
-  const userId = req.user.id
+    const data = await pool.query(`
+      SELECT c.*, p.name, p.price, p.images, p.inventory
+      FROM cart c
+      JOIN products p ON p.id = c.product_id
+      WHERE c.user_id=$1
+    `, [userId])
 
-
-  const data = await pool.query(`
-
-    SELECT
-      c.*,
-      p.name,
-      p.price,
-      p.images,
-      p.inventory
-
-    FROM cart c
-
-    JOIN products p
-    ON p.id = c.product_id
-
-    WHERE c.user_id=$1
-
-  `, [userId])
-
-
-  res.json({
-    items: data.rows,
-  })
-
+    res.json({ items: data.rows })
+  } catch (err) {
+    console.error('[getCart]', err)
+    res.status(500).json({ success: false, message: 'Failed to fetch cart' })
+  }
 }
 
 /* ─────────────────────────────────────────────────────────

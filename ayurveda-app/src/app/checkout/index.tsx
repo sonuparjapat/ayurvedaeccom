@@ -12,10 +12,11 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import api from '../../api/axios'
 import { useStore } from '../../store'
 import { Colors, Fonts, Shadows, Radius } from '../../constants/theme'
+import { notify as hapticNotify, Haptics } from '../../utils/haptics'
 
 const { width: W } = Dimensions.get('window')
 
@@ -164,6 +165,22 @@ const suc = StyleSheet.create({
 export default function CheckoutScreen() {
   const insets = useSafeAreaInsets()
   const { user, cartData, setCartData, setAuthOpen } = useStore()
+  const params = useLocalSearchParams<{
+    mode?: string; productId?: string; quantity?: string; variantId?: string;
+    productName?: string; price?: string; image?: string; gst_percent?: string; variantLabel?: string;
+  }>()
+
+  const isBuyNow = params.mode === 'buynow'
+  const buyNowItem = isBuyNow && params.productId ? {
+    productId: Number(params.productId),
+    quantity: Number(params.quantity) || 1,
+    variantId: params.variantId ? Number(params.variantId) : null,
+    name: params.productName || '',
+    price: Number(params.price) || 0,
+    image: params.image || '',
+    gst_percent: Number(params.gst_percent) || 0,
+    variantLabel: params.variantLabel || null,
+  } : null
 
   const [step, setStep] = useState<Step>(1)
   const [addresses, setAddresses] = useState<Address[]>([])
@@ -196,7 +213,7 @@ export default function CheckoutScreen() {
     if (!user) { setAuthOpen(true); router.back(); return }
     init()
     api.get('/coupons/public').then(r => setAvailableCoupons(r.data?.coupons || [])).catch(() => {})
-    api.get('/wallet/').then(r => {
+    api.get('/wallet').then(r => {
       setWalletBalance(Number(r.data?.wallet_balance || 0))
       setLoyaltyBalance(Number(r.data?.loyalty_points || 0))
     }).catch(() => {})
@@ -207,19 +224,20 @@ export default function CheckoutScreen() {
     try {
       const [addrRes, settingRes] = await Promise.allSettled([
         api.get('/users/address'),
-        api.get('/admin/settings'),
+        api.get('/wallet/settings'),
       ])
       if (addrRes.status === 'fulfilled') {
         const list: Address[] = addrRes.value.data?.data || []
         setAddresses(list)
-        const def = list.find(a => a.isDefault) || list[0]
+        const def = list.find((a: any) => a.is_default) || list[0]
         if (def) setSelectedAddr(def)
         if (list.length === 0) {
           setShowAddrForm(true) // auto-open inline form when no address
         }
       }
       if (settingRes.status === 'fulfilled') {
-        setSettings(settingRes.value.data?.data || [])
+        const d = settingRes.value.data?.delivery || {}
+        setSettings(Object.entries(d).map(([key, value]) => ({ key, value: String(value), type: 'number' })) as any)
       }
     } catch { } finally { setLoadingInit(false) }
   }
@@ -227,9 +245,9 @@ export default function CheckoutScreen() {
   const handleAddAddress = async () => {
     const { street, city, state, pincode, email } = newAddr
     if (!street.trim() || !city.trim() || !state.trim() || !pincode.trim() || !email.trim()) {
-      toast.show('All address fields are required', 'error'); return
+      toast.error('All address fields are required'); return
     }
-    if (!/^\d{6}$/.test(pincode)) { toast.show('Enter valid 6-digit pincode', 'error'); return }
+    if (!/^\d{6}$/.test(pincode)) { toast.error('Enter valid 6-digit pincode'); return }
     setAddingAddr(true)
     try {
       await api.post('/users/address', { ...newAddr, isDefault: addresses.length === 0 })
@@ -240,9 +258,9 @@ export default function CheckoutScreen() {
       if (def) setSelectedAddr(def)
       setShowAddrForm(false)
       setNewAddr({ street: '', city: '', state: '', pincode: '', type: 'home', email: '' })
-      toast.show('Address added!', 'success')
+      toast.success('Address added!')
     } catch (e: any) {
-      toast.show(e?.response?.data?.message || 'Failed to add address', 'error')
+      toast.error(e?.response?.data?.message || 'Failed to add address')
     } finally { setAddingAddr(false) }
   }
 
@@ -256,9 +274,17 @@ export default function CheckoutScreen() {
     }, {})
   }, [settings])
 
+  const effectiveItems = useMemo(() => {
+    if (isBuyNow && buyNowItem) {
+      return [{ price: buyNowItem.price, quantity: buyNowItem.quantity, gst_percent: buyNowItem.gst_percent,
+                name: buyNowItem.name, images: [buyNowItem.image], variant_label: buyNowItem.variantLabel }]
+    }
+    return cartData.items || []
+  }, [isBuyNow, buyNowItem, cartData.items])
+
   const { subtotal, tax, delivery, platformFee, discount, total } = useMemo(() => {
     let cartSubtotal = 0; let cartTax = 0
-    ;(cartData.items || []).forEach(item => {
+    effectiveItems.forEach((item: any) => {
       const price = Number(item.price) || 0
       const qty = Number(item.quantity) || 1
       const gst = Number((item as any).gst_percent || 0)
@@ -277,7 +303,7 @@ export default function CheckoutScreen() {
       discount: +couponDiscount.toFixed(2),
       total: +finalTotal.toFixed(2),
     }
-  }, [cartData, chargesMap, appliedCoupon, walletDiscount, loyaltyDiscount])
+  }, [effectiveItems, chargesMap, appliedCoupon, walletDiscount, loyaltyDiscount])
 
   const applyCoupon = async () => {
     if (!couponInput.trim()) return
@@ -305,7 +331,7 @@ export default function CheckoutScreen() {
         phone: user?.phone || '',
         address: `${selectedAddr.street}, ${selectedAddr.city}, ${selectedAddr.state} - ${selectedAddr.pincode}`,
       }
-      const res = await api.post('/orders/create', {
+      const orderPayload: any = {
         shipping, addressId: selectedAddr.id,
         paymentMethod: payMethod,
         pricing: { subtotal, tax, delivery, platformFee, total },
@@ -313,11 +339,19 @@ export default function CheckoutScreen() {
         walletDiscount: walletDiscount > 0 ? walletDiscount : undefined,
         loyaltyDiscount: loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
         loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount * 10) : undefined,
-      })
+      }
+      if (isBuyNow && buyNowItem) {
+        orderPayload.productId = buyNowItem.productId
+        orderPayload.quantity = buyNowItem.quantity
+        if (buyNowItem.variantId) orderPayload.variantId = buyNowItem.variantId
+      }
+      const endpoint = isBuyNow && buyNowItem ? '/orders/buy-now' : '/orders/create'
+      const res = await api.post(endpoint, orderPayload)
       if (!res.data?.success) throw new Error(res.data?.message || 'Order failed')
       const orderId = res.data.orderId
 
       if (payMethod === 'cod') {
+        hapticNotify(Haptics.NotificationFeedbackType.Success)
         setPaidAmount(total)
         setOrderNo(res.data.invoice_no || `ORD-${orderId}`)
         setStep(3)
@@ -353,6 +387,7 @@ export default function CheckoutScreen() {
           razorpay_payment_id: paymentData.razorpay_payment_id,
           razorpay_signature: paymentData.razorpay_signature,
         })
+        hapticNotify(Haptics.NotificationFeedbackType.Success)
         setCartData({ items: [], subtotal: 0, totalItems: 0 })
         setPaidAmount(total)
         setOrderNo(`ORD-${orderId}`)
@@ -504,7 +539,7 @@ export default function CheckoutScreen() {
               {/* Order summary */}
               <LinearGradient colors={['#0d120d', '#111711']} style={ss.summaryCard}>
                 <Text style={ss.summaryCardTitle}>Order Summary</Text>
-                {cartData.items.map((item, i) => (
+                {effectiveItems.map((item: any, i: number) => (
                   <View key={i} style={ss.summaryItemRow}>
                     <View style={ss.summaryDot} />
                     <Text style={ss.summaryItemName} numberOfLines={1}>{item.name}</Text>

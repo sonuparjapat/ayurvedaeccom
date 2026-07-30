@@ -87,6 +87,7 @@ interface Product {
   is_returnable?: boolean
   sort_order?: number
   faqs?: { question: string; answer: string }[]
+  safety_tags?: string[]
   barcode?: string
   sku?: string
   sale_price?: string
@@ -202,7 +203,7 @@ const handlepagechage=(page:number)=>{
   useEffect(() => {
     loadReviews(id, page)
     setFilteredReviews(null) // reset filter when page changes
-  }, [page])
+  }, [id, page])
 
   // Re-fetch reviews with sort/rating filter applied
   useEffect(() => {
@@ -425,6 +426,24 @@ const handlepagechage=(page:number)=>{
       setQty(cartItem.quantity)
     }
   }, [cartItem?.quantity, cartItem?.product_id])
+
+const buyNow = () => {
+  if (!product) return;
+  if (effectiveInventory === 0) { toast.error('Product is out of stock'); return; }
+  if (variants.length > 0 && !selectedVariant) { toast.error('Please select a variant'); return; }
+  const item = {
+    productId: product.id,
+    quantity: qty,
+    variantId: selectedVariant?.id || null,
+    name: product.name,
+    price: selectedVariant ? Number(selectedVariant.price) : Number(product.price),
+    image: product.images?.[0] || '',
+    gst_percent: product.gst_percent || 0,
+    variantLabel: selectedVariant?.label || null,
+  };
+  sessionStorage.setItem('buyNowItem', JSON.stringify(item));
+  router.push('/checkout?mode=buynow');
+};
 
 const addToCart = async () => {
   if (!product) return;
@@ -674,7 +693,7 @@ const addToCart = async () => {
 
 
                <button
-                        onClick={(e) => { e.stopPropagation(); toggleLike(product.id) }}
+                        onClick={(e) => { e.stopPropagation(); toggleLike(String(product.id)) }}
                         className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
                         style={{
                           background: 'rgba(255,255,255,0.92)',
@@ -825,6 +844,14 @@ const addToCart = async () => {
               </div>
 
 
+
+              {/* STOCK URGENCY */}
+              {effectiveInventory > 0 && effectiveInventory <= 10 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                  <span style={{ fontSize: 14 }}>🔥</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#c2410c' }}>Only {effectiveInventory} left in stock — order soon!</span>
+                </div>
+              )}
 
               {/* VARIANTS */}
               {variants.length > 0 && (
@@ -1000,6 +1027,17 @@ const addToCart = async () => {
                 </div>
               )}
 
+              {/* SAFETY TAGS */}
+              {product.safety_tags && product.safety_tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {product.safety_tags.map((tag: string, i: number) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-semibold">
+                      ✓ {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* NON-RETURNABLE NOTICE */}
               {product.is_returnable === false && (
                 <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2">
@@ -1075,6 +1113,22 @@ const addToCart = async () => {
                   </Button>
 
                 </div>
+
+                {/* BUY NOW */}
+                <Button
+                  disabled={effectiveInventory === 0 || (variants.length > 0 && !selectedVariant)}
+                  onClick={buyNow}
+                  className="w-full text-lg py-6 font-semibold rounded-2xl bg-amber-500 hover:bg-amber-600 text-white transition-all duration-200"
+                  style={!(effectiveInventory === 0 || (variants.length > 0 && !selectedVariant)) ? {boxShadow: '0 8px 28px rgba(245,158,11,0.35), 0 2px 8px rgba(245,158,11,0.18)'} : {}}
+                >
+                  {effectiveInventory === 0 ? (
+                    <><Package className="mr-2" /> Out Of Stock</>
+                  ) : variants.length > 0 && !selectedVariant ? (
+                    <><Tag className="mr-2" /> Select a Variant</>
+                  ) : (
+                    <>⚡ Buy Now</>
+                  )}
+                </Button>
 
               </div>
 
@@ -1705,13 +1759,15 @@ const addToCart = async () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900 text-sm">{r.name || 'Customer'}</span>
-                        <span
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: '#e8f5ee', color: '#2d5a3d' }}
-                        >
-                          ✓ Verified Purchase
-                        </span>
+                        <span className="font-semibold text-gray-900 text-sm">{r.name || r.user_name || 'Customer'}</span>
+                        {r.is_verified_purchase && (
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                            style={{ background: '#e8f5ee', color: '#2d5a3d' }}
+                          >
+                            ✓ Verified Purchase
+                          </span>
+                        )}
                       </div>
                       <span className="text-xs text-gray-400">
                         {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
@@ -1918,7 +1974,7 @@ function QASection({ productId, loginuserdata }: { productId: string; loginuserd
   const [submitting, setSubmitting] = useState(false)
   const [answerMap, setAnswerMap] = useState<Record<number, string>>({})
   const [answeringId, setAnsweringId] = useState<number | null>(null)
-  const axiosClient = require('@/lib/axios').default
+  const axiosClient = axios
 
   const loadQA = async () => {
     try {

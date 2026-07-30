@@ -343,86 +343,84 @@ exports.logout = (req, res) => {
 /* STATS */
 
 exports.stats = async (req, res) => {
+  try {
+    const revenue = await pool.query(`
+      SELECT COALESCE(SUM(amount),0) FROM payments
+      WHERE status='success'
+    `)
 
-  const revenue = await pool.query(`
-    SELECT COALESCE(SUM(amount),0) FROM payments
-    WHERE status='success'
-  `)
+    const orders = await pool.query(`SELECT COUNT(*) FROM orders`)
+    const users = await pool.query(`SELECT COUNT(*) FROM users`)
+    const products = await pool.query(`SELECT COUNT(*) FROM products`)
 
-  const orders = await pool.query(`SELECT COUNT(*) FROM orders`)
-  const users = await pool.query(`SELECT COUNT(*) FROM users`)
-  const products = await pool.query(`SELECT COUNT(*) FROM products`)
+    const pending = await pool.query(`
+      SELECT COUNT(*) FROM orders WHERE status='0'
+    `)
 
-  const pending = await pool.query(`
-    SELECT COUNT(*) FROM orders WHERE status='0'
-  `)
+    const lowStock = await pool.query(`
+      SELECT COUNT(*) FROM products WHERE inventory < 10
+    `)
 
-  const lowStock = await pool.query(`
-    SELECT COUNT(*) FROM products WHERE inventory < 10
-  `)
-
-
-  res.json({
-    totalRevenue: Number(revenue.rows[0].coalesce),
-    totalOrders: Number(orders.rows[0].count),
-    totalUsers: Number(users.rows[0].count),
-    totalProducts: Number(products.rows[0].count),
-    pendingOrders: Number(pending.rows[0].count),
-    lowStockItems: Number(lowStock.rows[0].count),
-  })
+    res.json({
+      totalRevenue: Number(revenue.rows[0].coalesce),
+      totalOrders: Number(orders.rows[0].count),
+      totalUsers: Number(users.rows[0].count),
+      totalProducts: Number(products.rows[0].count),
+      pendingOrders: Number(pending.rows[0].count),
+      lowStockItems: Number(lowStock.rows[0].count),
+    })
+  } catch (err) {
+    console.error('[STATS ERROR]', err)
+    res.status(500).json({ success: false, message: 'Failed to fetch stats' })
+  }
 }
 
 
 /* RECENT ORDERS */
 
 exports.recentOrders = async (req, res) => {
-
-  const data = await pool.query(`
-
-    SELECT
-      o.id,
-      o.id AS order_number,
-      u.name AS customer,
-      o.total_amount AS amount,
-      o.status
-
-    FROM orders o
-    LEFT JOIN users u ON u.id=o.user_id
-
-    ORDER BY o.created_at DESC
-    LIMIT 5
-
-  `)
-
-  res.json(data.rows)
+  try {
+    const data = await pool.query(`
+      SELECT
+        o.id,
+        o.id AS order_number,
+        u.name AS customer,
+        o.total_amount AS amount,
+        o.status
+      FROM orders o
+      LEFT JOIN users u ON u.id=o.user_id
+      ORDER BY o.created_at DESC
+      LIMIT 5
+    `)
+    res.json(data.rows)
+  } catch (err) {
+    console.error('[RECENT ORDERS ERROR]', err)
+    res.status(500).json({ success: false, message: 'Failed to fetch recent orders' })
+  }
 }
 
 
 /* TOP PRODUCTS */
 
 exports.topProducts = async (req, res) => {
-
-  const data = await pool.query(`
-
-    SELECT
-      p.name,
-      SUM(oi.quantity) AS sales,
-      SUM(oi.price * oi.quantity) AS revenue,
-      p.inventory AS stock
-
-    FROM order_items oi
-
-    JOIN products p ON p.id=oi.product_id
-
-    GROUP BY p.id
-
-    ORDER BY revenue DESC
-
-    LIMIT 5
-
-  `)
-
-  res.json(data.rows)
+  try {
+    const data = await pool.query(`
+      SELECT
+        p.name,
+        SUM(oi.quantity) AS sales,
+        SUM(oi.price * oi.quantity) AS revenue,
+        p.inventory AS stock
+      FROM order_items oi
+      JOIN products p ON p.id=oi.product_id
+      GROUP BY p.id
+      ORDER BY revenue DESC
+      LIMIT 5
+    `)
+    res.json(data.rows)
+  } catch (err) {
+    console.error('[TOP PRODUCTS ERROR]', err)
+    res.status(500).json({ success: false, message: 'Failed to fetch top products' })
+  }
 }
 
 
@@ -434,7 +432,7 @@ exports.getLowStockProducts = async (req, res) => {
     const result = await pool.query(`
       SELECT id, name, inventory, images, status
       FROM products
-      WHERE inventory <= $1 AND status = TRUE
+      WHERE inventory <= $1 AND status = 'active'
       ORDER BY inventory ASC
       LIMIT 50
     `, [threshold]);
@@ -505,6 +503,7 @@ exports.create = async (req, res) => {
       max_order_qty,
       is_returnable,
       sort_order,
+      safety_tags,
     } = req.body
 
     // Validation
@@ -588,7 +587,8 @@ if (req.files?.length) {
         max_order_qty,
         is_returnable,
         sort_order,
-        faqs
+        faqs,
+        safety_tags
 
       )
 
@@ -601,7 +601,7 @@ if (req.files?.length) {
         $13,
         $14,$15,$16,$17,$18,$19,
         $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,
-        $32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51
+        $32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52
       )
     `, [
       name,
@@ -668,6 +668,15 @@ if (req.files?.length) {
       is_returnable === 'false' || is_returnable === false ? false : true,
       sort_order ? Number(sort_order) : 0,
       req.body.faqs ? (typeof req.body.faqs === 'string' ? req.body.faqs : JSON.stringify(req.body.faqs)) : '[]',
+      (() => {
+        if (!safety_tags) return '{}'
+        if (Array.isArray(safety_tags)) return `{${safety_tags.map(t => `"${t}"`).join(',')}}`
+        if (typeof safety_tags === 'string') {
+          try { const p = JSON.parse(safety_tags); if (Array.isArray(p)) return `{${p.map(t => `"${t}"`).join(',')}}` } catch {}
+          return `{${safety_tags.split(',').map(t => `"${t.trim()}"`).join(',')}}`
+        }
+        return '{}'
+      })(),
 
     ])
 
@@ -919,7 +928,8 @@ const finalImages = [
         max_order_qty=$49,
         is_returnable=$50,
         sort_order=$51,
-        faqs=$52
+        faqs=$52,
+        safety_tags=$53
 
       WHERE id=$20
       RETURNING *
@@ -991,6 +1001,16 @@ const finalImages = [
       body.is_returnable === 'false' || body.is_returnable === false ? false : true,
       body.sort_order ? Number(body.sort_order) : 0,
       body.faqs ? (typeof body.faqs === 'string' ? body.faqs : JSON.stringify(body.faqs)) : '[]',
+      (() => {
+        const st = body.safety_tags
+        if (!st) return '{}'
+        if (Array.isArray(st)) return `{${st.map(t => `"${t}"`).join(',')}}`
+        if (typeof st === 'string') {
+          try { const p = JSON.parse(st); if (Array.isArray(p)) return `{${p.map(t => `"${t}"`).join(',')}}` } catch {}
+          return `{${st.split(',').map(t => `"${t.trim()}"`).join(',')}}`
+        }
+        return '{}'
+      })(),
 
     ])
 
@@ -1352,13 +1372,14 @@ status = Number(status);
  await client.query("BEGIN");
     /* ================= GET ORDER ================= */
 
-    const orderRes = await pool.query(
+    const orderRes = await client.query(
       `
       SELECT
         status,
         shipped_at,
         courier_name,
-        tracking_number
+        tracking_number,
+        payment_method
       FROM orders
       WHERE id = $1
       `,
@@ -1597,6 +1618,7 @@ if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
           { type: 'order_update', order_id: id, status }
         );
       }
+      emitToAdmin('order_status_changed', { order_id: id, new_status: status });
     } catch (mailErr) {
       console.log("Order mail/socket failed:", mailErr.message);
     }
@@ -1622,6 +1644,108 @@ if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
   }
 }
 
+
+/* ================= BULK ORDER STATUS UPDATE ================= */
+exports.adminBulkUpdateOrderStatus = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    let { orderIds, status } = req.body;
+    status = Number(status);
+
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'orderIds must be a non-empty array' });
+    }
+    if (isNaN(status) || status < 0 || status > 9) {
+      return res.status(400).json({ success: false, message: 'Invalid status value' });
+    }
+
+    const ids = orderIds.map(Number).filter(n => !isNaN(n));
+    if (ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No valid order IDs provided' });
+    }
+
+    await client.query('BEGIN');
+
+    // Fetch current state for all orders
+    const existing = await client.query(
+      `SELECT id, status, user_id, payment_method FROM orders WHERE id = ANY($1::int[])`,
+      [ids]
+    );
+    const existingMap = {};
+    for (const row of existing.rows) existingMap[row.id] = row;
+
+    const updated = [];
+    const skipped = [];
+
+    for (const id of ids) {
+      const order = existingMap[id];
+      if (!order) { skipped.push(id); continue; }
+
+      await client.query(
+        `UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2`,
+        [status, id]
+      );
+
+      if (status === 5) {
+        await client.query(`UPDATE orders SET delivered_at=NOW() WHERE id=$1`, [id]);
+        if (order.payment_method === 'cod') {
+          await client.query(`UPDATE orders SET payment_status='paid' WHERE id=$1`, [id]);
+        }
+      }
+
+      await client.query(
+        `INSERT INTO order_status_logs (order_id, old_status, new_status, changed_by, note)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [id, order.status, status, req.user?.id || null, 'bulk update']
+      );
+
+      updated.push(id);
+    }
+
+    await client.query('COMMIT');
+
+    // Post-commit: send notifications (best-effort)
+    const statusLabel = orderstatus[status] || String(status);
+    for (const id of updated) {
+      try {
+        const order = existingMap[id];
+        const userRes = await pool.query(
+          `SELECT u.id as user_id, u.email, u.name, o.invoice_no FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=$1 LIMIT 1`,
+          [id]
+        );
+        if (userRes.rows.length) {
+          const { user_id, email, name, invoice_no } = userRes.rows[0];
+          if (status === 5) {
+            sendOrderDeliveredEmail({ email, name, orderId: id, invoiceNo: invoice_no });
+          } else {
+            sendOrderStatusMail({ email, name, orderId: id, status });
+          }
+          emitToUser(user_id, 'order_status_updated', { order_id: id, status, status_label: statusLabel });
+          createNotification(user_id, 'order_update', `Order #${id} — ${statusLabel}`,
+            `Your order status has been updated to: ${statusLabel}`, { order_id: id, status });
+          sendPushToUser(user_id, `Order Update 📦`, `Order #${id} is now: ${statusLabel}`,
+            { type: 'order_update', order_id: id, status });
+        }
+        emitToAdmin('order_status_changed', { order_id: id, new_status: status });
+      } catch (notifErr) {
+        console.error(`[BULK STATUS NOTIFY ERROR] order ${id}:`, notifErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Updated ${updated.length} order(s)${skipped.length ? `, skipped ${skipped.length}` : ''}`,
+      updated,
+      skipped,
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[BULK STATUS ERROR]', err);
+    res.status(500).json({ success: false, message: 'Bulk update failed' });
+  } finally {
+    client.release();
+  }
+};
 
 // get carts >>>>>>>>>>>>>>>>>>>>
 exports.getCarts = async (req, res) => {
@@ -2309,9 +2433,9 @@ exports.adminGetReturns = async (req, res) => {
     const statuses = status.split(',').map(Number)
     const r = await pool.query(
       `SELECT o.id, o.invoice_no, o.status, o.total_amount, o.return_reason,
-              o.created_at, o.updated_at, o.payment_method,
+              o.created_at, o.updated_at, o.payment_method, o.refund_status, o.refund_amount,
               u.name AS user_name, u.email AS user_email, u.id AS user_id,
-              (SELECT json_agg(json_build_object('name',oi.product_name,'qty',oi.quantity,'price',oi.price,'image',p.thumbnail))
+              (SELECT json_agg(json_build_object('name',p.name,'qty',oi.quantity,'price',oi.price,'image',p.images->>0))
                FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id WHERE oi.order_id=o.id) AS items
        FROM orders o JOIN users u ON u.id=o.user_id
        WHERE o.status = ANY($1)

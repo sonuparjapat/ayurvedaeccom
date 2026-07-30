@@ -237,6 +237,15 @@ export default function AdminReturnsPage() {
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-gray-500 text-xs mb-1">Refund Amount</p>
                 <p className="font-bold text-lg text-green-600">₹{Number(selected.total_amount).toLocaleString()}</p>
+                {selected.refund_status && (
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                    selected.refund_status === 'processed' ? 'bg-purple-100 text-purple-700' :
+                    selected.refund_status === 'failed' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    Razorpay: {selected.refund_status.toUpperCase()}
+                  </span>
+                )}
               </div>
             </div>
 

@@ -131,8 +131,10 @@ exports.adminDebitWallet = async (req, res) => {
     await client.query('BEGIN')
     const balRes = await client.query('SELECT wallet_balance FROM users WHERE id=$1 FOR UPDATE', [user_id])
     const balance = Number(balRes.rows[0]?.wallet_balance || 0)
-    if (balance < Number(amount))
+    if (balance < Number(amount)) {
+      await client.query('ROLLBACK')
       return res.status(400).json({ message: `Insufficient balance. User has ₹${balance.toFixed(2)}` })
+    }
 
     await client.query(
       `INSERT INTO wallet_transactions (user_id, amount, type, source, description) VALUES ($1,$2,'debit','admin',$3)`,
@@ -199,8 +201,17 @@ exports.adminDebitLoyalty = async (req, res) => {
 /* ─── Public: get loyalty settings (for frontend checkout display) ─── */
 exports.getSettings = async (req, res) => {
   try {
-    const settings = await getLoyaltySettings()
-    res.json({ settings })
+    const [loyaltySettings, deliveryRes] = await Promise.all([
+      getLoyaltySettings(),
+      pool.query(
+        `SELECT key, value, type FROM app_settings WHERE key IN ('free_delivery_limit','delivery_charge','platform_fee')`
+      ),
+    ])
+    const delivery = {}
+    for (const row of deliveryRes.rows) {
+      delivery[row.key] = row.type === 'number' ? Number(row.value) : row.value
+    }
+    res.json({ settings: loyaltySettings, delivery })
   } catch (err) {
     res.status(500).json({ message: 'Server error' })
   }

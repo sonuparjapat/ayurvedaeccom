@@ -9,6 +9,7 @@ import { TestimonialsSection } from '@/components/sections/testimonials-section'
 import { FlashSaleBanner } from '@/components/sections/flash-sale-banner'
 import { FeaturedProductsSection } from '@/components/sections/featured-products-section'
 import { RecentlyViewedSection } from '@/components/sections/recently-viewed-section'
+import Link from 'next/link'
 
 export default function Home() {
   return (
@@ -63,6 +64,23 @@ export default function Home() {
         <CategoriesSection />
         <FeaturedProductsSection />
         <RecentlyViewedSection />
+
+        {/* DOSHA QUIZ ENTRY */}
+        <section className="py-12 px-4 bg-linear-to-r from-emerald-800 to-teal-700">
+          <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-white">
+            <div>
+              <div className="text-3xl mb-2">🌿 Discover Your Dosha</div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">What&apos;s Your Ayurvedic Body Type?</h2>
+              <p className="text-emerald-200 max-w-md">Take our free 2-minute quiz to find your Prakriti (Vata, Pitta, or Kapha) and get personalized product recommendations.</p>
+            </div>
+            <Link
+              href="/dosha-quiz"
+              className="shrink-0 px-8 py-4 bg-white text-emerald-800 font-bold text-lg rounded-2xl shadow-lg hover:bg-emerald-50 transition-all hover:scale-105"
+            >
+              Take the Quiz →
+            </Link>
+          </div>
+        </section>
         <FeaturesSection />
         <TestimonialsSection />
       </main>

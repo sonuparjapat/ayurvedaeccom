@@ -1,5 +1,41 @@
 # User Manual — Oroganix eCommerce
 
+---
+
+## What's Fixed (2026-07-29)
+
+### Wishlist
+- **Remove from wishlist** now works correctly — the button was previously hitting the wrong API endpoint and silently failing. Items can now be removed as expected.
+- **Wishlist heart icons** on the website now correctly reflect your saved items. Previously they showed catalog products instead of your actual wishlist.
+
+### Cart
+- **Product links** in the cart page now correctly use the product's SEO-friendly URL (slug) when available, falling back to the product ID.
+- **Delivery fee estimate** in the mobile cart now loads correctly from the server. Previously it was always showing the default value (₹0 / free over ₹500) because it was trying to load from an admin-only page.
+
+### Checkout (Web & Mobile)
+- **Default address** is now automatically pre-selected at checkout. Previously the "default" flag from your address list was not being read correctly.
+- **Wallet balance** on the checkout page loads correctly — the API URL had a trailing slash that some servers handle differently.
+- **Duplicate validation error** — on the web checkout, pressing Place Order would previously show the same error toast twice. Fixed to show it once.
+
+### Admin Panel
+- **Admin login** now correctly stores your admin session. Previously the wrong field from the login response was being used, so the session appeared to work but admin data wasn't loaded.
+- **Admin panel security** — the admin dashboard now checks that you are logged in as an admin before showing the panel. Previously any URL visitor could see the admin UI layout (though API calls would still fail without credentials).
+
+### Orders & Payments
+- **COD orders** are now correctly marked as "Paid" when the admin marks an order as Delivered. Previously, COD orders stayed in "Pending" payment status indefinitely.
+- **Order total** shown after placing an order now reflects the actual amount charged (after wallet and loyalty point deductions), not the pre-discount total.
+
+### Returns (Admin)
+- The **Returns management page** (`/admin/returns`) was always showing a server error (500). This is now fixed — the page loads and shows all return requests correctly.
+
+### Coupon Limits
+- **Per-user coupon limits** are now enforced when browsing available coupons. Previously, a coupon marked as "1 use per user" would still show as available even after you'd already used it.
+
+### Mobile App — Product Page
+- **Add to Cart / In Cart button** now correctly detects whether a product is already in your cart when you arrive at the product page via a product link (slug URL). Previously the button always showed "Add to Cart" even when the item was already there.
+
+---
+
 ## My Account (Mobile App)
 
 The Account screen shows your profile and order history in a premium dark-themed header:
@@ -329,11 +365,14 @@ On the Product Detail page, scroll to the **Reviews** tab to find sort and filte
 
 ---
 
-## Mobile OTP Login — Coming Soon
+## Sign In Options (Mobile App)
 
-Mobile phone OTP login is **not yet available**. A "🚧 Coming soon" notice appears on the OTP login screen.
+The mobile app supports three sign-in methods:
+- **Email + Password** — the standard login tab
+- **Email OTP** — passwordless login by entering your email and a one-time code sent to your inbox
+- **Google Sign-In** — tap "Continue with Google" on the Login tab
 
-To sign in, please use your **email and password** instead. Mobile OTP login will be available in a future update.
+Mobile phone (SMS) OTP login has been removed from the UI as it is not yet available. Use email or Google to sign in.
 
 ---
 
@@ -414,3 +453,83 @@ When submitting a return request you can now attach photo evidence of the issue.
 3. Or paste an image URL into the "Or paste image URL..." field and tap **Add**.
 4. Up to 5 photos total. Remove any thumbnail by tapping the red ✕.
 5. Tap **"↩️ Submit Return Request"** — photos are uploaded automatically with your request.
+
+---
+
+## Bulk Order Status Update (Admin)
+
+Admins can update the status of multiple orders at once:
+
+1. Go to **Admin → Orders**.
+2. Check the checkbox next to each order you want to update (or tick the header checkbox to select all visible orders).
+3. A toolbar appears showing how many orders are selected.
+4. Choose the new status from the dropdown (e.g. Confirmed, Shipped, Delivered).
+5. Click **Apply to Selected** — all checked orders are updated instantly.
+6. Customers receive email, push, and in-app notifications for each order.
+7. Click **Clear selection** to deselect all without making changes.
+
+---
+
+## Product Image Viewer (Mobile App)
+
+On any product detail screen, tap the main product image to open a full-screen viewer:
+- Pinch to zoom in (up to 4x).
+- Swipe left / right to see other product images.
+- Dot indicators at the bottom show which image you are on.
+- **Swipe down** to dismiss — the image follows your finger and fades out.
+- An image count badge (e.g. 2/4) shows your position in the gallery.
+
+---
+
+## Rating Filter (Mobile Search)
+
+When browsing products on mobile, tap the **Filter** icon and scroll to **Minimum Rating**:
+- Choose **Any** (no filter), **3+**, **3.5+**, **4+**, or **4.5+**.
+- Tap **Apply Filters** — only products at or above your chosen rating will appear.
+- The active rating filter is shown in the "Filters applied" counter.
+
+---
+
+## Discover Your Dosha — Ayurvedic Body Type Quiz
+
+Take a free 2-minute quiz to discover your Ayurvedic body type (Vata, Pitta, or Kapha):
+
+**Web** (`/dosha-quiz`):
+1. Click **"Take the Quiz →"** on the home page banner (or go to `/dosha-quiz` directly).
+2. Answer 10 questions about your daily habits and physical traits.
+3. Use the **Back** button to change a previous answer.
+4. Your result shows: your dominant dosha, score breakdown (%), description, wellness tips, and recommended product categories to shop.
+
+**Mobile App**:
+1. Tap the **"🌿 Discover Your Dosha"** card on the home screen.
+2. Answer the same 10 questions (animated transitions between questions).
+3. Your result page shows the dosha header with score bars, tips, and a **Shop by Dosha** button.
+4. Tap **Retake Quiz** to start over.
+
+---
+
+## Safety & Certification Tags (Product Page)
+
+Some products carry safety and certification badges. These appear on the product detail page under a **"Safety & Certifications"** heading:
+- Examples: **Vegan**, **Gluten Free**, **Pregnancy Safe**, **Cruelty Free**.
+- Green badges with a ✓ checkmark indicate verified certifications.
+- On mobile, badges scroll horizontally if there are many.
+
+---
+
+## Admin Dashboard — Real-time Stats
+
+The admin dashboard at `/admin/dashboard` now updates KPI cards and the Recent Orders list in real time:
+- **New orders**: stats and the recent orders list refresh automatically when a customer places an order.
+- **Order status changes**: when any admin updates an order's status (single or bulk), the Pending Orders count and Recent Orders list refresh instantly on all open admin dashboard tabs — no manual page reload needed.
+
+---
+
+## Refund Status Tracking (Admin)
+
+When a cancelled order triggers a Razorpay bank refund, the refund status is tracked automatically:
+
+- **Admin → Orders → Order Detail**: a badge shows `REFUND: PROCESSED` (purple) or `REFUND: FAILED` (red) alongside the payment status. The refund amount is displayed next to the badge.
+- **Admin → Returns → Return Detail**: a small badge appears next to the Refund Amount showing the Razorpay refund status (`PROCESSED` / `FAILED`).
+- Razorpay sends a webhook when the refund status changes — no manual action needed.
+- The customer also receives an in-app notification when their refund is processed or fails.

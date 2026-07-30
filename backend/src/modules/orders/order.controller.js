@@ -1,7 +1,8 @@
 const pool = require("../../config/db");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
-const { emitToAdmin } = require('../../socket');
+const { emitToAdmin, emitToUser } = require('../../socket');
+const { createNotification } = require('../../services/notification.service');
 const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
 const sendOrderConfirmationEmail = require('../../services/email/orderConfirmation');
 const { sendOrderCancelledEmail, sendReturnRequestedEmail } = require('../../services/email/orderStatusEmail');
@@ -179,8 +180,6 @@ if (addr.pincode) {
     [addr.pincode]
   );
   if (!pincodeCheck.rows.length) {
-    await client.query("ROLLBACK");
-    client.release();
     return res.status(400).json({
       success: false,
       message: `Sorry, we don't deliver to pincode ${addr.pincode} yet. Please use a different delivery address.`
@@ -760,14 +759,14 @@ if (addr.pincode) {
 
       orderId,
 
-      amount: total,
+      amount: finalTotal,
 
       breakup: {
         subtotal,
         gst: totalTax,
         delivery,
         platformFee: PLATFORM,
-        grandTotal: total
+        grandTotal: finalTotal
       },
 
       razorpay: razorpayOrder,
@@ -1640,6 +1639,48 @@ exports.razorpayWebhook = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Bad payload' });
   }
 
+  // Handle refund events
+  if (event.event === 'refund.processed' || event.event === 'refund.failed') {
+    const refund = event?.payload?.refund?.entity;
+    if (!refund?.payment_id) return res.status(200).json({ received: true });
+
+    const refundStatus = event.event === 'refund.processed' ? 'processed' : 'failed';
+    try {
+      const orderRes = await pool.query(
+        `SELECT id, user_id FROM orders WHERE razorpay_payment_id=$1 LIMIT 1`,
+        [refund.payment_id]
+      );
+      if (!orderRes.rows.length) return res.status(200).json({ received: true });
+
+      const { id: orderId, user_id: userId } = orderRes.rows[0];
+      await pool.query(
+        `UPDATE orders SET refund_id=$1, refund_status=$2, refund_amount=$3, updated_at=NOW() WHERE id=$4`,
+        [refund.id, refundStatus, Number(refund.amount) / 100, orderId]
+      );
+
+      try {
+        if (refundStatus === 'processed') {
+          createNotification(userId, 'refund', `Refund Processed 💚`,
+            `Your refund of ₹${(Number(refund.amount) / 100).toFixed(2)} for Order #${orderId} has been processed.`,
+            { order_id: orderId });
+          emitToUser(userId, 'refund_processed', { order_id: orderId, amount: Number(refund.amount) / 100 });
+        } else {
+          createNotification(userId, 'refund', `Refund Failed`,
+            `The refund for Order #${orderId} could not be processed. Please contact support.`,
+            { order_id: orderId });
+          emitToUser(userId, 'refund_failed', { order_id: orderId });
+        }
+      } catch (notifErr) {
+        console.error('[REFUND WEBHOOK] notification error:', notifErr.message);
+      }
+
+      return res.status(200).json({ received: true });
+    } catch (err) {
+      console.error('[REFUND WEBHOOK] DB error:', err.message);
+      return res.status(500).json({ success: false, message: 'Processing error' });
+    }
+  }
+
   // Only handle payment.captured — ignore everything else silently
   if (event.event !== 'payment.captured') {
     return res.status(200).json({ received: true });
@@ -1797,5 +1838,287 @@ exports.reorder = async (req, res) => {
   } catch (err) {
     console.error('[Reorder]', err.message);
     res.status(500).json({ success: false, message: 'Reorder failed' });
+  }
+};
+
+/* ================= BUY NOW ================= */
+// Like createOrder but takes a single item directly — never touches the cart table.
+
+exports.buyNow = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const {
+      productId, quantity: rawQty, variantId,
+      shipping, paymentMethod, addressId, couponCode,
+      walletDiscount: requestedWalletDiscount,
+      loyaltyDiscount: requestedLoyaltyDiscount,
+    } = req.body;
+
+    const quantity = Math.max(1, Number(rawQty) || 1);
+
+    if (!productId) return res.status(400).json({ success: false, message: 'Product is required' });
+    if (!addressId) return res.status(400).json({ success: false, message: 'Address is required' });
+    if (!['cod', 'online'].includes(paymentMethod))
+      return res.status(400).json({ success: false, message: 'Invalid payment method' });
+
+    // Address validation
+    const addrRes = await client.query(
+      `SELECT id, type, street, city, state, pincode FROM user_addresses WHERE id=$1 AND user_id=$2`,
+      [addressId, userId]
+    );
+    if (!addrRes.rows.length)
+      return res.status(400).json({ success: false, message: 'Invalid address selected' });
+    const addr = addrRes.rows[0];
+
+    // Pincode serviceability
+    let deliveryDays = 5;
+    if (addr.pincode) {
+      const pc = await client.query(
+        `SELECT delivery_days FROM serviceable_pincodes WHERE pincode=$1 AND is_active=TRUE LIMIT 1`,
+        [addr.pincode]
+      );
+      if (!pc.rows.length)
+        return res.status(400).json({ success: false, message: `Sorry, we don't deliver to pincode ${addr.pincode} yet.` });
+      deliveryDays = pc.rows[0].delivery_days || 5;
+    }
+
+    await client.query('BEGIN');
+
+    const appSettings = await getAppSettings(client);
+    const DELIVERY = Number(appSettings.delivery_charge || 0);
+    const PLATFORM = Number(appSettings.platform_fee || 0);
+    const FREE_LIMIT = Number(appSettings.free_delivery_limit || 0);
+
+    // Fetch product + variant in one query, lock product row
+    const productRes = await client.query(`
+      SELECT p.id AS product_id, p.name AS product_name, p.gst_percent, p.status,
+             COALESCE(pv.price, p.price) AS effective_price,
+             COALESCE(pv.inventory, p.inventory) AS effective_inventory,
+             pv.label AS variant_label
+      FROM products p
+      LEFT JOIN product_variants pv ON pv.id = $2
+      WHERE p.id = $1
+      FOR UPDATE OF p
+    `, [productId, variantId || null]);
+
+    if (!productRes.rows.length) throw new Error('Product not found');
+    const item = productRes.rows[0];
+    if (item.status !== 'active') throw new Error('Product is unavailable');
+    if (Number(item.effective_inventory) < quantity) throw new Error('Insufficient stock');
+
+    // Flash sale
+    let flashPrice = null;
+    let flashSaleId = null;
+    try {
+      const flashRes = await client.query(`
+        SELECT fsp.product_id, fs.id AS flash_sale_id,
+          COALESCE(fsp.special_price,
+            CASE WHEN fs.discount_type='percent' THEN p.price*(1-fs.discount_value/100)
+            ELSE p.price-fs.discount_value END) AS flash_price
+        FROM flash_sale_products fsp
+        JOIN flash_sales fs ON fs.id=fsp.flash_sale_id
+        JOIN products p ON p.id=fsp.product_id
+        WHERE fsp.product_id=$1 AND fs.is_active=TRUE AND fs.starts_at<=NOW() AND fs.ends_at>NOW()
+          AND (fs.max_uses IS NULL OR fs.uses_count<fs.max_uses)
+          AND (fsp.stock_limit IS NULL OR fsp.sold_count<fsp.stock_limit)
+        LIMIT 1
+      `, [productId]);
+      if (flashRes.rows.length) {
+        flashPrice = parseFloat(flashRes.rows[0].flash_price);
+        flashSaleId = flashRes.rows[0].flash_sale_id;
+      }
+    } catch (_) {}
+
+    const regularPrice = Number(item.effective_price);
+    const price = flashPrice != null && flashPrice < regularPrice ? flashPrice : regularPrice;
+    const gst = Number(item.gst_percent || 0);
+    let subtotal = +(price * quantity).toFixed(2);
+    let totalTax = +((subtotal * gst) / 100).toFixed(2);
+    const delivery = subtotal >= FREE_LIMIT ? 0 : DELIVERY;
+    let total = +(subtotal + totalTax + delivery + PLATFORM).toFixed(2);
+    if (total <= 0) throw new Error('Invalid order amount');
+
+    // Coupon
+    let discountAmount = 0, appliedCouponId = null, appliedCouponCode = null;
+    if (couponCode) {
+      const couponRes = await client.query(`
+        SELECT * FROM coupons
+        WHERE UPPER(code)=UPPER($1) AND is_active=TRUE
+          AND (valid_from IS NULL OR valid_from<=NOW())
+          AND (valid_to IS NULL OR valid_to>=NOW())
+        FOR UPDATE
+      `, [couponCode]);
+      if (!couponRes.rows.length) {
+        await client.query('ROLLBACK'); client.release();
+        return res.status(400).json({ success: false, message: 'Coupon is expired or no longer valid.' });
+      }
+      const c = couponRes.rows[0];
+      if (!(!c.user_id || c.user_id === userId)) {
+        await client.query('ROLLBACK'); client.release();
+        return res.status(400).json({ success: false, message: 'This coupon is not valid for your account.' });
+      }
+      if (!(Number(c.usage_limit) === 0 || c.used_count < Number(c.usage_limit))) {
+        await client.query('ROLLBACK'); client.release();
+        return res.status(400).json({ success: false, message: 'Coupon usage limit has been reached.' });
+      }
+      if (!(subtotal >= Number(c.min_order))) {
+        await client.query('ROLLBACK'); client.release();
+        return res.status(400).json({ success: false, message: `Minimum order value of ₹${c.min_order} required.` });
+      }
+      discountAmount = c.type === 'percent' ? (subtotal * Number(c.value)) / 100 : Number(c.value);
+      if (Number(c.max_discount) > 0) discountAmount = Math.min(discountAmount, Number(c.max_discount));
+      discountAmount = +Math.min(discountAmount, subtotal).toFixed(2);
+      total = +(total - discountAmount).toFixed(2);
+      if (total < 0) total = 0;
+      appliedCouponId = c.id; appliedCouponCode = c.code;
+      await client.query('UPDATE coupons SET used_count=used_count+1,updated_at=NOW() WHERE id=$1', [c.id]);
+    }
+
+    // Wallet / Loyalty
+    const loyaltyConfig = await getLoyaltySettings();
+    let walletDiscountApplied = 0, loyaltyDiscountApplied = 0, loyaltyPointsDeducted = 0;
+
+    if (loyaltyConfig.wallet_enabled && Number(requestedWalletDiscount) > 0) {
+      const wr = await client.query(`SELECT wallet_balance FROM users WHERE id=$1 FOR UPDATE`, [userId]);
+      walletDiscountApplied = Math.min(Number(requestedWalletDiscount), Number(wr.rows[0]?.wallet_balance || 0), total);
+    }
+    if (loyaltyConfig.loyalty_enabled && Number(requestedLoyaltyDiscount) > 0) {
+      const lr = await client.query(`SELECT loyalty_points_balance FROM users WHERE id=$1 FOR UPDATE`, [userId]);
+      const pts = Number(lr.rows[0]?.loyalty_points_balance || 0);
+      const redeemRate = loyaltyConfig.loyalty_redeem_rate;
+      const maxDiscount = Math.min(+(pts * redeemRate).toFixed(2), +(total * loyaltyConfig.loyalty_max_redeem_percent / 100).toFixed(2));
+      loyaltyDiscountApplied = Math.min(Number(requestedLoyaltyDiscount), maxDiscount, total - walletDiscountApplied);
+      loyaltyPointsDeducted = Math.ceil(loyaltyDiscountApplied / redeemRate);
+    }
+
+    const finalTotal = Math.max(0, total - walletDiscountApplied - loyaltyDiscountApplied);
+
+    // Create order
+    const expectedDeliveryDate = new Date();
+    expectedDeliveryDate.setDate(expectedDeliveryDate.getDate() + deliveryDays);
+
+    const orderRes = await client.query(`
+      INSERT INTO orders
+        (user_id,total_amount,payment_method,shipping_address,address_id,status,payment_status,
+         expires_at,coupon_code,discount_amount,wallet_discount,expected_delivery_date)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,NOW()+INTERVAL '15 minutes',$8,$9,$10,$11)
+      RETURNING id
+    `, [
+      userId, finalTotal, paymentMethod,
+      JSON.stringify({
+        name: shipping?.name || '', phone: shipping?.phone || '',
+        address: `${addr.street}, ${addr.city}, ${addr.state} - ${addr.pincode}`,
+        address_id: addr.id, type: addr.type,
+        price_breakup: { subtotal, gst: totalTax, delivery, platform_fee: PLATFORM,
+          discount: discountAmount, wallet_discount: walletDiscountApplied,
+          coupon_code: appliedCouponCode, grand_total: finalTotal }
+      }),
+      addr.id, STATUS_PENDING,
+      paymentMethod === 'cod' ? 'pending' : 'unpaid',
+      appliedCouponCode, discountAmount, walletDiscountApplied,
+      expectedDeliveryDate.toISOString().slice(0, 10),
+    ]);
+
+    const orderId = orderRes.rows[0].id;
+
+    if (walletDiscountApplied > 0) {
+      await client.query(`UPDATE users SET wallet_balance=wallet_balance-$1 WHERE id=$2`, [walletDiscountApplied, userId]);
+      await client.query(`INSERT INTO wallet_transactions (user_id,amount,type,source,order_id,description) VALUES ($1,$2,'debit','order',$3,$4)`,
+        [userId, walletDiscountApplied, orderId, `Used on order #${orderId}`]);
+    }
+    if (loyaltyPointsDeducted > 0) {
+      await client.query(`UPDATE users SET loyalty_points_balance=loyalty_points_balance-$1 WHERE id=$2`, [loyaltyPointsDeducted, userId]);
+      await client.query(`INSERT INTO loyalty_points (user_id,points,type,source,order_id,description) VALUES ($1,$2,'redeem','order',$3,$4)`,
+        [userId, loyaltyPointsDeducted, orderId, `Redeemed on order #${orderId}`]);
+    }
+    if (appliedCouponId) {
+      await client.query('INSERT INTO coupon_uses (coupon_id,user_id,order_id) VALUES ($1,$2,$3)', [appliedCouponId, userId, orderId]);
+    }
+
+    // Insert single order item
+    await client.query(`
+      INSERT INTO order_items (order_id,product_id,variant_id,variant_label,quantity,price)
+      VALUES ($1,$2,$3,$4,$5,$6)
+    `, [orderId, item.product_id, variantId || null, item.variant_label || null, quantity, price]);
+
+    // Flash sale count update
+    const pendingSocketEvents = [];
+    if (flashSaleId) {
+      try {
+        const up = await client.query(
+          `UPDATE flash_sale_products SET sold_count=sold_count+$1 WHERE flash_sale_id=$2 AND product_id=$3 RETURNING sold_count,stock_limit`,
+          [quantity, flashSaleId, productId]
+        );
+        const pr = up.rows[0];
+        if (pr) {
+          pendingSocketEvents.push(['flash_product_update', { saleId: flashSaleId, productId, soldCount: pr.sold_count, stockLimit: pr.stock_limit }]);
+          if (pr.stock_limit && pr.sold_count >= pr.stock_limit)
+            pendingSocketEvents.push(['flash_product_sold_out', { saleId: flashSaleId, productId }]);
+        }
+        const us = await client.query(`UPDATE flash_sales SET uses_count=uses_count+1 WHERE id=$1 RETURNING uses_count,max_uses,title`, [flashSaleId]);
+        const sr = us.rows[0];
+        if (sr && sr.max_uses && sr.uses_count >= sr.max_uses)
+          pendingSocketEvents.push(['flash_sale_exhausted', { saleId: flashSaleId, title: sr.title }]);
+      } catch (_) {}
+    }
+
+    // COD: deduct stock only — do NOT clear cart
+    if (paymentMethod === 'cod') {
+      if (variantId) {
+        const rv = await client.query(`UPDATE product_variants SET inventory=inventory-$1 WHERE id=$2 AND inventory>=$1 RETURNING id`, [quantity, variantId]);
+        if (!rv.rows.length) throw new Error('Variant stock update failed');
+      } else {
+        const rp = await client.query(`UPDATE products SET inventory=inventory-$1 WHERE id=$2 AND inventory>=$1 RETURNING id`, [quantity, productId]);
+        if (!rp.rows.length) throw new Error('Stock update failed');
+      }
+      await creditReferralReward(client, userId, orderId);
+    }
+
+    // Online: create Razorpay order
+    let razorpayOrder = null;
+    if (paymentMethod === 'online') {
+      razorpayOrder = await razorpay.orders.create({
+        amount: Math.round(finalTotal * 100), currency: 'INR',
+        receipt: `ORD_${orderId}`, payment_capture: 1,
+      });
+      await client.query(`UPDATE orders SET razorpay_order_id=$1 WHERE id=$2`, [razorpayOrder.id, orderId]);
+    }
+
+    await client.query('COMMIT');
+
+    try { const { emitToAll } = require('../../socket'); for (const [e, p] of pendingSocketEvents) emitToAll(e, p); } catch (_) {}
+    try { emitToAdmin('new_order', { order_id: orderId, user_id: userId }); } catch (_) {}
+
+    if (paymentMethod === 'cod') {
+      try {
+        const [uRes, invRes] = await Promise.all([
+          pool.query(`SELECT name,email FROM users WHERE id=$1`, [userId]),
+          pool.query(`SELECT invoice_no,shipping_address FROM orders WHERE id=$1`, [orderId]),
+        ]);
+        const uRow = uRes.rows[0] || {}; const invRow = invRes.rows[0] || {};
+        if (uRow.email) {
+          sendOrderConfirmationEmail({
+            email: uRow.email, name: uRow.name, orderId, invoiceNo: invRow.invoice_no,
+            items: [{ name: item.product_name, quantity, price: item.effective_price, variant_label: item.variant_label || null }],
+            total, paymentMethod: 'cod', address: invRow.shipping_address,
+          });
+        }
+      } catch (_) {}
+    }
+
+    res.json({
+      success: true, orderId, amount: finalTotal,
+      breakup: { subtotal, gst: totalTax, delivery, platformFee: PLATFORM, grandTotal: finalTotal },
+      razorpay: razorpayOrder, razorpayKey: razorpayOrder ? process.env.RAZORPAY_KEY : undefined,
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[BUY NOW]', err.message);
+    res.status(400).json({ success: false, message: err.message || 'Order failed' });
+  } finally {
+    client.release();
   }
 };

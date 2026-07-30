@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
@@ -45,7 +45,13 @@ export default function AdminLayout({
 }) {
 
   const router = useRouter()
-    const {logout } = useAuth()
+  const { logout, loginuserdata } = useAuth()
+
+  useEffect(() => {
+    if (loginuserdata !== undefined && loginuserdata?.role !== 'admin') {
+      router.replace('/adminauth')
+    }
+  }, [loginuserdata])
 
   /* Mobile Menu State */
   const [mobileOpen, setMobileOpen] = useState(false)

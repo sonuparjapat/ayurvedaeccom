@@ -19,9 +19,17 @@ const registerLimiter = rateLimit({
   message: { success: false, message: 'Too many registration attempts. Please try again later.' },
 })
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many login attempts. Please try again in 15 minutes.' },
+})
+
 router.post("/register", registerLimiter, controller.userRegister);
 
-router.post("/login", controller.userLogin)
+router.post("/login", loginLimiter, controller.userLogin)
 router.post("/google-login", controller.googleLogin)
 router.post("/google-login-userinfo", controller.googleLoginUserinfo)
 

@@ -69,6 +69,7 @@ export default function AdminProductForm({
     is_returnable: true,
     sort_order: 0,
     faqs: '[]',
+    safety_tags: '',
   })
 
 
@@ -107,9 +108,13 @@ export default function AdminProductForm({
 
     if (initialData) {
 
+      const st = initialData.safety_tags
+      const safetyTagsStr = Array.isArray(st) ? st.join(', ') : (st || '')
+
       setForm({
         ...initialData,
         images: initialData.images || [],
+        safety_tags: safetyTagsStr,
       })
 
     }
@@ -734,6 +739,27 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
           placeholder="e.g. Not recommended for pregnant or lactating women. Consult your physician before use if on medication. Keep out of reach of children. Discontinue if any adverse reaction occurs."
           onChange={(v: string) => setForm({ ...form, warnings: v })}
         />
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Safety Tags <span className="text-gray-400 font-normal">(comma-separated — shown as badges on product page)</span>
+          </label>
+          <input
+            type="text"
+            value={form.safety_tags}
+            readOnly={isView}
+            placeholder="e.g. Vegan, Gluten Free, Pregnancy Safe, Diabetic Friendly, No Added Sugar"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+            onChange={e => setForm({ ...form, safety_tags: e.target.value })}
+          />
+          {form.safety_tags && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {form.safety_tags.split(',').map(t => t.trim()).filter(Boolean).map((tag, i) => (
+                <span key={i} className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-semibold">{tag}</span>
+              ))}
+            </div>
+          )}
+        </div>
 
       </Section>
 

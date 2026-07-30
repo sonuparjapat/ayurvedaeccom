@@ -281,10 +281,9 @@ export default function AuthScreen() {
   }
 
   const TAB_MODES: { key: Mode; label: string; icon: string }[] = [
-    { key: 'login',     label: 'Login',      icon: '🔑' },
-    { key: 'register',  label: 'Register',   icon: '✨' },
-    { key: 'otp',       label: 'Email OTP',  icon: '📧' },
-    { key: 'mobileOtp', label: 'Mobile OTP', icon: '📱' },
+    { key: 'login',    label: 'Login',     icon: '🔑' },
+    { key: 'register', label: 'Register',  icon: '✨' },
+    { key: 'otp',      label: 'Email OTP', icon: '📧' },
   ]
 
   const HEADINGS: Record<Mode, { title: string; sub: string }> = {

@@ -16,6 +16,7 @@ import { Bookmark } from 'lucide-react'
 interface CartItem {
   cart_item_id: number
   product_id: number
+  slug?: string
   variant_id: number | null
   variant_label: string | null
   variant_attributes: Record<string, string> | null

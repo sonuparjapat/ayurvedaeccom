@@ -61,7 +61,7 @@ export default function WishlistScreen() {
   useEffect(() => {
     if (!user) return
     fetchWishlist(1)
-  }, [user, search])
+  }, [user?.id, search])
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current)

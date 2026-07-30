@@ -151,6 +151,8 @@ router.get(
   admin,
   bulkController.getJobById
 )
+router.put('/orders/bulk-status', auth, admin, controller.adminBulkUpdateOrderStatus)
+
 router.get('/orders/:id', auth, admin, controller.getOrderById)
 
 router.put('/orders/:id/status', controller.updateOrderStatus)

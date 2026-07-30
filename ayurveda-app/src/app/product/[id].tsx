@@ -4,8 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ReviewImageViewer } from '../../components/ui/ReviewImageViewer'
 import { getGuestSession } from '../../utils/guestSession'
 import {
-  ActivityIndicator, Dimensions, FlatList, Image, Modal,
-  ScrollView, Share, StatusBar, StyleSheet, Text,
+  ActivityIndicator, Animated as RNAnimated, Dimensions, FlatList, Image, Modal,
+  PanResponder, ScrollView, Share, StatusBar, StyleSheet, Text,
   TouchableOpacity, View, TextInput,
 } from 'react-native'
 import { toast } from '../../components/ui/Toast'
@@ -22,6 +22,8 @@ import { router, useLocalSearchParams } from 'expo-router'
 import api from '../../api/axios'
 import { useStore } from '../../store'
 import { Colors, Fonts, Shadows, Radius } from '../../constants/theme'
+import { impact, notify as hapticNotify } from '../../utils/haptics'
+import { Haptics } from '../../utils/haptics'
 
 const { width: W } = Dimensions.get('window')
 
@@ -36,39 +38,111 @@ interface Product {
   shipping_class?: string; allow_backorder?: boolean
   highlights?: string; ingredients?: string; benefits?: string
   usage_instructions?: string; storage_instructions?: string; warnings?: string
-  video_url?: string; fssai_number?: string; coa_url?: string
+  video_url?: string; fssai_number?: string; coa_url?: string; safety_tags?: string[]
   focus_keyword?: string; min_order_qty?: number; max_order_qty?: number
   is_returnable?: boolean; sort_order?: number
 }
 interface Review { id?: number; name: string; user_name?: string; rating: number; comment: string; images?: string[]; order_id?: number }
 // console.log("hii")
-// ─── IMAGE ZOOM MODAL ─────────────────────────────────────────────────────────
-function ImageZoomModal({ uri, onClose }: { uri: string; onClose: () => void }) {
+// ─── IMAGE VIEWER MODAL (fullscreen, multi-image, pinch-to-zoom, swipe-to-dismiss) ──
+function ImageViewerModal({ images, initialIndex, onClose }: { images: string[]; initialIndex: number; onClose: () => void }) {
+  const translateY = useRef(new RNAnimated.Value(0)).current
+  const bgOpacity = useRef(new RNAnimated.Value(1)).current
+  const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  const flatRef = useRef<FlatList>(null)
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gs) =>
+        gs.dy > 10 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.8,
+      onPanResponderMove: (_, gs) => {
+        if (gs.dy > 0) {
+          translateY.setValue(gs.dy)
+          bgOpacity.setValue(Math.max(0, 1 - gs.dy / 280))
+        }
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dy > 110 || gs.vy > 0.8) {
+          RNAnimated.parallel([
+            RNAnimated.timing(translateY, { toValue: 700, duration: 220, useNativeDriver: true }),
+            RNAnimated.timing(bgOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+          ]).start(() => onClose())
+        } else {
+          RNAnimated.parallel([
+            RNAnimated.spring(translateY, { toValue: 0, useNativeDriver: true }),
+            RNAnimated.spring(bgOpacity, { toValue: 1, useNativeDriver: true }),
+          ]).start()
+        }
+      },
+    })
+  ).current
+
   return (
-    <Modal visible={!!uri} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <RNAnimated.View
+        style={{ flex: 1, backgroundColor: '#000', opacity: bgOpacity, transform: [{ translateY }] }}
+        {...panResponder.panHandlers}
+      >
+        {/* Close button */}
         <TouchableOpacity
           onPress={onClose}
-          style={{ position: 'absolute', top: 52, right: 18, zIndex: 10, padding: 10, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 22 }}
+          style={{ position: 'absolute', top: 52, right: 18, zIndex: 20, padding: 10, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 22 }}
         >
           <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>✕</Text>
         </TouchableOpacity>
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-          maximumZoomScale={4}
-          minimumZoomScale={1}
+
+        {/* Image count */}
+        {images.length > 1 && (
+          <View style={{ position: 'absolute', top: 58, left: 18, zIndex: 20, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{currentIndex + 1} / {images.length}</Text>
+          </View>
+        )}
+
+        {/* Images */}
+        <FlatList
+          ref={flatRef}
+          data={images}
+          keyExtractor={(_, i) => String(i)}
+          horizontal
+          pagingEnabled
+          initialScrollIndex={initialIndex}
+          getItemLayout={(_, index) => ({ length: W, offset: W * index, index })}
           showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          centerContent
-          bouncesZoom
-        >
-          <Image source={{ uri }} style={{ width: W, height: W * 1.1 }} resizeMode="contain" />
-        </ScrollView>
-        <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, alignItems: 'center' }}>
-          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>Pinch to zoom</Text>
+          onMomentumScrollEnd={e => setCurrentIndex(Math.round(e.nativeEvent.contentOffset.x / W))}
+          renderItem={({ item: img }) => (
+            <ScrollView
+              style={{ width: W, flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center' }}
+              maximumZoomScale={4}
+              minimumZoomScale={1}
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+              centerContent
+              bouncesZoom
+            >
+              <Image source={{ uri: img }} style={{ width: W, height: W * 1.2 }} resizeMode="contain" />
+            </ScrollView>
+          )}
+        />
+
+        {/* Dot indicators */}
+        {images.length > 1 && (
+          <View style={{ position: 'absolute', bottom: 52, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+            {images.map((_, i) => (
+              <View
+                key={i}
+                style={{ width: i === currentIndex ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === currentIndex ? '#fff' : 'rgba(255,255,255,0.38)' }}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Hint */}
+        <View style={{ position: 'absolute', bottom: 28, left: 0, right: 0, alignItems: 'center' }}>
+          <Text style={{ color: 'rgba(255,255,255,0.42)', fontSize: 11 }}>Pinch to zoom · Swipe down to close</Text>
         </View>
-      </View>
+      </RNAnimated.View>
     </Modal>
   )
 }
@@ -76,8 +150,9 @@ function ImageZoomModal({ uri, onClose }: { uri: string; onClose: () => void }) 
 // ─── IMAGE GALLERY ────────────────────────────────────────────────────────────
 function ImageGallery({ images, disc, outOfStock }: { images: string[]; disc: number | null; outOfStock: boolean }) {
   const [activeIndex, setActiveIndex] = useState(0)
-  const [zoomUri, setZoomUri] = useState('')
+  const [zoomIndex, setZoomIndex] = useState<number | null>(null)
   const flatRef = useRef<FlatList>(null)
+  const validImages = images.length > 0 ? images : []
 
   const onMomentumEnd = (e: any) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / W)
@@ -88,14 +163,18 @@ function ImageGallery({ images, disc, outOfStock }: { images: string[]; disc: nu
     <View style={{ position: 'relative' }}>
       <FlatList
         ref={flatRef}
-        data={images.length > 0 ? images : ['placeholder']}
+        data={validImages.length > 0 ? validImages : ['placeholder']}
         keyExtractor={(_, i) => String(i)}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onMomentumEnd}
-        renderItem={({ item: img }) => (
-          <TouchableOpacity activeOpacity={0.95} onPress={() => img && img !== 'placeholder' && setZoomUri(img)} style={ig.imgSlide}>
+        renderItem={({ item: img, index }) => (
+          <TouchableOpacity
+            activeOpacity={0.95}
+            onPress={() => img && img !== 'placeholder' && setZoomIndex(index)}
+            style={ig.imgSlide}
+          >
             {img && img !== 'placeholder'
               ? <Image source={{ uri: img }} style={StyleSheet.absoluteFill} resizeMode="cover" />
               : <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' }]}>
@@ -142,7 +221,13 @@ function ImageGallery({ images, disc, outOfStock }: { images: string[]; disc: nu
         </View>
       )}
 
-      <ImageZoomModal uri={zoomUri} onClose={() => setZoomUri('')} />
+      {zoomIndex !== null && validImages.length > 0 && (
+        <ImageViewerModal
+          images={validImages}
+          initialIndex={zoomIndex}
+          onClose={() => setZoomIndex(null)}
+        />
+      )}
     </View>
   )
 }
@@ -179,9 +264,11 @@ function ReviewItem({ r, index }: { r: Review; index: number }) {
           </View>
           <View>
             <Text style={rv.name}>{r.name}</Text>
-            <View style={rv.verifiedBadge}>
-              <Text style={rv.verifiedText}>✓ Verified</Text>
-            </View>
+            {(r as any).is_verified_purchase && (
+              <View style={rv.verifiedBadge}>
+                <Text style={rv.verifiedText}>✓ Verified Purchase</Text>
+              </View>
+            )}
           </View>
         </View>
         <View style={{ flexDirection: 'row', gap: 2 }}>
@@ -287,20 +374,6 @@ export default function ProductDetailScreen() {
   const wishStyle = useAnimatedStyle(() => ({ transform: [{ scale: wishScale.value }] }))
 
   useEffect(() => {
-    if (!user?.id || !id) return
-    api.get(`/shop/reviews/product/${id}`, { params: { me: 1 } })
-      .then(r => {
-        const mine = (r.data?.data || [])[0]
-        if (mine) {
-          setMyRating(mine.rating || 0)
-          setMyComment(mine.comment || '')
-          setMyExistingImages(mine.images || [])
-        }
-      })
-      .catch(() => {})
-  }, [user?.id, id])
-
-  useEffect(() => {
     if (!id) return
     fetchProduct()
     fetchReviews(1)
@@ -369,6 +442,28 @@ export default function ProductDetailScreen() {
   const effectiveInventory = selectedVariant ? selectedVariant.inventory : product?.inventory ?? 0
   const effectivePrice = flashPrice ?? (selectedVariant ? selectedVariant.price : product?.price ?? '0')
 
+  const handleBuyNow = () => {
+    if (!product || effectiveInventory === 0) return
+    if (variants.length > 0 && !selectedVariant) {
+      toast.warning('Please select a variant first')
+      return
+    }
+    router.push({
+      pathname: '/checkout',
+      params: {
+        mode: 'buynow',
+        productId: String(product.id),
+        quantity: String(qty),
+        variantId: selectedVariant ? String(selectedVariant.id) : '',
+        productName: product.name,
+        price: String(effectivePrice),
+        image: product.images?.[0] || '',
+        gst_percent: String(product.gst_percent || 0),
+        variantLabel: selectedVariant?.label || '',
+      },
+    })
+  }
+
   const handleAddCart = async () => {
     if (!product || effectiveInventory === 0) return
     if (variants.length > 0 && !selectedVariant) {
@@ -393,10 +488,12 @@ export default function ProductDetailScreen() {
       if (inCart && qty !== cartQty) {
         // Update existing cart item quantity
         await api.put('/cart', base)
+        impact(Haptics.ImpactFeedbackStyle.Medium)
         toast.success('Quantity updated!')
       } else {
         // Fresh add
         await api.post('/cart', base)
+        hapticNotify(Haptics.NotificationFeedbackType.Success)
         toast.success('Added to cart!')
       }
 
@@ -437,6 +534,7 @@ export default function ProductDetailScreen() {
     if (!user) { setAuthOpen(true); return }
     const next = !wished
     setWished(next)
+    impact(Haptics.ImpactFeedbackStyle.Light)
     wishScale.value = withSequence(withSpring(1.4, { damping: 8 }), withSpring(1, { damping: 12 }))
     try { await api.post('/shop/wishlist', { productId: product?.id || id }) }
     catch { setWished(!next) }
@@ -494,7 +592,7 @@ export default function ProductDetailScreen() {
     } finally { setQaSubmitting(false) }
   }
 
-  const cartItem = cartData.items.find(i => i.product_id === Number(id) && (!selectedVariant || i.variant_id === selectedVariant?.id))
+  const cartItem = cartData.items.find(i => i.product_id === (product?.id ?? Number(id)) && (!selectedVariant || i.variant_id === selectedVariant?.id))
   const inCart = !!cartItem
 
   // Sync qty from cart when item is detected in cart for the first time
@@ -571,13 +669,17 @@ export default function ProductDetailScreen() {
             <View style={ss.catTag}>
               <Text style={ss.catTagText}>{product.category_name || 'Organic'}</Text>
             </View>
-            {product.inventory > 0
-              ? <View style={[ss.catTag, { backgroundColor: '#e8f5ee', borderColor: '#bbf7d0' }]}>
-                <Text style={[ss.catTagText, { color: '#059669' }]}>✓ In Stock</Text>
-              </View>
-              : <View style={[ss.catTag, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}>
-                <Text style={[ss.catTagText, { color: '#ef4444' }]}>Out of Stock</Text>
-              </View>
+            {product.inventory === 0
+              ? <View style={[ss.catTag, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}>
+                  <Text style={[ss.catTagText, { color: '#ef4444' }]}>Out of Stock</Text>
+                </View>
+              : effectiveInventory > 0 && effectiveInventory <= 10
+              ? <View style={[ss.catTag, { backgroundColor: '#fff7ed', borderColor: '#fed7aa' }]}>
+                  <Text style={[ss.catTagText, { color: '#c2410c' }]}>🔥 Only {effectiveInventory} left!</Text>
+                </View>
+              : <View style={[ss.catTag, { backgroundColor: '#e8f5ee', borderColor: '#bbf7d0' }]}>
+                  <Text style={[ss.catTagText, { color: '#059669' }]}>✓ In Stock</Text>
+                </View>
             }
           </View>
 
@@ -748,6 +850,20 @@ export default function ProductDetailScreen() {
                 <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#1e40af' }}>View COA / Lab Report →</Text>
               </View>
             </TouchableOpacity>
+          )}
+
+          {/* SAFETY TAGS */}
+          {product.safety_tags && product.safety_tags.length > 0 && (
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 11, color: Colors.textDim, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Safety & Certifications</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                {product.safety_tags.map((tag: string, i: number) => (
+                  <View key={i} style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#ecfdf5', borderRadius: 99, borderWidth: 1, borderColor: '#6ee7b7' }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: '#059669' }}>✓ {tag}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
           )}
 
           {/* NON-RETURNABLE NOTICE */}
@@ -1206,45 +1322,61 @@ export default function ProductDetailScreen() {
       </Animated.ScrollView>
 
       {/* Bottom CTA */}
-      <Animated.View entering={FadeInUp.delay(300)} style={[ss.bottomCta, { paddingBottom: insets.bottom + 12 }]}>
+      <Animated.View entering={FadeInUp.delay(300)} style={[ss.bottomCta, { paddingBottom: insets.bottom + 12, flexDirection: 'column', gap: 8 }]}>
         <LinearGradient
           colors={['rgba(255,255,255,0.96)', 'rgba(240,253,244,0.98)']}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
         />
-        <View style={{ flex: 1 }}>
-          <Text style={[ss.ctaPrice, { color: Colors.emerald }]}>₹{effectivePrice}</Text>
-          {product.compareprice && Number(effectivePrice) < Number(product.compareprice) && (
-            <Text style={ss.ctaMrp}>₹{product.compareprice}</Text>
-          )}
-        </View>
-        <TouchableOpacity
-          onPress={handleAddCart}
-          disabled={effectiveInventory === 0 || cartLoading}
-          style={{ flex: 2.2 }}
-          activeOpacity={0.87}
-        >
-          <LinearGradient
-            colors={
-              effectiveInventory === 0 ? ['#9ca3af', '#6b7280']
-                : (variants.length > 0 && !selectedVariant) ? ['#9ca3af', '#6b7280']
-                : inCart && qty !== cartQty ? ['#d97706', '#b45309']
-                : inCart ? ['#059669', '#0d9488']
-                  : [Colors.forest, Colors.moss]
-            }
-            style={ss.ctaBtn}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={[ss.ctaPrice, { color: Colors.emerald }]}>₹{effectivePrice}</Text>
+            {product.compareprice && Number(effectivePrice) < Number(product.compareprice) && (
+              <Text style={ss.ctaMrp}>₹{product.compareprice}</Text>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={handleAddCart}
+            disabled={effectiveInventory === 0 || cartLoading}
+            style={{ flex: 1.4 }}
+            activeOpacity={0.87}
           >
-            <Text style={ss.ctaBtnText}>
-              {cartLoading ? '·  Updating...'
-                : effectiveInventory === 0 ? '🚫  Out of Stock'
-                : (variants.length > 0 && !selectedVariant) ? 'Select Variant'
-                : inCart && qty !== cartQty ? '↻  Update Cart'
-                  : inCart ? '✓  In Cart'
-                    : '🛍️  Add to Cart'}
-            </Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={
+                effectiveInventory === 0 ? ['#9ca3af', '#6b7280']
+                  : (variants.length > 0 && !selectedVariant) ? ['#9ca3af', '#6b7280']
+                  : inCart && qty !== cartQty ? ['#d97706', '#b45309']
+                  : inCart ? ['#059669', '#0d9488']
+                    : [Colors.forest, Colors.moss]
+              }
+              style={ss.ctaBtn}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            >
+              <Text style={ss.ctaBtnText}>
+                {cartLoading ? '·  Updating...'
+                  : effectiveInventory === 0 ? '🚫  Out of Stock'
+                  : (variants.length > 0 && !selectedVariant) ? 'Select Variant'
+                  : inCart && qty !== cartQty ? '↻  Update Cart'
+                    : inCart ? '✓  In Cart'
+                      : '🛍️  Add to Cart'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleBuyNow}
+            disabled={effectiveInventory === 0}
+            style={{ flex: 1.2 }}
+            activeOpacity={0.87}
+          >
+            <LinearGradient
+              colors={effectiveInventory === 0 ? ['#9ca3af', '#6b7280'] : ['#f59e0b', '#d97706']}
+              style={ss.ctaBtn}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            >
+              <Text style={ss.ctaBtnText}>⚡ Buy Now</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </View>
   )

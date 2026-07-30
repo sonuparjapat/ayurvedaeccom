@@ -195,7 +195,7 @@ exports.getCategoryById = async (req, res) => {
     /* Fetch subcategories */
     const subcategories = await pool.query(
       `SELECT id, name, slug, image_url FROM categories WHERE parent_id = $1 AND is_active = TRUE ORDER BY sort_order`,
-      [id]
+      [result.rows[0].id]
     );
 
     return sendSuccess(res, { ...result.rows[0], subcategories: subcategories.rows });

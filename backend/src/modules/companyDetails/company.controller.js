@@ -137,11 +137,21 @@ exports.updateCompany = async (req, res) => {
       try { body.social_links = JSON.parse(body.social_links); } catch { delete body.social_links; }
     }
 
-    const fields = Object.keys(body);
-    const values = Object.values(body).map((v, i) => {
-      if (fields[i] === 'social_links') return typeof v === 'object' ? JSON.stringify(v) : v;
+    const ALLOWED_FIELDS = new Set([
+      'company_name', 'email', 'phone', 'website', 'gst_number',
+      'address_line1', 'city', 'state', 'country', 'pincode',
+      'support_email', 'logo_url', 'social_links', 'extra_data',
+      'privacy_policy', 'terms_conditions', 'shipping_policy', 'return_policy',
+    ]);
+
+    const fields = Object.keys(body).filter(f => ALLOWED_FIELDS.has(f));
+    const values = fields.map((f) => {
+      const v = body[f];
+      if (f === 'social_links') return typeof v === 'object' ? JSON.stringify(v) : v;
       return v;
     });
+
+    if (!fields.length) return res.status(400).json({ success: false, message: 'No valid fields to update' });
 
     const setQuery = fields.map((f, i) => `${f}=$${i + 1}`).join(', ');
 

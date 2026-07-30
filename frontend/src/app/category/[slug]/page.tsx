@@ -311,6 +311,7 @@ export default function CategoryPage() {
   const [page, setPage] = useState(1)
   const limit = 9
   const [total, setTotal] = useState(0)
+  const [suggestion, setSuggestion] = useState<string | null>(null)
 
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -400,6 +401,7 @@ export default function CategoryPage() {
       })
       setProducts(res.data.products || [])
       setTotal(res.data.total || 0)
+      setSuggestion(res.data.suggestion || null)
     } catch {
       notify.error('Failed to load products')
     } finally {
@@ -487,15 +489,8 @@ export default function CategoryPage() {
       payload
     );
 
-    if (res.status === 200) {
-      fetchCart(
-        loginuserdata?.id
-      );
-
-      notify.success(
-        "Woah..Product is Added to cart!"
-      );
-    }
+    fetchCart(loginuserdata?.id);
+    notify.success("Woah..Product is Added to cart!");
 
   } catch (err: any) {
     if (
@@ -534,6 +529,22 @@ export default function CategoryPage() {
     }));
   }
 };
+
+  const buyNow = (p: Product) => {
+    if (p.inventory === 0) return;
+    const item = {
+      productId: p.id,
+      quantity: 1,
+      variantId: null,
+      name: p.name,
+      price: Number(p.price),
+      image: p.images?.[0] || '',
+      gst_percent: (p as any).gst_percent || 0,
+      variantLabel: null,
+    };
+    sessionStorage.setItem('buyNowItem', JSON.stringify(item));
+    router.push('/checkout?mode=buynow');
+  };
 
   const clearAllFilters = () => {
     setSearchInput('')
@@ -789,6 +800,14 @@ export default function CategoryPage() {
                 <><ShoppingCart size={14} /> Add to Cart</>
               )}
             </button>
+            {!outOfStock && (
+              <button
+                onClick={() => buyNow(p)}
+                className="w-full py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-1 bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-500 transition-all duration-200"
+              >
+                ⚡ Buy Now
+              </button>
+            )}
           </div>
         </div>
       </motion.div>
@@ -889,6 +908,14 @@ export default function CategoryPage() {
                     <><ShoppingCart size={14} /> Add to Cart</>
                   )}
                 </button>
+                {!outOfStock && (
+                  <button
+                    onClick={() => buyNow(p)}
+                    className="px-4 h-10 rounded-xl text-sm font-bold flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white transition-all"
+                  >
+                    ⚡ Buy Now
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1305,6 +1332,18 @@ export default function CategoryPage() {
                       <Package size={44} className="text-gray-300" />
                     </div>
                     <h3 className="text-xl font-black text-gray-700 mb-2">No products found</h3>
+                    {suggestion && (
+                      <p className="text-sm text-gray-600 mb-3">
+                        Did you mean{' '}
+                        <button
+                          onClick={() => { setSearchInput(suggestion); setSearchTerm(suggestion) }}
+                          className="text-emerald-600 font-semibold underline hover:text-emerald-700"
+                        >
+                          {suggestion}
+                        </button>
+                        ?
+                      </p>
+                    )}
                     <p className="text-gray-400 text-sm mb-6 max-w-xs mx-auto">
                       Try adjusting your filters or search to find what you're looking for.
                     </p>

@@ -97,7 +97,7 @@ export default function AdminAuthPage() {
 
 if(res?.status==200){
 setSuccessMessage('Login successful! Redirecting...')
-login(res?.data?.data)
+login(res?.data?.admin)
 
         router.push('/admin/dashboard')
 }

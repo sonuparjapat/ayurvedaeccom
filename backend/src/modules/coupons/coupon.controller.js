@@ -41,7 +41,7 @@ exports.getActiveCoupons = async (req, res) => {
              type AS discount_type,
              value AS discount_value,
              min_order AS min_order_amount,
-             max_discount, valid_to, description, user_id
+             max_discount, valid_to, description, user_id, usage_per_user
       FROM coupons
       WHERE ${baseFilter} AND ${userFilter}
       ORDER BY user_id DESC NULLS LAST, min_order ASC, created_at DESC
