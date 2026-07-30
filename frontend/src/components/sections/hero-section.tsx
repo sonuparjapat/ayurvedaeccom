@@ -141,7 +141,7 @@ export function HeroSection() {
         .hero-root { position: relative; min-height: 100svh; background: var(--cream); overflow: hidden; }
         .hero-inner {
           position: relative; z-index: 3;
-          max-width: 1280px; margin: 0 auto; padding: 80px 24px 24px;
+          max-width: min(1600px, 100%); margin: 0 auto; padding: 80px 24px 24px;
           min-height: 100svh; display: flex; flex-direction: column; justify-content: center;
         }
         .hero-grid { display: grid; grid-template-columns: 1fr; gap: 48px; align-items: center; }
@@ -336,7 +336,7 @@ export function HeroSection() {
         /* ── Trust bar ── */
         .trust-bar { position:relative; z-index:10; background:linear-gradient(180deg,rgba(5,18,12,0.70) 0%,rgba(5,18,12,0.85) 100%); backdrop-filter:blur(20px); border-top:1px solid rgba(16,185,129,.15); padding:16px 0; margin-top:16px; }
         .trust-bar::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(16,185,129,.4),transparent); }
-        .trust-inner { max-width:1280px; margin:0 auto; padding:0 24px; }
+        .trust-inner { max-width:min(1600px,100%); margin:0 auto; padding:0 24px; }
         @media(min-width:1024px) { .trust-inner { padding:0 48px; } }
         .trust-desktop { display:none; align-items:center; justify-content:space-between; }
         @media(min-width:1024px) { .trust-desktop { display:flex; } }

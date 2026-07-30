@@ -309,7 +309,7 @@ export default function CheckoutScreen() {
     if (!couponInput.trim()) return
     setCouponApplying(true); setCouponError('')
     try {
-      const res = await api.post('/coupons/apply', { code: couponInput.trim(), cartTotal: subtotal + tax })
+      const res = await api.post('/coupons/apply', { code: couponInput.trim(), cartTotal: subtotal })
       setAppliedCoupon({ code: res.data.coupon.code, discount: res.data.discount })
       setCouponInput(res.data.coupon.code)
       toast.success(res.data.message)

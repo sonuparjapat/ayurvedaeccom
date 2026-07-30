@@ -55,6 +55,38 @@ export default function Home() {
           }),
         }}
       />
+      {/* LocalBusiness JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'OnlineStore',
+            name: 'Oroganix',
+            url: process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com',
+            logo: 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png',
+            image: 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png',
+            description: 'Premium Ayurvedic herbs, organic supplements, natural wellness products. 100% organic, FSSAI certified, lab-tested, farm-direct. Free delivery above ₹499.',
+            priceRange: '₹₹',
+            currenciesAccepted: 'INR',
+            paymentAccepted: 'Credit Card, Debit Card, UPI, Cash on Delivery',
+            email: 'support@oroganix.com',
+            hasOfferCatalog: {
+              '@type': 'OfferCatalog',
+              name: 'Ayurvedic & Organic Products',
+              itemListElement: [
+                { '@type': 'Offer', itemOffered: { '@type': 'Product', name: 'Ayurvedic Herbs' } },
+                { '@type': 'Offer', itemOffered: { '@type': 'Product', name: 'Organic Supplements' } },
+                { '@type': 'Offer', itemOffered: { '@type': 'Product', name: 'Natural Dry Fruits' } },
+              ],
+            },
+            sameAs: [
+              'https://www.instagram.com/oroganix',
+              'https://www.facebook.com/oroganix',
+            ],
+          }),
+        }}
+      />
       <Header />
       <main className="flex-1">
         <HeroSection />

@@ -609,3 +609,18 @@ All three also update the bell counter in real time without page refresh.
 ## Display on Large Monitors
 
 The website now expands properly on large monitors and 2K/4K screens. Previously, the header and page content were limited to 1280px wide even on wide screens. The layout now expands to 1600px on 1600px+ monitors and up to 1920px on full-HD and larger displays, making full use of the available screen space.
+
+## Display on Large Monitors — Extended (2026-07-30)
+
+The layout expansion now covers all page sections (not just the header and footer). Product listings, category grids, hero section, offer strip, and all homepage sections now adapt their width on large screens:
+
+- **1600px+ monitors**: Section content expands to ~1440px wide (previously 1280px).
+- **1920px+ monitors**: Section content expands to ~1792px wide — filling the screen properly.
+
+This update affects the homepage sections, products listing, search results, product detail, category pages, and brand pages.
+
+## Security Note for Users
+
+The checkout and account pages are fully secured — authentication tokens are only accepted via secure HTTP cookies and authorization headers. They are never transmitted through browser URLs.
+
+File uploads (product images, return photos) are restricted to image files only (JPG, PNG, WEBP, GIF). Non-image files are automatically rejected.

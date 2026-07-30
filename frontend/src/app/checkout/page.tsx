@@ -540,7 +540,7 @@ const applyCoupon = async () => {
   try {
     setCouponApplying(true)
     setCouponError('')
-    const res = await axios.post('/coupons/apply', { code: couponInput.trim(), cartTotal: subtotal + tax })
+    const res = await axios.post('/coupons/apply', { code: couponInput.trim(), cartTotal: subtotal })
     setAppliedCoupon({ code: res.data.coupon.code, discount: res.data.discount })
     toast.success(`Coupon applied! You save ₹${res.data.discount.toFixed(2)}`)
   } catch (err: any) {

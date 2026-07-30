@@ -1246,3 +1246,56 @@ curl -X POST http://localhost:5000/api/orders/webhook \
 - **Verify**: Header (navbar), footer, and page content all expand to fill more of the screen — no 300+ px empty gutters on both sides.
 - **Check breakpoints**: At 1600px the content expands to ~1600px wide; at 1920px it expands to 1920px.
 - **Mobile/laptop unchanged**: On screens below 1600px the layout should look identical to before.
+
+## Phase 4 Tests (2026-07-30)
+
+### Security
+
+#### JWT query token removed
+- Open any protected API endpoint directly in browser address bar with `?token=<jwt>` appended.
+- **Expected**: 401 Unauthorized — query param tokens are no longer accepted.
+- **Test via**: `curl http://localhost:5000/api/wallet?token=<valid_jwt>` → must return `{"message":"Unauthorized"}`.
+
+#### File upload type filter
+- Try uploading a `.php`, `.html`, or `.exe` file via any admin image upload field.
+- **Expected**: Upload rejected with "Only JPG, PNG, WEBP, GIF images are allowed" error.
+- Only JPG/PNG/WEBP/GIF files should be accepted.
+
+### Calculations
+
+#### Coupon discount preview matches checkout deduction
+- Add products totalling ₹500 to cart. Apply a 10% coupon (`min_order=0`).
+- **Coupon preview** at coupon apply step should show ₹50 discount (10% of ₹500 subtotal).
+- **Order total** at checkout should also reflect exactly ₹50 coupon deduction.
+- Previously the preview was calculated on `subtotal + GST` (slightly higher), now both use `subtotal` only — they should match.
+
+### SEO
+
+#### Sitemap includes brands and dosha-quiz
+- Visit `/sitemap.xml` on the deployed site.
+- **Verify**: Brand URLs (`/brand/<slug>`) appear in the sitemap.
+- **Verify**: `/dosha-quiz` appears as a static route.
+
+#### Brand page Open Graph
+- Paste any brand page URL (e.g. `/brand/himalaya`) into https://www.opengraph.xyz or Facebook Debugger.
+- **Expected**: Brand name as title, brand description, brand logo image — not the generic site OG fallback.
+
+#### LocalBusiness schema on homepage
+- Visit homepage source or use https://validator.schema.org/.
+- **Expected**: Three JSON-LD blocks — `Organization`, `WebSite`, and `OnlineStore`.
+
+### Responsive layout
+
+#### Wide-screen content expansion (all pages)
+- Open browser at full width on a 1920px+ screen (or set devtools viewport to 1920px).
+- **Verify**: Category section, products section, features section, offer strip, and hero section all use wider content (not stuck at 1280px).
+- At 1600px viewport: `max-w-7xl` sections should expand to ~1440px wide.
+- At 1920px viewport: `max-w-7xl` sections should expand to ~1792px wide.
+
+### Category endpoints now require admin auth
+- Try `POST /api/categories` without being logged in as admin → must return 401.
+- Try `DELETE /api/categories/1` without admin cookie → must return 401.
+- **GET** routes remain public: `GET /api/categories` must still return data without auth.
+
+### Test-mail endpoint removed
+- `GET /api/test-mail` must return 404 (route no longer exists).

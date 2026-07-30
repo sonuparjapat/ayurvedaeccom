@@ -122,16 +122,18 @@
   }
 }
 
-/* Wide-screen container expansion — prevents narrow content on 1920px+ monitors */
-@media (min-width: 1920px) {
-  .container {
-    max-width: 1920px !important;
-  }
+/* Wide-screen content expansion — prevents narrow content on large monitors */
+@media (min-width: 1600px) {
+  .container   { max-width: 1600px !important; }
+  .max-w-7xl   { max-width: 90rem !important; }    /* 1440px */
+  .max-w-6xl   { max-width: 80rem !important; }    /* 1280px */
+  .max-w-5xl   { max-width: 72rem !important; }    /* 1152px */
 }
-@media (min-width: 1600px) and (max-width: 1919px) {
-  .container {
-    max-width: 1600px !important;
-  }
+@media (min-width: 1920px) {
+  .container   { max-width: 1920px !important; }
+  .max-w-7xl   { max-width: 112rem !important; }   /* 1792px */
+  .max-w-6xl   { max-width: 100rem !important; }   /* 1600px */
+  .max-w-5xl   { max-width: 88rem !important; }    /* 1408px */
 }
 
 .input {

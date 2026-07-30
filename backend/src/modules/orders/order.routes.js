@@ -10,7 +10,6 @@ const upload = require("../../config/multer");
 
 router.post("/buy-now", auth, controller.buyNow);
 router.post("/create", auth, controller.createOrder);
-router.post("/buy-now", auth, controller.buyNow);
 router.post("/verify", auth, controller.verifyPayment);
 router.get("/my-orders", auth, controller.getMyOrders);
 router.get("/payment-redirect", controller.paymentRedirect);

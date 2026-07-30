@@ -1188,3 +1188,85 @@ Uses `expo-haptics` via shared utility at `ayurveda-app/src/utils/haptics.ts`.
 - **Footer fix** (`frontend/src/components/layout/footer.tsx`): Changed all three inner wrappers (newsletter, body, bottom) from `max-width: 1280px` → `1600px`.
 - **Tailwind config** (`frontend/tailwind.config.ts`): Added `3xl: '1920px'` to `screens`.
 - **Global CSS** (`frontend/src/app/globals.css`): Added `@media (min-width: 1600px)` rule capping `.container` at `1600px`, and `@media (min-width: 1920px)` at `1920px`.
+
+---
+
+## Bug-Fix Audit — Phase 4 (2026-07-30)
+
+### Security fixes
+
+#### JWT token in URL query — `auth.js`
+- **Root cause**: `exports.auth` accepted `req.query.token` as a fallback — JWT tokens in URLs appear in server logs, browser history, and HTTP `Referer` headers.
+- **Fix**: Removed the `if (!token && req.query.token)` block. Only `req.cookies.token` and `Authorization: Bearer <token>` headers are now accepted.
+- **File**: `backend/src/middlewares/auth.js`
+
+#### File upload accepts any MIME type — `upload.js`
+- **Root cause**: The `middlewares/upload.js` multer config had no `fileFilter`, accepting any file type up to 10 MB (including PHP/HTML/exe).
+- **Fix**: Added `fileFilter` allowing only `image/jpeg`, `image/png`, `image/webp`, `image/gif`. All other types rejected with a 400 error.
+- **File**: `backend/src/middlewares/upload.js`
+
+#### Duplicate route registration — `order.routes.js`
+- **Root cause**: `router.post("/buy-now", auth, controller.buyNow)` was registered twice (lines 11 and 13). Express silently ignores the second registration but it's misleading.
+- **Fix**: Removed the duplicate line.
+- **File**: `backend/src/modules/orders/order.routes.js`
+
+---
+
+### Calculation fixes
+
+#### Coupon applied to wrong base amount (web + mobile)
+- **Root cause**: The coupon preview API (`/coupons/apply`) was called with `cartTotal: subtotal + tax`. However, the order controller's coupon validation uses `subtotal` alone (pre-tax) as the base for both min-order check and percent discount calculation. This caused the preview discount to be slightly higher than what was actually deducted at order creation.
+- **Fix**: Changed `cartTotal` to `subtotal` (without tax) in both:
+  - `frontend/src/app/checkout/page.tsx` (web)
+  - `ayurveda-app/src/app/checkout/index.tsx` (mobile)
+- **Note**: The backend (`order.controller.js`) is the source of truth and always re-validates with the correct `subtotal` base, so there was no financial loss — only a UI discrepancy in the shown discount amount.
+
+---
+
+### SEO improvements
+
+#### Brands + dosha-quiz missing from sitemap
+- `dosha-quiz` added to static routes with `priority: 0.8`.
+- Brand pages (`/brand/[slug]`) dynamically fetched from `/api/brands` and added.
+- **File**: `frontend/src/app/sitemap.ts`
+
+#### Brand pages had no Open Graph or Twitter Card
+- Created `frontend/src/app/brand/[slug]/layout.tsx` with `generateMetadata` that fetches `/api/brands/:slug` and returns proper `title`, `description`, `openGraph`, and `twitter` metadata.
+- Pattern mirrors the existing `category/[slug]/layout.tsx`.
+
+#### Homepage missing LocalBusiness / OnlineStore JSON-LD
+- Added `@type: OnlineStore` (subtype of `LocalBusiness`) JSON-LD block to `frontend/src/app/page.tsx`.
+- Includes: `priceRange`, `currenciesAccepted`, `paymentAccepted`, `hasOfferCatalog`, and `sameAs` social links.
+- Helps Google classify the site as an e-commerce store for rich result eligibility.
+
+---
+
+### Responsive layout — wide screens (continued)
+
+#### Content sections still narrow at 1920px+
+All major Tailwind utility classes overridden in `frontend/src/app/globals.css`:
+
+| Class | Default | @1600px+ | @1920px+ |
+|---|---|---|---|
+| `max-w-7xl` | 1280px | 1440px | 1792px |
+| `max-w-6xl` | 1152px | 1280px | 1600px |
+| `max-w-5xl` | 1024px | 1152px | 1408px |
+| `.container` | per-Tailwind | 1600px | 1920px |
+
+Hero section inline CSS also updated:
+- `.hero-inner`: `max-width: 1280px` → `min(1600px, 100%)`
+- `.trust-inner`: `max-width: 1280px` → `min(1600px, 100%)`
+- **File**: `frontend/src/components/sections/hero-section.tsx`
+
+---
+
+## Security fixes — addendum (2026-07-30)
+
+### Critical: Category CRUD endpoints were publicly accessible
+- **Root cause**: `POST /api/categories`, `PUT /api/categories/:id`, `DELETE /api/categories/:id` were in the open routes file (`routesapi.route.js`) with no auth middleware. Any unauthenticated user on the internet could create, edit, or delete categories.
+- **Fix**: Added `admin` middleware (requires role 1 or 2 via cookie JWT) to all three mutation routes. Read-only GET routes remain public.
+- **File**: `backend/src/modules/openRoutedapis/routesapi.route.js`
+
+### Debug test-mail endpoint removed
+- **Root cause**: `GET /api/test-mail` was a development endpoint left in production code. It: (1) logged the Brevo API key to stdout, (2) sent a real email to a hardcoded address on every request, (3) was publicly accessible.
+- **Fix**: Entire route handler removed from `routesapi.route.js`.
