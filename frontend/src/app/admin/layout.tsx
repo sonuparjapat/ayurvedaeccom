@@ -87,7 +87,13 @@ export default function AdminLayout({
   useEffect(() => {
     if (!loginuserdata?.role || ![1,2].includes(Number(loginuserdata.role))) return
     let socket: any = null
-    const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '')
+    const getSocketRoot = () => {
+      try {
+        const u = new URL(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api')
+        return `${u.protocol}//${u.host}`
+      } catch { return 'http://localhost:5000' }
+    }
+    const API_ROOT = getSocketRoot()
     import('socket.io-client').then(({ io }) => {
       socket = io(API_ROOT, { transports: ['websocket', 'polling'] })
       socket.on('connect', () => socket.emit('join_admin'))
