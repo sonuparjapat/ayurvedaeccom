@@ -550,6 +550,12 @@ export default function AccountContent() {
   const [pagedOrders, setPagedOrders] = useState<Order[]>([])
   const [ordersPageLoading, setOrdersPageLoading] = useState(false)
 
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelCustomReason, setCancelCustomReason] = useState('')
+  const [cancelling, setCancelling] = useState(false)
+
   const statusCodeToLabel = (s: number) => {
     const map: Record<number, string> = { 0:'pending',1:'confirmed',2:'processing',3:'shipped',4:'out_for_delivery',5:'delivered',6:'cancelled',7:'return_requested',8:'returned',9:'refunded' }
     return map[s] || 'pending'
@@ -576,6 +582,25 @@ export default function AccountContent() {
       setOrdersPage(page)
     } catch {}
     finally { setOrdersPageLoading(false) }
+  }
+
+  const handleCancelOrder = async (reason: string) => {
+    if (!cancellingOrderId) return
+    try {
+      setCancelling(true)
+      await axios.post(`/orders/${cancellingOrderId}/cancel`, { reason })
+      toast.success('Order cancelled successfully')
+      setShowCancelModal(false)
+      loadOrders(loginuserdata?.id)
+      loadPagedOrders(ordersPage)
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Cancel failed')
+    } finally {
+      setCancelling(false)
+      setCancellingOrderId(null)
+      setCancelReason('')
+      setCancelCustomReason('')
+    }
   }
 
   /* ================= LOAD ================= */
@@ -1249,16 +1274,11 @@ const handleSaveAddress = async (data: any) => {
                                   size="sm"
                                   variant="outline"
                                   className="border-red-200 text-red-600 hover:bg-red-50 rounded-xl gap-1.5 text-xs"
-                                  onClick={async () => {
-                                    if (!window.confirm('Cancel this order?')) return
-                                    try {
-                                      await axios.post(`/orders/${order.id}/cancel`, { reason: 'Cancelled by customer' })
-                                      toast.success('Order cancelled')
-                                      loadOrders(loginuserdata?.id)
-                                      loadPagedOrders(ordersPage)
-                                    } catch (e: any) {
-                                      toast.error(e?.response?.data?.message || 'Cancel failed')
-                                    }
+                                  onClick={() => {
+                                    setCancellingOrderId(order.id)
+                                    setCancelReason('')
+                                    setCancelCustomReason('')
+                                    setShowCancelModal(true)
                                   }}
                                 >
                                   <AlertCircle size={13} /> Cancel
@@ -1338,37 +1358,78 @@ const handleSaveAddress = async (data: any) => {
                                 ]
                                 const statusOrder = ['pending','confirmed','processing','shipped','out_for_delivery','delivered']
                                 const currentIdx = statusOrder.indexOf(order.status)
+                                const isTerminal = ['cancelled','return_requested','returned','refunded'].includes(order.status)
                                 return (
                                   <div>
-                                    {/* Status Timeline */}
-                                    <div className="flex items-start gap-0 overflow-x-auto pb-2 mb-4">
-                                      {steps.map((step, i) => {
-                                        const done = i <= currentIdx
-                                        const active = i === currentIdx
-                                        return (
-                                          <div key={step.key} className="flex flex-col items-center" style={{ minWidth: 80 }}>
-                                            <div className="flex items-center w-full">
-                                              {i > 0 && <div className={`flex-1 h-0.5 ${i <= currentIdx ? 'bg-emerald-500' : 'bg-gray-200'}`} />}
-                                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 ${active ? 'border-emerald-500 bg-emerald-500 text-white' : done ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-gray-200 bg-white text-gray-400'}`}>
-                                                {step.icon}
-                                              </div>
-                                              {i < steps.length - 1 && <div className={`flex-1 h-0.5 ${i < currentIdx ? 'bg-emerald-500' : 'bg-gray-200'}`} />}
-                                            </div>
-                                            <p className={`text-[10px] mt-1 text-center font-medium ${done ? 'text-emerald-700' : 'text-gray-400'}`}>{step.label}</p>
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                    {/* Courier Info */}
-                                    {tr.tracking_number ? (
-                                      <div className="bg-white rounded-xl border border-emerald-100 p-3 flex flex-wrap gap-4 text-xs">
-                                        <div><p className="text-gray-400 font-medium uppercase tracking-wide">Courier</p><p className="font-bold text-gray-800 mt-0.5">{tr.courier_name || '—'}</p></div>
-                                        <div><p className="text-gray-400 font-medium uppercase tracking-wide">Tracking No.</p><p className="font-bold text-gray-800 mt-0.5 font-mono">{tr.tracking_number}</p></div>
-                                        {tr.shipped_at && <div><p className="text-gray-400 font-medium uppercase tracking-wide">Shipped</p><p className="font-bold text-gray-800 mt-0.5">{new Date(tr.shipped_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</p></div>}
-                                        {tr.estimated_delivery && <div><p className="text-gray-400 font-medium uppercase tracking-wide">Est. Delivery</p><p className="font-bold text-emerald-700 mt-0.5">{new Date(tr.estimated_delivery).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</p></div>}
+                                    {isTerminal ? (
+                                      /* ── Terminal state banner (cancelled / returned / refunded) ── */
+                                      <div className={`rounded-xl border p-4 mb-3 ${
+                                        order.status === 'cancelled' ? 'bg-red-50 border-red-100' :
+                                        order.status === 'refunded'  ? 'bg-emerald-50 border-emerald-100' :
+                                        'bg-amber-50 border-amber-100'
+                                      }`}>
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="text-xl">
+                                            {order.status === 'cancelled' ? '❌' : order.status === 'refunded' ? '↩️' : '📦'}
+                                          </span>
+                                          <span className={`font-bold text-sm ${
+                                            order.status === 'cancelled' ? 'text-red-700' :
+                                            order.status === 'refunded'  ? 'text-emerald-700' :
+                                            'text-amber-700'
+                                          }`}>
+                                            {order.status === 'cancelled'        ? 'Order Cancelled' :
+                                             order.status === 'return_requested' ? 'Return Requested' :
+                                             order.status === 'returned'         ? 'Order Returned'  : 'Order Refunded'}
+                                          </span>
+                                        </div>
+                                        {(order as any).cancel_reason && (
+                                          <p className="text-xs text-gray-500 mt-1">Reason: {(order as any).cancel_reason}</p>
+                                        )}
+                                        {(order as any).refund_amount && (
+                                          <p className={`text-xs font-semibold mt-1.5 ${
+                                            (order as any).refund_status === 'processed' ? 'text-emerald-700' :
+                                            (order as any).refund_status === 'failed'    ? 'text-red-600'    : 'text-amber-600'
+                                          }`}>
+                                            Refund ₹{Number((order as any).refund_amount).toFixed(2)} —{' '}
+                                            {(order as any).refund_status === 'processed' ? '✓ Processed' :
+                                             (order as any).refund_status === 'failed'    ? '✗ Failed — contact support' :
+                                             '⏳ Initiated (3–5 business days)'}
+                                          </p>
+                                        )}
                                       </div>
                                     ) : (
-                                      <p className="text-xs text-gray-400 text-center py-2">Tracking details will appear once the order is shipped.</p>
+                                      <>
+                                        {/* ── Normal 6-step Status Timeline ── */}
+                                        <div className="flex items-start gap-0 overflow-x-auto pb-2 mb-4">
+                                          {steps.map((step, i) => {
+                                            const done = i <= currentIdx
+                                            const active = i === currentIdx
+                                            return (
+                                              <div key={step.key} className="flex flex-col items-center" style={{ minWidth: 80 }}>
+                                                <div className="flex items-center w-full">
+                                                  {i > 0 && <div className={`flex-1 h-0.5 ${i <= currentIdx ? 'bg-emerald-500' : 'bg-gray-200'}`} />}
+                                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 ${active ? 'border-emerald-500 bg-emerald-500 text-white' : done ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-gray-200 bg-white text-gray-400'}`}>
+                                                    {step.icon}
+                                                  </div>
+                                                  {i < steps.length - 1 && <div className={`flex-1 h-0.5 ${i < currentIdx ? 'bg-emerald-500' : 'bg-gray-200'}`} />}
+                                                </div>
+                                                <p className={`text-[10px] mt-1 text-center font-medium ${done ? 'text-emerald-700' : 'text-gray-400'}`}>{step.label}</p>
+                                              </div>
+                                            )
+                                          })}
+                                        </div>
+                                        {/* Courier Info */}
+                                        {tr.tracking_number ? (
+                                          <div className="bg-white rounded-xl border border-emerald-100 p-3 flex flex-wrap gap-4 text-xs">
+                                            <div><p className="text-gray-400 font-medium uppercase tracking-wide">Courier</p><p className="font-bold text-gray-800 mt-0.5">{tr.courier_name || '—'}</p></div>
+                                            <div><p className="text-gray-400 font-medium uppercase tracking-wide">Tracking No.</p><p className="font-bold text-gray-800 mt-0.5 font-mono">{tr.tracking_number}</p></div>
+                                            {tr.shipped_at && <div><p className="text-gray-400 font-medium uppercase tracking-wide">Shipped</p><p className="font-bold text-gray-800 mt-0.5">{new Date(tr.shipped_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</p></div>}
+                                            {tr.estimated_delivery && <div><p className="text-gray-400 font-medium uppercase tracking-wide">Est. Delivery</p><p className="font-bold text-emerald-700 mt-0.5">{new Date(tr.estimated_delivery).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</p></div>}
+                                          </div>
+                                        ) : (
+                                          <p className="text-xs text-gray-400 text-center py-2">Tracking details will appear once the order is shipped.</p>
+                                        )}
+                                      </>
                                     )}
                                   </div>
                                 )
@@ -1972,6 +2033,67 @@ const handleSaveAddress = async (data: any) => {
           </div>
         )}
       </AppModal>
+
+      {/* ── Cancel Order Modal ── */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Cancel Order</h3>
+            <p className="text-sm text-gray-500 mb-4">Please tell us why you want to cancel this order</p>
+
+            <div className="flex flex-col gap-2 mb-4">
+              {[
+                'Changed my mind',
+                'Found a better price elsewhere',
+                'Ordered by mistake',
+                'Shipping takes too long',
+                'Product not needed anymore',
+                'Other',
+              ].map(opt => (
+                <label key={opt} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${cancelReason === opt ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <input
+                    type="radio"
+                    name="cancelReason"
+                    value={opt}
+                    checked={cancelReason === opt}
+                    onChange={() => setCancelReason(opt)}
+                    className="accent-red-500"
+                  />
+                  <span className="text-sm text-gray-700">{opt}</span>
+                </label>
+              ))}
+            </div>
+
+            {cancelReason === 'Other' && (
+              <textarea
+                className="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-300 mb-4"
+                rows={3}
+                placeholder="Please describe your reason..."
+                value={cancelCustomReason}
+                onChange={e => setCancelCustomReason(e.target.value)}
+              />
+            )}
+
+            <div className="flex gap-3 mt-2">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl border-gray-200"
+                onClick={() => { setShowCancelModal(false); setCancellingOrderId(null) }}
+                disabled={cancelling}
+              >
+                Keep Order
+              </Button>
+              <Button
+                className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 text-white"
+                disabled={!cancelReason || (cancelReason === 'Other' && !cancelCustomReason.trim()) || cancelling}
+                onClick={() => handleCancelOrder(cancelReason === 'Other' ? cancelCustomReason.trim() : cancelReason)}
+              >
+                {cancelling ? 'Cancelling…' : 'Confirm Cancel'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div></Suspense>
   )
 }

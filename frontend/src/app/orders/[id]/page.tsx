@@ -384,6 +384,36 @@ export default function OrderDetailPage() {
             </div>
           )}
 
+          {/* ── Cancelled / Returned Banner ── */}
+          {isCancelledOrReturned && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ ...gc, padding: '20px 24px', background: `${statusMeta.color}15`, border: `1.5px solid ${statusMeta.color}40` }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: order.cancel_reason || order.return_reason ? 12 : 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${statusMeta.color}25`, flexShrink: 0 }}>
+                  <span style={{ fontSize: 22 }}>{statusMeta.emoji}</span>
+                </div>
+                <div>
+                  <p style={{ color: statusMeta.color, fontWeight: 700, fontSize: 16, margin: 0 }}>{statusMeta.label}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, margin: '2px 0 0' }}>
+                    {order.status === 6 ? 'This order has been cancelled' :
+                     order.status === 7 ? 'Return request is being processed' :
+                     order.status === 8 ? 'Return has been completed' :
+                     'Refund has been processed'}
+                  </p>
+                </div>
+              </div>
+              {(order.cancel_reason || order.return_reason) && (
+                <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 4px' }}>Reason</p>
+                  <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, margin: 0 }}>{order.cancel_reason || order.return_reason}</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {/* ── Progress Steps ── */}
           {!isCancelledOrReturned && (
             <div style={{ ...gc, padding: '20px 20px 24px' }}>
