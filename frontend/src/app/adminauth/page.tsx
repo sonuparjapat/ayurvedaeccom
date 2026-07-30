@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
@@ -45,8 +45,13 @@ export default function AdminAuthPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [successMessage, setSuccessMessage] = useState('')
-  const {login}=useAuth()
+  const { login, loginuserdata, loading } = useAuth()
 
+  useEffect(() => {
+    if (!loading && loginuserdata && [1, 2].includes(Number(loginuserdata.role))) {
+      router.replace('/admin/dashboard')
+    }
+  }, [loginuserdata, loading])
 
   /* ---------------- VALIDATION ---------------- */
 

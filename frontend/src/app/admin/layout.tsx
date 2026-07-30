@@ -37,6 +37,7 @@ import {
   HelpCircle,
   Clock,
   AlertCircle,
+  Shield,
 } from 'lucide-react'
 import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
@@ -49,13 +50,15 @@ export default function AdminLayout({
 }) {
 
   const router = useRouter()
-  const { logout, loginuserdata } = useAuth()
+  const { logout, loginuserdata, loading, hasPermission } = useAuth()
 
   useEffect(() => {
-    if (loginuserdata !== undefined && loginuserdata?.role !== 'admin') {
+    if (loading) return
+    const role = Number(loginuserdata?.role)
+    if (!loginuserdata || ![1, 2].includes(role)) {
       router.replace('/adminauth')
     }
-  }, [loginuserdata])
+  }, [loginuserdata, loading])
 
   /* Mobile Menu State */
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -82,7 +85,7 @@ export default function AdminLayout({
 
   // Socket for live server stats
   useEffect(() => {
-    if (!loginuserdata?.role || loginuserdata.role !== 'admin') return
+    if (!loginuserdata?.role || ![1,2].includes(Number(loginuserdata.role))) return
     let socket: any = null
     const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '')
     import('socket.io-client').then(({ io }) => {
@@ -262,105 +265,82 @@ export default function AdminLayout({
             Dashboard
           </MenuItem>
 
-          <MenuItem href="/admin/products" icon={<Package size={18} />}>
+          <MenuItem href="/admin/products" icon={<Package size={18} />} perm="products.view">
             Products
           </MenuItem>
-            <MenuItem href="/admin/products/bulk-upload" icon={<UploadCloud size={18} />}>
+            <MenuItem href="/admin/products/bulk-upload" icon={<UploadCloud size={18} />} perm="products.bulk_upload">
     Bulk Upload
           </MenuItem>
-<MenuItem
-  href="/admin/products/bulk-stock"
-  icon={<Package size={18} />}
->
+<MenuItem href="/admin/products/bulk-stock" icon={<Package size={18} />} perm="products.bulk_upload">
   Bulk Stock
 </MenuItem>
-<MenuItem
-  href="/admin/products/bulk-price"
-  icon={<Package size={18} />}
->
+<MenuItem href="/admin/products/bulk-price" icon={<Package size={18} />} perm="products.bulk_upload">
   Bulk Price
 </MenuItem>
-<MenuItem
-  href="/admin/logs"
-  icon={<List size={18} />}
->
+<MenuItem href="/admin/logs" icon={<List size={18} />} perm="products.view">
   Logs
 </MenuItem>
-<MenuItem
-  href="/admin/price-logs"
-  icon={<Receipt size={18} />}
->
+<MenuItem href="/admin/price-logs" icon={<Receipt size={18} />} perm="products.view">
   Price Logs
 </MenuItem>
-<MenuItem
-  href="/admin/products/bulk-status"
-  icon={<Package size={18} />}
->
+<MenuItem href="/admin/products/bulk-status" icon={<Package size={18} />} perm="products.bulk_upload">
   Bulk Status
 </MenuItem>
-<MenuItem
-  href="/admin/products/bulk-category"
-  icon={<Package size={18} />}
->
+<MenuItem href="/admin/products/bulk-category" icon={<Package size={18} />} perm="products.bulk_upload">
   Bulk Category
 </MenuItem>
-<MenuItem
-  href="/admin/products/bulk-images"
-  icon={<Package size={18} />}
->
+<MenuItem href="/admin/products/bulk-images" icon={<Package size={18} />} perm="products.bulk_upload">
   Bulk Images
 </MenuItem>
-<MenuItem
-  href="/admin/import-history"
-  icon={<List size={18} />}
->
+<MenuItem href="/admin/import-history" icon={<List size={18} />} perm="products.bulk_upload">
   Import History
 </MenuItem>
-<MenuItem
-  href="/admin/jobs"
-  icon={<List size={18} />}
->
+<MenuItem href="/admin/jobs" icon={<List size={18} />} perm="products.bulk_upload">
   Jobs
 </MenuItem>
-          <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />}>
+          <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />} perm="orders.view">
             Orders
           </MenuItem>
 
-          <MenuItem href="/admin/returns" icon={<RotateCcw size={18} />}>
+          <MenuItem href="/admin/returns" icon={<RotateCcw size={18} />} perm="orders.view">
             Returns
           </MenuItem>
 
-          <MenuItem href="/admin/categories" icon={<ShoppingCart size={18} />}>
+          <MenuItem href="/admin/categories" icon={<ShoppingCart size={18} />} perm="categories.manage">
             Categories
           </MenuItem>
 
-          <MenuItem href="/admin/brands" icon={<Tag size={18} />}>
+          <MenuItem href="/admin/brands" icon={<Tag size={18} />} perm="brands.manage">
             Brands
           </MenuItem>
 
-          <MenuItem href="/admin/invoices" icon={<List size={18} />}>
+          <MenuItem href="/admin/invoices" icon={<List size={18} />} perm="invoices.view">
             Invoices
           </MenuItem>
 
-          <MenuItem href="/admin/users" icon={<Users size={18} />}>
+          <MenuItem href="/admin/users" icon={<Users size={18} />} perm="users.view">
             Users
           </MenuItem>
 
-          <MenuItem href="/admin/settings" icon={<Settings size={18} />}>
+          <MenuItem href="/admin/departments" icon={<Shield size={18} />} superAdminOnly>
+            Departments &amp; Roles
+          </MenuItem>
+
+          <MenuItem href="/admin/settings" icon={<Settings size={18} />} perm="settings.manage">
             Settings
           </MenuItem>
-<MenuItem href="/admin/company" icon={<Building size={18} />}>
+<MenuItem href="/admin/company" icon={<Building size={18} />} perm="settings.manage">
             Company
           </MenuItem>
-          <MenuItem href="/admin/analytics" icon={<BarChart3 size={18} />}>
+          <MenuItem href="/admin/analytics" icon={<BarChart3 size={18} />} perm="analytics.view">
             Analytics
           </MenuItem>
 
-          <MenuItem href="/admin/segments" icon={<Users size={18} />}>
+          <MenuItem href="/admin/segments" icon={<Users size={18} />} perm="analytics.view">
             Customer Segments
           </MenuItem>
 
-          <MenuItem href="/admin/visitors" icon={<Eye size={18} />}>
+          <MenuItem href="/admin/visitors" icon={<Eye size={18} />} perm="analytics.view">
             Visitors
           </MenuItem>
 
@@ -368,23 +348,23 @@ export default function AdminLayout({
             <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Marketing</p>
           </div>
 
-          <MenuItem href="/admin/banners" icon={<Image size={18} />}>
+          <MenuItem href="/admin/banners" icon={<Image size={18} />} perm="banners.manage">
             Banners
           </MenuItem>
 
-          <MenuItem href="/admin/coupons" icon={<Tag size={18} />}>
+          <MenuItem href="/admin/coupons" icon={<Tag size={18} />} perm="coupons.manage">
             Coupons
           </MenuItem>
 
-          <MenuItem href="/admin/variants" icon={<Package size={18} />}>
+          <MenuItem href="/admin/variants" icon={<Package size={18} />} perm="products.update">
             Variants
           </MenuItem>
 
-          <MenuItem href="/admin/pincodes" icon={<List size={18} />}>
+          <MenuItem href="/admin/pincodes" icon={<List size={18} />} perm="settings.manage">
             Pincodes
           </MenuItem>
 
-          <MenuItem href="/admin/stock-notifications" icon={<Bell size={18} />}>
+          <MenuItem href="/admin/stock-notifications" icon={<Bell size={18} />} perm="products.view">
             Stock Alerts
           </MenuItem>
 
@@ -396,43 +376,43 @@ export default function AdminLayout({
             <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Engagement</p>
           </div>
 
-          <MenuItem href="/admin/flash-sales" icon={<Zap size={18} />}>
+          <MenuItem href="/admin/flash-sales" icon={<Zap size={18} />} perm="flash_sales.manage">
             Flash Sales
           </MenuItem>
 
-          <MenuItem href="/admin/bundles" icon={<Package size={18} />}>
+          <MenuItem href="/admin/bundles" icon={<Package size={18} />} perm="products.create">
             Bundles
           </MenuItem>
 
-          <MenuItem href="/admin/reviews" icon={<Star size={18} />}>
+          <MenuItem href="/admin/reviews" icon={<Star size={18} />} perm="reviews.manage">
             Reviews
           </MenuItem>
 
-          <MenuItem href="/admin/push-notifications" icon={<Bell size={18} />}>
+          <MenuItem href="/admin/push-notifications" icon={<Bell size={18} />} perm="newsletter.manage">
             Push Notifications
           </MenuItem>
 
-          <MenuItem href="/admin/newsletter" icon={<Mail size={18} />}>
+          <MenuItem href="/admin/newsletter" icon={<Mail size={18} />} perm="newsletter.manage">
             Newsletter
           </MenuItem>
 
-          <MenuItem href="/admin/abandoned-carts" icon={<ShoppingCart size={18} />}>
+          <MenuItem href="/admin/abandoned-carts" icon={<ShoppingCart size={18} />} perm="orders.view">
             Abandoned Carts
           </MenuItem>
 
-          <MenuItem href="/admin/subscriptions" icon={<RotateCcw size={18} />}>
+          <MenuItem href="/admin/subscriptions" icon={<RotateCcw size={18} />} perm="subscriptions.manage">
             Subscriptions
           </MenuItem>
 
-          <MenuItem href="/admin/faq" icon={<HelpCircle size={18} />}>
+          <MenuItem href="/admin/faq" icon={<HelpCircle size={18} />} perm="settings.manage">
             FAQ
           </MenuItem>
 
-          <MenuItem href="/admin/wallet" icon={<Wallet size={18} />}>
+          <MenuItem href="/admin/wallet" icon={<Wallet size={18} />} perm="wallet.manage">
             Wallet & Credits
           </MenuItem>
 
-          <MenuItem href="/admin/qa" icon={<MessageSquare size={18} />}>
+          <MenuItem href="/admin/qa" icon={<MessageSquare size={18} />} perm="reviews.manage">
             Q&amp;A Moderation
           </MenuItem>
 
@@ -440,7 +420,7 @@ export default function AdminLayout({
             <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Reports</p>
           </div>
 
-          <MenuItem href="/admin/export" icon={<Download size={18} />}>
+          <MenuItem href="/admin/export" icon={<Download size={18} />} perm="reports.export">
             Export Data
           </MenuItem>
 
@@ -448,7 +428,7 @@ export default function AdminLayout({
             <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Support</p>
           </div>
 
-          <MenuItem href="/admin/support" icon={<MessageSquare size={18} />}>
+          <MenuItem href="/admin/support" icon={<MessageSquare size={18} />} perm="support.manage">
             Tickets
           </MenuItem>
 
@@ -456,7 +436,7 @@ export default function AdminLayout({
             <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Content</p>
           </div>
 
-          <MenuItem href="/admin/about" icon={<BookOpen size={18} />}>
+          <MenuItem href="/admin/about" icon={<BookOpen size={18} />} perm="settings.manage">
             About Page
           </MenuItem>
 
@@ -651,9 +631,13 @@ export default function AdminLayout({
 
 /* ---------- MENU ITEM ---------- */
 
-function MenuItem({ href, icon, children, badge }: any) {
+function MenuItem({ href, icon, children, badge, perm, superAdminOnly }: any) {
   const pathname = usePathname()
+  const { hasPermission, loginuserdata } = useAuth()
   const isActive = pathname === href || (href !== '/admin' && pathname.startsWith(href))
+
+  if (superAdminOnly && Number(loginuserdata?.role) !== 1) return null
+  if (perm && !hasPermission(perm)) return null
 
   return (
     <Link

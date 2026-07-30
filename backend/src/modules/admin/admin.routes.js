@@ -11,6 +11,8 @@ const { admin } = require('../../middlewares/admin')
 const invoicecontroller=require("../admin/admin.invoice.controller")
 const shipingcontroller=require('../admin/admin.shipping.controller')
 const analyticscontroller=require('../admin/analystics/analytics.controller')
+const deptCtrl = require('../departments/department.controller')
+const checkPermission = require('../../middlewares/checkPermission')
 router.use(admin)
 router.put(
   "/user/:id",
@@ -234,5 +236,20 @@ router.delete('/brands/:id', auth, admin, controller.adminDeleteBrand)
 /* ─── PRODUCT PERFORMANCE + FUNNEL ANALYTICS ─── */
 router.get('/analytics/products', auth, admin, controller.getProductPerformance)
 router.get('/analytics/funnel', auth, admin, controller.getFunnelAnalytics)
+
+/* ─── RBAC: PERMISSIONS ─── */
+router.get('/my-permissions', auth, admin, deptCtrl.getMyPermissions)
+router.get('/permissions/all', auth, admin, deptCtrl.getAllPermissions)
+
+/* ─── RBAC: DEPARTMENTS (superadmin only for create/update/delete) ─── */
+router.get('/departments', auth, admin, deptCtrl.listDepartments)
+router.post('/departments', auth, allowRoles(1), deptCtrl.createDepartment)
+router.put('/departments/:id', auth, allowRoles(1), deptCtrl.updateDepartment)
+router.delete('/departments/:id', auth, allowRoles(1), deptCtrl.deleteDepartment)
+router.get('/departments/:id/permissions', auth, admin, deptCtrl.getDepartmentPermissions)
+router.put('/departments/:id/permissions', auth, allowRoles(1), deptCtrl.setDepartmentPermissions)
+
+/* ─── RBAC: ASSIGN USER TO DEPARTMENT ─── */
+router.put('/user/:id/department', auth, allowRoles(1), deptCtrl.assignUserDepartment)
 
 module.exports = router

@@ -26,10 +26,11 @@ interface AuthInputProps {
   placeholder?: string
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
   rightSlot?: React.ReactNode
   inputStyle?: React.CSSProperties
 }
-function AuthInput({ icon: Icon, type = 'text', placeholder, value, onChange, rightSlot, inputStyle }: AuthInputProps) {
+function AuthInput({ icon: Icon, type = 'text', placeholder, value, onChange, onKeyDown, rightSlot, inputStyle }: AuthInputProps) {
   return (
     <div className="auth-input-wrap" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
       <span style={{
@@ -45,6 +46,7 @@ function AuthInput({ icon: Icon, type = 'text', placeholder, value, onChange, ri
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        onKeyDown={onKeyDown}
         className={rightSlot ? 'has-right' : undefined}
         style={inputStyle}
       />
@@ -412,6 +414,30 @@ export function AuthSheet() {
     }
   }
 
+  // Enter key handlers — only fire when required fields are filled
+  const onLoginEnter = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' || loading) return
+    if (loginForm.email && loginForm.password) handleLogin()
+  }
+  const onRegisterEnter = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' || loading) return
+    if (registerForm.name && registerForm.email && registerForm.phone && registerForm.password) handleRegister()
+  }
+  const onOtpEnter = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' || loading) return
+    if (!otpSent && otpForm.identifier) handleSendOtp()
+    else if (otpSent && otpForm.identifier && otpForm.otp) handleVerifyOtp()
+  }
+  const onMobileOtpEnter = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' || loading) return
+    if (!mobileOtpSent && mobileForm.phone) handleSendMobileOtp()
+    else if (mobileOtpSent && mobileForm.phone && mobileForm.otp) handleVerifyMobileOtp()
+  }
+  const onForgotEnter = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' || loading) return
+    if (forgotEmail) handleForgotPassword()
+  }
+
   const header = HEADERS[authMode as AuthMode] || HEADERS.login
 
   // ── Google Sign-In ──
@@ -557,6 +583,7 @@ export function AuthSheet() {
                     placeholder="Enter your password"
                     value={loginForm.password}
                     onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
+                    onKeyDown={onLoginEnter}
                     rightSlot={
                       <button type="button"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ab89a', display: 'flex', padding: 0 }}
@@ -646,7 +673,8 @@ export function AuthSheet() {
                   <label className="auth-label"><span className="auth-label-dot" /> Referral code <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span></label>
                   <AuthInput icon={Gift} placeholder="Friend's referral code"
                     value={registerForm.referralCode}
-                    onChange={e => setRegisterForm({ ...registerForm, referralCode: e.target.value.toUpperCase() })} />
+                    onChange={e => setRegisterForm({ ...registerForm, referralCode: e.target.value.toUpperCase() })}
+                    onKeyDown={onRegisterEnter} />
                 </div>
 
                 <button className="auth-primary-btn" disabled={loading} onClick={handleRegister}>
@@ -668,7 +696,8 @@ export function AuthSheet() {
                   <label className="auth-label"><span className="auth-label-dot" /> Email address</label>
                   <AuthInput icon={Mail} type="email" placeholder="you@example.com"
                     value={otpForm.identifier}
-                    onChange={e => setOtpForm({ ...otpForm, identifier: e.target.value })} />
+                    onChange={e => setOtpForm({ ...otpForm, identifier: e.target.value })}
+                    onKeyDown={onOtpEnter} />
                 </div>
 
                 {otpSent && (
@@ -680,6 +709,7 @@ export function AuthSheet() {
                     <AuthInput icon={ShieldCheck} placeholder="6-digit code"
                       value={otpForm.otp}
                       onChange={e => setOtpForm({ ...otpForm, otp: e.target.value })}
+                      onKeyDown={onOtpEnter}
                       inputStyle={{ letterSpacing: '6px', fontWeight: 600 }} />
                   </div>
                 )}
@@ -716,7 +746,8 @@ export function AuthSheet() {
                   <label className="auth-label"><span className="auth-label-dot" /> Email address</label>
                   <AuthInput icon={Mail} type="email" placeholder="you@example.com"
                     value={forgotEmail}
-                    onChange={e => setForgotEmail(e.target.value)} />
+                    onChange={e => setForgotEmail(e.target.value)}
+                    onKeyDown={onForgotEnter} />
                 </div>
 
                 <button className="auth-primary-btn" disabled={loading} onClick={handleForgotPassword}>
@@ -741,7 +772,8 @@ export function AuthSheet() {
                   <label className="auth-label"><span className="auth-label-dot" /> Mobile number</label>
                   <AuthInput icon={Phone} type="tel" placeholder="+91 98765 43210"
                     value={mobileForm.phone}
-                    onChange={e => setMobileForm({ ...mobileForm, phone: e.target.value })} />
+                    onChange={e => setMobileForm({ ...mobileForm, phone: e.target.value })}
+                    onKeyDown={onMobileOtpEnter} />
                 </div>
 
                 {mobileOtpSent && (
@@ -753,6 +785,7 @@ export function AuthSheet() {
                     <AuthInput icon={ShieldCheck} placeholder="6-digit code"
                       value={mobileForm.otp}
                       onChange={e => setMobileForm({ ...mobileForm, otp: e.target.value })}
+                      onKeyDown={onMobileOtpEnter}
                       inputStyle={{ letterSpacing: '6px', fontWeight: 600 }} />
                   </div>
                 )}

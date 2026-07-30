@@ -1299,3 +1299,88 @@ curl -X POST http://localhost:5000/api/orders/webhook \
 
 ### Test-mail endpoint removed
 - `GET /api/test-mail` must return 404 (route no longer exists).
+
+---
+
+## Phase 5 — RBAC, Loading, Enter Key (2026-07-30)
+
+### Admin route protection
+
+#### Unauthenticated access blocked
+- Log out completely, then navigate to `/admin/dashboard` directly → must redirect to `/adminauth`.
+- Navigate to `/admin/orders` → must redirect to `/adminauth`.
+- Any `/admin/*` route without a valid admin session → redirect to `/adminauth`.
+
+#### Already-logged-in redirect
+- While logged in as admin (role 1 or 2), navigate to `/adminauth` → must auto-redirect to `/admin/dashboard`.
+
+### RBAC — Superadmin
+
+#### Full access
+- Log in as superadmin (role 1).
+- **Verify**: All sidebar items visible, including "Departments & Roles".
+- Navigate to `/admin/departments` → page loads normally.
+- `GET /admin/my-permissions` must return `{ isSuperAdmin: true, permissions: [...all 43 keys] }`.
+
+### RBAC — Department admin
+
+#### No department assigned
+- Log in as role-2 admin with no department assigned.
+- `GET /admin/my-permissions` returns `{ isSuperAdmin: false, permissions: [] }`.
+- Any permission-gated route (e.g. `/admin/orders`) in sidebar must be hidden.
+
+#### Department with permissions
+1. As superadmin: create department "Orders Team", assign `orders.view` + `orders.update` permissions.
+2. Assign a role-2 admin to "Orders Team".
+3. Log in as that admin.
+4. Sidebar must show: Dashboard + Orders + Returns + Abandoned Carts (all need `orders.view`).
+5. Sidebar must NOT show: Products, Categories, Users, Settings, etc.
+6. Direct API: `GET /admin/orders` → 200. `GET /admin/products` → 403.
+
+### Departments management page (`/admin/departments`)
+
+#### Create department
+1. Click "New Department" → modal opens.
+2. Enter name "Finance" → click Create (or press Enter).
+3. New card appears in the grid.
+
+#### Assign permissions
+1. Click a department card → permission editor panel opens.
+2. Toggle individual permissions on/off.
+3. Toggle group checkbox → all permissions in group toggle.
+4. Click "Save Permissions" → toast shows success; permission_count on card updates.
+
+#### Assign user to department
+1. In the Admin Users table, click "Assign Department" next to a role-2 user.
+2. Select department from dropdown → Save.
+3. Department badge shows for that user in the table.
+
+#### Delete department
+1. Click trash icon on a department card → confirm dialog.
+2. Department deleted; users in that department become "Unassigned".
+
+### Enter key support (auth forms)
+
+#### Login form
+1. Open auth sheet → Login tab.
+2. Fill email and password → press Enter → login fires.
+3. Fill only email → press Enter → nothing happens (password is required).
+
+#### Register form
+1. Fill all required fields (name, email, phone, password) → press Enter on last field → register fires.
+2. Leave any required field empty → Enter does nothing.
+
+#### OTP form
+1. Enter email → press Enter → OTP sent.
+2. After OTP sent: enter code → press Enter → verification fires.
+
+#### Forgot password form
+1. Enter email → press Enter → reset link sent.
+
+### Ayurvedic loading component
+
+#### Account page load
+- Navigate to `/account` while logged in.
+- **Expected**: Ayurvedic loader (lotus, rings, floating leaves, wellness tips) instead of plain spinner.
+- Tips cycle every ~2.4s with a fade transition.
+- Wallet tab: smaller `AyurvedaLoader` shows while wallet data loads.

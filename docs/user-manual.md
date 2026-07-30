@@ -624,3 +624,60 @@ This update affects the homepage sections, products listing, search results, pro
 The checkout and account pages are fully secured — authentication tokens are only accepted via secure HTTP cookies and authorization headers. They are never transmitted through browser URLs.
 
 File uploads (product images, return photos) are restricted to image files only (JPG, PNG, WEBP, GIF). Non-image files are automatically rejected.
+
+---
+
+## Admin — Departments & Role Management (Superadmin Only)
+
+### What is the RBAC system?
+
+The admin panel now supports multiple admin roles with granular permissions. A **superadmin** (role 1) has full access. Regular **admins** (role 2) can only access the areas their department gives them access to.
+
+### How it works
+
+1. **Departments** group related permissions (e.g. "Orders Team", "Finance Team", "Content Team").
+2. **Permissions** are specific actions (e.g. view orders, create products, manage coupons).
+3. **Admins** are assigned to a department — they can only see and use what their department allows.
+
+### Managing Departments
+
+Navigate to **Admin → Departments & Roles** (only visible for superadmins).
+
+#### Create a department
+1. Click **New Department**.
+2. Enter a name (e.g. "Support Team") and optional description.
+3. Press Enter or click **Create**.
+
+#### Assign permissions to a department
+1. Click on any department card.
+2. The permission editor opens on the right.
+3. Toggle individual permissions on/off, or use the group checkbox to enable/disable an entire category.
+4. Click **Save Permissions**.
+
+#### Assign an admin to a department
+1. In the **Admin Users** table at the bottom, find the admin.
+2. Click **Assign Department** → select a department → Save.
+3. The admin will immediately see only their department's pages in the sidebar.
+
+### Admin experience by role
+
+| Feature | Superadmin (role 1) | Department admin (role 2) |
+|---|---|---|
+| Sees all sidebar items | ✅ | ❌ Only their department's items |
+| Departments & Roles page | ✅ | ❌ Hidden |
+| Create departments | ✅ | ❌ |
+| Assign permissions | ✅ | ❌ |
+| Assign users | ✅ | ❌ |
+
+---
+
+## Keyboard Shortcuts — Login & Register
+
+All forms now support the **Enter key** for submission:
+
+- **Login**: Fill email + password → press **Enter** → logs in immediately.
+- **Register**: Fill all required fields → press **Enter** on the last field → creates account.
+- **OTP Login**: Enter email → press **Enter** → sends OTP. Enter OTP code → press **Enter** → verifies.
+- **Forgot Password**: Enter email → press **Enter** → sends reset link.
+
+The Enter key only fires if all required fields for that action are filled. If a required field is empty, nothing happens (no error flash — just no action until the form is ready).

@@ -1270,3 +1270,102 @@ Hero section inline CSS also updated:
 ### Debug test-mail endpoint removed
 - **Root cause**: `GET /api/test-mail` was a development endpoint left in production code. It: (1) logged the Brevo API key to stdout, (2) sent a real email to a hardcoded address on every request, (3) was publicly accessible.
 - **Fix**: Entire route handler removed from `routesapi.route.js`.
+
+---
+
+## Phase 5 — RBAC System + UX Improvements (2026-07-30)
+
+### RBAC (Role-Based Access Control) Architecture
+
+#### Database schema (`backend/src/database/init.js`)
+Three new tables created on startup:
+
+```sql
+departments (id, name UNIQUE, description, is_active, created_at, updated_at)
+permissions (id, key UNIQUE, label, group_name, description)
+department_permissions (department_id FK, permission_id FK, PRIMARY KEY(both))
+users.department_id INTEGER FK → departments.id ON DELETE SET NULL
+```
+
+43 permission keys seeded via `INSERT … ON CONFLICT DO NOTHING`. Groups:
+`orders`, `products`, `categories`, `brands`, `users`, `analytics`, `marketing`, `settings`, `reports`, `support`, `wallet`, `subscriptions`, `reviews`
+
+#### Middleware (`backend/src/middlewares/checkPermission.js`)
+```js
+checkPermission('orders.view')
+```
+- Role 1 (superadmin): always passes
+- Role 2 (admin): loads department's permissions into `req.adminPermissions` Set (cached per request); returns 403 if key missing
+- No department assigned → empty Set → 403 on all permission-checked routes
+
+#### `/admin/my-permissions` (`GET`)
+Returns `{ success, isSuperAdmin, permissions: string[], department }` for the current admin user.
+
+#### Departments API (`backend/src/modules/departments/department.controller.js`)
+| Method | Route | Auth |
+|---|---|---|
+| GET | `/admin/departments` | admin |
+| POST | `/admin/departments` | superadmin (role 1) |
+| PUT | `/admin/departments/:id` | superadmin |
+| DELETE | `/admin/departments/:id` | superadmin |
+| GET | `/admin/departments/:id/permissions` | admin |
+| PUT | `/admin/departments/:id/permissions` | superadmin |
+| PUT | `/admin/user/:id/department` | superadmin |
+| GET | `/admin/permissions/all` | admin |
+
+#### Frontend auth context (`frontend/src/context/auth-context.tsx`)
+Added:
+- `const [permissions, setPermissions] = useState<string[]>([])`
+- `hasPermission(key: string): boolean` — returns `true` for superadmin (role 1), or if key is in permissions array
+- `fetchPermissions()` — calls `GET /admin/my-permissions`, updates state
+- Permissions fetched inside `getintdata()` (called on admin login + page load)
+- Permissions cleared in `logout()`
+- Both `permissions` and `hasPermission` exposed via context value
+
+#### PermissionGate component (`frontend/src/components/auth/PermissionGate.tsx`)
+```tsx
+<PermissionGate perm="orders.view">…</PermissionGate>
+<PermissionGate perm="products.create" fallback={<p>No access</p>}>…</PermissionGate>
+<PermissionGate superAdminOnly>…</PermissionGate>
+```
+Returns `fallback` (default `null`) if permission check fails.
+
+#### Admin layout sidebar (`frontend/src/app/admin/layout.tsx`)
+- Fixed route protection: was comparing `loginuserdata?.role !== 'admin'` (always true, broke all admins). Now: `!loading && (!loginuserdata || ![1,2].includes(Number(loginuserdata.role)))`
+- Fixed socket reconnect guard: same wrong string comparison fixed
+- `MenuItem` component: accepts `perm` (hide if no permission) and `superAdminOnly` (hide if not role 1) props
+- All sidebar items mapped to permission keys
+- "Departments & Roles" menu item added (superadmin only) → `/admin/departments`
+
+#### Departments management page (`frontend/src/app/admin/departments/page.tsx`)
+Superadmin-only page (redirects role 2 → dashboard):
+- Department cards — click to edit permissions
+- Permission editor — grouped by category, checkbox per permission, group-level toggle
+- Admin users table — assign department via modal dropdown
+
+### Admin route protection
+Admin auth page (`frontend/src/app/adminauth/page.tsx`):
+- Added `useEffect` that redirects to `/admin/dashboard` if already logged in as admin (roles 1/2)
+- Prevents visiting the login page when already authenticated
+
+### Enter key support (web auth forms)
+`AuthInput` component in `frontend/src/components/auth/AuthSheet.tsx` now accepts `onKeyDown` prop.
+
+Enter key handlers added per form mode:
+| Mode | Required fields to trigger Enter | Action |
+|---|---|---|
+| login | email + password | `handleLogin()` |
+| register | name + email + phone + password | `handleRegister()` |
+| otp (pre-send) | identifier | `handleSendOtp()` |
+| otp (post-send) | identifier + otp | `handleVerifyOtp()` |
+| mobileOtp (pre-send) | phone | `handleSendMobileOtp()` |
+| mobileOtp (post-send) | phone + otp | `handleVerifyMobileOtp()` |
+| forgot | email | `handleForgotPassword()` |
+
+### Ayurvedic loading component (`frontend/src/components/ui/AyurvedaLoader.tsx`)
+New themed loading component replacing plain spinners:
+- Lotus flower center (🌸), three concentric animated gradient rings
+- Floating leaf particles (🌿), rotating wellness tips
+- Shimmer brand name "OROGANIX", pulsing dots
+- Props: `message`, `fullScreen`, `size` ('sm'|'md'|'lg')
+- Used in: Account page full-screen load + inline wallet tab load

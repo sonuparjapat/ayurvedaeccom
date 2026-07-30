@@ -96,6 +96,7 @@ const [postLoginRedirect,
 const [categoriesdata,setCategoriesdata]=useState<any>([])
 const [orders,setOrders]=useState<any>([])
 const [topratedReviews,setTopRatedReviews]=useState<any>([])
+const [permissions, setPermissions] = useState<string[]>([])
 
 // ========================companydatafun======================
 const getcompanydata=useCallback(async()=>{
@@ -444,6 +445,23 @@ shipping_address:order.shipping_address,
   /* ======================
      Load User
   ====================== */
+const hasPermission = (key: string): boolean => {
+  if (!loginuserdata) return false
+  if (Number(loginuserdata.role) === 1) return true
+  return permissions.includes(key)
+}
+
+const fetchPermissions = async () => {
+  try {
+    const res = await axios.get('/admin/my-permissions')
+    if (res?.data?.success) {
+      setPermissions(res.data.permissions || [])
+    }
+  } catch {
+    setPermissions([])
+  }
+}
+
 const getintdata=async(user?: User)=>{
   try{
     await getsettings()
@@ -455,6 +473,8 @@ const getintdata=async(user?: User)=>{
       }else{
         setStatusList([])
       }
+      // Fetch RBAC permissions for admin users
+      await fetchPermissions()
     }
   }catch(err:any){
     console.log("something went wrong please try after some time")
@@ -594,6 +614,7 @@ const login = async (data: User) => {
       const res = await axios.post(`/${type}/logout`)
 
       if (res.status === 200) {
+        setPermissions([])
 if(type=="users"){
 setCartData({
   items: [],
@@ -606,7 +627,7 @@ setCartData({
 }else{
   router.push("/adminauth")}
         setLoginUserdata(null)
-      
+
       }
 
     } catch (err) {
@@ -646,7 +667,9 @@ authMode,
 setAuthMode,
 postLoginRedirect,
 setPostLoginRedirect,
-companydata
+companydata,
+permissions,
+hasPermission
       }}
     >
       {children}

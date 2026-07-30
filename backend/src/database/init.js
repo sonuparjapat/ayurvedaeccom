@@ -1194,6 +1194,114 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`CREATE INDEX IF NOT EXISTS idx_quiz_results_user ON quiz_results(user_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_quiz_results_dosha ON quiz_results(dosha)`);
 
+    /* ================= RBAC: DEPARTMENTS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS departments (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    /* ================= RBAC: PERMISSIONS (seed) ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS permissions (
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(100) NOT NULL UNIQUE,
+        label VARCHAR(150) NOT NULL,
+        group_name VARCHAR(100) NOT NULL,
+        description TEXT
+      )
+    `);
+
+    /* ================= RBAC: DEPARTMENT ↔ PERMISSION ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS department_permissions (
+        department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+        permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+        PRIMARY KEY (department_id, permission_id)
+      )
+    `);
+
+    /* ================= RBAC: USERS.department_id ================= */
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL`);
+
+    /* ================= SEED PERMISSIONS ================= */
+    const PERMS = [
+      // Dashboard
+      ['dashboard.view',           'View Dashboard',           'Dashboard',     'Access the main admin dashboard'],
+      // Orders
+      ['orders.view',              'View Orders',              'Orders',        'View all customer orders'],
+      ['orders.manage',            'Manage Orders',            'Orders',        'Create, edit, and delete orders'],
+      ['orders.status_update',     'Update Order Status',      'Orders',        'Change order status and trigger notifications'],
+      // Products
+      ['products.view',            'View Products',            'Products',      'Browse the product catalog'],
+      ['products.create',          'Create Products',          'Products',      'Add new products to the catalog'],
+      ['products.edit',            'Edit Products',            'Products',      'Modify existing product details'],
+      ['products.delete',          'Delete Products',          'Products',      'Remove products from the catalog'],
+      ['products.bulk',            'Bulk Product Operations',  'Products',      'Upload, stock update, price update in bulk'],
+      // Categories
+      ['categories.view',          'View Categories',          'Categories',    'View product categories'],
+      ['categories.manage',        'Manage Categories',        'Categories',    'Create, edit, and delete categories'],
+      // Brands
+      ['brands.view',              'View Brands',              'Brands',        'View brand listings'],
+      ['brands.manage',            'Manage Brands',            'Brands',        'Create, edit, and delete brands'],
+      // Users
+      ['users.view',               'View Users',               'Users',         'View customer and admin user list'],
+      ['users.manage',             'Manage Users',             'Users',         'Create, edit, and deactivate users'],
+      // Coupons
+      ['coupons.view',             'View Coupons',             'Coupons',       'View coupon list'],
+      ['coupons.manage',           'Manage Coupons',           'Coupons',       'Create, edit, and delete coupons'],
+      // Reviews
+      ['reviews.view',             'View Reviews',             'Reviews',       'View product reviews'],
+      ['reviews.manage',           'Manage Reviews',           'Reviews',       'Approve, reject, or delete reviews'],
+      // Analytics
+      ['analytics.view',           'View Analytics',           'Analytics',     'Access sales, revenue, and traffic analytics'],
+      // Settings
+      ['settings.view',            'View Settings',            'Settings',      'View application settings'],
+      ['settings.manage',          'Manage Settings',          'Settings',      'Change application-wide settings'],
+      // Wallet / Loyalty
+      ['wallet.view',              'View Wallet',              'Wallet',        'View wallet transactions and balances'],
+      ['wallet.manage',            'Manage Wallet',            'Wallet',        'Credit or debit user wallets'],
+      // Returns
+      ['returns.view',             'View Returns',             'Returns',       'View return requests'],
+      ['returns.manage',           'Manage Returns',           'Returns',       'Approve or reject return requests'],
+      // Support
+      ['support.view',             'View Support Tickets',     'Support',       'View customer support tickets'],
+      ['support.manage',           'Manage Support Tickets',   'Support',       'Reply to and close support tickets'],
+      // Blog
+      ['blog.view',                'View Blog',                'Blog',          'View blog posts'],
+      ['blog.manage',              'Manage Blog',              'Blog',          'Create, edit, and delete blog posts'],
+      // Banners
+      ['banners.view',             'View Banners',             'Banners',       'View promotional banners'],
+      ['banners.manage',           'Manage Banners',           'Banners',       'Create, edit, and delete banners'],
+      // Flash Sales
+      ['flash_sales.view',         'View Flash Sales',         'Flash Sales',   'View flash sale campaigns'],
+      ['flash_sales.manage',       'Manage Flash Sales',       'Flash Sales',   'Create and manage flash sales'],
+      // Subscriptions
+      ['subscriptions.view',       'View Subscriptions',       'Subscriptions', 'View customer subscription orders'],
+      // Notifications
+      ['notifications.send',       'Send Notifications',       'Notifications', 'Send push notifications to users'],
+      // Export
+      ['export.access',            'Export Data',              'Export',        'Download reports and export data'],
+      // Invoices
+      ['invoices.view',            'View Invoices',            'Invoices',      'View and download order invoices'],
+      // Price Logs
+      ['price_logs.view',          'View Price Logs',          'Logs',          'View discount and pricing audit logs'],
+      // Departments (superadmin-only effectively)
+      ['departments.manage',       'Manage Departments',       'Departments',   'Create departments and assign permissions'],
+    ];
+
+    for (const [key, label, group_name, description] of PERMS) {
+      await client.query(
+        `INSERT INTO permissions (key, label, group_name, description) VALUES ($1,$2,$3,$4) ON CONFLICT (key) DO NOTHING`,
+        [key, label, group_name, description]
+      );
+    }
+
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

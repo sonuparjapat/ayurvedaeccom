@@ -58,6 +58,7 @@ import { io } from 'socket.io-client'
 import { useAuth } from '@/context/auth-context'
 import { useOrderSocket } from '@/hooks/useOrderSocket'
 import AppModal from '@/components/modal/AppModal'
+import AyurvedaLoader from '@/components/ui/AyurvedaLoader'
 import { notify } from '../utils/notify'
 import { addAddress, deleteAccount, deleteAddress, exportData, getAddresses, getSettings, setDefaultAddress, updateAddress, updateProfile, updateSettings } from '@/lib/accountapi'
 import { formatDate } from '../utils/formatDate'
@@ -261,7 +262,7 @@ function WalletTab({ data, loading, onMount }: { data: any; loading: boolean; on
 
   if (loading) return (
     <div className="flex justify-center py-20">
-      <div className="w-10 h-10 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin" />
+      <AyurvedaLoader fullScreen={false} size="sm" />
     </div>
   )
 
@@ -879,19 +880,7 @@ const handleSaveAddress = async (data: any) => {
     } catch { toast.error('Could not cancel subscription') }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative w-16 h-16">
-            <div className="absolute inset-0 rounded-full border-4 border-emerald-100" />
-            <div className="absolute inset-0 rounded-full border-4 border-t-emerald-500 animate-spin" />
-          </div>
-          <p className="text-gray-500 text-sm font-medium">Loading your account…</p>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <AyurvedaLoader message="Loading your account…" />
 
   /* ================= SIDEBAR NAV ================= */
 
