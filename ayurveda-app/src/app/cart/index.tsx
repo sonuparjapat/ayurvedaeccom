@@ -3,10 +3,11 @@ import {
   ActivityIndicator, Dimensions, FlatList,
   StatusBar, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { toast } from '../../components/ui/Toast'
 import { Image as ExpoImage } from 'expo-image'
 import Animated, {
-  FadeIn, FadeInDown, FadeOutLeft, Layout,
+  FadeIn, FadeInDown, FadeOutLeft, Layout, interpolate, Extrapolation, runOnJS,
   useAnimatedStyle, useSharedValue, withSpring, withTiming,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'

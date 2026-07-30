@@ -3,7 +3,7 @@ import BottomNav from '../components/BottomNav'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from 'expo-router'
 import {
-  Dimensions, Platform, Pressable, ScrollView,
+  Dimensions, Platform, Pressable, RefreshControl, ScrollView,
   StatusBar, StyleSheet, Text, TouchableOpacity, View, FlatList,
 } from 'react-native'
 import { Image as ExpoImage } from 'expo-image'
@@ -777,6 +777,7 @@ export default function HomeScreen() {
   const [activeCatId, setActiveCatId] = useState<number | null>(null)
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([])
   const [flashSale, setFlashSale] = useState<any>(null)
+  const [refreshing, setRefreshing] = useState(false)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const scrollHandler = useAnimatedScrollHandler(e => { scrollY.value = e.contentOffset.y })
@@ -907,6 +908,21 @@ export default function HomeScreen() {
     }
   }, []))
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    impact('light')
+    try {
+      await Promise.all([
+        api.get('/banners/public').then(r => setBanners(r.data?.banners || [])),
+        api.get('/coupons/public').then(r => { const l = r.data?.coupons || []; if (l.length) setActiveCoupon(l[0]) }),
+        api.get('/shop/reviews', { params: { rating: 5, limit: 6, page: 1 } }).then(r => setReviews(r.data?.data || [])),
+        api.get('/flash-sales/active').then(r => { const s = r.data?.sales || []; if (s.length) setFlashSale(s[0]) }),
+        new Promise(res => { fetchFeatured(activeCatId); setTimeout(res, 800) }),
+      ])
+    } catch { }
+    setRefreshing(false)
+  }, [activeCatId])
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.forest} />
@@ -930,6 +946,15 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.emerald}
+            colors={[Colors.emerald, Colors.forest]}
+            progressBackgroundColor={Colors.cream}
+          />
+        }
       >
         <View style={{ paddingTop: insets.top }}>
           <Ticker />

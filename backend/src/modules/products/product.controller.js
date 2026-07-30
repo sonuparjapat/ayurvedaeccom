@@ -497,6 +497,17 @@ exports.addReview = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' })
     }
 
+    // Verify the user has a delivered order containing this product
+    const purchaseCheck = await pool.query(
+      `SELECT 1 FROM orders o
+       JOIN order_items oi ON oi.order_id = o.id
+       WHERE o.user_id = $1 AND oi.product_id = $2 AND o.status = 5 LIMIT 1`,
+      [userId, productId]
+    )
+    if (!purchaseCheck.rowCount) {
+      return res.status(403).json({ success: false, message: 'You can only review products you have purchased and received.' })
+    }
+
     // Load existing images to delete removed ones
     const exist = await pool.query(
       `SELECT images FROM reviews WHERE user_id=$1 AND product_id=$2`,
