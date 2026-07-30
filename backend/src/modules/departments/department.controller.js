@@ -261,3 +261,62 @@ exports.getAllPermissions = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+/* ─── POST /admin/permissions ─────────────────────────────────────────────── */
+exports.createPermission = async (req, res) => {
+  try {
+    const { key, label, group_name, description } = req.body;
+    if (!key?.trim() || !label?.trim() || !group_name?.trim()) {
+      return res.status(400).json({ success: false, message: 'key, label, and group_name are required' });
+    }
+    const result = await pool.query(
+      `INSERT INTO permissions (key, label, group_name, description) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [key.trim().toLowerCase(), label.trim(), group_name.trim(), description?.trim() || null]
+    );
+    res.status(201).json({ success: true, permission: result.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ success: false, message: 'Permission key already exists' });
+    console.error('[createPermission]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/* ─── PUT /admin/permissions/:id ──────────────────────────────────────────── */
+exports.updatePermission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { label, group_name, description } = req.body;
+    const result = await pool.query(
+      `UPDATE permissions SET
+         label = COALESCE($1, label),
+         group_name = COALESCE($2, group_name),
+         description = COALESCE($3, description)
+       WHERE id = $4 RETURNING *`,
+      [label?.trim() || null, group_name?.trim() || null, description?.trim() || null, id]
+    );
+    if (!result.rows.length) return res.status(404).json({ success: false, message: 'Permission not found' });
+    res.json({ success: true, permission: result.rows[0] });
+  } catch (err) {
+    console.error('[updatePermission]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/* ─── DELETE /admin/permissions/:id ──────────────────────────────────────── */
+exports.deletePermission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const inUse = await pool.query(
+      `SELECT COUNT(*) FROM department_permissions WHERE permission_id = $1`, [id]
+    );
+    if (Number(inUse.rows[0].count) > 0) {
+      return res.status(400).json({ success: false, message: 'Permission is assigned to departments. Remove it from all departments first.' });
+    }
+    const result = await pool.query(`DELETE FROM permissions WHERE id = $1 RETURNING id`, [id]);
+    if (!result.rows.length) return res.status(404).json({ success: false, message: 'Permission not found' });
+    res.json({ success: true, message: 'Permission deleted' });
+  } catch (err) {
+    console.error('[deletePermission]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

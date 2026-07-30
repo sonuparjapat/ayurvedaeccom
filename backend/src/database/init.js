@@ -1194,6 +1194,22 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`CREATE INDEX IF NOT EXISTS idx_quiz_results_user ON quiz_results(user_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_quiz_results_dosha ON quiz_results(dosha)`);
 
+    /* ================= SITE-WIDE FAQs ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS faqs (
+        id SERIAL PRIMARY KEY,
+        question TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        category VARCHAR(100) NOT NULL DEFAULT 'General',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_faqs_category ON faqs(category)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_faqs_active ON faqs(is_active, sort_order)`);
+
     /* ================= RBAC: DEPARTMENTS ================= */
     await client.query(`
       CREATE TABLE IF NOT EXISTS departments (

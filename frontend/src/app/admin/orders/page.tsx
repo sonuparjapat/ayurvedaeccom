@@ -48,6 +48,7 @@ export default function AdminOrdersPage() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterRefund, setFilterRefund] = useState<string>('')  // '' | 'failed' | 'pending'
 
   const [page, setPage] = useState(1)
   const limit = 10
@@ -103,7 +104,8 @@ export default function AdminOrdersPage() {
           page,
           limit,
           search: searchTerm,
-          status: filterStatus
+          status: filterStatus,
+          refund_status: filterRefund || undefined
         }
       })
 
@@ -129,7 +131,7 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     load()
     setSelectedIds(new Set())
-  }, [page, searchTerm, filterStatus])
+  }, [page, searchTerm, filterStatus, filterRefund])
 
   const toggleSelect = (id: number) => {
     setSelectedIds(prev => {
@@ -455,10 +457,17 @@ const processRefund = async () => {
   if (!confirm(`Initiate Razorpay refund of ₹${Number(current.total_amount).toLocaleString('en-IN')} for order #${current.id}?`)) return
   setRefunding(true)
   try {
-    await axios.post(`/admin/orders/${current.id}/refund`)
-    toast.success('Refund initiated successfully')
+    const res = await axios.post(`/admin/orders/${current.id}/refund`)
+    const { refund_id, refund_status } = res.data
+    toast.success(refund_status === 'processed' ? 'Refund processed successfully' : 'Refund initiated — will reach customer in 5–7 days')
     load()
-    setCurrent((prev: any) => prev ? { ...prev, refund_status: 'processed', payment_status: 'refunded' } : prev)
+    setCurrent((prev: any) => prev ? {
+      ...prev,
+      refund_id,
+      refund_status: refund_status || 'pending',
+      refund_amount: prev.total_amount,
+      payment_status: 'refunded'
+    } : prev)
   } catch (err: any) {
     toast.error(err?.response?.data?.message || 'Refund failed')
   } finally { setRefunding(false) }
@@ -876,6 +885,35 @@ const generateInvoice = async () => {
         </div>
 
 
+        {/* REFUND QUICK FILTERS */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Refund filter:</span>
+          {[
+            { label: 'All Orders', value: '' },
+            { label: 'Refund Pending', value: 'pending', color: 'amber' },
+            { label: 'Refund Failed', value: 'failed', color: 'red' },
+            { label: 'Refunded', value: 'processed', color: 'purple' },
+          ].map(chip => (
+            <button
+              key={chip.value}
+              onClick={() => { setFilterRefund(chip.value); setPage(1) }}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                filterRefund === chip.value
+                  ? chip.value === 'failed'
+                    ? 'bg-red-600 text-white border-red-600'
+                    : chip.value === 'pending'
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : chip.value === 'processed'
+                    ? 'bg-purple-600 text-white border-purple-600'
+                    : 'bg-gray-800 text-white border-gray-800'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+
         {/* TRACKING LOOKUP */}
         <div className="bg-white rounded-2xl shadow-lg p-5 border border-gray-100">
           <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
@@ -1087,15 +1125,17 @@ const generateInvoice = async () => {
               <span className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
                 current.refund_status === 'processed'
                   ? 'bg-purple-100 text-purple-800 border-purple-200'
+                  : current.refund_status === 'pending'
+                  ? 'bg-amber-100 text-amber-800 border-amber-200'
                   : current.refund_status === 'failed'
                   ? 'bg-red-100 text-red-700 border-red-200'
                   : 'bg-gray-100 text-gray-700 border-gray-200'
               }`}>
-                REFUND: {current.refund_status.toUpperCase()}
+                REFUND: {current.refund_status === 'pending' ? 'INITIATED (3–5 days)' : current.refund_status.toUpperCase()}
                 {Number(current.refund_amount) > 0 && ` — ₹${Number(current.refund_amount).toLocaleString('en-IN')}`}
               </span>
               {current.refund_id && (
-                <span className="text-xs text-gray-500 font-mono">ID: {current.refund_id}</span>
+                <span className="text-xs text-white/70 font-mono bg-white/10 px-2 py-0.5 rounded">ID: {current.refund_id}</span>
               )}
               {current.refund_status === 'failed' && current.payment_method !== 'cod' && (
                 <button onClick={processRefund} disabled={refunding}
@@ -1106,7 +1146,8 @@ const generateInvoice = async () => {
             </div>
           ) : (
             /* No refund yet — show "Process Refund" for cancelled paid online orders */
-            current.status === 6 && current.payment_method !== 'cod' && current.payment_status === 'paid' && (
+            current.status === 6 && current.payment_method !== 'cod' &&
+            ['paid', 'refunded'].includes(current.payment_status) && (
               <button onClick={processRefund} disabled={refunding}
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
                 {refunding ? 'Processing…' : '↩ Process Refund'}

@@ -119,6 +119,12 @@ export default function AdminLayout({
         })
         setBellAlerts(prev => ({ ...prev, openTickets: prev.openTickets + 1 }))
       })
+      socket.on('order_auto_cancelled', (data: any) => {
+        toast(`⏰ Order #${data.order_id} auto-cancelled — ${data.user_name} was not confirmed in time`, {
+          duration: 8000,
+          style: { background: '#fef2f2', color: '#991b1b', fontWeight: 600, border: '1px solid #fecaca' },
+        })
+      })
     }).catch(() => {})
     // Also fetch via REST as fallback
     axios.get('/admin/server-stats').then((r: any) => setServerStats(r.data?.data)).catch(() => {})
@@ -274,36 +280,36 @@ export default function AdminLayout({
           <MenuItem href="/admin/products" icon={<Package size={18} />} perm="products.view">
             Products
           </MenuItem>
-            <MenuItem href="/admin/products/bulk-upload" icon={<UploadCloud size={18} />} perm="products.bulk_upload">
-    Bulk Upload
+            <MenuItem href="/admin/products/bulk-upload" icon={<UploadCloud size={18} />} perm="products.bulk">
+            Bulk Upload
           </MenuItem>
-<MenuItem href="/admin/products/bulk-stock" icon={<Package size={18} />} perm="products.bulk_upload">
-  Bulk Stock
-</MenuItem>
-<MenuItem href="/admin/products/bulk-price" icon={<Package size={18} />} perm="products.bulk_upload">
-  Bulk Price
-</MenuItem>
-<MenuItem href="/admin/logs" icon={<List size={18} />} perm="products.view">
-  Logs
-</MenuItem>
-<MenuItem href="/admin/price-logs" icon={<Receipt size={18} />} perm="products.view">
-  Price Logs
-</MenuItem>
-<MenuItem href="/admin/products/bulk-status" icon={<Package size={18} />} perm="products.bulk_upload">
-  Bulk Status
-</MenuItem>
-<MenuItem href="/admin/products/bulk-category" icon={<Package size={18} />} perm="products.bulk_upload">
-  Bulk Category
-</MenuItem>
-<MenuItem href="/admin/products/bulk-images" icon={<Package size={18} />} perm="products.bulk_upload">
-  Bulk Images
-</MenuItem>
-<MenuItem href="/admin/import-history" icon={<List size={18} />} perm="products.bulk_upload">
-  Import History
-</MenuItem>
-<MenuItem href="/admin/jobs" icon={<List size={18} />} perm="products.bulk_upload">
-  Jobs
-</MenuItem>
+          <MenuItem href="/admin/products/bulk-stock" icon={<Package size={18} />} perm="products.bulk">
+            Bulk Stock
+          </MenuItem>
+          <MenuItem href="/admin/products/bulk-price" icon={<Package size={18} />} perm="products.bulk">
+            Bulk Price
+          </MenuItem>
+          <MenuItem href="/admin/logs" icon={<List size={18} />} perm="products.view">
+            Logs
+          </MenuItem>
+          <MenuItem href="/admin/price-logs" icon={<Receipt size={18} />} perm="price_logs.view">
+            Price Logs
+          </MenuItem>
+          <MenuItem href="/admin/products/bulk-status" icon={<Package size={18} />} perm="products.bulk">
+            Bulk Status
+          </MenuItem>
+          <MenuItem href="/admin/products/bulk-category" icon={<Package size={18} />} perm="products.bulk">
+            Bulk Category
+          </MenuItem>
+          <MenuItem href="/admin/products/bulk-images" icon={<Package size={18} />} perm="products.bulk">
+            Bulk Images
+          </MenuItem>
+          <MenuItem href="/admin/import-history" icon={<List size={18} />} perm="products.bulk">
+            Import History
+          </MenuItem>
+          <MenuItem href="/admin/jobs" icon={<List size={18} />} perm="products.bulk">
+            Jobs
+          </MenuItem>
           <MenuItem href="/admin/orders" icon={<ShoppingCart size={18} />} perm="orders.view">
             Orders
           </MenuItem>
@@ -330,6 +336,10 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/departments" icon={<Shield size={18} />} superAdminOnly>
             Departments &amp; Roles
+          </MenuItem>
+
+          <MenuItem href="/admin/permissions" icon={<Shield size={18} />} superAdminOnly>
+            Permissions
           </MenuItem>
 
           <MenuItem href="/admin/settings" icon={<Settings size={18} />} perm="settings.manage">
@@ -362,7 +372,7 @@ export default function AdminLayout({
             Coupons
           </MenuItem>
 
-          <MenuItem href="/admin/variants" icon={<Package size={18} />} perm="products.update">
+          <MenuItem href="/admin/variants" icon={<Package size={18} />} perm="products.edit">
             Variants
           </MenuItem>
 
@@ -374,7 +384,7 @@ export default function AdminLayout({
             Stock Alerts
           </MenuItem>
 
-          <MenuItem href="/admin/blog" icon={<BookOpen size={18} />}>
+          <MenuItem href="/admin/blog" icon={<BookOpen size={18} />} perm="blog.manage">
             Blog
           </MenuItem>
 
@@ -394,11 +404,11 @@ export default function AdminLayout({
             Reviews
           </MenuItem>
 
-          <MenuItem href="/admin/push-notifications" icon={<Bell size={18} />} perm="newsletter.manage">
+          <MenuItem href="/admin/push-notifications" icon={<Bell size={18} />} perm="notifications.send">
             Push Notifications
           </MenuItem>
 
-          <MenuItem href="/admin/newsletter" icon={<Mail size={18} />} perm="newsletter.manage">
+          <MenuItem href="/admin/newsletter" icon={<Mail size={18} />} perm="notifications.send">
             Newsletter
           </MenuItem>
 
@@ -406,7 +416,7 @@ export default function AdminLayout({
             Abandoned Carts
           </MenuItem>
 
-          <MenuItem href="/admin/subscriptions" icon={<RotateCcw size={18} />} perm="subscriptions.manage">
+          <MenuItem href="/admin/subscriptions" icon={<RotateCcw size={18} />} perm="subscriptions.view">
             Subscriptions
           </MenuItem>
 
@@ -426,7 +436,7 @@ export default function AdminLayout({
             <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Reports</p>
           </div>
 
-          <MenuItem href="/admin/export" icon={<Download size={18} />} perm="reports.export">
+          <MenuItem href="/admin/export" icon={<Download size={18} />} perm="export.access">
             Export Data
           </MenuItem>
 

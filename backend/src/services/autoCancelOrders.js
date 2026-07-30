@@ -1,0 +1,186 @@
+/**
+ * Auto-Cancel Stale Pending Orders
+ *
+ * Runs on a schedule. Cancels orders stuck at status=0 (Pending)
+ * where the admin never confirmed within ORDER_AUTO_CANCEL_HOURS (default 24h).
+ *
+ * Per-order:
+ *   1. Restore inventory (variant-aware)
+ *   2. Mark order cancelled with reason
+ *   3. Auto-refund via Razorpay for paid online orders
+ *   4. Send cancellation email to customer
+ *   5. Push in-app notification to customer
+ *   6. Alert admin via socket
+ */
+
+const pool = require('../config/db')
+const Razorpay = require('razorpay')
+const { sendOrderCancelledEmail } = require('./email/orderStatusEmail')
+const { createNotification } = require('./notification.service')
+const { emitToAdmin } = require('../socket')
+
+const CANCEL_REASON = 'Auto-cancelled: Order was not confirmed within the allowed time.'
+const HOURS = Number(process.env.ORDER_AUTO_CANCEL_HOURS || 24)
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY,
+  key_secret: process.env.RAZORPAY_SECRET,
+})
+
+async function autoCancelOrders() {
+  console.log(`[AutoCancel] Checking for pending orders older than ${HOURS}h…`)
+
+  // Find all stale pending orders (status=0, created more than HOURS ago)
+  // Excludes orders still in unpaid payment-pending state (those are handled by cleanOrders)
+  let staleOrders
+  try {
+    const res = await pool.query(
+      `SELECT o.id, o.user_id, o.payment_method, o.payment_status, o.total_amount,
+              o.razorpay_payment_id, o.created_at,
+              u.name AS user_name, u.email AS user_email,
+              i.invoice_no
+       FROM orders o
+       JOIN users u ON u.id = o.user_id
+       LEFT JOIN invoices i ON i.order_id = o.id
+       WHERE o.status = 0
+         AND o.created_at < NOW() - INTERVAL '${HOURS} hours'
+         AND (o.payment_status = 'paid' OR o.payment_method = 'cod')
+       ORDER BY o.created_at ASC`
+    )
+    staleOrders = res.rows
+  } catch (err) {
+    console.error('[AutoCancel] Failed to fetch stale orders:', err.message)
+    return
+  }
+
+  if (staleOrders.length === 0) {
+    console.log('[AutoCancel] No stale orders found.')
+    return
+  }
+
+  console.log(`[AutoCancel] Found ${staleOrders.length} stale order(s) to cancel.`)
+
+  for (const order of staleOrders) {
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+
+      // 1. Restore inventory (variant-aware)
+      const items = await client.query(
+        `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = $1`,
+        [order.id]
+      )
+
+      for (const item of items.rows) {
+        if (item.variant_id) {
+          await client.query(
+            `UPDATE product_variants SET inventory = inventory + $1 WHERE id = $2`,
+            [item.quantity, item.variant_id]
+          )
+        } else {
+          await client.query(
+            `UPDATE products SET inventory = inventory + $1 WHERE id = $2`,
+            [item.quantity, item.product_id]
+          )
+        }
+      }
+
+      // 2. Mark cancelled
+      await client.query(
+        `UPDATE orders
+         SET status = 6,
+             cancel_reason = $1,
+             updated_at = NOW()
+         WHERE id = $2`,
+        [CANCEL_REASON, order.id]
+      )
+
+      await client.query('COMMIT')
+      console.log(`[AutoCancel] Order #${order.id} cancelled.`)
+    } catch (err) {
+      await client.query('ROLLBACK')
+      console.error(`[AutoCancel] Failed to cancel order #${order.id}:`, err.message)
+      client.release()
+      continue
+    }
+    client.release()
+
+    // 3. Auto-refund for paid online orders (fire-and-forget after commit)
+    let refundAmount = null
+    let refundTo = null
+
+    if (order.payment_method !== 'cod' && order.payment_status === 'paid' && order.razorpay_payment_id) {
+      try {
+        const refundPaise = Math.round(Number(order.total_amount) * 100)
+        const refund = await razorpay.payments.refund(order.razorpay_payment_id, {
+          amount: refundPaise,
+          speed: 'normal',
+          notes: { order_id: order.id, reason: 'Auto-cancelled: admin did not confirm' },
+        })
+
+        const rzpStatus = refund.status === 'processed' ? 'processed' : 'pending'
+        await pool.query(
+          `UPDATE orders
+           SET refund_id = $1, refund_amount = $2, refund_status = $3,
+               payment_status = 'refunded', updated_at = NOW()
+           WHERE id = $4`,
+          [refund.id, Number(order.total_amount), rzpStatus, order.id]
+        )
+
+        refundAmount = Number(order.total_amount)
+        refundTo = 'original payment method'
+        console.log(`[AutoCancel] Refund initiated for order #${order.id} — ${rzpStatus}`)
+      } catch (refundErr) {
+        console.error(`[AutoCancel] Refund failed for order #${order.id}:`, refundErr.message)
+        await pool.query(
+          `UPDATE orders SET refund_status = 'failed', updated_at = NOW() WHERE id = $1`,
+          [order.id]
+        )
+      }
+    }
+
+    // 4. Send cancellation email
+    try {
+      await sendOrderCancelledEmail({
+        email: order.user_email,
+        name: order.user_name,
+        orderId: order.id,
+        invoiceNo: order.invoice_no,
+        reason: `Your order was not confirmed by our team within ${HOURS} hours. We apologise for the inconvenience.`,
+        refundAmount,
+        refundTo,
+      })
+    } catch (emailErr) {
+      console.error(`[AutoCancel] Email failed for order #${order.id}:`, emailErr.message)
+    }
+
+    // 5. In-app notification to customer
+    try {
+      await createNotification(
+        order.user_id,
+        'order',
+        `Order #${order.id} Auto-Cancelled`,
+        `Your order was not confirmed within ${HOURS} hours and has been automatically cancelled.${
+          refundAmount ? ` A refund of ₹${refundAmount.toLocaleString('en-IN')} has been initiated.` : ''
+        }`,
+        { order_id: order.id }
+      )
+    } catch (notifErr) {
+      console.error(`[AutoCancel] Notification failed for order #${order.id}:`, notifErr.message)
+    }
+
+    // 6. Alert admin via socket
+    try {
+      emitToAdmin('order_auto_cancelled', {
+        order_id: order.id,
+        user_name: order.user_name,
+        total_amount: order.total_amount,
+        reason: CANCEL_REASON,
+      })
+    } catch {}
+  }
+
+  console.log(`[AutoCancel] Done. Processed ${staleOrders.length} order(s).`)
+}
+
+module.exports = autoCancelOrders

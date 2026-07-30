@@ -2,6 +2,7 @@ const cron = require("node-cron");
 const pool=require("../config/db") // adjust path
 const runAbandonedCartRecovery = require('../services/abandonedCartRecovery')
 const runSubscriptionBilling = require('../services/subscriptionBilling')
+const autoCancelOrders = require('../services/autoCancelOrders')
 
 /* ======================
    CLEAN UNPAID ORDERS
@@ -101,6 +102,12 @@ const startJobs = () => {
   cron.schedule(
     "0 6 * * *",
     runSubscriptionBilling
+  );
+
+  /* every hour — auto-cancel pending orders not confirmed within ORDER_AUTO_CANCEL_HOURS */
+  cron.schedule(
+    "0 * * * *",
+    autoCancelOrders
   );
 
   console.log(

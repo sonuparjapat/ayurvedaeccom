@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Edit2, Shield, Users, Check, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, Edit2, Shield, Users, Check, X, ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 interface Permission {
@@ -55,6 +55,9 @@ export default function DepartmentsPage() {
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set())
   const [savingPerms, setSavingPerms] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+
+  // Permission search
+  const [permSearch, setPermSearch] = useState('')
 
   // Assign user modal
   const [assigningUser, setAssigningUser] = useState<AdminUser | null>(null)
@@ -270,7 +273,7 @@ export default function DepartmentsPage() {
               <p className="text-xs text-gray-500 mt-0.5">{checkedKeys.size} permissions selected</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setSelectedDept(null)} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 border rounded-lg">
+              <button onClick={() => { setSelectedDept(null); setPermSearch('') }} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 border rounded-lg">
                 Cancel
               </button>
               <button
@@ -283,64 +286,102 @@ export default function DepartmentsPage() {
             </div>
           </div>
 
+          {/* Search */}
+          <div className="px-6 pt-4">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={permSearch}
+                onChange={e => setPermSearch(e.target.value)}
+                placeholder="Search permissions…"
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500"
+              />
+              {permSearch && (
+                <button onClick={() => setPermSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="p-6 space-y-4">
-            {Object.entries(deptPerms).map(([group, perms]) => {
-              const isExpanded = expandedGroups.has(group)
-              const groupKeys = perms.map(p => p.key)
-              const checkedCount = groupKeys.filter(k => checkedKeys.has(k)).length
-              const allChecked = checkedCount === groupKeys.length
+            {(() => {
+              const q = permSearch.trim().toLowerCase()
+              const entries = Object.entries(deptPerms)
+              const filtered = q
+                ? entries.map(([group, perms]) => [
+                    group,
+                    perms.filter(p =>
+                      p.label.toLowerCase().includes(q) ||
+                      p.key.toLowerCase().includes(q) ||
+                      group.toLowerCase().includes(q)
+                    ),
+                  ] as [string, Permission[]]).filter(([, perms]) => perms.length > 0)
+                : entries
 
-              return (
-                <div key={group} className="border border-gray-100 rounded-xl overflow-hidden">
-                  <button
-                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition"
-                    onClick={() => setExpandedGroups(prev => {
-                      const next = new Set(prev)
-                      if (next.has(group)) next.delete(group); else next.add(group)
-                      return next
-                    })}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={allChecked}
-                        onChange={() => toggleGroup(group)}
-                        onClick={e => e.stopPropagation()}
-                        className="w-4 h-4 accent-emerald-600"
-                      />
-                      <span className="font-semibold text-sm text-gray-800 capitalize">{group.replace(/_/g, ' ')}</span>
-                      <span className="text-xs text-gray-400">{checkedCount}/{groupKeys.length}</span>
-                    </div>
-                    {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                  </button>
+              if (filtered.length === 0) {
+                return <p className="text-center text-sm text-gray-400 py-8">No permissions match your search.</p>
+              }
 
-                  {isExpanded && (
-                    <div className="divide-y divide-gray-50">
-                      {perms.map(perm => (
-                        <label
-                          key={perm.key}
-                          className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-emerald-50/40 transition"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checkedKeys.has(perm.key)}
-                            onChange={() => toggleKey(perm.key)}
-                            className="w-4 h-4 mt-0.5 accent-emerald-600"
-                          />
-                          <div>
-                            <p className="text-sm font-medium text-gray-800">{perm.label}</p>
-                            {perm.description && (
-                              <p className="text-xs text-gray-400">{perm.description}</p>
-                            )}
-                            <code className="text-[10px] text-gray-300 font-mono">{perm.key}</code>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+              return filtered.map(([group, perms]) => {
+                const isExpanded = q ? true : expandedGroups.has(group)
+                const allGroupKeys = (deptPerms[group] || []).map(p => p.key)
+                const checkedCount = allGroupKeys.filter(k => checkedKeys.has(k)).length
+                const allChecked = allGroupKeys.every(k => checkedKeys.has(k))
+
+                return (
+                  <div key={group} className="border border-gray-100 rounded-xl overflow-hidden">
+                    <button
+                      className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition"
+                      onClick={() => !q && setExpandedGroups(prev => {
+                        const next = new Set(prev)
+                        if (next.has(group)) next.delete(group); else next.add(group)
+                        return next
+                      })}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={allChecked}
+                          onChange={() => toggleGroup(group)}
+                          onClick={e => e.stopPropagation()}
+                          className="w-4 h-4 accent-emerald-600"
+                        />
+                        <span className="font-semibold text-sm text-gray-800 capitalize">{group.replace(/_/g, ' ')}</span>
+                        <span className="text-xs text-gray-400">{checkedCount}/{allGroupKeys.length}</span>
+                      </div>
+                      {!q && (isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />)}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="divide-y divide-gray-50">
+                        {perms.map(perm => (
+                          <label
+                            key={perm.key}
+                            className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-emerald-50/40 transition"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checkedKeys.has(perm.key)}
+                              onChange={() => toggleKey(perm.key)}
+                              className="w-4 h-4 mt-0.5 accent-emerald-600"
+                            />
+                            <div>
+                              <p className="text-sm font-medium text-gray-800">{perm.label}</p>
+                              {perm.description && (
+                                <p className="text-xs text-gray-400">{perm.description}</p>
+                              )}
+                              <code className="text-[10px] text-gray-300 font-mono">{perm.key}</code>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            })()}
           </div>
         </div>
       )}

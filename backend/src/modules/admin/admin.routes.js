@@ -240,6 +240,9 @@ router.get('/analytics/funnel', auth, admin, controller.getFunnelAnalytics)
 /* ─── RBAC: PERMISSIONS ─── */
 router.get('/my-permissions', auth, admin, deptCtrl.getMyPermissions)
 router.get('/permissions/all', auth, admin, deptCtrl.getAllPermissions)
+router.post('/permissions', auth, allowRoles(1), deptCtrl.createPermission)
+router.put('/permissions/:id', auth, allowRoles(1), deptCtrl.updatePermission)
+router.delete('/permissions/:id', auth, allowRoles(1), deptCtrl.deletePermission)
 
 /* ─── RBAC: DEPARTMENTS (superadmin only for create/update/delete) ─── */
 router.get('/departments', auth, admin, deptCtrl.listDepartments)

@@ -9,7 +9,6 @@ exports.getPublic = async (req, res) => {
        WHERE is_active = TRUE
        ORDER BY category, sort_order ASC, id ASC`
     )
-    // Group by category
     const grouped = {}
     for (const row of rows) {
       const cat = row.category || 'General'
@@ -18,6 +17,7 @@ exports.getPublic = async (req, res) => {
     }
     res.json({ success: true, faqs: grouped })
   } catch (err) {
+    console.error('[faq.getPublic]', err.message)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
@@ -30,6 +30,7 @@ exports.adminList = async (req, res) => {
     )
     res.json({ success: true, faqs: rows })
   } catch (err) {
+    console.error('[faq.adminList]', err.message)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
@@ -48,6 +49,7 @@ exports.create = async (req, res) => {
     )
     res.status(201).json({ success: true, faq: rows[0] })
   } catch (err) {
+    console.error('[faq.create]', err.message)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
@@ -78,6 +80,7 @@ exports.update = async (req, res) => {
     if (!rows.length) return res.status(404).json({ success: false, message: 'FAQ not found' })
     res.json({ success: true, faq: rows[0] })
   } catch (err) {
+    console.error('[faq.update]', err.message)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
@@ -90,6 +93,7 @@ exports.remove = async (req, res) => {
     if (!rowCount) return res.status(404).json({ success: false, message: 'FAQ not found' })
     res.json({ success: true })
   } catch (err) {
+    console.error('[faq.remove]', err.message)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }

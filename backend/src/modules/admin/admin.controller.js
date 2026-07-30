@@ -1173,7 +1173,8 @@ exports.getOrders = async (req, res) => {
       page = 1,
       limit = 10,
       search = '',
-      status = 'all'
+      status = 'all',
+      refund_status = ''
     } = req.query
 
 
@@ -1215,6 +1216,14 @@ exports.getOrders = async (req, res) => {
 
       idx++
 
+    }
+
+    /* ================= REFUND STATUS ================= */
+
+    if (refund_status) {
+      where += ` AND o.refund_status = $${idx} `
+      values.push(refund_status)
+      idx++
     }
 
 

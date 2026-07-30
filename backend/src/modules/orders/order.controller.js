@@ -1147,13 +1147,14 @@ exports.cancelOrder = async (req, res) => {
           speed: 'normal',
           notes: { order_id: id, reason: 'Order cancelled by customer' }
         });
+        // Use Razorpay's actual refund status ('pending' | 'processed')
+        const rzpStatus = refund.status === 'processed' ? 'processed' : 'pending';
         await pool.query(
-          `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status='processed', payment_status='refunded', updated_at=NOW() WHERE id=$3`,
-          [refund.id, Number(order.total_amount), id]
+          `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status=$3, payment_status='refunded', updated_at=NOW() WHERE id=$4`,
+          [refund.id, Number(order.total_amount), rzpStatus, id]
         );
       } catch (refundErr) {
         console.error('[CANCEL REFUND ERROR]', refundErr.message);
-        // Mark for manual admin action
         await pool.query(`UPDATE orders SET refund_status='failed', updated_at=NOW() WHERE id=$1`, [id]);
       }
     }
@@ -2206,14 +2207,17 @@ exports.adminRefundOrder = async (req, res) => {
     if (order.payment_method === 'cod') {
       return res.status(400).json({ success: false, message: 'COD orders cannot be refunded through Razorpay' });
     }
-    if (order.payment_status !== 'paid') {
-      return res.status(400).json({ success: false, message: 'Order was not paid online — no refund to process' });
-    }
     if (!order.razorpay_payment_id) {
       return res.status(400).json({ success: false, message: 'No Razorpay payment ID on record for this order' });
     }
-    if (order.refund_status === 'processed') {
-      return res.status(400).json({ success: false, message: 'Refund already processed for this order' });
+    // Allow retry when refund previously failed (payment_status may be 'refunded' from a failed attempt)
+    const canRefund = order.payment_status === 'paid' ||
+      (order.payment_status === 'refunded' && order.refund_status === 'failed');
+    if (!canRefund) {
+      return res.status(400).json({ success: false, message: 'Order was not paid online or refund is not retryable' });
+    }
+    if (order.refund_status === 'processed' || order.refund_status === 'pending') {
+      return res.status(400).json({ success: false, message: `Refund already ${order.refund_status} for this order` });
     }
 
     const refundAmount = Math.round(Number(order.total_amount) * 100);
@@ -2223,12 +2227,14 @@ exports.adminRefundOrder = async (req, res) => {
       notes: { order_id: id, reason: 'Manual refund initiated by admin' },
     });
 
+    // Use Razorpay's actual status ('pending' or 'processed')
+    const rzpStatus = refund.status === 'processed' ? 'processed' : 'pending';
     await pool.query(
-      `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status='processed', payment_status='refunded', updated_at=NOW() WHERE id=$3`,
-      [refund.id, Number(order.total_amount), id]
+      `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status=$3, payment_status='refunded', updated_at=NOW() WHERE id=$4`,
+      [refund.id, Number(order.total_amount), rzpStatus, id]
     );
 
-    res.json({ success: true, message: 'Refund initiated successfully', refund_id: refund.id });
+    res.json({ success: true, message: 'Refund initiated successfully', refund_id: refund.id, refund_status: rzpStatus });
   } catch (err) {
     console.error('[ADMIN REFUND]', err.message);
     const msg = err?.error?.description || err.message || 'Refund failed';
