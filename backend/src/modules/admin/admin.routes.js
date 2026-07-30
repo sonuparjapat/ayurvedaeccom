@@ -29,6 +29,7 @@ router.get('/users',auth,
   allowRoles(1, 2),
   controller.users)
 router.get('/stats', auth, admin, controller.stats)
+router.get('/server-stats', auth, admin, controller.serverStats)
 
 router.get('/recent-orders', auth, admin, controller.recentOrders)
 router.get('/products', auth, admin, controller.getAll)

@@ -53,6 +53,7 @@ import {
 import Link from 'next/link'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
+import { io } from 'socket.io-client'
 
 import { useAuth } from '@/context/auth-context'
 import { useOrderSocket } from '@/hooks/useOrderSocket'
@@ -615,6 +616,19 @@ useEffect(() => {
   init();
 
 }, [loginuserdata,loadOrders]);
+
+  // Real-time order status updates via socket
+  useEffect(() => {
+    if (!loginuserdata?.id) return
+    const socket = io(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000', {
+      transports: ['websocket', 'polling'],
+    })
+    socket.emit('join_user', loginuserdata.id)
+    socket.on('order_status_changed', ({ order_id, new_status }: { order_id: number; new_status: number }) => {
+      setPagedOrders(prev => prev.map(o => o.id === order_id ? { ...o, status: new_status } : o))
+    })
+    return () => { socket.disconnect() }
+  }, [loginuserdata?.id])
 
 
   /* ================= PROFILE ================= */

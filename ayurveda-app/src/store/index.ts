@@ -109,6 +109,10 @@ interface AppState {
   // Wishlist
   wishlistData: { items: WishlistItem[]; loading: boolean; totalItems: number }
   setWishlistData: (d: any) => void
+
+  // Notifications
+  unreadNotificationCount: number
+  setUnreadNotificationCount: (n: number) => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -142,4 +146,7 @@ export const useStore = create<AppState>((set) => ({
 
   wishlistData: { items: [], loading: false, totalItems: 0 },
   setWishlistData: (d) => set({ wishlistData: d }),
+
+  unreadNotificationCount: 0,
+  setUnreadNotificationCount: (n) => set({ unreadNotificationCount: n }),
 }))

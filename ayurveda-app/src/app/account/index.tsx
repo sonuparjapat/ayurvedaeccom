@@ -6,7 +6,7 @@ import {
 } from 'react-native'
 import * as Location from 'expo-location'
 import { toast } from '../../components/ui/Toast'
-import Animated, { FadeIn, FadeInDown, FadeInRight } from 'react-native-reanimated'
+import Animated, { FadeIn, FadeInDown, FadeInRight, useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
@@ -68,6 +68,30 @@ const nl = StyleSheet.create({
   btn: { paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
   btnText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 15 },
 })
+
+// ─── SKELETON ─────────────────────────────────────────────────────────────────
+function Skel({ w, h, r = 8 }: { w: number | string; h: number; r?: number }) {
+  const op = useSharedValue(0.45)
+  useEffect(() => { op.value = withRepeat(withTiming(1, { duration: 700 }), -1, true) }, [])
+  const style = useAnimatedStyle(() => ({ opacity: op.value }))
+  return <Animated.View style={[{ width: w as any, height: h, borderRadius: r, backgroundColor: '#d1e8dc' }, style]} />
+}
+
+function OrderCardSkeleton() {
+  return (
+    <View style={[oc.card, { borderLeftWidth: 3, borderLeftColor: '#d1e8dc', gap: 10 }]}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ gap: 6 }}><Skel w={110} h={12} /><Skel w={80} h={10} /></View>
+        <Skel w={80} h={26} r={20} />
+      </View>
+      <Skel w={'100%'} h={1} r={0} />
+      <View style={{ flexDirection: 'row', gap: 10 }}><Skel w={50} h={50} r={8} /><Skel w={50} h={50} r={8} /></View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Skel w={80} h={12} /><Skel w={60} h={30} r={10} />
+      </View>
+    </View>
+  )
+}
 
 // ─── ORDER CARD ───────────────────────────────────────────────────────────────
 function OrderCard({ order, index }: { order: Order; index: number }) {
@@ -606,9 +630,8 @@ export default function AccountScreen() {
         {activeTab === 'Orders' && (
           <Animated.View entering={FadeInDown.duration(350)} style={ss.tabContent}>
             {ordersLoading ? (
-              <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-                <Text style={{ fontSize: 36, marginBottom: 12 }}>📦</Text>
-                <Text style={{ fontFamily: Fonts.medium, color: Colors.textDim, fontSize: 13 }}>Loading orders...</Text>
+              <View style={{ gap: 12 }}>
+                {[1, 2, 3].map(k => <OrderCardSkeleton key={k} />)}
               </View>
             ) : orders.length === 0 ? (
               <View style={ss.emptyState}>

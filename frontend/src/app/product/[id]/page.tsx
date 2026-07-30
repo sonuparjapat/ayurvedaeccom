@@ -282,6 +282,13 @@ const handlepagechage=(page:number)=>{
       })
     })
 
+    // Real-time stock badge update
+    socket.on('product_stock_update', ({ productId, inventory }: { productId: number; inventory: number }) => {
+      if (String(productId) === String(id)) {
+        setProduct(prev => prev ? { ...prev, inventory } : prev)
+      }
+    })
+
     socket.on('flash_product_sold_out', ({ saleId, productId }: { saleId: number; productId: number }) => {
       if (String(productId) === String(id)) {
         setFlashSaleInfo(prev => (prev?.saleId === saleId ? null : prev))

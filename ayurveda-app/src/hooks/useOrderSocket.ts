@@ -26,7 +26,12 @@ export function useOrderSocket() {
           socket.emit('join_user', user.id)
         })
 
-        socket.on('order_status_updated', (data: { order_id: number; status_label: string }) => {
+        socket.on('order_status_updated', (data: { order_id: number; status: number; status_label: string }) => {
+          // Update store so account orders tab reflects new status immediately
+          const store = useStore.getState()
+          if ((store as any).updateOrderStatus) {
+            (store as any).updateOrderStatus(data.order_id, data.status)
+          }
           Alert.alert(
             '📦 Order Update',
             `Order #${data.order_id} is now ${data.status_label}`,

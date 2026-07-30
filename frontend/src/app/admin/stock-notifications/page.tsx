@@ -58,7 +58,7 @@ export default function AdminStockNotificationsPage() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 via-purple-50 to-pink-50">
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className="w-full p-6 space-y-6">
 
         {/* HEADER */}
         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">

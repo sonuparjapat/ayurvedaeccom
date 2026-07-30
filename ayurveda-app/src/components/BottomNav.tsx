@@ -22,7 +22,7 @@ const NAV_ITEMS = [
 
 // Single animated tab
 function NavTab({
-  item, index, activeIndex, tabW, user, cartCount,
+  item, index, activeIndex, tabW, user, cartCount, unreadNotif,
 }: {
   item: typeof NAV_ITEMS[0]
   index: number
@@ -30,6 +30,7 @@ function NavTab({
   tabW: number
   user: any
   cartCount: number
+  unreadNotif: number
 }) {
   const isActive = activeIndex === index
   const isAccount = item.route === '/account'
@@ -65,18 +66,26 @@ function NavTab({
           {isAccount ? (
             // Account tab — show avatar or login icon
             user ? (
-              <View style={[s.avatar, isActive && s.avatarActive]}>
-                <LinearGradient
-                  colors={isActive ? [Colors.sage, Colors.forest] : ['#d1d5db', '#9ca3af']}
-                  style={StyleSheet.absoluteFill}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                />
-                <Text style={[s.avatarText, isActive && { color: '#fff' }]}>
-                  {userInitials || '?'}
-                </Text>
-                {/* Online dot */}
-                <View style={s.onlineDot} />
+              <View style={{ position: 'relative' }}>
+                <View style={[s.avatar, isActive && s.avatarActive]}>
+                  <LinearGradient
+                    colors={isActive ? [Colors.sage, Colors.forest] : ['#d1d5db', '#9ca3af']}
+                    style={StyleSheet.absoluteFill}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                  <Text style={[s.avatarText, isActive && { color: '#fff' }]}>
+                    {userInitials || '?'}
+                  </Text>
+                  {/* Online dot */}
+                  <View style={s.onlineDot} />
+                </View>
+                {/* Notification badge */}
+                {unreadNotif > 0 && (
+                  <View style={s.notifBadge}>
+                    <Text style={s.notifBadgeText}>{unreadNotif > 9 ? '9+' : unreadNotif}</Text>
+                  </View>
+                )}
               </View>
             ) : (
               // Not logged in
@@ -119,6 +128,7 @@ export default function BottomNav({ active }: { active: string }) {
   const insets = useSafeAreaInsets()
   const user = useStore(s => s.user)
   const cartCount = useStore(s => s.cartCount)
+  const unreadNotificationCount = useStore(s => s.unreadNotificationCount)
 
   const TAB_W = W / NAV_ITEMS.length
   const activeIndex = NAV_ITEMS.findIndex(n => n.route === active)
@@ -176,6 +186,7 @@ export default function BottomNav({ active }: { active: string }) {
             tabW={TAB_W}
             user={user}
             cartCount={cartCount}
+            unreadNotif={unreadNotificationCount}
           />
         ))}
       </View>
@@ -290,6 +301,27 @@ const s = StyleSheet.create({
     color: '#fff',
     letterSpacing: 0.3,
     textTransform: 'uppercase',
+  },
+
+  // Notification badge on account tab
+  notifBadge: {
+    position: 'absolute',
+    top: -4, right: -6,
+    backgroundColor: '#ef4444',
+    borderRadius: 8,
+    minWidth: 16, height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    zIndex: 10,
+  },
+  notifBadgeText: {
+    fontSize: 8,
+    fontFamily: Fonts.bold,
+    color: '#fff',
+    letterSpacing: 0,
   },
 
   // Labels

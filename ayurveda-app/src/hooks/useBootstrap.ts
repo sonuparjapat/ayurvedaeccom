@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { router } from 'expo-router'
 import api from '../api/axios'
 import { useStore } from '../store'
 import { getGuestSession } from '../utils/guestSession'
@@ -54,6 +55,12 @@ export function useBootstrap() {
     setBootstrapped(true)
     setLoading(false)
 
+    // Check first launch — show onboarding if never seen
+    try {
+      const seen = await AsyncStorage.getItem('has_seen_onboarding')
+      if (!seen) { router.replace('/onboarding'); return }
+    } catch { }
+
     // 3. Background: validate session, refresh APIs, update state silently
     try {
       await getGuestSession()
@@ -69,7 +76,7 @@ export function useBootstrap() {
         setUser(u)
         if (u) {
           await AsyncStorage.setItem('stored_user', JSON.stringify(u))
-          await Promise.allSettled([fetchCart(), fetchWishlist()])
+          await Promise.allSettled([fetchCart(), fetchWishlist(), fetchUnreadNotifs()])
           // Register push token for authenticated users
           try {
             const token = await registerPushToken()
@@ -132,6 +139,14 @@ export function useBootstrap() {
       const res = await api.get('/shop')
       const items = res.data?.data || res.data?.items || []
       useStore.getState().setWishlistData({ items, loading: false, totalItems: items.length })
+    } catch { }
+  }
+
+  const fetchUnreadNotifs = async () => {
+    try {
+      const res = await api.get('/notifications?is_read=false&limit=1')
+      const count = res.data?.pagination?.total || res.data?.total || 0
+      useStore.getState().setUnreadNotificationCount(Number(count))
     } catch { }
   }
 

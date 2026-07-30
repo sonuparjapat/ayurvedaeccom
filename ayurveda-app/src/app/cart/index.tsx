@@ -21,6 +21,39 @@ import { getGuestSession } from '@/utils/guestSession'
 
 const { width: W } = Dimensions.get('window')
 
+// ─── SKELETON ─────────────────────────────────────────────────────────────────
+function Skel({ w, h, r = 8 }: { w: number | string; h: number; r?: number }) {
+  const op = useSharedValue(0.45)
+  useEffect(() => { op.value = withTiming(1, { duration: 700 }); op.value = withTiming(0.45, { duration: 700 }) }, [])
+  const style = useAnimatedStyle(() => ({ opacity: op.value }))
+  return <Animated.View style={[{ width: w as any, height: h, borderRadius: r, backgroundColor: '#d1e8dc' }, style]} />
+}
+
+function CartSkeleton() {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#f0f4f0', padding: 16, gap: 12 }}>
+      {[1, 2, 3].map(k => (
+        <View key={k} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12, flexDirection: 'row', gap: 12 }}>
+          <Skel w={90} h={90} r={12} />
+          <View style={{ flex: 1, gap: 8, paddingTop: 4 }}>
+            <Skel w={'60%'} h={9} />
+            <Skel w={'85%'} h={13} />
+            <Skel w={'40%'} h={11} />
+            <Skel w={'50%'} h={18} />
+          </View>
+        </View>
+      ))}
+      <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 10, marginTop: 8 }}>
+        <Skel w={'50%'} h={14} />
+        <Skel w={'100%'} h={1} />
+        <Skel w={'80%'} h={12} />
+        <Skel w={'70%'} h={12} />
+        <Skel w={'100%'} h={44} r={12} />
+      </View>
+    </View>
+  )
+}
+
 // ─── DELIVERY PROGRESS BAR ────────────────────────────────────────────────────
 function DeliveryProgress({ subtotal, freeLimit }: { subtotal: number; freeLimit: number }) {
   const progress = Math.min(subtotal / freeLimit, 1)
@@ -80,12 +113,45 @@ const dp = StyleSheet.create({
 })
 
 // ─── CART ITEM ────────────────────────────────────────────────────────────────
+const SWIPE_THRESHOLD = -90
+const { width: SW } = Dimensions.get('window')
+
 function CartItem({ item, onUpdate, onRemove, updating }: {
   item: any; onUpdate: (id: number, qty: number, stock: number) => void
   onRemove: (id: number) => void; updating: boolean
 }) {
+  const translateX = useSharedValue(0)
   const scale = useSharedValue(1)
-  const removeStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
+
+  const triggerRemove = () => {
+    translateX.value = withTiming(-SW, { duration: 250 }, () => {
+      runOnJS(onRemove)(item.product_id)
+    })
+  }
+
+  const pan = Gesture.Pan()
+    .activeOffsetX([-10, 10])
+    .failOffsetY([-15, 15])
+    .onUpdate(e => {
+      if (e.translationX < 0) {
+        translateX.value = Math.max(e.translationX, -SW * 0.5)
+      }
+    })
+    .onEnd(e => {
+      if (e.translationX < SWIPE_THRESHOLD) {
+        runOnJS(triggerRemove)()
+      } else {
+        translateX.value = withSpring(0, { damping: 18, stiffness: 200 })
+      }
+    })
+
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }))
+  const deleteRevealStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [0, -60], [0, 1], Extrapolation.CLAMP),
+    transform: [{ scale: interpolate(translateX.value, [0, -90], [0.7, 1], Extrapolation.CLAMP) }],
+  }))
 
   const handleRemovePress = () => {
     scale.value = withSpring(0.9, { damping: 10 })
@@ -97,9 +163,16 @@ function CartItem({ item, onUpdate, onRemove, updating }: {
     : null
 
   return (
-    <Animated.View style={ss.cartCard}>
-      <TouchableOpacity onPress={() => router.push(`/product/${item.product_id}`)} activeOpacity={0.9}>
-        <ExpoImage source={{ uri: item.images?.[0] || '' }} style={ss.cartImg} contentFit="cover" transition={200} />
+    <View style={{ marginBottom: 10, overflow: 'hidden', borderRadius: 16 }}>
+      {/* Red delete zone revealed by swipe */}
+      <Animated.View style={[{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 90, backgroundColor: '#ef4444', borderRadius: 16, alignItems: 'center', justifyContent: 'center' }, deleteRevealStyle]}>
+        <Text style={{ fontSize: 22 }}>🗑️</Text>
+        <Text style={{ fontSize: 10, color: '#fff', fontFamily: Fonts.bold, marginTop: 2 }}>Delete</Text>
+      </Animated.View>
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[ss.cartCard, { marginBottom: 0, borderRadius: 16 }, cardStyle]}>
+          <TouchableOpacity onPress={() => router.push(`/product/${item.product_id}`)} activeOpacity={0.9}>
+            <ExpoImage source={{ uri: item.images?.[0] || '' }} style={ss.cartImg} contentFit="cover" transition={200} />
       </TouchableOpacity>
 
       <View style={{ flex: 1 }}>
@@ -143,14 +216,14 @@ function CartItem({ item, onUpdate, onRemove, updating }: {
         </View>
       </View>
 
-      <Animated.View style={removeStyle}>
-        <TouchableOpacity onPress={handleRemovePress} style={ss.delBtn} hitSlop={6}>
-          <LinearGradient colors={['#fee2e2', '#fecaca']} style={ss.delBtnInner}>
-            <Text style={{ fontSize: 15 }}>🗑️</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </Animated.View>
-    </Animated.View>
+          <TouchableOpacity onPress={handleRemovePress} style={ss.delBtn} hitSlop={6}>
+            <LinearGradient colors={['#fee2e2', '#fecaca']} style={ss.delBtnInner}>
+              <Text style={{ fontSize: 15 }}>🗑️</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      </GestureDetector>
+    </View>
   )
 }
 
@@ -250,11 +323,7 @@ export default function CartScreen() {
   const delivery = subtotal >= freeLimit ? 0 : deliveryCharge
   const total = subtotal + delivery
 
-  if (loading) return (
-    <View style={{ flex: 1, backgroundColor: Colors.cream, alignItems: 'center', justifyContent: 'center' }}>
-      <ActivityIndicator color={Colors.forest} size="large" />
-    </View>
-  )
+  if (loading) return <CartSkeleton />
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f0f4f0' }}>

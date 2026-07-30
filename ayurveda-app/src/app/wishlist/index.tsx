@@ -9,7 +9,8 @@ import {
 import { toast } from '../../components/ui/Toast'
 import { Image as ExpoImage } from 'expo-image'
 import { impact, notify, Haptics } from '../../utils/haptics'
-import Animated, { FadeInDown, FadeOutRight, Layout } from 'react-native-reanimated'
+import Animated, { FadeInDown, FadeOutRight, Layout, useSharedValue, useAnimatedStyle, withRepeat, withTiming, interpolate, Extrapolation, withSpring, runOnJS } from 'react-native-reanimated'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -18,6 +19,145 @@ import { useStore } from '../../store'
 import { Colors, Fonts } from '../../constants/theme'
 
 const { width: W } = Dimensions.get('window')
+
+function Skel({ w, h, r = 8 }: { w: number | string; h: number; r?: number }) {
+  const op = useSharedValue(0.45)
+  useEffect(() => {
+    op.value = withRepeat(withTiming(1, { duration: 700 }), -1, true)
+  }, [])
+  const style = useAnimatedStyle(() => ({ opacity: op.value }))
+  return <Animated.View style={[{ width: w as any, height: h, borderRadius: r, backgroundColor: '#d1e8dc' }, style]} />
+}
+
+function WishlistCardSkeleton() {
+  const cardW = (W - 44) / 2
+  return (
+    <View style={{ width: cardW, borderRadius: 16, backgroundColor: '#f5f9f6', overflow: 'hidden', marginBottom: 12 }}>
+      <Skel w={cardW} h={140} r={0} />
+      <View style={{ padding: 10, gap: 6 }}>
+        <Skel w={60} h={9} />
+        <Skel w={cardW * 0.75} h={13} />
+        <Skel w={55} h={11} />
+        <Skel w={cardW - 20} h={32} r={9} />
+      </View>
+    </View>
+  )
+}
+
+const SWIPE_THRESHOLD = 80
+
+interface WishlistCardProps {
+  p: any
+  index: number
+  removingId: number | null
+  addingId: number | null
+  inCart: (id: number) => boolean
+  onRemove: (id: number) => void
+  onAddToCart: (id: number) => void
+}
+
+function WishlistCard({ p, index, removingId, addingId, inCart, onRemove, onAddToCart }: WishlistCardProps) {
+  const disc = p.compareprice ? Math.round(((p.compareprice - p.price) / p.compareprice) * 100) : null
+  const outOfStock = p.inventory === 0
+  const isRemoving = removingId === p.id
+  const isAdding = addingId === p.id
+  const img = getImage(p.images)
+  const cartAlready = inCart(p.id)
+
+  const translateX = useSharedValue(0)
+
+  const triggerCart = () => { impact(Haptics.ImpactFeedbackStyle.Medium); onAddToCart(p.id); translateX.value = withSpring(0, { damping: 18 }) }
+
+  const pan = Gesture.Pan()
+    .activeOffsetX([10, 10])
+    .failOffsetY([-15, 15])
+    .onUpdate(e => {
+      if (e.translationX > 0) translateX.value = Math.min(e.translationX, W * 0.4)
+    })
+    .onEnd(e => {
+      if (e.translationX > SWIPE_THRESHOLD && !outOfStock && !cartAlready) runOnJS(triggerCart)()
+      else translateX.value = withSpring(0, { damping: 18, stiffness: 200 })
+    })
+
+  const cardStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }))
+  const cartRevealStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [0, 60], [0, 1], Extrapolation.CLAMP),
+    transform: [{ scale: interpolate(translateX.value, [0, 80], [0.7, 1], Extrapolation.CLAMP) }],
+  }))
+
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(index * 60).duration(400)}
+      exiting={FadeOutRight.duration(300)}
+      layout={Layout.springify()}
+      style={{ overflow: 'hidden', borderRadius: 18 }}
+    >
+      {/* Green cart reveal on left */}
+      <Animated.View style={[{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 80, backgroundColor: Colors.emerald, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }, cartRevealStyle]}>
+        <Text style={{ fontSize: 22 }}>🛍️</Text>
+        <Text style={{ fontSize: 10, color: '#fff', fontFamily: Fonts.bold, marginTop: 2 }}>Cart</Text>
+      </Animated.View>
+
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[ss.card, isRemoving && { opacity: 0.5 }, { marginBottom: 0 }, cardStyle]}>
+          <TouchableOpacity onPress={() => router.push(`/product/${(p as any).slug || p.id}`)} activeOpacity={0.9} style={{ flex: 1 }}>
+            <View style={ss.imgWrap}>
+              {img ? (
+                <ExpoImage source={{ uri: img }} style={ss.img} contentFit="cover" transition={200} />
+              ) : (
+                <View style={[ss.img, { backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' }]}>
+                  <Text style={{ fontSize: 40 }}>🌿</Text>
+                </View>
+              )}
+              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.2)']} style={StyleSheet.absoluteFill} />
+              {disc && !outOfStock && (
+                <View style={ss.discBadge}><Text style={ss.discText}>{disc}% OFF</Text></View>
+              )}
+              {outOfStock && (
+                <View style={ss.oosOverlay}><Text style={ss.oosText}>Out of Stock</Text></View>
+              )}
+              <TouchableOpacity onPress={() => onRemove(p.id)} disabled={!!removingId} style={ss.removeBtn} hitSlop={8}>
+                <Text style={{ fontSize: 14 }}>🗑️</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={ss.cardBody}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <View style={ss.catTag}><Text style={ss.catTagText}>{p.category_name}</Text></View>
+                {!outOfStock && p.inventory <= 5 && <Text style={ss.lowStock}>Only {p.inventory} left</Text>}
+              </View>
+              <Text style={ss.cardName} numberOfLines={2}>{p.name}</Text>
+              <View style={{ flexDirection: 'row', gap: 2, alignItems: 'center', marginBottom: 6 }}>
+                {[1,2,3,4,5].map(s => (
+                  <Text key={s} style={{ fontSize: 9, color: s <= Math.round(p.averagerating) ? '#f59e0b' : '#d1d5db' }}>★</Text>
+                ))}
+                <Text style={{ fontSize: 9, color: Colors.textDim, marginLeft: 3 }}>({p.reviewcount})</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
+                <Text style={ss.price}>₹{p.price}</Text>
+                {p.compareprice && <Text style={ss.mrp}>₹{p.compareprice}</Text>}
+              </View>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => outOfStock ? null : cartAlready ? router.push('/cart') : onAddToCart(p.id)}
+            disabled={outOfStock || isAdding}
+            style={{ marginHorizontal: 12, marginBottom: 12, borderRadius: 10, overflow: 'hidden' }}
+          >
+            <LinearGradient
+              colors={outOfStock ? ['#9ca3af', '#6b7280'] : cartAlready ? ['#059669', '#0d9488'] : [Colors.forest, Colors.moss]}
+              style={ss.addBtn}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            >
+              <Text style={ss.addBtnText}>
+                {isAdding ? 'Adding...' : outOfStock ? 'Out of Stock' : cartAlready ? '✓ Go to Cart' : '🛍️ Add to Cart'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      </GestureDetector>
+    </Animated.View>
+  )
+}
 
 interface WishlistItem {
   wishlist_id: number
@@ -133,103 +273,17 @@ export default function WishlistScreen() {
     } finally { setAddingAll(false) }
   }
 
-  const renderItem = ({ item: p, index }: { item: WishlistItem; index: number }) => {
-    const disc = p.compareprice ? Math.round(((p.compareprice - p.price) / p.compareprice) * 100) : null
-    const outOfStock = p.inventory === 0
-    const isRemoving = removingId === p.id
-    const isAdding = addingId === p.id
-    const img = getImage(p.images)
-    const cartAlready = inCart(p.id)
-
-    return (
-      <Animated.View
-        entering={FadeInDown.delay(index * 60).duration(400)}
-        exiting={FadeOutRight.duration(300)}
-        layout={Layout.springify()}
-        style={[ss.card, isRemoving && { opacity: 0.5 }]}
-      >
-        <TouchableOpacity onPress={() => router.push(`/product/${(p as any).slug || p.id}`)} activeOpacity={0.9} style={{ flex: 1 }}>
-          {/* Image */}
-          <View style={ss.imgWrap}>
-            {img ? (
-              <ExpoImage source={{ uri: img }} style={ss.img} contentFit="cover" transition={200} />
-            ) : (
-              <View style={[ss.img, { backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' }]}>
-                <Text style={{ fontSize: 40 }}>🌿</Text>
-              </View>
-            )}
-            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.2)']} style={StyleSheet.absoluteFill} />
-
-            {disc && !outOfStock && (
-              <View style={ss.discBadge}><Text style={ss.discText}>{disc}% OFF</Text></View>
-            )}
-            {outOfStock && (
-              <View style={ss.oosOverlay}><Text style={ss.oosText}>Out of Stock</Text></View>
-            )}
-
-            {/* Remove btn */}
-            <TouchableOpacity
-              onPress={() => removeItem(p.id)}
-              disabled={!!removingId}
-              style={ss.removeBtn}
-              hitSlop={8}
-            >
-              <Text style={{ fontSize: 14 }}>🗑️</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Body */}
-          <View style={ss.cardBody}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <View style={ss.catTag}>
-                <Text style={ss.catTagText}>{p.category_name}</Text>
-              </View>
-              {!outOfStock && p.inventory <= 5 && (
-                <Text style={ss.lowStock}>Only {p.inventory} left</Text>
-              )}
-            </View>
-
-            <Text style={ss.cardName} numberOfLines={2}>{p.name}</Text>
-
-            {/* Stars */}
-            <View style={{ flexDirection: 'row', gap: 2, alignItems: 'center', marginBottom: 6 }}>
-              {[1,2,3,4,5].map(s => (
-                <Text key={s} style={{ fontSize: 9, color: s <= Math.round(p.averagerating) ? '#f59e0b' : '#d1d5db' }}>★</Text>
-              ))}
-              <Text style={{ fontSize: 9, color: Colors.textDim, marginLeft: 3 }}>({p.reviewcount})</Text>
-            </View>
-
-            {/* Price */}
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
-              <Text style={ss.price}>₹{p.price}</Text>
-              {p.compareprice && <Text style={ss.mrp}>₹{p.compareprice}</Text>}
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* CTA */}
-        <TouchableOpacity
-          onPress={() => outOfStock ? null : cartAlready ? router.push('/cart') : addToCart(p.id)}
-          disabled={outOfStock || isAdding}
-          style={{ marginHorizontal: 12, marginBottom: 12, borderRadius: 10, overflow: 'hidden' }}
-        >
-          <LinearGradient
-            colors={
-              outOfStock ? ['#9ca3af', '#6b7280'] :
-              cartAlready ? ['#059669', '#0d9488'] :
-              [Colors.forest, Colors.moss]
-            }
-            style={ss.addBtn}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-          >
-            <Text style={ss.addBtnText}>
-              {isAdding ? 'Adding...' : outOfStock ? 'Out of Stock' : cartAlready ? '✓ Go to Cart' : '🛍️ Add to Cart'}
-            </Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </Animated.View>
-    )
-  }
+  const renderItem = ({ item: p, index }: { item: WishlistItem; index: number }) => (
+    <WishlistCard
+      p={p}
+      index={index}
+      removingId={removingId}
+      addingId={addingId}
+      inCart={inCart}
+      onRemove={removeItem}
+      onAddToCart={addToCart}
+    />
+  )
 
   if (!user) return (
     <View style={{ flex: 1, backgroundColor: Colors.cream, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
@@ -303,8 +357,8 @@ export default function WishlistScreen() {
       )}
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={Colors.forest} size="large" />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 16, gap: 12 }}>
+          {[1, 2, 3, 4].map(k => <WishlistCardSkeleton key={k} />)}
         </View>
       ) : items.length === 0 ? (
         <View style={ss.emptyWrap}>

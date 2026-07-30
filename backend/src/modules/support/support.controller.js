@@ -2,6 +2,24 @@ const pool = require('../../config/db');
 const { emitToTicket, emitToAdmin, emitToUser } = require('../../socket');
 const { createNotification } = require('../../services/notification.service');
 const { sendToUser: sendPushToUser } = require('../../services/pushNotification');
+const mailer = require('../../config/mail');
+
+const APP = () => process.env.APP_NAME || 'Oroganix';
+const MAIL_FROM = () => process.env.MAIL_FROM || 'noreply@oroganix.com';
+const FRONTEND_URL = () => process.env.FRONTEND_URL || 'https://oroganix.com';
+
+async function sendSupportEmail({ email, name, subject, html }) {
+  try {
+    await mailer.sendTransacEmail({
+      sender: { email: MAIL_FROM(), name: APP() },
+      to: [{ email, name: name || 'Customer' }],
+      subject,
+      htmlContent: html,
+    });
+  } catch (err) {
+    console.error('[SUPPORT EMAIL]', err.message);
+  }
+}
 
 /* ── USER: list own tickets ── */
 exports.myTickets = async (req, res) => {
@@ -43,6 +61,21 @@ exports.createTicket = async (req, res) => {
       [t.id, req.user.id, message]
     );
     emitToAdmin('new_ticket', { ticket_id: t.id, subject: t.subject, user_name: user.name });
+    sendSupportEmail({
+      email: user.email,
+      name: user.name,
+      subject: `[#${t.id}] Support Ticket Received — ${subject}`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#f0f7f4;border-radius:12px;">
+        <h2 style="color:#1a3a2a;margin:0 0 8px;">Ticket Received ✅</h2>
+        <p style="color:#374151;margin:0 0 16px;">Hi ${user.name}, we've received your support request and will respond within 24 hours.</p>
+        <div style="background:#fff;border-radius:8px;padding:16px;border-left:4px solid #10b981;margin-bottom:16px;">
+          <p style="margin:0;font-size:13px;color:#6b7280;">Ticket #${t.id}</p>
+          <p style="margin:4px 0 0;font-size:15px;font-weight:bold;color:#1a3a2a;">${subject}</p>
+        </div>
+        <a href="${FRONTEND_URL()}/support/${t.id}" style="display:inline-block;padding:12px 28px;background:#10b981;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">View Ticket →</a>
+        <p style="margin-top:20px;font-size:12px;color:#9ca3af;">© ${new Date().getFullYear()} ${APP()} · All rights reserved</p>
+      </div>`,
+    });
     res.status(201).json({ success: true, ticket: t });
   } catch (e) {
     console.error(e);
@@ -197,6 +230,23 @@ exports.adminReply = async (req, res) => {
         `Your ticket "${ticket.subject}" has a new reply`,
         { type: 'support_reply', ticket_id: parseInt(id) }
       );
+      if (ticket.user_email) {
+        sendSupportEmail({
+          email: ticket.user_email,
+          name: ticket.user_name,
+          subject: `[#${id}] New Reply — ${ticket.subject}`,
+          html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#f0f7f4;border-radius:12px;">
+            <h2 style="color:#1a3a2a;margin:0 0 8px;">New reply on your support ticket 💬</h2>
+            <p style="color:#374151;margin:0 0 16px;">Hi ${ticket.user_name || 'there'}, our support team has replied to your ticket.</p>
+            <div style="background:#fff;border-radius:8px;padding:16px;border-left:4px solid #10b981;margin-bottom:8px;">
+              <p style="margin:0;font-size:13px;color:#6b7280;">Ticket #${id} · ${ticket.subject}</p>
+              <p style="margin:8px 0 0;font-size:15px;color:#1a3a2a;">${message.trim()}</p>
+            </div>
+            <a href="${FRONTEND_URL()}/support/${id}" style="display:inline-block;margin-top:16px;padding:12px 28px;background:#10b981;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">Reply →</a>
+            <p style="margin-top:20px;font-size:12px;color:#9ca3af;">© ${new Date().getFullYear()} ${APP()} · All rights reserved</p>
+          </div>`,
+        });
+      }
     }
     res.json({ success: true, message: fullMsg });
   } catch (e) {

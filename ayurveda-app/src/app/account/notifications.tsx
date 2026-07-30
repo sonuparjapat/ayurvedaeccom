@@ -10,6 +10,7 @@ import { router } from 'expo-router'
 import api from '../../api/axios'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
 import { LeafLoader } from '../../components/ui/LeafLoader'
+import { useStore } from '../../store'
 
 /* ─── Type metadata ─── */
 const TYPE_META: Record<string, { emoji: string; bg: string; dot: string; label: string }> = {
@@ -143,6 +144,10 @@ const fm = StyleSheet.create({
 /* ─── Main Screen ─── */
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets()
+  const setUnreadNotificationCount = useStore(s => s.setUnreadNotificationCount)
+
+  // Clear global badge when this screen is opened
+  useEffect(() => { setUnreadNotificationCount(0) }, [])
 
   const [notifications, setNotifications] = useState<any[]>([])
   const [broadcasts, setBroadcasts] = useState<any[]>([])

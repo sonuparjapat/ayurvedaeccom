@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import axios from '@/lib/axios'
+import { io, Socket } from 'socket.io-client'
 
 import {
   Eye,
@@ -68,6 +69,25 @@ export default function AdminOrdersPage() {
   const [bulkUpdating, setBulkUpdating] = useState(false)
 
   const {statusList} = useAuth()
+  const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set())
+  const socketRef = useRef<Socket | null>(null)
+
+  /* ================= REAL-TIME ================= */
+  useEffect(() => {
+    const socket = io(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000', {
+      transports: ['websocket', 'polling'],
+    })
+    socketRef.current = socket
+    socket.emit('join_admin')
+    socket.on('new_order', (data: { order_id: number }) => {
+      load()
+      setNewOrderIds(prev => new Set([...prev, data.order_id]))
+      setTimeout(() => setNewOrderIds(prev => { const n = new Set(prev); n.delete(data.order_id); return n }), 5000)
+    })
+    socket.on('order_status_changed', () => { load() })
+    return () => { socket.disconnect() }
+  }, [])
+
   /* ================= LOAD ================= */
 
   const load = async () => {
@@ -502,6 +522,8 @@ const generateInvoice = async () => {
 
     ...o,
 
+    _rowStyle: newOrderIds.has(o.id) ? { background: 'linear-gradient(90deg, #d1fae5, #ecfdf5)', animation: 'pulse 1.2s ease-in-out 2' } : undefined,
+
     select: (
       <input
         type="checkbox"
@@ -513,11 +535,12 @@ const generateInvoice = async () => {
     ),
 
     id: (
-
-      <span className="font-mono text-sm font-semibold text-gray-900">
-        #{o.id}
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span className="font-mono text-sm font-semibold text-gray-900">#{o.id}</span>
+        {newOrderIds.has(o.id) && (
+          <span style={{ fontSize: 10, fontWeight: 700, background: '#10b981', color: '#fff', borderRadius: 99, padding: '1px 6px', lineHeight: '16px' }}>NEW</span>
+        )}
       </span>
-
     ),
 
 

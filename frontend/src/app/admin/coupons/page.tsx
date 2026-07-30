@@ -239,7 +239,7 @@ export default function AdminCoupons() {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <div className="w-full px-4 sm:px-6 py-8 space-y-8">
 
         {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

@@ -10,7 +10,7 @@ import { Image as ExpoImage } from 'expo-image'
 import { impact, notify, Haptics } from '../../utils/haptics'
 import Animated, {
   FadeIn, FadeInDown, FadeInUp,
-  useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle,
+  useSharedValue, withRepeat, withSequence, withTiming, withSpring, useAnimatedStyle,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -77,10 +77,20 @@ function ProductCard({ p, index, addingId, addToCart, toggleWish, wishlist, inCa
 }) {
   const d = p.compareprice ? Math.round(((p.compareprice - p.price) / p.compareprice) * 100) : null
   const isWished = wishlist.includes(p.id)
+  const scale = useSharedValue(1)
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    shadowOpacity: 0.08 + (1 - scale.value) * 0.5,
+  }))
 
   return (
-    <Animated.View entering={FadeInDown.delay((index % 8) * 50).duration(400)} style={ss.card}>
-      <TouchableOpacity onPress={() => router.push(`/product/${p.slug || p.id}`)} activeOpacity={0.9}>
+    <Animated.View entering={FadeInDown.delay((index % 8) * 50).duration(400)} style={[ss.card, cardStyle]}>
+      <TouchableOpacity
+        onPress={() => router.push(`/product/${p.slug || p.id}`)}
+        onPressIn={() => { scale.value = withSpring(0.96, { damping: 15, stiffness: 300 }) }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 200 }) }}
+        activeOpacity={1}
+      >
         <View style={ss.cardImgWrap}>
           <ExpoImage source={{ uri: p.images?.[0] || '' }} style={ss.cardImg} contentFit="cover" transition={200} />
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.2)']} style={StyleSheet.absoluteFill} />

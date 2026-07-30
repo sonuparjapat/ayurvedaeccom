@@ -337,7 +337,7 @@ export default function AdminSettingsPage() {
 
   return (
 
-<div className="space-y-6 max-w-6xl mx-auto w-full">
+<div className="space-y-6 w-full">
 
       {/* DELIVERY QUICK-EDIT CARD */}
       <div className="bg-white border border-emerald-100 rounded-xl p-5">

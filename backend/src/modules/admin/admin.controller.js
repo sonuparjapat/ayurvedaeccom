@@ -15,7 +15,7 @@ const {
 } = require('../../services/email/orderStatusEmail');
 const emailTemplates = require('../../utils/emailTemplates');
 const mailer = require('../../config/mail');
-const { emitToUser, emitToAdmin } = require('../../socket');
+const { emitToUser, emitToAdmin, emitToAll, getLiveStats } = require('../../socket');
 const { createNotification } = require('../../services/notification.service');
 const { sendToUser: sendPushToUser } = require('../../services/pushNotification');
 const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
@@ -1058,6 +1058,11 @@ const finalImages = [
       }
     }
 
+    // Broadcast stock update to all connected web clients for real-time badge
+    if (body.inventory !== undefined) {
+      emitToAll('product_stock_update', { productId: parseInt(id), inventory: newInventory })
+    }
+
     res.json({
       success:true,
       product: result.rows[0]
@@ -1591,6 +1596,19 @@ if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
       );
       if (userRes.rows.length) {
         const { user_id, email, name, invoice_no } = userRes.rows[0];
+        if (status === 4) {
+          // Auto-generate and send delivery OTP when Out for Delivery
+          try {
+            const otp = Math.floor(100000 + Math.random() * 900000).toString()
+            await pool.query(`UPDATE orders SET delivery_otp=$1 WHERE id=$2`, [otp, id])
+            const phoneRes = await pool.query(`SELECT u.phone FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=$1`, [id])
+            if (phoneRes.rows[0]?.phone) {
+              sendDeliveryOTPSms(phoneRes.rows[0].phone, otp, invoice_no || `#${id}`).catch(() => {})
+            }
+          } catch (otpErr) {
+            console.error('[DELIVERY OTP]', otpErr.message)
+          }
+        }
         if (status === 3) {
           sendOrderShippedEmail({ email, name, orderId: id, invoiceNo: invoice_no, trackingNumber: order.tracking_number, carrier: order.courier_name });
         } else if (status === 5) {
@@ -2783,5 +2801,13 @@ exports.getFunnelAnalytics = async (req, res) => {
   } catch (err) {
     console.error('[Funnel]', err)
     res.status(500).json({ success: false, message: 'Failed' })
+  }
+}
+
+exports.serverStats = async (req, res) => {
+  try {
+    res.json({ success: true, data: getLiveStats() })
+  } catch (err) {
+    res.status(500).json({ success: false })
   }
 }

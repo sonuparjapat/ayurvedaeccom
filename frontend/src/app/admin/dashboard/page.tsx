@@ -111,7 +111,7 @@ export default function AdminDashboard() {
   )
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 relative">
+    <div className="w-full space-y-6 relative">
 
       {/* ── Real-time order toasts ── */}
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10, pointerEvents: 'none' }}>
@@ -151,8 +151,8 @@ export default function AdminDashboard() {
         <KpiCard title="Orders" value={String(stats.totalOrders)} icon={<ShoppingCart size={18} />} gradient="from-blue-600 to-indigo-600" sub="Total" />
         <KpiCard title="Users" value={String(stats.totalUsers)} icon={<Users size={18} />} gradient="from-violet-600 to-purple-600" sub="Registered" />
         <KpiCard title="Products" value={String(stats.totalProducts)} icon={<Package size={18} />} gradient="from-orange-500 to-amber-500" sub="Active" />
-        <KpiCard title="Pending" value={String(stats.pendingOrders)} icon={<Clock size={18} />} gradient="from-yellow-500 to-orange-500" sub="Awaiting" alert={stats.pendingOrders > 0} />
-        <KpiCard title="Low Stock" value={String(stats.lowStockItems)} icon={<AlertTriangle size={18} />} gradient="from-red-500 to-rose-600" sub="Products" alert={stats.lowStockItems > 0} />
+        <KpiCard title="Pending" value={String(stats.pendingOrders)} icon={<Clock size={18} />} gradient="from-yellow-500 to-orange-500" sub="Awaiting" alert={stats.pendingOrders > 0} pulse={stats.pendingOrders > 0} />
+        <KpiCard title="Low Stock" value={String(stats.lowStockItems)} icon={<AlertTriangle size={18} />} gradient="from-red-500 to-rose-600" sub="Products" alert={stats.lowStockItems > 0} pulse={stats.lowStockItems > 0} />
       </div>
 
       {/* ── Revenue Chart ── */}
@@ -317,20 +317,54 @@ export default function AdminDashboard() {
   )
 }
 
+/* ─── COUNT UP HOOK ──────────────────────────────────────── */
+function useCountUp(target: number, duration = 900) {
+  const [display, setDisplay] = useState(0)
+  const raf = useRef<number | null>(null)
+  useEffect(() => {
+    const start = Date.now()
+    const from = 0
+    const tick = () => {
+      const elapsed = Date.now() - start
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplay(Math.round(from + (target - from) * eased))
+      if (progress < 1) raf.current = requestAnimationFrame(tick)
+    }
+    raf.current = requestAnimationFrame(tick)
+    return () => { if (raf.current) cancelAnimationFrame(raf.current) }
+  }, [target, duration])
+  return display
+}
+
 /* ─── KPI CARD ───────────────────────────────────────────── */
-function KpiCard({ title, value, icon, gradient, sub, alert }: { title: string; value: string; icon: React.ReactNode; gradient: string; sub: string; alert?: boolean }) {
+function KpiCard({ title, value, icon, gradient, sub, alert, pulse }: { title: string; value: string; icon: React.ReactNode; gradient: string; sub: string; alert?: boolean; pulse?: boolean }) {
+  const rawNum = parseFloat(value.replace(/[^0-9.]/g, '')) || 0
+  const isMonetary = value.startsWith('₹')
+  const counted = useCountUp(rawNum)
+  const displayValue = isMonetary
+    ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(counted)
+    : String(counted)
+  const gradColor = gradient.includes('emerald') ? '#059669,#0d9488' : gradient.includes('blue') ? '#2563eb,#6366f1' : gradient.includes('violet') ? '#7c3aed,#9333ea' : gradient.includes('orange') ? '#f97316,#f59e0b' : gradient.includes('yellow') ? '#eab308,#f97316' : '#ef4444,#f43f5e'
+
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
       style={{ background: 'white', borderRadius: 18, padding: '16px', border: alert ? '1px solid #fca5a5' : '1px solid #e5e7eb', boxShadow: alert ? '0 0 0 3px rgba(239,68,68,0.06)' : '0 1px 6px rgba(0,0,0,0.04)', position: 'relative', overflow: 'hidden' }}
     >
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${gradient.includes('emerald') ? '#059669,#0d9488' : gradient.includes('blue') ? '#2563eb,#6366f1' : gradient.includes('violet') ? '#7c3aed,#9333ea' : gradient.includes('orange') ? '#f97316,#f59e0b' : gradient.includes('yellow') ? '#eab308,#f97316' : '#ef4444,#f43f5e'})` }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${gradColor})` }} />
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10, marginTop: 6 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${gradient.includes('emerald') ? '#059669,#0d9488' : gradient.includes('blue') ? '#2563eb,#6366f1' : gradient.includes('violet') ? '#7c3aed,#9333ea' : gradient.includes('orange') ? '#f97316,#f59e0b' : gradient.includes('yellow') ? '#eab308,#f97316' : '#ef4444,#f43f5e'})`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${gradColor})`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
           {icon}
         </div>
-        {alert && <span style={{ width: 8, height: 8, borderRadius: 4, background: '#ef4444', display: 'inline-block', boxShadow: '0 0 0 3px rgba(239,68,68,0.2)' }} />}
+        {alert && (
+          <motion.span
+            animate={pulse ? { scale: [1, 1.5, 1], opacity: [1, 0.4, 1] } : {}}
+            transition={{ repeat: Infinity, duration: 1.4 }}
+            style={{ width: 8, height: 8, borderRadius: 4, background: '#ef4444', display: 'inline-block', boxShadow: '0 0 0 3px rgba(239,68,68,0.2)' }}
+          />
+        )}
       </div>
-      <p style={{ fontSize: 20, fontWeight: 800, color: '#1a2e1e', margin: 0, lineHeight: 1.1 }}>{value}</p>
+      <p style={{ fontSize: 20, fontWeight: 800, color: '#1a2e1e', margin: 0, lineHeight: 1.1 }}>{displayValue}</p>
       <p style={{ fontSize: 12, color: '#6b7280', margin: '4px 0 0', fontWeight: 500 }}>{title}</p>
       <p style={{ fontSize: 10, color: '#9ca3af', margin: '2px 0 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sub}</p>
     </motion.div>

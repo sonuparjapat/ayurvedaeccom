@@ -1,8 +1,10 @@
 // src/app/_layout.tsx
 import { useEffect, useRef } from 'react'
-import { View, ActivityIndicator, StyleSheet } from 'react-native'
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated'
+import { useNetworkStatus } from '../hooks/useNetworkStatus'
 import {
   useFonts,
   CormorantGaramond_700Bold,
@@ -43,7 +45,7 @@ function Inner() {
     DMSans_500Medium,
     DMSans_700Bold,
   })
-  const { loading } = useBootstrap()
+  useBootstrap()
   const bootstrapped = useStore((s) => s.bootstrapped)
   useOrderSocket()
   usePushDeepLink()
@@ -86,6 +88,7 @@ function Inner() {
       <Stack.Screen name="blog/[slug]" options={{ presentation: 'card' }} />
       <Stack.Screen name="account/subscriptions" options={{ presentation: 'card' }} />
       <Stack.Screen name="quiz/index" options={{ presentation: 'card', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="onboarding/index" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
     </Stack>
   )
 }
@@ -97,10 +100,21 @@ function ToastHost() {
   return <ToastContainer ref={ref} />
 }
 
+function OfflineBanner() {
+  const isOnline = useNetworkStatus()
+  if (isOnline) return null
+  return (
+    <Animated.View entering={FadeInDown} exiting={FadeOutUp} style={s.offlineBanner}>
+      <Text style={s.offlineText}>📡 No internet connection</Text>
+    </Animated.View>
+  )
+}
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <Inner />
+      <OfflineBanner />
       <ToastHost />
     </SafeAreaProvider>
   )
@@ -108,4 +122,10 @@ export default function RootLayout() {
 
 const s = StyleSheet.create({
   splash: { flex: 1, backgroundColor: Colors.cream, alignItems: 'center', justifyContent: 'center' },
+  offlineBanner: {
+    position: 'absolute', top: 0, left: 0, right: 0,
+    backgroundColor: '#1f2937', paddingVertical: 10, paddingHorizontal: 16,
+    alignItems: 'center', zIndex: 9999,
+  },
+  offlineText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 })

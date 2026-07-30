@@ -1,6 +1,26 @@
 const { Server } = require('socket.io');
+const os = require('os');
 
 let io = null;
+let connectedCount = 0;
+
+function getLiveStats() {
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  const memPercent = Math.round((usedMem / totalMem) * 100);
+  const [load1] = os.loadavg();
+  const cpuCount = os.cpus().length;
+  const cpuPercent = Math.round((load1 / cpuCount) * 100);
+  return {
+    connectedUsers: connectedCount,
+    cpu: Math.min(cpuPercent, 100),
+    memory: memPercent,
+    uptime: Math.floor(process.uptime()),
+    freeMemMB: Math.round(freeMem / 1024 / 1024),
+    totalMemMB: Math.round(totalMem / 1024 / 1024),
+  };
+}
 
 function initSocket(httpServer) {
   io = new Server(httpServer, {
@@ -13,6 +33,9 @@ function initSocket(httpServer) {
   });
 
   io.on('connection', (socket) => {
+    connectedCount++;
+    io.to('admin_room').emit('server_stats', getLiveStats());
+
     // User joins their personal room for order updates
     socket.on('join_user', (userId) => {
       if (userId) socket.join(`user_${userId}`);
@@ -21,6 +44,8 @@ function initSocket(httpServer) {
     // Admin joins admin room for new order alerts
     socket.on('join_admin', () => {
       socket.join('admin_room');
+      // Send current stats immediately on admin join
+      socket.emit('server_stats', getLiveStats());
     });
 
     // Support ticket room
@@ -32,7 +57,10 @@ function initSocket(httpServer) {
       if (ticketId) socket.leave(`ticket_${ticketId}`);
     });
 
-    socket.on('disconnect', () => {});
+    socket.on('disconnect', () => {
+      connectedCount = Math.max(0, connectedCount - 1);
+      io.to('admin_room').emit('server_stats', getLiveStats());
+    });
   });
 
   return io;
@@ -59,4 +87,4 @@ function emitToAll(event, data) {
   if (io) io.emit(event, data);
 }
 
-module.exports = { initSocket, getIO, emitToUser, emitToAdmin, emitToTicket, emitToAll };
+module.exports = { initSocket, getIO, getLiveStats, emitToUser, emitToAdmin, emitToTicket, emitToAll };

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Toaster } from 'react-hot-toast'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
+import { Command } from 'cmdk'
 
 import {
   LayoutDashboard,
@@ -34,7 +35,13 @@ import {
   FlaskConical,
   Receipt,
   HelpCircle,
+  Clock,
+  AlertCircle,
+  Activity,
+  Cpu,
+  MemoryStick,
 } from 'lucide-react'
+import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
 
 
@@ -55,11 +62,79 @@ export default function AdminLayout({
 
   /* Mobile Menu State */
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [cmdOpen, setCmdOpen] = useState(false)
+  const [bellOpen, setBellOpen] = useState(false)
+  const [bellAlerts, setBellAlerts] = useState<{ pendingOrders: number; openTickets: number; lowStock: number }>({ pendingOrders: 0, openTickets: 0, lowStock: 0 })
+  const bellCount = bellAlerts.pendingOrders + bellAlerts.openTickets + bellAlerts.lowStock
 
+  // Live server stats via socket
+  const [serverStats, setServerStats] = useState<{ connectedUsers: number; cpu: number; memory: number; uptime: number } | null>(null)
+  const [statsOpen, setStatsOpen] = useState(false)
+  const socketRef = useRef<any>(null)
+
+  useEffect(() => {
+    const fetchAlerts = () => {
+      axios.get('/admin/stats').then((r: any) => {
+        const d = r.data
+        setBellAlerts({ pendingOrders: d.pendingOrders || 0, openTickets: d.openTickets || 0, lowStock: d.lowStockItems || 0 })
+      }).catch(() => {})
+    }
+    fetchAlerts()
+    const t = setInterval(fetchAlerts, 30000)
+    return () => clearInterval(t)
+  }, [])
+
+  // Socket for live server stats
+  useEffect(() => {
+    if (!loginuserdata?.role || loginuserdata.role !== 'admin') return
+    let socket: any = null
+    const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '')
+    import('socket.io-client').then(({ io }) => {
+      socket = io(API_ROOT, { transports: ['websocket', 'polling'] })
+      socketRef.current = socket
+      socket.on('connect', () => socket.emit('join_admin'))
+      socket.on('server_stats', (data: any) => setServerStats(data))
+    }).catch(() => {})
+    // Also fetch via REST as fallback
+    axios.get('/admin/server-stats').then((r: any) => setServerStats(r.data?.data)).catch(() => {})
+    return () => { socket?.disconnect() }
+  }, [loginuserdata?.role])
 
   const logoutfun = () => {
    logout("auth")
   }
+
+  // ⌘K / Ctrl+K shortcut
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault()
+      setCmdOpen(o => !o)
+    }
+    if (e.key === 'Escape') setCmdOpen(false)
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
+
+  const CMD_ITEMS = [
+    { label: 'Dashboard', href: '/admin/dashboard', emoji: '📊' },
+    { label: 'Products', href: '/admin/products', emoji: '📦' },
+    { label: 'Orders', href: '/admin/orders', emoji: '🛍️' },
+    { label: 'Users', href: '/admin/users', emoji: '👤' },
+    { label: 'Analytics', href: '/admin/analytics', emoji: '📈' },
+    { label: 'Coupons', href: '/admin/coupons', emoji: '🎟️' },
+    { label: 'Support Tickets', href: '/admin/support', emoji: '💬' },
+    { label: 'Banners', href: '/admin/banners', emoji: '🖼️' },
+    { label: 'Flash Sales', href: '/admin/flash-sales', emoji: '⚡' },
+    { label: 'Newsletter', href: '/admin/newsletter', emoji: '📧' },
+    { label: 'Reviews', href: '/admin/reviews', emoji: '⭐' },
+    { label: 'Settings', href: '/admin/settings', emoji: '⚙️' },
+    { label: 'Wallet & Credits', href: '/admin/wallet', emoji: '💰' },
+    { label: 'Push Notifications', href: '/admin/push-notifications', emoji: '🔔' },
+    { label: 'Export Data', href: '/admin/export', emoji: '📤' },
+  ]
 
 
   return (
@@ -67,6 +142,45 @@ export default function AdminLayout({
     <div className="h-screen w-full flex bg-gray-100 overflow-hidden">
 
       <Toaster position="top-right" />
+
+      {/* ================= COMMAND PALETTE ================= */}
+      {cmdOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '15vh' }}
+          onClick={() => setCmdOpen(false)}
+        >
+          <div
+            style={{ width: '100%', maxWidth: 560, background: '#fff', borderRadius: 18, boxShadow: '0 24px 80px rgba(0,0,0,0.28)', overflow: 'hidden', border: '1px solid #e5e7eb' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <Command>
+              <div style={{ display: 'flex', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #f3f4f6', gap: 10 }}>
+                <span style={{ fontSize: 16 }}>🔍</span>
+                <Command.Input
+                  placeholder="Search pages, actions…"
+                  style={{ flex: 1, border: 'none', outline: 'none', fontSize: 15, color: '#1a2e1e', background: 'transparent', fontFamily: 'inherit' }}
+                  autoFocus
+                />
+                <kbd style={{ fontSize: 10, background: '#f3f4f6', borderRadius: 5, padding: '2px 6px', color: '#6b7280', fontFamily: 'inherit' }}>ESC</kbd>
+              </div>
+              <Command.List style={{ maxHeight: 360, overflowY: 'auto', padding: '8px 0' }}>
+                <Command.Empty style={{ padding: '20px 18px', color: '#9ca3af', fontSize: 13, textAlign: 'center' }}>No results found.</Command.Empty>
+                {CMD_ITEMS.map(item => (
+                  <Command.Item
+                    key={item.href}
+                    onSelect={() => { router.push(item.href); setCmdOpen(false) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', cursor: 'pointer', borderRadius: 10, margin: '1px 8px', fontSize: 14, color: '#1a2e1e', userSelect: 'none' }}
+                    className="hover:bg-emerald-50 data-selected:bg-emerald-50"
+                  >
+                    <span style={{ fontSize: 18, width: 28, textAlign: 'center' }}>{item.emoji}</span>
+                    <span style={{ fontWeight: 500 }}>{item.label}</span>
+                  </Command.Item>
+                ))}
+              </Command.List>
+            </Command>
+          </div>
+        </div>
+      )}
 
 
       {/* ================= MOBILE OVERLAY ================= */}
@@ -388,9 +502,63 @@ export default function AdminLayout({
           </div>
 
 
-          <p className="hidden sm:block text-sm text-gray-500">
-            Welcome, Admin
-          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setCmdOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', fontSize: 13, color: '#6b7280' }}
+            >
+              <span>🔍 Search…</span>
+              <kbd style={{ fontSize: 11, background: '#e5e7eb', borderRadius: 5, padding: '1px 6px', fontFamily: 'inherit', color: '#374151' }}>⌘K</kbd>
+            </button>
+
+            {/* Notification Bell */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setBellOpen(o => !o)}
+                style={{ position: 'relative', padding: 8, borderRadius: 10, border: '1px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                <Bell size={18} color="#374151" />
+                {bellCount > 0 && (
+                  <span style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: 8, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fff' }}>
+                    {bellCount > 9 ? '9+' : bellCount}
+                  </span>
+                )}
+              </button>
+              {bellOpen && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setBellOpen(false)} />
+                  <div style={{ position: 'absolute', right: 0, top: 44, width: 280, background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', zIndex: 999, overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', fontWeight: 700, fontSize: 13, color: '#1a2e1e' }}>Alerts</div>
+                    {bellAlerts.pendingOrders > 0 && (
+                      <a href="/admin/orders?status=0" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', textDecoration: 'none', color: '#1f2937', borderBottom: '1px solid #f9fafb' }}>
+                        <Clock size={16} color="#f59e0b" />
+                        <div><p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>{bellAlerts.pendingOrders} Pending Orders</p><p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>Awaiting confirmation</p></div>
+                      </a>
+                    )}
+                    {bellAlerts.openTickets > 0 && (
+                      <a href="/admin/support" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', textDecoration: 'none', color: '#1f2937', borderBottom: '1px solid #f9fafb' }}>
+                        <MessageSquare size={16} color="#7c3aed" />
+                        <div><p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>{bellAlerts.openTickets} Open Tickets</p><p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>Support tickets need attention</p></div>
+                      </a>
+                    )}
+                    {bellAlerts.lowStock > 0 && (
+                      <a href="/admin/products" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', textDecoration: 'none', color: '#1f2937' }}>
+                        <AlertCircle size={16} color="#ef4444" />
+                        <div><p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>{bellAlerts.lowStock} Low Stock Items</p><p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>Products need restocking</p></div>
+                      </a>
+                    )}
+                    {bellCount === 0 && (
+                      <div style={{ padding: '20px 16px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>✅ All clear — no alerts</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <p className="hidden sm:block text-sm text-gray-500">
+              Welcome, Admin
+            </p>
+          </div>
 
         </header>
 
