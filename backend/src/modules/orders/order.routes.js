@@ -21,4 +21,5 @@ router.post("/:id/return", auth, upload.array("images", 5), controller.returnOrd
 router.get("/:id/timeline", auth, controller.getOrderTimeline);
 router.post("/:id/retry-payment", auth, controller.retryPayment);
 router.post("/:id/reorder", auth, controller.reorder);
+router.patch("/:id/address", auth, controller.updateOrderAddress);
 module.exports = router;

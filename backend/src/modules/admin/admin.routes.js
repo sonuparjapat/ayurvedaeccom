@@ -252,4 +252,8 @@ router.put('/departments/:id/permissions', auth, allowRoles(1), deptCtrl.setDepa
 /* ─── RBAC: ASSIGN USER TO DEPARTMENT ─── */
 router.put('/user/:id/department', auth, allowRoles(1), deptCtrl.assignUserDepartment)
 
+/* ─── ADMIN MANUAL REFUND ─── */
+const orderCtrl = require('../orders/order.controller')
+router.post('/orders/:id/refund', auth, admin, orderCtrl.adminRefundOrder)
+
 module.exports = router

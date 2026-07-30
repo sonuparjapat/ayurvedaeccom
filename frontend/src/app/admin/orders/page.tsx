@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 
 import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 
 import DynamicTable from '@/components/table/table'
 import AppModal from '@/components/modal/AppModal'
@@ -67,6 +68,7 @@ export default function AdminOrdersPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [bulkStatus, setBulkStatus] = useState('')
   const [bulkUpdating, setBulkUpdating] = useState(false)
+  const [refunding, setRefunding] = useState(false)
 
   const {statusList} = useAuth()
   const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set())
@@ -446,6 +448,20 @@ const verifyOTP = async () => {
   } catch (err: any) {
     notify.error(err?.response?.data?.message || 'Invalid OTP')
   } finally { setOtpLoading(false) }
+}
+
+const processRefund = async () => {
+  if (!current) return
+  if (!confirm(`Initiate Razorpay refund of ₹${Number(current.total_amount).toLocaleString('en-IN')} for order #${current.id}?`)) return
+  setRefunding(true)
+  try {
+    await axios.post(`/admin/orders/${current.id}/refund`)
+    toast.success('Refund initiated successfully')
+    load()
+    setCurrent((prev: any) => prev ? { ...prev, refund_status: 'processed', payment_status: 'refunded' } : prev)
+  } catch (err: any) {
+    toast.error(err?.response?.data?.message || 'Refund failed')
+  } finally { setRefunding(false) }
 }
 
 const generateInvoice = async () => {
@@ -1065,17 +1081,37 @@ const generateInvoice = async () => {
             {current.payment_status?.toUpperCase()}
           </span>
 
-          {current.refund_status && (
-            <span className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
-              current.refund_status === 'processed'
-                ? 'bg-purple-100 text-purple-800 border-purple-200'
-                : current.refund_status === 'failed'
-                ? 'bg-red-100 text-red-700 border-red-200'
-                : 'bg-gray-100 text-gray-700 border-gray-200'
-            }`}>
-              REFUND: {current.refund_status.toUpperCase()}
-              {current.refund_amount > 0 && ` — ₹${Number(current.refund_amount).toLocaleString('en-IN')}`}
-            </span>
+          {/* Refund status + manual trigger */}
+          {current.refund_status ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
+                current.refund_status === 'processed'
+                  ? 'bg-purple-100 text-purple-800 border-purple-200'
+                  : current.refund_status === 'failed'
+                  ? 'bg-red-100 text-red-700 border-red-200'
+                  : 'bg-gray-100 text-gray-700 border-gray-200'
+              }`}>
+                REFUND: {current.refund_status.toUpperCase()}
+                {Number(current.refund_amount) > 0 && ` — ₹${Number(current.refund_amount).toLocaleString('en-IN')}`}
+              </span>
+              {current.refund_id && (
+                <span className="text-xs text-gray-500 font-mono">ID: {current.refund_id}</span>
+              )}
+              {current.refund_status === 'failed' && current.payment_method !== 'cod' && (
+                <button onClick={processRefund} disabled={refunding}
+                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50">
+                  {refunding ? 'Processing…' : 'Retry Refund'}
+                </button>
+              )}
+            </div>
+          ) : (
+            /* No refund yet — show "Process Refund" for cancelled paid online orders */
+            current.status === 6 && current.payment_method !== 'cod' && current.payment_status === 'paid' && (
+              <button onClick={processRefund} disabled={refunding}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
+                {refunding ? 'Processing…' : '↩ Process Refund'}
+              </button>
+            )
           )}
 
         </div>
@@ -1155,6 +1191,18 @@ const generateInvoice = async () => {
   </div>
 
 </div>
+
+      {/* ── Cancellation / Return Reason ── */}
+      {(current.cancel_reason || current.return_reason) && (
+        <div className={`rounded-xl p-5 border ${current.cancel_reason ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
+          <h3 className={`font-bold mb-2 text-sm uppercase tracking-wide ${current.cancel_reason ? 'text-red-700' : 'text-orange-700'}`}>
+            {current.cancel_reason ? '❌ Cancellation Reason' : '↩ Return Reason'}
+          </h3>
+          <p className="text-gray-800 text-sm leading-relaxed">
+            {current.cancel_reason || current.return_reason}
+          </p>
+        </div>
+      )}
 
       {/* ================= ORDER ITEMS ================= */}
       {orderItems.length > 0 && (

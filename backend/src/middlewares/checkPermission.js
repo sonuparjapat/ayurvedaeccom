@@ -36,10 +36,13 @@ const checkPermission = (permissionKey) => async (req, res, next) => {
     }
 
     if (!req.adminPermissions.has(permissionKey)) {
+      const hint = req.adminPermissions.size === 0
+        ? 'Your account has not been assigned to a department. Ask your super-admin to assign you one.'
+        : 'Your department does not have this permission. Ask your super-admin to grant it.';
       return res.status(403).json({
         message: 'Permission denied',
         required: permissionKey,
-        hint: 'Contact your super-admin to grant this permission to your department.',
+        hint,
       });
     }
 

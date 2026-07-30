@@ -39,7 +39,8 @@ exports.createUser = async (req, res) => {
       phone,
       password,
       role,
-      is_verified
+      is_verified,
+      department_id
     } = req.body
 
     /* =========================
@@ -102,12 +103,16 @@ exports.createUser = async (req, res) => {
        (prevent invalid roles)
     ========================= */
 
-    const allowedRoles = [0, 1, 2] 
-    // 0 = user, 1 = admin, 2 = staff
+    const allowedRoles = [0, 1, 2]
+    const finalRole = allowedRoles.includes(Number(role)) ? Number(role) : 0
 
-    const finalRole = allowedRoles.includes(role)
-      ? role
-      : 0
+    /* Prevent role-2 admins from creating superadmin accounts */
+    if (Number(req.user.role) === 2 && finalRole === 1) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to create superadmin accounts"
+      })
+    }
 
     /* =========================
        5. Insert User
@@ -122,12 +127,13 @@ exports.createUser = async (req, res) => {
         password,
         role,
         is_verified,
+        department_id,
         created_at,
         updated_at
       )
       VALUES
-      ($1,$2,$3,$4,$5,$6,NOW(),NOW())
-      RETURNING id, name, email, role
+      ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW())
+      RETURNING id, name, email, role, department_id
     `
 
     const values = [
@@ -136,7 +142,8 @@ exports.createUser = async (req, res) => {
       phone || null,
       hashedPassword,
       finalRole,
-      is_verified ?? false
+      is_verified ?? false,
+      finalRole === 2 ? (department_id || null) : null
     ]
 
     const result = await pool.query(query, values)
@@ -259,14 +266,14 @@ exports.users = async (req, res) => {
 
 
     if (search) {
-      where += ` AND (name ILIKE $${i} OR email ILIKE $${i})`
+      where += ` AND (u.name ILIKE $${i} OR u.email ILIKE $${i})`
       values.push(`%${search}%`)
       i++
     }
 
 
     if (role) {
-      where += ` AND role=$${i}`
+      where += ` AND u.role=$${i}`
       values.push(role)
       i++
     }
@@ -275,7 +282,7 @@ exports.users = async (req, res) => {
     /* COUNT */
 
     const countRes = await pool.query(
-      `SELECT COUNT(*) FROM users ${where}`,
+      `SELECT COUNT(*) FROM users u LEFT JOIN departments d ON d.id = u.department_id ${where}`,
       values
     )
 
@@ -287,21 +294,23 @@ exports.users = async (req, res) => {
     const usersRes = await pool.query(
 
       `
-      SELECT 
-        id,
-        name,
-      
-        email,
-        phone,
-        role,
-        is_verified,
-        created_at
+      SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        u.role,
+        u.is_verified,
+        u.department_id,
+        d.name AS department_name,
+        u.created_at
 
-      FROM users
+      FROM users u
+      LEFT JOIN departments d ON d.id = u.department_id
 
       ${where}
 
-      ORDER BY created_at DESC
+      ORDER BY u.created_at DESC
 
       LIMIT $${i} OFFSET $${i + 1}
       `,

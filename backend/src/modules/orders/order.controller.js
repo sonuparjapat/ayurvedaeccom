@@ -330,7 +330,6 @@ if (addr.pincode) {
 
       if (!couponRes.rows.length) {
         await client.query("ROLLBACK");
-        client.release();
         return res.status(400).json({ success: false, message: "Coupon is expired or no longer valid." });
       }
 
@@ -341,17 +340,14 @@ if (addr.pincode) {
 
       if (!userOk) {
         await client.query("ROLLBACK");
-        client.release();
         return res.status(400).json({ success: false, message: "This coupon is not valid for your account." });
       }
       if (!usageOk) {
         await client.query("ROLLBACK");
-        client.release();
         return res.status(400).json({ success: false, message: "Coupon usage limit has been reached." });
       }
       if (!minOk) {
         await client.query("ROLLBACK");
-        client.release();
         return res.status(400).json({ success: false, message: `Minimum order value of ₹${c.min_order} required for this coupon.` });
       }
 
@@ -746,7 +742,7 @@ if (addr.pincode) {
             items: cart.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.effective_price, variant_label: i.variant_label || null })),
             total,
             paymentMethod: 'cod',
-            address: invRow.shipping_address,
+            address: invRow.shipping_address?.address || '',
           })
         }
       } catch (_) {}
@@ -950,7 +946,7 @@ exports.verifyPayment = async (req, res) => {
           items: itemsRow.rows,
           total: orderInfo?.total_amount,
           paymentMethod: 'online',
-          address: orderInfo?.shipping_address,
+          address: orderInfo?.shipping_address?.address || '',
         })
       }
     } catch (_) {}
@@ -1782,7 +1778,7 @@ exports.razorpayWebhook = async (req, res) => {
           items: itemsRow.rows,
           total: orderInfo?.total_amount,
           paymentMethod: 'online',
-          address: orderInfo?.shipping_address,
+          address: orderInfo?.shipping_address?.address || '',
         });
       }
     } catch (_) {}
@@ -1955,20 +1951,20 @@ exports.buyNow = async (req, res) => {
         FOR UPDATE
       `, [couponCode]);
       if (!couponRes.rows.length) {
-        await client.query('ROLLBACK'); client.release();
+        await client.query('ROLLBACK');
         return res.status(400).json({ success: false, message: 'Coupon is expired or no longer valid.' });
       }
       const c = couponRes.rows[0];
       if (!(!c.user_id || c.user_id === userId)) {
-        await client.query('ROLLBACK'); client.release();
+        await client.query('ROLLBACK');
         return res.status(400).json({ success: false, message: 'This coupon is not valid for your account.' });
       }
       if (!(Number(c.usage_limit) === 0 || c.used_count < Number(c.usage_limit))) {
-        await client.query('ROLLBACK'); client.release();
+        await client.query('ROLLBACK');
         return res.status(400).json({ success: false, message: 'Coupon usage limit has been reached.' });
       }
       if (!(subtotal >= Number(c.min_order))) {
-        await client.query('ROLLBACK'); client.release();
+        await client.query('ROLLBACK');
         return res.status(400).json({ success: false, message: `Minimum order value of ₹${c.min_order} required.` });
       }
       discountAmount = c.type === 'percent' ? (subtotal * Number(c.value)) / 100 : Number(c.value);
@@ -2106,7 +2102,7 @@ exports.buyNow = async (req, res) => {
           sendOrderConfirmationEmail({
             email: uRow.email, name: uRow.name, orderId, invoiceNo: invRow.invoice_no,
             items: [{ name: item.product_name, quantity, price: item.effective_price, variant_label: item.variant_label || null }],
-            total, paymentMethod: 'cod', address: invRow.shipping_address,
+            total, paymentMethod: 'cod', address: invRow.shipping_address?.address || '',
           });
         }
       } catch (_) {}
@@ -2123,5 +2119,119 @@ exports.buyNow = async (req, res) => {
     res.status(400).json({ success: false, message: err.message || 'Order failed' });
   } finally {
     client.release();
+  }
+};
+
+/* ─── PATCH /orders/:id/address ─────────────────────────────────────────────
+   Customer changes delivery address while order is still pending/confirmed
+   ────────────────────────────────────────────────────────────────────────── */
+exports.updateOrderAddress = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { address_id } = req.body;
+
+    if (!address_id) {
+      return res.status(400).json({ success: false, message: 'address_id is required' });
+    }
+
+    await client.query('BEGIN');
+
+    const orderRes = await client.query(
+      `SELECT id, status, user_id FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE`,
+      [id, userId]
+    );
+    if (!orderRes.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const order = orderRes.rows[0];
+    if (![0, 1].includes(order.status)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'Address can only be changed before the order is shipped' });
+    }
+
+    const addrRes = await client.query(
+      `SELECT id, name, phone, street, city, state, pincode, type FROM addresses WHERE id=$1 AND user_id=$2`,
+      [address_id, userId]
+    );
+    if (!addrRes.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'Address not found' });
+    }
+
+    const addr = addrRes.rows[0];
+    const newShipping = {
+      name: addr.name,
+      phone: addr.phone,
+      address: `${addr.street}, ${addr.city}, ${addr.state} - ${addr.pincode}`,
+      address_id: addr.id,
+      type: addr.type,
+    };
+
+    await client.query(
+      `UPDATE orders SET shipping_address=$1, updated_at=NOW() WHERE id=$2`,
+      [JSON.stringify(newShipping), id]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'Delivery address updated', shipping_address: newShipping });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[UPDATE ORDER ADDRESS]', err.message);
+    res.status(500).json({ success: false, message: 'Failed to update address' });
+  } finally {
+    client.release();
+  }
+};
+
+/* ─── POST /admin/orders/:id/refund ─────────────────────────────────────────
+   Admin manually triggers a Razorpay refund for failed/missed auto-refunds
+   ────────────────────────────────────────────────────────────────────────── */
+exports.adminRefundOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const orderRes = await pool.query(
+      `SELECT id, payment_method, payment_status, razorpay_payment_id, total_amount, refund_status FROM orders WHERE id=$1`,
+      [id]
+    );
+    if (!orderRes.rows.length) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const order = orderRes.rows[0];
+
+    if (order.payment_method === 'cod') {
+      return res.status(400).json({ success: false, message: 'COD orders cannot be refunded through Razorpay' });
+    }
+    if (order.payment_status !== 'paid') {
+      return res.status(400).json({ success: false, message: 'Order was not paid online — no refund to process' });
+    }
+    if (!order.razorpay_payment_id) {
+      return res.status(400).json({ success: false, message: 'No Razorpay payment ID on record for this order' });
+    }
+    if (order.refund_status === 'processed') {
+      return res.status(400).json({ success: false, message: 'Refund already processed for this order' });
+    }
+
+    const refundAmount = Math.round(Number(order.total_amount) * 100);
+    const refund = await razorpay.payments.refund(order.razorpay_payment_id, {
+      amount: refundAmount,
+      speed: 'normal',
+      notes: { order_id: id, reason: 'Manual refund initiated by admin' },
+    });
+
+    await pool.query(
+      `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status='processed', payment_status='refunded', updated_at=NOW() WHERE id=$3`,
+      [refund.id, Number(order.total_amount), id]
+    );
+
+    res.json({ success: true, message: 'Refund initiated successfully', refund_id: refund.id });
+  } catch (err) {
+    console.error('[ADMIN REFUND]', err.message);
+    const msg = err?.error?.description || err.message || 'Refund failed';
+    res.status(500).json({ success: false, message: msg });
   }
 };

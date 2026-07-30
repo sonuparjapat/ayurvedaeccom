@@ -716,6 +716,10 @@ export default function OrderDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false)
   const [timelineLogs, setTimelineLogs] = useState<TimelineLog[]>([])
   const [estimatedDelivery, setEstimatedDelivery] = useState<string | null>(null)
+  const [showAddressChange, setShowAddressChange] = useState(false)
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
+  const [addressLoading, setAddressLoading] = useState(false)
 
   useEffect(() => { if (id) fetchOrder() }, [id])
 
@@ -816,6 +820,28 @@ export default function OrderDetailScreen() {
     } catch {
       toast.error('Could not open invoice')
     }
+  }
+
+  const openAddressChange = async () => {
+    try {
+      const res = await api.get('/addresses')
+      setSavedAddresses(res.data?.addresses || res.data || [])
+      setSelectedAddressId(null)
+      setShowAddressChange(true)
+    } catch { toast.error('Could not load addresses') }
+  }
+
+  const handleChangeAddress = async () => {
+    if (!selectedAddressId) { toast.error('Please select an address'); return }
+    setAddressLoading(true)
+    try {
+      await api.patch(`/orders/${id}/address`, { address_id: selectedAddressId })
+      setShowAddressChange(false)
+      toast.success('Delivery address updated')
+      fetchOrder()
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to update address')
+    } finally { setAddressLoading(false) }
   }
 
   if (!order && !loading) return null
@@ -1062,9 +1088,15 @@ export default function OrderDetailScreen() {
                   </TouchableOpacity>
                 )}
                 {canCancel && (
-                  <TouchableOpacity onPress={() => setShowCancel(true)} style={ss.cancelBtn}>
-                    <Text style={ss.cancelBtnText}>❌  Cancel Order</Text>
-                  </TouchableOpacity>
+                  <>
+                    <TouchableOpacity onPress={() => setShowCancel(true)} style={ss.cancelBtn}>
+                      <Text style={ss.cancelBtnText}>❌  Cancel Order</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={openAddressChange}
+                      style={[ss.cancelBtn, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}>
+                      <Text style={[ss.cancelBtnText, { color: '#1d4ed8' }]}>📍  Change Delivery Address</Text>
+                    </TouchableOpacity>
+                  </>
                 )}
               </Animated.View>
             )}
@@ -1166,6 +1198,44 @@ export default function OrderDetailScreen() {
           orderItems={order.items}
         />
       )}
+
+      {/* ── Address Change Modal ── */}
+      <Modal visible={showAddressChange} animationType="slide" transparent statusBarTranslucent>
+        <Pressable style={m.bg} onPress={() => setShowAddressChange(false)} />
+        <View style={[m.sheet, { maxHeight: '75%' }]}>
+          <View style={m.handle} />
+          <Text style={m.title}>Change Delivery Address</Text>
+          <Text style={m.sub}>Only available before the order is shipped</Text>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            {savedAddresses.length === 0 ? (
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 13, color: Colors.textDim, textAlign: 'center', paddingVertical: 20 }}>
+                No saved addresses found
+              </Text>
+            ) : savedAddresses.map((a: any) => (
+              <TouchableOpacity key={a.id} onPress={() => setSelectedAddressId(a.id)}
+                style={[m.optionRow, selectedAddressId === a.id && m.optionRowActive, { marginBottom: 10, flexDirection: 'column', alignItems: 'flex-start' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <View style={[m.radio, selectedAddressId === a.id && m.radioActive]}>
+                    {selectedAddressId === a.id && <View style={m.radioDot} />}
+                  </View>
+                  <Text style={[m.optionText, selectedAddressId === a.id && m.optionTextActive, { fontFamily: Fonts.bold }]}>
+                    {a.name} · {a.phone}
+                  </Text>
+                </View>
+                <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, paddingLeft: 30 }}>
+                  {a.street}, {a.city}, {a.state} – {a.pincode}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <TouchableOpacity onPress={handleChangeAddress} disabled={addressLoading || !selectedAddressId}
+            style={[m.confirmBtn, { backgroundColor: selectedAddressId ? '#1d4ed8' : Colors.border }]}>
+            {addressLoading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={m.confirmText}>Update Address</Text>}
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   )
 }

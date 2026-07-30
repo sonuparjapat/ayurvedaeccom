@@ -82,6 +82,17 @@ export default function OrderDetailPage() {
   const [retrying, setRetrying] = useState(false)
   const [reordering, setReordering] = useState(false)
 
+  // Cancel reason modal
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelCustomReason, setCancelCustomReason] = useState('')
+
+  // Address change
+  const [showAddressModal, setShowAddressModal] = useState(false)
+  const [addresses, setAddresses] = useState<any[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
+  const [changingAddress, setChangingAddress] = useState(false)
+
   // Per-item review form
   const [reviewingProductId, setReviewingProductId] = useState<number | null>(null)
   const [reviewRating, setReviewRating] = useState(0)
@@ -109,16 +120,46 @@ export default function OrderDetailPage() {
       .finally(() => setLoading(false))
   }, [id])
 
+  const openCancelModal = () => {
+    setCancelReason('')
+    setCancelCustomReason('')
+    setShowCancelModal(true)
+  }
+
   const cancelOrder = async () => {
-    if (!confirm('Are you sure you want to cancel this order?')) return
+    const finalReason = cancelReason === 'Other' ? (cancelCustomReason.trim() || 'Other') : cancelReason
+    if (!finalReason) { toast.error('Please select a reason'); return }
     setCancelling(true)
     try {
-      await axios.post(`/orders/${id}/cancel`, { reason: 'Customer requested cancellation' })
+      await axios.post(`/orders/${id}/cancel`, { reason: finalReason })
+      setShowCancelModal(false)
       toast.success('Order cancelled')
       window.location.reload()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to cancel order')
     } finally { setCancelling(false) }
+  }
+
+  const openAddressModal = async () => {
+    try {
+      const res = await axios.get('/addresses')
+      setAddresses(res.data?.addresses || res.data || [])
+      setSelectedAddressId(null)
+      setShowAddressModal(true)
+    } catch { toast.error('Could not load addresses') }
+  }
+
+  const changeAddress = async () => {
+    if (!selectedAddressId) { toast.error('Please select an address'); return }
+    setChangingAddress(true)
+    try {
+      await axios.patch(`/orders/${id}/address`, { address_id: selectedAddressId })
+      setShowAddressModal(false)
+      toast.success('Delivery address updated')
+      window.location.reload()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to update address')
+    } finally { setChangingAddress(false) }
   }
 
   const retryPayment = async () => {
@@ -610,9 +651,14 @@ export default function OrderDetailPage() {
           {/* ── Actions ── */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {isCancellable && (
-              <button onClick={cancelOrder} disabled={cancelling} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelling ? 0.5 : 1 }}>
-                <XCircle size={15} /> {cancelling ? 'Cancelling...' : 'Cancel Order'}
-              </button>
+              <>
+                <button onClick={openCancelModal} disabled={cancelling} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelling ? 0.5 : 1 }}>
+                  <XCircle size={15} /> Cancel Order
+                </button>
+                <button onClick={openAddressModal} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  <MapPin size={15} /> Change Address
+                </button>
+              </>
             )}
             {isReturnable && !showReturnForm && (
               <button onClick={() => setShowReturnForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', color: '#fb923c', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -713,6 +759,74 @@ export default function OrderDetailPage() {
 
         </div>
       </div>
+
+      {/* ── Cancel Reason Modal ── */}
+      {showCancelModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 420 }}>
+            <h3 style={{ color: '#fff', fontSize: 18, fontWeight: 700, margin: '0 0 6px' }}>Cancel Order</h3>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: '0 0 20px' }}>Please tell us why you're cancelling</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+              {['Changed my mind', 'Found a better price', 'Ordered by mistake', 'Delivery taking too long', 'Other'].map(r => (
+                <button key={r} onClick={() => setCancelReason(r)}
+                  style={{ padding: '11px 16px', borderRadius: 12, border: `1px solid ${cancelReason === r ? '#ef4444' : 'rgba(255,255,255,0.15)'}`, background: cancelReason === r ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)', color: cancelReason === r ? '#f87171' : 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 500, textAlign: 'left', cursor: 'pointer' }}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            {cancelReason === 'Other' && (
+              <textarea value={cancelCustomReason} onChange={e => setCancelCustomReason(e.target.value)}
+                placeholder="Please describe your reason..." rows={3}
+                style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, padding: 12, fontSize: 13, color: '#fff', resize: 'none', outline: 'none', boxSizing: 'border-box', marginBottom: 16 }} />
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={cancelOrder} disabled={cancelling || !cancelReason}
+                style={{ flex: 1, padding: '12px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: (cancelling || !cancelReason) ? 0.5 : 1 }}>
+                {cancelling ? 'Cancelling...' : 'Confirm Cancel'}
+              </button>
+              <button onClick={() => setShowCancelModal(false)}
+                style={{ padding: '12px 18px', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 14, cursor: 'pointer' }}>
+                Go Back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Address Change Modal ── */}
+      {showAddressModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 460, maxHeight: '80vh', overflowY: 'auto' }}>
+            <h3 style={{ color: '#fff', fontSize: 18, fontWeight: 700, margin: '0 0 6px' }}>Change Delivery Address</h3>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: '0 0 20px' }}>Select a saved address (only available before order is shipped)</p>
+            {addresses.length === 0 ? (
+              <p style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '20px 0' }}>No saved addresses found</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                {addresses.map((a: any) => (
+                  <button key={a.id} onClick={() => setSelectedAddressId(a.id)}
+                    style={{ padding: '14px 16px', borderRadius: 14, border: `1px solid ${selectedAddressId === a.id ? '#3b82f6' : 'rgba(255,255,255,0.12)'}`, background: selectedAddressId === a.id ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 13, textAlign: 'left', cursor: 'pointer' }}>
+                    <p style={{ fontWeight: 600, margin: '0 0 2px' }}>{a.name} · {a.phone}</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0 }}>{a.street}, {a.city}, {a.state} - {a.pincode}</p>
+                    {a.type && <span style={{ fontSize: 11, color: '#3b82f6', marginTop: 4, display: 'inline-block' }}>{a.type.toUpperCase()}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={changeAddress} disabled={changingAddress || !selectedAddressId}
+                style={{ flex: 1, padding: '12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: (changingAddress || !selectedAddressId) ? 0.5 : 1 }}>
+                {changingAddress ? 'Updating...' : 'Update Address'}
+              </button>
+              <button onClick={() => setShowAddressModal(false)}
+                style={{ padding: '12px 18px', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 14, cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </>
   )

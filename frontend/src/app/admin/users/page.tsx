@@ -27,6 +27,8 @@ interface IUser {
   phone?: string | null
   role: 1 | 2 | 3
   is_verified: boolean
+  department_id?: number | null
+  department_name?: string | null
   created_at: string
 }
 
@@ -231,6 +233,10 @@ export default function AdminUsers() {
                     Role
                   </th>
 
+                  <th className="p-3 text-left w-35">
+                    Department
+                  </th>
+
                   <th className="p-3 text-center w-[100px]">
                     Status
                   </th>
@@ -250,7 +256,7 @@ export default function AdminUsers() {
 
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="p-6 text-center text-gray-500"
                     >
                       No users found
@@ -321,6 +327,19 @@ export default function AdminUsers() {
 
                       </span>
 
+                    </td>
+
+
+                    {/* DEPARTMENT */}
+
+                    <td className="p-3">
+                      {u.role === 2 ? (
+                        u.department_name
+                          ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-700">{u.department_name}</span>
+                          : <span className="text-xs text-amber-600">Unassigned</span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </td>
 
 

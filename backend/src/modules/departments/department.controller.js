@@ -237,6 +237,9 @@ exports.assignUserDepartment = async (req, res) => {
     res.json({ success: true, user: result.rows[0] });
   } catch (err) {
     console.error('[assignUserDepartment]', err.message);
+    if (err.code === '23503') {
+      return res.status(400).json({ success: false, message: 'Department does not exist' });
+    }
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
