@@ -569,6 +569,8 @@ exports.create = async (req, res) => {
       min_order_qty,
       max_order_qty,
       is_returnable,
+      return_window_days,
+      replacement_available,
       sort_order,
       safety_tags,
     } = req.body
@@ -653,6 +655,8 @@ if (req.files?.length) {
         min_order_qty,
         max_order_qty,
         is_returnable,
+        return_window_days,
+        replacement_available,
         sort_order,
         faqs,
         safety_tags
@@ -668,7 +672,7 @@ if (req.files?.length) {
         $13,
         $14,$15,$16,$17,$18,$19,
         $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,
-        $32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52
+        $32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,$53,$54
       )
     `, [
       name,
@@ -733,6 +737,8 @@ if (req.files?.length) {
       min_order_qty ? Number(min_order_qty) : 1,
       max_order_qty ? Number(max_order_qty) : null,
       is_returnable === 'false' || is_returnable === false ? false : true,
+      return_window_days ? Number(return_window_days) : 7,
+      replacement_available === 'true' || replacement_available === true ? true : false,
       sort_order ? Number(sort_order) : 0,
       req.body.faqs ? (typeof req.body.faqs === 'string' ? req.body.faqs : JSON.stringify(req.body.faqs)) : '[]',
       (() => {
@@ -994,9 +1000,11 @@ const finalImages = [
         min_order_qty=$48,
         max_order_qty=$49,
         is_returnable=$50,
-        sort_order=$51,
-        faqs=$52,
-        safety_tags=$53
+        return_window_days=$51,
+        replacement_available=$52,
+        sort_order=$53,
+        faqs=$54,
+        safety_tags=$55
 
       WHERE id=$20
       RETURNING *
@@ -1066,6 +1074,8 @@ const finalImages = [
       body.min_order_qty ? Number(body.min_order_qty) : 1,
       body.max_order_qty ? Number(body.max_order_qty) : null,
       body.is_returnable === 'false' || body.is_returnable === false ? false : true,
+      body.return_window_days ? Number(body.return_window_days) : 7,
+      body.replacement_available === 'true' || body.replacement_available === true ? true : false,
       body.sort_order ? Number(body.sort_order) : 0,
       body.faqs ? (typeof body.faqs === 'string' ? body.faqs : JSON.stringify(body.faqs)) : '[]',
       (() => {
@@ -2538,6 +2548,7 @@ exports.adminGetReturns = async (req, res) => {
     const statuses = status.split(',').map(Number)
     const r = await pool.query(
       `SELECT o.id, o.invoice_no, o.status, o.total_amount, o.return_reason,
+              o.return_type, o.return_requested_at, o.replacement_dispatched_at, o.replacement_tracking,
               o.created_at, o.updated_at, o.payment_method, o.refund_status, o.refund_amount,
               u.name AS user_name, u.email AS user_email, u.id AS user_id,
               (SELECT json_agg(json_build_object('name',p.name,'qty',oi.quantity,'price',oi.price,'image',p.images->>0))
@@ -2559,15 +2570,29 @@ exports.adminApproveReturn = async (req, res) => {
   const client = await pool.connect()
   try {
     const { id } = req.params
-    // refund_method: 'wallet' (default) | 'razorpay' (bank refund for online orders)
+    // refund_method: 'wallet' (default) | 'razorpay' | 'replacement'
     const { refund_method = 'wallet' } = req.body
     await client.query('BEGIN')
     const ord = await client.query(
-      `SELECT id, status, total_amount, user_id, payment_method, razorpay_payment_id, refund_status FROM orders WHERE id=$1`,
+      `SELECT id, status, total_amount, user_id, payment_method, razorpay_payment_id, refund_status, return_type FROM orders WHERE id=$1`,
       [id]
     )
     if (!ord.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Order not found' }) }
     if (ord.rows[0].status !== 7) { await client.query('ROLLBACK'); return res.status(400).json({ message: 'Order is not in Return Requested state' }) }
+
+    // Handle replacement approval
+    if (refund_method === 'replacement') {
+      await client.query(`UPDATE orders SET status=8, return_type='replacement', updated_at=NOW() WHERE id=$1`, [id])
+      await client.query('COMMIT')
+      try {
+        const uRow = await pool.query(`SELECT u.name, u.email, o.invoice_no FROM users u JOIN orders o ON o.user_id=u.id WHERE o.id=$1`, [id])
+        if (uRow.rows[0]?.email) {
+          const { sendReplacementApprovedEmail } = require('../../../services/email/orderStatusEmail')
+          sendReplacementApprovedEmail({ email: uRow.rows[0].email, name: uRow.rows[0].name, orderId: id, invoiceNo: uRow.rows[0].invoice_no })
+        }
+      } catch (_) {}
+      return res.json({ success: true, message: 'Return approved for replacement. Dispatch the replacement item when ready.' })
+    }
 
     const order = ord.rows[0]
     await client.query(`UPDATE orders SET status=8, updated_at=NOW() WHERE id=$1`, [id])
@@ -2685,6 +2710,42 @@ exports.adminCompleteRefund = async (req, res) => {
     res.status(500).json({ message: 'Failed' })
   } finally {
     client.release()
+  }
+}
+
+exports.adminDispatchReplacement = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { tracking_number = null } = req.body
+    const ord = await pool.query(`SELECT status, return_type, user_id FROM orders WHERE id=$1`, [id])
+    if (!ord.rows.length) return res.status(404).json({ message: 'Order not found' })
+    if (ord.rows[0].status !== 8) return res.status(400).json({ message: 'Order must be in Returned state' })
+    if (ord.rows[0].return_type !== 'replacement') return res.status(400).json({ message: 'This return was not requested as a replacement' })
+
+    await pool.query(
+      `UPDATE orders SET replacement_dispatched_at=NOW(), replacement_tracking=$1, updated_at=NOW() WHERE id=$2`,
+      [tracking_number, id]
+    )
+
+    // Email + notification (fire-and-forget)
+    try {
+      const uRow = await pool.query(`SELECT u.name, u.email, o.invoice_no FROM users u JOIN orders o ON o.user_id=u.id WHERE o.id=$1`, [id])
+      if (uRow.rows[0]?.email) {
+        const { sendReplacementDispatchedEmail } = require('../../../services/email/orderStatusEmail')
+        sendReplacementDispatchedEmail({ email: uRow.rows[0].email, name: uRow.rows[0].name, orderId: id, invoiceNo: uRow.rows[0].invoice_no, trackingNumber: tracking_number })
+      }
+    } catch (_) {}
+
+    try {
+      const { createNotification } = require('../../../services/notification.service')
+      createNotification(ord.rows[0].user_id, 'order', `Replacement Dispatched — Order #${id}`,
+        `Your replacement has been dispatched.${tracking_number ? ` Tracking: ${tracking_number}` : ''}`, { order_id: Number(id) })
+    } catch (_) {}
+
+    res.json({ success: true, message: 'Replacement dispatched and customer notified' })
+  } catch (err) {
+    console.error('[DISPATCH REPLACEMENT]', err)
+    res.status(500).json({ message: 'Failed to dispatch replacement' })
   }
 }
 

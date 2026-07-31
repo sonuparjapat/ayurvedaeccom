@@ -1200,6 +1200,58 @@ exports.cancelOrder = async (req, res) => {
   }
 };
 
+/* ================= RETURN ELIGIBILITY CHECK ================= */
+
+exports.getReturnEligibility = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const orderRes = await pool.query(
+      `SELECT o.status, o.delivered_at, o.updated_at, o.return_type, o.return_requested_at
+       FROM orders o WHERE o.id=$1 AND o.user_id=$2`,
+      [id, userId]
+    );
+    if (!orderRes.rows.length) return res.status(404).json({ success: false, message: 'Order not found' });
+
+    const order = orderRes.rows[0];
+
+    if (order.status !== 5) {
+      return res.json({ is_eligible: false, reason: 'Order must be delivered before requesting a return', days_left: 0, can_replace: false, return_window_days: 0 });
+    }
+    if (order.status === 7) {
+      return res.json({ is_eligible: false, reason: 'Return already requested', days_left: 0, can_replace: false, return_window_days: 0 });
+    }
+
+    const itemsPolicy = await pool.query(
+      `SELECT p.is_returnable, p.return_window_days, p.replacement_available
+       FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = $1`,
+      [id]
+    );
+
+    const nonReturnable = itemsPolicy.rows.find(p => !p.is_returnable);
+    if (nonReturnable) {
+      return res.json({ is_eligible: false, reason: 'This order contains non-returnable products', days_left: 0, can_replace: false, return_window_days: 0 });
+    }
+
+    const minWindow = itemsPolicy.rows.reduce((min, p) => Math.min(min, p.return_window_days ?? 7), 7);
+    const canReplace = itemsPolicy.rows.some(p => p.replacement_available);
+    const deliveredAt = order.delivered_at ? new Date(order.delivered_at) : new Date(order.updated_at);
+    const daysSinceDelivery = (Date.now() - deliveredAt.getTime()) / (1000 * 60 * 60 * 24);
+    const daysLeft = Math.max(0, Math.floor(minWindow - daysSinceDelivery));
+    const returnByDate = new Date(deliveredAt.getTime() + minWindow * 24 * 60 * 60 * 1000);
+
+    if (daysSinceDelivery > minWindow) {
+      return res.json({ is_eligible: false, reason: `Return window of ${minWindow} days has expired`, days_left: 0, can_replace: false, return_window_days: minWindow, return_by: returnByDate });
+    }
+
+    return res.json({ is_eligible: true, reason: null, days_left: daysLeft, can_replace: canReplace, return_window_days: minWindow, return_by: returnByDate });
+  } catch (err) {
+    console.error('[RETURN ELIGIBILITY]', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 /* ================= REQUEST RETURN ================= */
 
 exports.returnOrder = async (req, res) => {
@@ -1256,30 +1308,39 @@ exports.returnOrder = async (req, res) => {
       });
     }
 
-    // Check if products are returnable
-    const itemsCheck = await client.query(
-      `SELECT p.is_returnable FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = $1 AND p.is_returnable = FALSE LIMIT 1`,
+    // Check if all products are returnable and get the strictest return window
+    const itemsPolicy = await client.query(
+      `SELECT p.is_returnable, p.return_window_days, p.replacement_available
+       FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = $1`,
       [id]
     );
-    if (itemsCheck.rows.length) {
+    const nonReturnable = itemsPolicy.rows.find(p => !p.is_returnable);
+    if (nonReturnable) {
       await client.query("ROLLBACK");
       return res.status(400).json({ success: false, message: 'This order contains non-returnable products' });
     }
 
-    // Enforce 7-day return window from actual delivery timestamp
+    // Use the strictest (minimum) return window across all items
+    const minWindow = itemsPolicy.rows.reduce((min, p) => Math.min(min, p.return_window_days ?? 7), 7);
+    const anyReplacementAvailable = itemsPolicy.rows.some(p => p.replacement_available);
+
     const deliveredAt = order.delivered_at ? new Date(order.delivered_at) : new Date(order.updated_at);
     const daysSinceDelivery = (Date.now() - deliveredAt.getTime()) / (1000 * 60 * 60 * 24);
-    if (daysSinceDelivery > 7) {
+    if (daysSinceDelivery > minWindow) {
       await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: "Return window expired. Returns must be requested within 7 days of delivery."
+        message: `Return window expired. Returns must be requested within ${minWindow} days of delivery.`
       });
     }
 
+    // Validate return_type: replacement only allowed if any product supports it
+    const { return_type = 'refund' } = req.body;
+    const finalReturnType = (return_type === 'replacement' && anyReplacementAvailable) ? 'replacement' : 'refund';
+
     await client.query(
-      `UPDATE orders SET status=7, return_reason=$1, return_images=$2, updated_at=NOW() WHERE id=$3`,
-      [reason, JSON.stringify(returnImages), id]
+      `UPDATE orders SET status=7, return_reason=$1, return_images=$2, return_type=$3, return_requested_at=NOW(), updated_at=NOW() WHERE id=$4`,
+      [reason, JSON.stringify(returnImages), finalReturnType, id]
     );
 
     await client.query("COMMIT");
@@ -2207,7 +2268,7 @@ exports.updateOrderAddress = async (req, res) => {
     }
 
     const addrRes = await client.query(
-      `SELECT id, name, phone, street, city, state, pincode, type FROM addresses WHERE id=$1 AND user_id=$2`,
+      `SELECT id, name, phone, street, city, state, pincode, type FROM user_addresses WHERE id=$1 AND user_id=$2`,
       [address_id, userId]
     );
     if (!addrRes.rows.length) {

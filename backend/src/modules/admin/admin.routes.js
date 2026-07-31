@@ -226,6 +226,7 @@ router.get('/returns', auth, admin, controller.adminGetReturns)
 router.put('/returns/:id/approve', auth, admin, controller.adminApproveReturn)
 router.put('/returns/:id/reject', auth, admin, controller.adminRejectReturn)
 router.put('/returns/:id/complete-refund', auth, admin, controller.adminCompleteRefund)
+router.put('/returns/:id/dispatch-replacement', auth, admin, controller.adminDispatchReplacement)
 
 /* ─── BRAND CRUD ─── */
 router.get('/brands', auth, admin, controller.adminListBrands)

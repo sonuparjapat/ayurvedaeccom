@@ -17,6 +17,17 @@ const initDB = async () => {
       )
     `);
 
+    // Seed system roles (idempotent — ON CONFLICT DO NOTHING)
+    await client.query(`
+      INSERT INTO roles (id, name) VALUES
+        (1, 'Super Admin'),
+        (2, 'Admin'),
+        (3, 'User')
+      ON CONFLICT (id) DO NOTHING
+    `);
+    // Ensure sequence stays ahead of manual inserts
+    await client.query(`SELECT setval('roles_id_seq', GREATEST((SELECT MAX(id) FROM roles), 3))`);
+
     /* ================= USERS ================= */
  await client.query(`
   CREATE TABLE IF NOT EXISTS users (
@@ -395,6 +406,16 @@ await client.query(`
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_status VARCHAR(30) DEFAULT NULL`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_approved_at TIMESTAMP`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_reject_reason TEXT`);
+
+    /* ── Return Policy columns on products ── */
+    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS return_window_days INT DEFAULT 7`);
+    await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS replacement_available BOOLEAN DEFAULT FALSE`);
+
+    /* ── Return tracking columns on orders ── */
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_type VARCHAR(20) DEFAULT 'refund'`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_requested_at TIMESTAMP`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS replacement_dispatched_at TIMESTAMP`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS replacement_tracking VARCHAR(100)`);
 
     /* ================= PAYMENTS ================= */
     await client.query(`

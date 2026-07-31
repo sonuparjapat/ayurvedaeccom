@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
@@ -68,6 +68,7 @@ function formatDateTime(iso: string) {
 export default function OrderDetailPage() {
   const { id } = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [order, setOrder] = useState<any>(null)
   const [timeline, setTimeline] = useState<any[]>([])
   const [trackingInfo, setTrackingInfo] = useState<any>(null)
@@ -115,6 +116,13 @@ export default function OrderDetailPage() {
         setOrder(orderRes.data?.data)
         setTimeline(timelineRes.data?.timeline || [])
         setTrackingInfo(timelineRes.data?.tracking || null)
+        if (searchParams?.get('action') === 'change-address') {
+          axios.get('/addresses').then(r => {
+            setAddresses(r.data?.addresses || r.data || [])
+            setSelectedAddressId(null)
+            setShowAddressModal(true)
+          }).catch(() => {})
+        }
       })
       .catch(() => toast.error('Order not found'))
       .finally(() => setLoading(false))

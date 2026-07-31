@@ -307,7 +307,7 @@ const finalCess =
           allow_backorder, highlights, ingredients, benefits,
           usage_instructions, storage_instructions, warnings,
           video_url, fssai_number, coa_url, focus_keyword,
-          min_order_qty, max_order_qty, is_returnable, sort_order
+          min_order_qty, max_order_qty, is_returnable, return_window_days, replacement_available, sort_order
         )
         VALUES (
           $1,$2,$3,$4,$5,$6,$7,$8,
@@ -315,7 +315,7 @@ const finalCess =
           $17,$18,$19,
           $20,$21,$22,$23,$24,$25,$26,$27,
           $28,$29,$30,$31,$32,$33,$34,$35,
-          $36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46
+          $36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48
         )
       `,[
         name,
@@ -353,6 +353,8 @@ const finalCess =
         r.min_order_qty ? Number(r.min_order_qty) : 1,
         r.max_order_qty ? Number(r.max_order_qty) : null,
         r.is_returnable === 'false' || r.is_returnable === '0' ? false : true,
+        r.return_window_days ? Number(r.return_window_days) : 7,
+        r.replacement_available === 'true' || r.replacement_available === '1' ? true : false,
         r.sort_order ? Number(r.sort_order) : 0,
       ])
 

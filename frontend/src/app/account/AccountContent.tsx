@@ -1270,19 +1270,29 @@ const handleSaveAddress = async (data: any) => {
 
                             <div className="flex items-center gap-2 ml-auto">
                               {['pending', 'confirmed'].includes(order.status) && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-red-200 text-red-600 hover:bg-red-50 rounded-xl gap-1.5 text-xs"
-                                  onClick={() => {
-                                    setCancellingOrderId(order.id)
-                                    setCancelReason('')
-                                    setCancelCustomReason('')
-                                    setShowCancelModal(true)
-                                  }}
-                                >
-                                  <AlertCircle size={13} /> Cancel
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-amber-200 text-amber-700 hover:bg-amber-50 rounded-xl gap-1.5 text-xs"
+                                    onClick={() => window.location.href = `/orders/${order.id}?action=change-address`}
+                                  >
+                                    <MapPin size={13} /> Change Address
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-red-200 text-red-600 hover:bg-red-50 rounded-xl gap-1.5 text-xs"
+                                    onClick={() => {
+                                      setCancellingOrderId(order.id)
+                                      setCancelReason('')
+                                      setCancelCustomReason('')
+                                      setShowCancelModal(true)
+                                    }}
+                                  >
+                                    <AlertCircle size={13} /> Cancel
+                                  </Button>
+                                </>
                               )}
                               <Button
                                 size="sm"

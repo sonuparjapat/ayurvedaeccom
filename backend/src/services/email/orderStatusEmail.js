@@ -159,6 +159,42 @@ exports.sendReturnApprovedEmail = async ({ email, name, orderId, invoiceNo, refu
   await send({ email, name, subject: `✅ Return Approved — Order #${ref} — ${APP}`, html })
 }
 
+// ── Replacement Approved ──────────────────────────────────────────────────────
+exports.sendReplacementApprovedEmail = async ({ email, name, orderId, invoiceNo }) => {
+  const ref = invoiceNo || orderId
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+      ${header('🔄', 'Replacement Approved', 'Your replacement is being processed')}
+      <div style="padding:28px;">
+        <p style="font-size:15px;color:#333;margin:0 0 12px;">Hey <strong>${name || 'there'}</strong>,</p>
+        <p style="font-size:13px;color:#666;line-height:1.6;margin:0 0 20px;">
+          Your return request for order <strong>#${ref}</strong> has been approved for a <strong>replacement</strong>. Our team is processing your new shipment and you will receive a dispatch notification shortly.
+        </p>
+        ${ctaBtn(`${FE}/orders/${orderId}`, 'View Order')}
+      </div>
+      ${footer()}
+    </div></body></html>`
+  await send({ email, name, subject: `Replacement Approved — Order #${ref} — ${APP}`, html })
+}
+
+// ── Replacement Dispatched ─────────────────────────────────────────────────────
+exports.sendReplacementDispatchedEmail = async ({ email, name, orderId, invoiceNo, trackingNumber }) => {
+  const ref = invoiceNo || orderId
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+      ${header('🚚', 'Replacement Dispatched', 'Your replacement is on the way')}
+      <div style="padding:28px;">
+        <p style="font-size:15px;color:#333;margin:0 0 12px;">Hey <strong>${name || 'there'}</strong>,</p>
+        <p style="font-size:13px;color:#666;line-height:1.6;margin:0 0 20px;">
+          Great news! Your replacement for order <strong>#${ref}</strong> has been dispatched.${trackingNumber ? `<br><br><strong>Tracking Number:</strong> ${trackingNumber}` : ''}
+        </p>
+        ${ctaBtn(`${FE}/orders/${orderId}`, 'Track Order')}
+      </div>
+      ${footer()}
+    </div></body></html>`
+  await send({ email, name, subject: `Replacement Dispatched — Order #${ref} — ${APP}`, html })
+}
+
 // ── Return Rejected ───────────────────────────────────────────────────────────
 exports.sendReturnRejectedEmail = async ({ email, name, orderId, invoiceNo, reason }) => {
   const ref = invoiceNo || orderId

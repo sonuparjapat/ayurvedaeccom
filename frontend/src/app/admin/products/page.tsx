@@ -285,8 +285,12 @@ useEffect(() => {
                         {p.product_type && p.product_type !== 'simple' && (
                           <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-semibold capitalize">{p.product_type}</span>
                         )}
-                        {p.is_returnable === false && (
+                        {p.is_returnable === false ? (
                           <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-semibold">Non-Returnable</span>
+                        ) : (
+                          <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full font-semibold">
+                            {p.return_window_days ?? 7}d Return{p.replacement_available ? ' + Replace' : ''}
+                          </span>
                         )}
                       </div>
 

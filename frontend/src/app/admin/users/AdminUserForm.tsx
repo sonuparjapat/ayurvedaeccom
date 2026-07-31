@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from "react"
 import axios from "@/lib/axios"
 import toast from "react-hot-toast"
 import { useAuth } from "@/context/auth-context"
+import { Shield, User } from "lucide-react"
 
 type Mode = "create" | "edit" | "view"
 
@@ -23,10 +24,14 @@ interface FormData {
   department_id: string
 }
 
+// Derived UI state (not sent to backend directly)
+type AccountType = 'admin' | 'customer'
+
 interface Department {
   id: number
   name: string
   is_active: boolean
+  description?: string
 }
 
 interface Role {
@@ -49,38 +54,66 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
   })
 
   const [departments, setDepartments] = useState<Department[]>([])
-  const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
+  const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
+
+  // accountType drives the top-level toggle
+  const [accountType, setAccountType] = useState<AccountType>('customer')
+  // adminPosition: 'superadmin' | '<department_id>' — only relevant when accountType==='admin'
+  const [adminPosition, setAdminPosition] = useState<string>('')
 
   const isView = mode === "view"
   const isEdit = mode === "edit"
   const isCreate = mode === "create"
 
-  /* Load departments + roles from API */
+  /* Load departments */
   useEffect(() => {
     axios.get("/admin/departments")
       .then(r => setDepartments((r.data.departments || []).filter((d: Department) => d.is_active)))
-      .catch(() => {})
-    axios.get("/admin/roles")
-      .then(r => setRoles(r.data.roles || []))
       .catch(() => {})
   }, [])
 
   /* Populate form on edit/view */
   useEffect(() => {
     if (initialData && (isEdit || isView)) {
+      const roleStr = String(initialData.role) as any
       setForm({
         name: initialData.name || "",
         email: initialData.email || "",
         phone: initialData.phone || "",
         password: "",
-        role: String(initialData.role) as any,
+        role: roleStr,
         is_verified: Boolean(initialData.is_verified),
         department_id: initialData.department_id ? String(initialData.department_id) : "",
       })
+      if (Number(initialData.role) === 3) {
+        setAccountType('customer')
+        setAdminPosition('')
+      } else {
+        setAccountType('admin')
+        if (Number(initialData.role) === 1) {
+          setAdminPosition('superadmin')
+        } else {
+          setAdminPosition(initialData.department_id ? String(initialData.department_id) : '')
+        }
+      }
     }
   }, [initialData, isEdit, isView])
+
+  // Sync form.role + form.department_id from derived UI state
+  useEffect(() => {
+    if (accountType === 'customer') {
+      setForm(prev => ({ ...prev, role: '3', department_id: '' }))
+    } else {
+      if (adminPosition === 'superadmin') {
+        setForm(prev => ({ ...prev, role: '1', department_id: '' }))
+      } else if (adminPosition) {
+        setForm(prev => ({ ...prev, role: '2', department_id: adminPosition }))
+      } else {
+        setForm(prev => ({ ...prev, role: '2', department_id: '' }))
+      }
+    }
+  }, [accountType, adminPosition])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value, type } = e.target
@@ -90,7 +123,7 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
   }
 
   function validate() {
-    const e: Partial<Record<keyof FormData, string>> = {}
+    const e: Record<string, string> = {}
     if (!form.name.trim()) e.name = "Name required"
     if (!form.email.trim()) e.email = "Email required"
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Invalid email"
@@ -98,7 +131,9 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
       if (!form.password) e.password = "Password required"
       else if (form.password.length < 6) e.password = "Minimum 6 characters"
     }
-    if (!["1", "2", "3"].includes(form.role)) e.role = "Invalid role"
+    if (accountType === 'admin' && !adminPosition) {
+      e.adminPosition = "Please select a position"
+    }
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -172,60 +207,168 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
           </Field>
         )}
 
-        <Field label="Role" error={errors.role}>
-          <select
-            name="role" value={form.role} onChange={handleChange}
+      </div>
+
+      {/* ── Account Type Toggle ── */}
+      <div className="space-y-3">
+        <label className="text-sm font-semibold text-gray-700">Account Type</label>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Admin Account */}
+          <button
+            type="button"
             disabled={isView}
-            className={inputCls(!!errors.role)}
+            onClick={() => { if (!isView) { setAccountType('admin'); setAdminPosition('') } }}
+            className={`relative flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+              accountType === 'admin'
+                ? 'border-indigo-500 bg-indigo-50'
+                : 'border-gray-200 bg-white hover:border-gray-300'
+            } ${isView ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
           >
-            {roles.length > 0
-              ? roles
-                  .filter(r => callerRole === 1 || r.id !== 1) // only superadmin can assign role 1
-                  .map(r => (
-                    <option key={r.id} value={String(r.id)}>{r.name}</option>
-                  ))
-              : (
-                // Fallback while roles are loading
-                <>
-                  {callerRole === 1 && <option value="1">Super Admin</option>}
-                  <option value="2">Admin / Staff</option>
-                  <option value="3">Customer</option>
-                </>
-              )
-            }
-          </select>
-        </Field>
-
-        {/* Department — only relevant for role 2 */}
-        {form.role === "2" && (
-          <Field label="Department" error={errors.department_id}>
-            <select
-              name="department_id" value={form.department_id} onChange={handleChange}
-              disabled={isView}
-              className={inputCls(!!errors.department_id)}
-            >
-              <option value="">— No department assigned —</option>
-              {departments.map(d => (
-                <option key={d.id} value={String(d.id)}>{d.name}</option>
-              ))}
-            </select>
-            {form.department_id === "" && !isView && (
-              <p className="text-xs text-amber-600 mt-1">
-                Without a department this admin will have no permissions.
-              </p>
+            <div className={`mt-0.5 shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${accountType === 'admin' ? 'bg-indigo-500' : 'bg-gray-100'}`}>
+              <Shield size={16} className={accountType === 'admin' ? 'text-white' : 'text-gray-400'} />
+            </div>
+            <div>
+              <p className={`text-sm font-semibold ${accountType === 'admin' ? 'text-indigo-700' : 'text-gray-700'}`}>Admin Account</p>
+              <p className="text-xs text-gray-500 mt-0.5">Has access to admin panel</p>
+            </div>
+            {accountType === 'admin' && (
+              <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full bg-white" />
+              </div>
             )}
-          </Field>
-        )}
+          </button>
 
-        <div className="flex items-center gap-3 pt-7">
-          <input
-            type="checkbox" name="is_verified"
-            checked={form.is_verified} onChange={handleChange}
+          {/* Customer Account */}
+          <button
+            type="button"
             disabled={isView}
-            className="w-4 h-4"
-          />
-          <label className="text-sm font-medium">Verified Account</label>
+            onClick={() => { if (!isView) { setAccountType('customer'); setAdminPosition('') } }}
+            className={`relative flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+              accountType === 'customer'
+                ? 'border-emerald-500 bg-emerald-50'
+                : 'border-gray-200 bg-white hover:border-gray-300'
+            } ${isView ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
+          >
+            <div className={`mt-0.5 shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${accountType === 'customer' ? 'bg-emerald-500' : 'bg-gray-100'}`}>
+              <User size={16} className={accountType === 'customer' ? 'text-white' : 'text-gray-400'} />
+            </div>
+            <div>
+              <p className={`text-sm font-semibold ${accountType === 'customer' ? 'text-emerald-700' : 'text-gray-700'}`}>Customer Account</p>
+              <p className="text-xs text-gray-500 mt-0.5">Regular user / shopper</p>
+            </div>
+            {accountType === 'customer' && (
+              <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full bg-white" />
+              </div>
+            )}
+          </button>
         </div>
+      </div>
+
+      {/* ── Admin Position (only when Admin type selected) ── */}
+      {accountType === 'admin' && (
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-gray-700">
+            Position / Role <span className="text-red-500">*</span>
+          </label>
+          <p className="text-xs text-gray-500">
+            Select what this admin can do. Super Admin has full access; department-based admins have permissions defined by their department.
+          </p>
+
+          <div className="grid grid-cols-1 gap-2 mt-2">
+            {/* Super Admin option — only superadmins can assign this */}
+            {callerRole === 1 && (
+              <button
+                type="button"
+                disabled={isView}
+                onClick={() => !isView && setAdminPosition('superadmin')}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${
+                  adminPosition === 'superadmin'
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                } ${isView ? 'cursor-default' : 'cursor-pointer'}`}
+              >
+                <span className="text-lg">👑</span>
+                <div className="flex-1">
+                  <p className={`text-sm font-semibold ${adminPosition === 'superadmin' ? 'text-purple-700' : 'text-gray-700'}`}>
+                    Super Admin
+                  </p>
+                  <p className="text-xs text-gray-400">Full access to everything — all permissions bypassed</p>
+                </div>
+                {adminPosition === 'superadmin' && (
+                  <div className="w-4 h-4 rounded-full bg-purple-500 flex items-center justify-center shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-white" />
+                  </div>
+                )}
+              </button>
+            )}
+
+            {/* Department-based positions */}
+            {departments.length === 0 ? (
+              <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-xl">
+                <p className="text-sm text-gray-400">No departments configured yet.</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Create departments in <span className="font-medium">Departments & Roles</span> to define staff positions.
+                </p>
+              </div>
+            ) : (
+              departments.map(dept => (
+                <button
+                  key={dept.id}
+                  type="button"
+                  disabled={isView}
+                  onClick={() => !isView && setAdminPosition(String(dept.id))}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${
+                    adminPosition === String(dept.id)
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                  } ${isView ? 'cursor-default' : 'cursor-pointer'}`}
+                >
+                  <span className="text-lg">🏢</span>
+                  <div className="flex-1">
+                    <p className={`text-sm font-semibold ${adminPosition === String(dept.id) ? 'text-indigo-700' : 'text-gray-700'}`}>
+                      {dept.name}
+                    </p>
+                    {dept.description && (
+                      <p className="text-xs text-gray-400">{dept.description}</p>
+                    )}
+                  </div>
+                  {adminPosition === String(dept.id) && (
+                    <div className="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    </div>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+
+          {errors.adminPosition && (
+            <p className="text-xs text-red-600 mt-1">{errors.adminPosition}</p>
+          )}
+        </div>
+      )}
+
+      {/* ── Customer: show locked role info ── */}
+      {accountType === 'customer' && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+          <span className="text-lg">🛒</span>
+          <div>
+            <p className="text-sm font-semibold text-emerald-700">Customer Role</p>
+            <p className="text-xs text-gray-500">Standard user — can browse, order, review. No admin access.</p>
+          </div>
+          <div className="ml-auto px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">Locked</div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox" name="is_verified"
+          checked={form.is_verified} onChange={handleChange}
+          disabled={isView}
+          className="w-4 h-4"
+        />
+        <label className="text-sm font-medium">Verified Account</label>
       </div>
 
       {!isView && (

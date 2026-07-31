@@ -131,6 +131,8 @@ export default function AdminProductForm({
     min_order_qty: 1,
     max_order_qty: 100,
     is_returnable: true,
+    return_window_days: 7,
+    replacement_available: false,
     sort_order: 0,
     faqs: '[]',
     safety_tags: '',
@@ -700,16 +702,40 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             onChange={(v: string) => setForm({ ...form, max_order_qty: v })}
           />
 
-          {/* IS RETURNABLE */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Returns</label>
-            <div className="flex gap-4 pt-1">
+          {/* RETURN POLICY */}
+          <div className="space-y-3 col-span-full">
+            <label className="text-sm font-semibold text-gray-700">Return &amp; Replacement Policy</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" className="w-4 h-4 rounded" checked={form.is_returnable !== false} disabled={isView}
                   onChange={e => setForm({ ...form, is_returnable: e.target.checked })} />
-                <span className="text-sm">Is Returnable</span>
+                <span className="text-sm font-medium">Returnable</span>
+              </label>
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500">Return Window (days)</label>
+                <input
+                  type="number" min={1} max={90}
+                  value={form.return_window_days ?? 7}
+                  disabled={isView || !form.is_returnable}
+                  onChange={e => setForm({ ...form, return_window_days: Number(e.target.value) })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 rounded" checked={!!form.replacement_available} disabled={isView || !form.is_returnable}
+                  onChange={e => setForm({ ...form, replacement_available: e.target.checked })} />
+                <span className="text-sm font-medium">Replacement Available</span>
               </label>
             </div>
+            {!form.is_returnable && (
+              <p className="text-xs text-red-600 font-medium">This product is marked non-returnable. Customers will not be able to request a return.</p>
+            )}
+            {form.is_returnable && (
+              <p className="text-xs text-gray-500">
+                Customers can return within <strong>{form.return_window_days ?? 7} days</strong> of delivery.
+                {form.replacement_available ? ' Replacement option will be offered.' : ' Refund only.'}
+              </p>
+            )}
           </div>
 
         </Grid>

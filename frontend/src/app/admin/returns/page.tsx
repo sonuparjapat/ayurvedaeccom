@@ -5,7 +5,7 @@ import axios from '@/lib/axios'
 import { notify } from '@/app/utils/notify'
 import {
   RotateCcw, CheckCircle, XCircle, DollarSign, Package,
-  User, Search, RefreshCw, Eye,
+  User, Search, RefreshCw, Eye, Truck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import AppModal from '@/components/modal/AppModal'
@@ -29,6 +29,8 @@ export default function AdminReturnsPage() {
   const [viewOpen, setViewOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [rejectOpen, setRejectOpen] = useState(false)
+  const [dispatchOpen, setDispatchOpen] = useState(false)
+  const [dispatchTracking, setDispatchTracking] = useState('')
   const [processing, setProcessing] = useState(false)
 
   const load = async () => {
@@ -84,6 +86,19 @@ export default function AdminReturnsPage() {
       await axios.put(`/admin/returns/${id}/complete-refund`)
       notify.success('Refund marked complete')
       setViewOpen(false)
+      load()
+    } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
+    finally { setProcessing(false) }
+  }
+
+  const dispatchReplacement = async (id: number) => {
+    setProcessing(true)
+    try {
+      await axios.put(`/admin/returns/${id}/dispatch-replacement`, { tracking_number: dispatchTracking || null })
+      notify.success('Replacement dispatched — customer notified')
+      setDispatchOpen(false)
+      setViewOpen(false)
+      setDispatchTracking('')
       load()
     } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
     finally { setProcessing(false) }
@@ -201,10 +216,17 @@ export default function AdminReturnsPage() {
                       {new Date(order.updated_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
-                        style={{ backgroundColor: st.bg, color: st.color }}>
-                        {st.label}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+                          style={{ backgroundColor: st.bg, color: st.color }}>
+                          {st.label}
+                        </span>
+                        {order.return_type === 'replacement' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700">
+                            <Truck size={10} /> Replacement
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <Button size="sm" variant="outline" className="gap-1" onClick={() => { setSelected(order); setViewOpen(true) }}>
@@ -255,7 +277,18 @@ export default function AdminReturnsPage() {
             </div>
 
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-              <p className="text-xs text-orange-600 font-medium mb-1">Return Reason</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-orange-600 font-medium">Return Reason</p>
+                {selected.return_type === 'replacement' ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+                    <Truck size={10} /> Customer wants Replacement
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">
+                    <DollarSign size={10} /> Customer wants Refund
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-700">{selected.return_reason || 'No reason provided'}</p>
             </div>
 
@@ -275,42 +308,51 @@ export default function AdminReturnsPage() {
 
             {selected.status === 7 && (
               <div className="border-t border-gray-100 pt-4 space-y-2">
-                <Button
-                  className="w-full bg-green-600 hover:bg-green-700 gap-2"
-                  disabled={processing}
-                  onClick={() => approve(selected.id, 'wallet')}
-                >
-                  <CheckCircle size={16} /> Approve — Credit Wallet (₹{Number(selected.total_amount).toLocaleString()})
+                <p className="text-xs text-gray-500 font-medium">Approve as:</p>
+                <Button className="w-full bg-green-600 hover:bg-green-700 gap-2" disabled={processing}
+                  onClick={() => approve(selected.id, 'wallet')}>
+                  <CheckCircle size={16} /> Credit Wallet — ₹{Number(selected.total_amount).toLocaleString()}
                 </Button>
                 {selected.payment_method === 'online' && (
-                  <Button
-                    className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
-                    disabled={processing}
-                    onClick={() => approve(selected.id, 'razorpay')}
-                  >
-                    <CheckCircle size={16} /> Approve — Razorpay Bank Refund (5–7 days)
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 gap-2" disabled={processing}
+                    onClick={() => approve(selected.id, 'razorpay')}>
+                    <CheckCircle size={16} /> Razorpay Bank Refund (5–7 days)
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  className="w-full text-red-600 border-red-200 hover:bg-red-50 gap-2"
-                  disabled={processing}
-                  onClick={() => { setRejectOpen(true) }}
-                >
+                <Button className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2" disabled={processing}
+                  onClick={() => approve(selected.id, 'replacement' as any)}>
+                  <Truck size={16} /> Send Replacement
+                </Button>
+                <Button variant="outline" className="w-full text-red-600 border-red-200 hover:bg-red-50 gap-2"
+                  disabled={processing} onClick={() => setRejectOpen(true)}>
                   <XCircle size={16} /> Reject Return
                 </Button>
               </div>
             )}
 
             {selected.status === 8 && (
-              <div className="border-t border-gray-100 pt-4">
-                <Button
-                  className="w-full bg-purple-600 hover:bg-purple-700 gap-2"
-                  disabled={processing}
-                  onClick={() => completeRefund(selected.id)}
-                >
-                  <DollarSign size={16} /> Mark Refund Completed
-                </Button>
+              <div className="border-t border-gray-100 pt-4 space-y-2">
+                {selected.return_type === 'replacement' ? (
+                  <>
+                    {selected.replacement_dispatched_at ? (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                        <Truck size={18} className="text-blue-600 mx-auto mb-1" />
+                        <p className="text-blue-700 font-medium text-sm">Replacement Dispatched</p>
+                        {selected.replacement_tracking && <p className="text-xs text-blue-500 mt-0.5">Tracking: {selected.replacement_tracking}</p>}
+                      </div>
+                    ) : (
+                      <Button className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2" disabled={processing}
+                        onClick={() => setDispatchOpen(true)}>
+                        <Truck size={16} /> Dispatch Replacement
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <Button className="w-full bg-purple-600 hover:bg-purple-700 gap-2" disabled={processing}
+                    onClick={() => completeRefund(selected.id)}>
+                    <DollarSign size={16} /> Mark Refund Completed
+                  </Button>
+                )}
               </div>
             )}
 
@@ -323,6 +365,26 @@ export default function AdminReturnsPage() {
           </div>
         </AppModal>
       )}
+
+      {/* Dispatch Replacement Modal */}
+      <AppModal open={dispatchOpen} onClose={() => setDispatchOpen(false)} title="Dispatch Replacement">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">Optionally enter a tracking number for the replacement shipment. The customer will be notified via email and app notification.</p>
+          <input
+            className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            placeholder="Tracking number (optional)"
+            value={dispatchTracking}
+            onChange={e => setDispatchTracking(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setDispatchOpen(false)}>Cancel</Button>
+            <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 gap-2" disabled={processing}
+              onClick={() => dispatchReplacement(selected?.id)}>
+              <Truck size={15} /> Confirm Dispatch
+            </Button>
+          </div>
+        </div>
+      </AppModal>
 
       {/* Reject Modal */}
       <AppModal open={rejectOpen} onClose={() => setRejectOpen(false)} title="Reject Return Request">

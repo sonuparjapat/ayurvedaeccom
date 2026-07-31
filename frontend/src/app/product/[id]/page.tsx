@@ -85,6 +85,8 @@ interface Product {
   min_order_qty?: number
   max_order_qty?: number
   is_returnable?: boolean
+  return_window_days?: number
+  replacement_available?: boolean
   sort_order?: number
   faqs?: { question: string; answer: string }[]
   safety_tags?: string[]
@@ -1045,11 +1047,21 @@ const addToCart = async () => {
                 </div>
               )}
 
-              {/* NON-RETURNABLE NOTICE */}
-              {product.is_returnable === false && (
+              {/* RETURN POLICY BADGE */}
+              {product.is_returnable === false ? (
                 <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2">
                   <AlertCircle size={16} />
-                  <span>This product is non-returnable</span>
+                  <span className="font-medium">Non-Returnable</span>
+                  <span className="text-red-400">— This product cannot be returned or exchanged</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 text-sm">
+                  <span className="text-emerald-600">↩</span>
+                  <span className="text-emerald-700 font-medium">
+                    {product.return_window_days ?? 7}-Day Returns
+                    {product.replacement_available ? ' & Replacement' : ''}
+                  </span>
+                  <span className="text-emerald-500 text-xs">Easy returns within {product.return_window_days ?? 7} days of delivery</span>
                 </div>
               )}
 
