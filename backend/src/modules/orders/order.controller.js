@@ -1216,11 +1216,11 @@ exports.getReturnEligibility = async (req, res) => {
 
     const order = orderRes.rows[0];
 
+    if ([7, 8, 9].includes(order.status)) {
+      return res.json({ is_eligible: false, reason: 'Return already requested for this order', days_left: 0, can_replace: false, return_window_days: 0 });
+    }
     if (order.status !== 5) {
       return res.json({ is_eligible: false, reason: 'Order must be delivered before requesting a return', days_left: 0, can_replace: false, return_window_days: 0 });
-    }
-    if (order.status === 7) {
-      return res.json({ is_eligible: false, reason: 'Return already requested', days_left: 0, can_replace: false, return_window_days: 0 });
     }
 
     const itemsPolicy = await pool.query(
@@ -1235,7 +1235,7 @@ exports.getReturnEligibility = async (req, res) => {
     }
 
     const minWindow = itemsPolicy.rows.reduce((min, p) => Math.min(min, p.return_window_days ?? 7), 7);
-    const canReplace = itemsPolicy.rows.some(p => p.replacement_available);
+    const canReplace = itemsPolicy.rows.every(p => p.replacement_available);
     const deliveredAt = order.delivered_at ? new Date(order.delivered_at) : new Date(order.updated_at);
     const daysSinceDelivery = (Date.now() - deliveredAt.getTime()) / (1000 * 60 * 60 * 24);
     const daysLeft = Math.max(0, Math.floor(minWindow - daysSinceDelivery));
@@ -1322,7 +1322,7 @@ exports.returnOrder = async (req, res) => {
 
     // Use the strictest (minimum) return window across all items
     const minWindow = itemsPolicy.rows.reduce((min, p) => Math.min(min, p.return_window_days ?? 7), 7);
-    const anyReplacementAvailable = itemsPolicy.rows.some(p => p.replacement_available);
+    const allReplacementAvailable = itemsPolicy.rows.every(p => p.replacement_available);
 
     const deliveredAt = order.delivered_at ? new Date(order.delivered_at) : new Date(order.updated_at);
     const daysSinceDelivery = (Date.now() - deliveredAt.getTime()) / (1000 * 60 * 60 * 24);
@@ -1334,9 +1334,9 @@ exports.returnOrder = async (req, res) => {
       });
     }
 
-    // Validate return_type: replacement only allowed if any product supports it
+    // Validate return_type: replacement only allowed if ALL products support it
     const { return_type = 'refund' } = req.body;
-    const finalReturnType = (return_type === 'replacement' && anyReplacementAvailable) ? 'replacement' : 'refund';
+    const finalReturnType = (return_type === 'replacement' && allReplacementAvailable) ? 'replacement' : 'refund';
 
     await client.query(
       `UPDATE orders SET status=7, return_reason=$1, return_images=$2, return_type=$3, return_requested_at=NOW(), updated_at=NOW() WHERE id=$4`,
@@ -1520,6 +1520,10 @@ exports.getMyOrders = async (req, res) => {
     o.shipped_at,
     o.shipping_address,
     o.return_reason,
+    o.delivered_at,
+    o.return_type,
+    MIN(p.return_window_days) AS return_window_days,
+    BOOL_AND(p.is_returnable) AS is_returnable,
 
     /* Invoice Details */
     i.id           AS invoice_id,
@@ -1565,6 +1569,7 @@ exports.getMyOrders = async (req, res) => {
 
   ORDER BY o.created_at DESC
   LIMIT $2 OFFSET $3
+
   `,
   [userId, limit, offset]
 );

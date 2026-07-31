@@ -17,7 +17,7 @@ import { Colors, Fonts, Shadows } from '../../constants/theme'
 
 interface Order {
   id: number; invoice_no?: string; status: number; total_amount: string
-  created_at: string
+  created_at: string; delivered_at?: string; return_window_days?: number; is_returnable?: boolean
   items: { name: string; quantity: number; price: string; image?: string }[]
 }
 interface Address {
@@ -114,6 +114,20 @@ function OrderCard({ order, index }: { order: Order; index: number }) {
             <Text style={[oc.statusText, { color: status.color }]}>{status.label}</Text>
           </View>
         </View>
+
+        {order.status === 5 && order.delivered_at && order.is_returnable !== false && (() => {
+          const returnBy = new Date(new Date(order.delivered_at).getTime() + (order.return_window_days ?? 7) * 86400000)
+          const daysLeft = Math.ceil((returnBy.getTime() - Date.now()) / 86400000)
+          if (daysLeft > 0) return (
+            <View style={{ backgroundColor: '#fff7ed', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <Text style={{ fontSize: 11 }}>↩️</Text>
+              <Text style={{ fontFamily: Fonts.medium, fontSize: 10, color: '#c2410c' }}>
+                Return by {returnBy.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {daysLeft}d left
+              </Text>
+            </View>
+          )
+          return null
+        })()}
 
         <View style={oc.divider} />
 

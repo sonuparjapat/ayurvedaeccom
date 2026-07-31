@@ -398,6 +398,15 @@ export default function CartScreen() {
               </View>
             </LinearGradient>
 
+            {items.some((i: any) => i.is_returnable === false) && (
+              <View style={{ backgroundColor: '#fef2f2', borderRadius: 10, padding: 10, marginBottom: 10, borderWidth: 0.5, borderColor: '#fecaca', flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                <Text style={{ fontSize: 13 }}>⚠️</Text>
+                <Text style={{ fontFamily: Fonts.medium, fontSize: 11, color: '#be123c', flex: 1 }}>
+                  Your cart contains non-returnable items. These cannot be returned or exchanged after delivery.
+                </Text>
+              </View>
+            )}
+
             <TouchableOpacity
               onPress={() => {
                 if (!user) { setAuthOpen(true); return }

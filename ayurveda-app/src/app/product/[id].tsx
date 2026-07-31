@@ -40,7 +40,7 @@ interface Product {
   usage_instructions?: string; storage_instructions?: string; warnings?: string
   video_url?: string; fssai_number?: string; coa_url?: string; safety_tags?: string[]
   focus_keyword?: string; min_order_qty?: number; max_order_qty?: number
-  is_returnable?: boolean; sort_order?: number
+  is_returnable?: boolean; return_window_days?: number; replacement_available?: boolean; sort_order?: number
 }
 interface Review { id?: number; name: string; user_name?: string; rating: number; comment: string; images?: string[]; order_id?: number }
 // console.log("hii")
@@ -910,11 +910,18 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* NON-RETURNABLE NOTICE */}
-          {product.is_returnable === false && (
+          {/* RETURN POLICY NOTICE */}
+          {product.is_returnable === false ? (
             <View style={{ backgroundColor: '#fef2f2', borderRadius: 14, padding: 12, marginBottom: 14, borderWidth: 0.5, borderColor: '#fecaca', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={{ fontSize: 14 }}>⚠️</Text>
-              <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.red }}>This product is non-returnable</Text>
+              <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.red }}>Non-Returnable — This product cannot be returned or exchanged</Text>
+            </View>
+          ) : (
+            <View style={{ backgroundColor: '#f0fdf4', borderRadius: 14, padding: 12, marginBottom: 14, borderWidth: 0.5, borderColor: '#bbf7d0', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 14 }}>↩️</Text>
+              <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: '#15803d' }}>
+                {product.return_window_days ?? 7}-Day Returns{product.replacement_available ? ' & Replacement' : ''} — Easy returns within {product.return_window_days ?? 7} days of delivery
+              </Text>
             </View>
           )}
 

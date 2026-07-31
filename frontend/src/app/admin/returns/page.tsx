@@ -367,7 +367,7 @@ export default function AdminReturnsPage() {
       )}
 
       {/* Dispatch Replacement Modal */}
-      <AppModal open={dispatchOpen} onClose={() => setDispatchOpen(false)} title="Dispatch Replacement">
+      <AppModal open={dispatchOpen} onClose={() => { setDispatchOpen(false); setDispatchTracking('') }} title="Dispatch Replacement">
         <div className="space-y-4">
           <p className="text-sm text-gray-600">Optionally enter a tracking number for the replacement shipment. The customer will be notified via email and app notification.</p>
           <input
@@ -377,7 +377,7 @@ export default function AdminReturnsPage() {
             onChange={e => setDispatchTracking(e.target.value)}
           />
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setDispatchOpen(false)}>Cancel</Button>
+            <Button variant="outline" className="flex-1" onClick={() => { setDispatchOpen(false); setDispatchTracking('') }}>Cancel</Button>
             <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 gap-2" disabled={processing}
               onClick={() => dispatchReplacement(selected?.id)}>
               <Truck size={15} /> Confirm Dispatch

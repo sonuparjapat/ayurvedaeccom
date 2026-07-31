@@ -1458,3 +1458,51 @@ Payment Logs added to admin sidebar after Price Logs. Uses permission `price_log
 
 ### `updateUser` bug fix
 `department_id` was never extracted from `req.body` and never updated. Fixed: extracted and added to dynamic fields array. When role changes away from 2, `department_id` is cleared (set to NULL).
+
+---
+
+## Return & Replacement Policy — Per-Product
+
+### Database Changes (`backend/src/database/init.js`)
+Six new columns added via `ALTER TABLE IF NOT EXISTS`:
+- `products.return_window_days INT DEFAULT 7` — how many days after delivery the customer can return
+- `products.replacement_available BOOLEAN DEFAULT FALSE` — whether replacement is offered
+- `orders.return_type VARCHAR(20) DEFAULT 'refund'` — 'refund' or 'replacement'
+- `orders.return_requested_at TIMESTAMP` — when the return was requested
+- `orders.replacement_dispatched_at TIMESTAMP` — when admin dispatched the replacement
+- `orders.replacement_tracking VARCHAR(100)` — optional tracking number for replacement shipment
+
+### Backend API Changes
+**`order.controller.js`:**
+- `GET /orders/:id/return-eligibility` — returns `{ is_eligible, reason, days_left, return_by, can_replace, return_window_days }`. Checks: status=5, not already returned, is_returnable, window not expired using MIN(return_window_days) across order items.
+- `returnOrder` — now accepts `return_type` from body (default 'refund'), stores `return_requested_at=NOW()`.
+- `getMyOrders` — now includes `delivered_at`, `return_type`, `MIN(p.return_window_days) AS return_window_days`, `BOOL_AND(p.is_returnable) AS is_returnable` in the SELECT.
+
+**`admin.controller.js`:**
+- Product CREATE/UPDATE: includes `return_window_days` and `replacement_available`.
+- `adminApproveReturn`: if `refund_method=replacement`, sets `return_type='replacement'` and returns early.
+- `adminDispatchReplacement` (`PUT /admin/returns/:id/dispatch-replacement`): sets `replacement_dispatched_at=NOW()`, `replacement_tracking`.
+
+**`processBulkImportJob.js`:** bulk product INSERT now includes `return_window_days` and `replacement_available` ($47, $48).
+
+### Frontend Web Changes
+- `AdminProductForm.tsx`: Return Policy section with Is Returnable checkbox, Return Window (days) number input, Replacement Available checkbox.
+- `admin/products/page.tsx`: return policy badge in product list.
+- `admin/returns/page.tsx`: replacement chip, "Send Replacement" and "Dispatch Replacement" buttons and modal.
+- `product/[id]/page.tsx`: dynamic return policy badge.
+- `cart/page.tsx`: non-returnable warning banner.
+- `checkout/page.tsx`: per-item return policy note.
+- `orders/[id]/page.tsx`: eligibility countdown, return type selection (Refund/Replacement buttons), ineligibility reason.
+- `account/AccountContent.tsx`: return window countdown chip on delivered order cards.
+
+### Mobile App Changes
+- `product/[id].tsx`: return policy badge (green for returnable with window/replacement, red for non-returnable).
+- `cart/index.tsx`: non-returnable warning banner.
+- `account/index.tsx`: return window countdown chip on delivered order cards.
+- `order/[id].tsx`: eligibility fetch, canReturn uses eligibility, ReturnModal adds return type selection (Refund/Replacement), handleReturn passes return_type.
+
+### Return Window Logic
+- Window = MIN(return_window_days) across all products in the order.
+- Return by date = delivered_at + window days.
+- Non-returnable product in order → entire order not returnable.
+- Replacement button only shown when `can_replace=true` (all items have replacement_available=true and is_returnable=true).

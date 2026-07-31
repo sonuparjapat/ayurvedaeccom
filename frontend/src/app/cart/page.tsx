@@ -469,9 +469,15 @@ export default function CartPage() {
               )}
             </div>
 
+            {items.some(i => i.is_returnable === false) && (
+              <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#be123c', marginBottom: 4 }}>
+                ⚠️ Your cart contains <strong>non-returnable items</strong>. These cannot be returned or exchanged after delivery.
+              </div>
+            )}
+
             <button
               onClick={proceedToCheckout}
-              style={{ width: '100%', marginTop: 20, height: 50, background: '#1a3a2a', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              style={{ width: '100%', marginTop: 16, height: 50, background: '#1a3a2a', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
             >
               Proceed to Checkout <ArrowRight size={17} />
             </button>

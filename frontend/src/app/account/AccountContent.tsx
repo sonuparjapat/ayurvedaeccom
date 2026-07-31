@@ -1261,11 +1261,27 @@ const handleSaveAddress = async (data: any) => {
                                 <Truck size={13} /> Estimated delivery in 2–3 days
                               </div>
                             )}
-                            {order.status === 'delivered' && (
-                              <div className="flex items-center gap-2 text-emerald-600 text-xs font-semibold bg-emerald-50 px-3 py-1.5 rounded-full">
-                                <CheckCircle size={13} /> Delivered successfully
-                              </div>
-                            )}
+                            {order.status === 'delivered' && (() => {
+                              const deliveredAt = order.delivered_at ? new Date(order.delivered_at) : null
+                              const windowDays = order.return_window_days ?? 7
+                              const isReturnable = order.is_returnable !== false
+                              if (deliveredAt && isReturnable) {
+                                const returnBy = new Date(deliveredAt.getTime() + windowDays * 86400000)
+                                const daysLeft = Math.ceil((returnBy.getTime() - Date.now()) / 86400000)
+                                if (daysLeft > 0) {
+                                  return (
+                                    <div className="flex items-center gap-2 text-orange-600 text-xs font-semibold bg-orange-50 px-3 py-1.5 rounded-full">
+                                      <RotateCcw size={13} /> Return by {returnBy.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {daysLeft}d left
+                                    </div>
+                                  )
+                                }
+                              }
+                              return (
+                                <div className="flex items-center gap-2 text-emerald-600 text-xs font-semibold bg-emerald-50 px-3 py-1.5 rounded-full">
+                                  <CheckCircle size={13} /> Delivered successfully
+                                </div>
+                              )
+                            })()}
                             {!['shipped', 'delivered'].includes(order.status) && <div />}
 
                             <div className="flex items-center gap-2 ml-auto">

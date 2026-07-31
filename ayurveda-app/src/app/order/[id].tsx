@@ -269,15 +269,24 @@ function CancelModal({ visible, onClose, onConfirm, loading }: any) {
 }
 
 // ─── RETURN MODAL ─────────────────────────────────────────────────────────────
-function ReturnModal({ visible, onClose, onConfirm, loading }: any) {
+function ReturnModal({ visible, onClose, onConfirm, loading, canReplace }: any) {
   const [reason, setReason] = useState('')
   const [urlInput, setUrlInput] = useState('')
   const [urlImages, setUrlImages] = useState<string[]>([])
   const [fileImages, setFileImages] = useState<{ uri: string; name: string; type: string }[]>([])
+  const [returnType, setReturnType] = useState<'refund' | 'replacement'>('refund')
   const REASONS = ['Product damaged', 'Wrong item received', 'Product not as described', 'Quality not satisfactory', 'Other']
   const [selected, setSelected] = useState('')
   const finalReason = selected === 'Other' ? reason : selected
   const totalImages = urlImages.length + fileImages.length
+
+  // Reset all state when modal opens
+  useEffect(() => {
+    if (visible) {
+      setReason(''); setUrlInput(''); setUrlImages([]); setFileImages([])
+      setReturnType('refund'); setSelected('')
+    }
+  }, [visible])
 
   const pickImages = async () => {
     const remaining = 5 - totalImages
@@ -319,6 +328,19 @@ function ReturnModal({ visible, onClose, onConfirm, loading }: any) {
             <View style={m.handle} />
             <Text style={m.title}>Request Return</Text>
             <Text style={m.sub}>Tell us what went wrong</Text>
+
+            {/* Return type selection */}
+            <Text style={[m.sub, { marginBottom: 8, marginTop: 4 }]}>What would you prefer?</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+              <TouchableOpacity onPress={() => setReturnType('refund')} style={{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', borderWidth: 1.5, borderColor: returnType === 'refund' ? Colors.forest : 'rgba(0,0,0,0.1)', backgroundColor: returnType === 'refund' ? 'rgba(5,150,105,0.08)' : 'transparent' }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: returnType === 'refund' ? Colors.forest : Colors.textDim }}>💰 Refund</Text>
+              </TouchableOpacity>
+              {canReplace && (
+                <TouchableOpacity onPress={() => setReturnType('replacement')} style={{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', borderWidth: 1.5, borderColor: returnType === 'replacement' ? Colors.forest : 'rgba(0,0,0,0.1)', backgroundColor: returnType === 'replacement' ? 'rgba(5,150,105,0.08)' : 'transparent' }}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: returnType === 'replacement' ? Colors.forest : Colors.textDim }}>🔄 Replacement</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
             <View style={{ gap: 8, marginBottom: 16 }}>
               {REASONS.map(r => (
@@ -394,7 +416,7 @@ function ReturnModal({ visible, onClose, onConfirm, loading }: any) {
             <Text style={{ color: Colors.textDim, fontSize: 12, marginBottom: 16 }}>Max 5 photos · JPG, PNG, WEBP</Text>
 
             <TouchableOpacity
-              onPress={() => { if (finalReason) onConfirm(finalReason, urlImages, fileImages) }}
+              onPress={() => { if (finalReason) onConfirm(finalReason, urlImages, fileImages, returnType) }}
               disabled={!finalReason || loading}
               style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}
             >
@@ -720,6 +742,8 @@ export default function OrderDetailScreen() {
   const [savedAddresses, setSavedAddresses] = useState<any[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const [addressLoading, setAddressLoading] = useState(false)
+  const [returnEligibility, setReturnEligibility] = useState<any>(null)
+  const [returnEligibilityLoading, setReturnEligibilityLoading] = useState(false)
 
   useEffect(() => { if (id) fetchOrder() }, [id])
 
@@ -731,7 +755,15 @@ export default function OrderDetailScreen() {
         api.get(`/orders/${id}/timeline`),
       ])
       if (orderRes.status === 'fulfilled') {
-        setOrder(orderRes.value.data?.data || null)
+        const ord = orderRes.value.data?.data || null
+        setOrder(ord)
+        if (ord?.status === 5) {
+          setReturnEligibilityLoading(true)
+          api.get(`/orders/${id}/return-eligibility`)
+            .then(r => setReturnEligibility(r.data))
+            .catch(() => {})
+            .finally(() => setReturnEligibilityLoading(false))
+        }
       } else {
         toast.error('Order not found')
         router.back()
@@ -769,11 +801,12 @@ export default function OrderDetailScreen() {
     } finally { setActionLoading(false) }
   }
 
-  const handleReturn = async (reason: string, urlImages: string[] = [], fileImages: { uri: string; name: string; type: string }[] = []) => {
+  const handleReturn = async (reason: string, urlImages: string[] = [], fileImages: { uri: string; name: string; type: string }[] = [], returnType: string = 'refund') => {
     setActionLoading(true)
     try {
       const form = new FormData()
       form.append('reason', reason)
+      form.append('return_type', returnType)
       fileImages.forEach(f => form.append('images', f as any))
       form.append('imageUrls', JSON.stringify(urlImages))
       await api.post(`/orders/${id}/return`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -848,7 +881,8 @@ export default function OrderDetailScreen() {
 
   const statusInfo = order ? (STATUS_MAP[order.status] ?? STATUS_MAP[0]) : STATUS_MAP[0]
   const canCancel = order && [0, 1].includes(order.status)
-  const canReturn = order && order.status === 5
+  const canReturn = order && order.status === 5 && returnEligibility?.is_eligible === true
+  const canReplace = returnEligibility?.can_replace === true
   const canRetryPayment = order && order.payment_method === 'online' && order.payment_status === 'unpaid' && order.status !== 6
   const shippingAddr = order?.shipping_address || {}
   const totalItems = order?.items.reduce((s, i) => s + i.quantity, 0) || 0
@@ -1078,14 +1112,35 @@ export default function OrderDetailScreen() {
             )}
 
             {/* ── ACTIONS ── */}
-            {(canCancel || canReturn) && (
+            {order.status === 5 && returnEligibilityLoading && (
+              <Animated.View entering={FadeInDown.delay(260)} style={{ paddingHorizontal: 16, marginTop: 4 }}>
+                <View style={{ backgroundColor: 'rgba(249,115,22,0.06)', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <ActivityIndicator size="small" color="#fb923c" />
+                  <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Checking return eligibility…</Text>
+                </View>
+              </Animated.View>
+            )}
+            {(canCancel || canReturn || (order.status === 5 && returnEligibility && !returnEligibility.is_eligible)) && (
               <Animated.View entering={FadeInDown.delay(260)} style={{ paddingHorizontal: 16, gap: 10, marginTop: 4 }}>
                 {canReturn && (
-                  <TouchableOpacity onPress={() => setShowReturn(true)} style={{ borderRadius: 16, overflow: 'hidden' }}>
-                    <LinearGradient colors={[Colors.forest, Colors.moss]} style={ss.actionBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                      <Text style={ss.actionBtnText}>↩️  Request Return / Refund</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
+                  <>
+                    <TouchableOpacity onPress={() => setShowReturn(true)} style={{ borderRadius: 16, overflow: 'hidden' }}>
+                      <LinearGradient colors={[Colors.forest, Colors.moss]} style={ss.actionBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                        <Text style={ss.actionBtnText}>↩️  Request Return / Refund</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                    {returnEligibility?.return_by && (
+                      <Text style={{ textAlign: 'center', fontFamily: Fonts.medium, fontSize: 11, color: Colors.textDim }}>
+                        Return by {new Date(returnEligibility.return_by).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · {returnEligibility.days_left} day{returnEligibility.days_left !== 1 ? 's' : ''} left
+                      </Text>
+                    )}
+                  </>
+                )}
+                {order.status === 5 && returnEligibility && !returnEligibility.is_eligible && (
+                  <View style={{ backgroundColor: '#fef2f2', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 14 }}>⛔</Text>
+                    <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: '#dc2626', flex: 1 }}>{returnEligibility.reason || 'Return window has expired'}</Text>
+                  </View>
                 )}
                 {canCancel && (
                   <>
@@ -1189,6 +1244,7 @@ export default function OrderDetailScreen() {
         onClose={() => setShowReturn(false)}
         onConfirm={handleReturn}
         loading={actionLoading}
+        canReplace={canReplace}
       />
       {order && (
         <WriteReviewModal

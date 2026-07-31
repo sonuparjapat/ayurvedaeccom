@@ -75,8 +75,11 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
   const [returnReason, setReturnReason] = useState('')
+  const [returnType, setReturnType] = useState<'refund' | 'replacement'>('refund')
   const [showReturnForm, setShowReturnForm] = useState(false)
   const [returning, setReturning] = useState(false)
+  const [returnEligibility, setReturnEligibility] = useState<any>(null)
+  const [returnEligibilityLoading, setReturnEligibilityLoading] = useState(false)
   const [returnFiles, setReturnFiles] = useState<{ file: File; preview: string }[]>([])
   const [returnUrlInput, setReturnUrlInput] = useState('')
   const [returnUrlImages, setReturnUrlImages] = useState<string[]>([])
@@ -116,6 +119,13 @@ export default function OrderDetailPage() {
         setOrder(orderRes.data?.data)
         setTimeline(timelineRes.data?.timeline || [])
         setTrackingInfo(timelineRes.data?.tracking || null)
+        if (orderRes.data?.data?.status === 5) {
+          setReturnEligibilityLoading(true)
+          axios.get(`/orders/${id}/return-eligibility`)
+            .then(r => setReturnEligibility(r.data))
+            .catch(() => {})
+            .finally(() => setReturnEligibilityLoading(false))
+        }
         if (searchParams?.get('action') === 'change-address') {
           axios.get('/addresses').then(r => {
             setAddresses(r.data?.addresses || r.data || [])
@@ -214,6 +224,7 @@ export default function OrderDetailPage() {
     try {
       const form = new FormData()
       form.append('reason', returnReason)
+      form.append('return_type', returnType)
       returnFiles.forEach(f => form.append('images', f.file))
       form.append('imageUrls', JSON.stringify(returnUrlImages))
       await axios.post(`/orders/${id}/return`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -222,6 +233,8 @@ export default function OrderDetailPage() {
       setReturnFiles([])
       setReturnUrlImages([])
       setReturnUrlInput('')
+      setReturnReason('')
+      setReturnType('refund')
       window.location.reload()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed')
@@ -299,7 +312,7 @@ export default function OrderDetailPage() {
   const statusMeta = STATUS_MAP[order.status] ?? STATUS_MAP[0]
   const StatusIcon = statusMeta.icon
   const isCancellable = [0, 1].includes(order.status)
-  const isReturnable = order.status === 5
+  const isReturnable = order.status === 5 && returnEligibility?.is_eligible === true
   const canRetryPayment = order.payment_method === 'online' && order.payment_status === 'unpaid' && order.status !== 6
   const addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address
   const isCancelledOrReturned = [6, 7, 8, 9].includes(order.status)
@@ -322,6 +335,7 @@ export default function OrderDetailPage() {
 
   return (
     <>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <Header />
       <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#061812 0%,#0f2d1e 40%,#0d1a08 100%)', paddingBottom: 80 }}>
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
@@ -698,10 +712,28 @@ export default function OrderDetailPage() {
                 </button>
               </>
             )}
-            {isReturnable && !showReturnForm && (
-              <button onClick={() => setShowReturnForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', color: '#fb923c', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                <RotateCcw size={15} /> Request Return
-              </button>
+            {order.status === 5 && !showReturnForm && (
+              returnEligibilityLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 18px' }}>
+                  <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(251,146,60,0.3)', borderTopColor: '#fb923c', animation: 'spin 0.8s linear infinite' }} />
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Checking return eligibility…</span>
+                </div>
+              ) : returnEligibility && (
+                isReturnable ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <button onClick={() => setShowReturnForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', color: '#fb923c', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      <RotateCcw size={15} /> Request Return
+                    </button>
+                    <p style={{ fontSize: 11, color: '#fb923c', margin: 0, paddingLeft: 2 }}>
+                      Return by {new Date(returnEligibility.return_by).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · {returnEligibility.days_left} day{returnEligibility.days_left !== 1 ? 's' : ''} left
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12, padding: '10px 14px', fontSize: 12, color: '#f87171', fontWeight: 500 }}>
+                    <XCircle size={14} /> {returnEligibility.reason || 'Return window has expired'}
+                  </div>
+                )
+              )
             )}
             {[5, 6].includes(order.status) && (
               <button onClick={reorderItems} disabled={reordering} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg,#059669,#10b981)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: reordering ? 0.5 : 1, boxShadow: '0 4px 16px rgba(16,185,129,0.3)' }}>
@@ -714,6 +746,21 @@ export default function OrderDetailPage() {
           {showReturnForm && (
             <div style={{ ...gc, padding: 20, marginTop: 16, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)' }}>
               <p style={{ color: '#fb923c', fontSize: 14, fontWeight: 700, margin: '0 0 12px' }}>Return Request</p>
+
+              {/* Return type selection */}
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 600, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>What would you prefer?</p>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                <button onClick={() => setReturnType('refund')}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: `1px solid ${returnType === 'refund' ? '#fb923c' : 'rgba(255,255,255,0.15)'}`, background: returnType === 'refund' ? 'rgba(249,115,22,0.15)' : 'rgba(255,255,255,0.04)', color: returnType === 'refund' ? '#fb923c' : 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
+                  💰 Refund
+                </button>
+                {returnEligibility?.can_replace && (
+                  <button onClick={() => setReturnType('replacement')}
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: `1px solid ${returnType === 'replacement' ? '#fb923c' : 'rgba(255,255,255,0.15)'}`, background: returnType === 'replacement' ? 'rgba(249,115,22,0.15)' : 'rgba(255,255,255,0.04)', color: returnType === 'replacement' ? '#fb923c' : 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
+                    🔄 Replacement
+                  </button>
+                )}
+              </div>
 
               {/* Reason */}
               <textarea value={returnReason} onChange={e => setReturnReason(e.target.value)} placeholder="Please describe why you want to return..." rows={3}
@@ -787,7 +834,7 @@ export default function OrderDetailPage() {
                 <button onClick={submitReturn} disabled={returning} style={{ background: '#ea580c', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: returning ? 0.5 : 1 }}>
                   {returning ? 'Submitting...' : 'Submit Return'}
                 </button>
-                <button onClick={() => { setShowReturnForm(false); setReturnFiles([]); setReturnUrlImages([]); setReturnUrlInput('') }}
+                <button onClick={() => { setShowReturnForm(false); setReturnFiles([]); setReturnUrlImages([]); setReturnUrlInput(''); setReturnReason(''); setReturnType('refund') }}
                   style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 20px', fontSize: 13, cursor: 'pointer' }}>
                   Cancel
                 </button>

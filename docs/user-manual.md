@@ -720,3 +720,52 @@ The order tracking panel now shows a clear visual state for cancelled or returne
 - Refund amount and status are shown.
 
 This applies to: **My Account tracking panel**, **Order detail page** (`/orders/[id]`), and **Mobile order detail** (Special Status Banner).
+
+---
+
+## Return & Replacement Policy (Per-Product)
+
+Each product can now have its own return policy configured by the admin. This affects all surfaces — product page, cart, checkout, order detail, My Account, and mobile app.
+
+### How It Works for Customers
+
+**Product Detail Page (web + mobile):**
+- If a product is returnable, a green badge shows the return window (e.g. "7-Day Returns & Replacement").
+- If a product is non-returnable, a red warning badge is shown.
+
+**Cart:**
+- If your cart contains any non-returnable items, a warning banner appears before checkout reminding you those items cannot be returned.
+
+**Checkout:**
+- Each item in the order summary shows its return policy — either "Xd return policy" (green) or "Non-Returnable" (red).
+
+**Order Detail Page — Return Window Countdown:**
+- After delivery, the "Request Return" button shows a countdown: "Return by [date] · X days left".
+- If the window has expired, a red message explains why the return button is unavailable.
+- If the product is non-returnable, the return button is never shown.
+
+**My Account Orders List (web + mobile):**
+- Delivered orders show a return window chip (e.g. "Return by 10 Aug · 3d left") if the window is still open.
+
+### Requesting a Return: Refund vs Replacement
+
+When you click "Request Return", you can choose:
+- **💰 Refund** — get your money back to your wallet or original payment method.
+- **🔄 Replacement** — receive a replacement product (only available if the product supports it).
+
+After you choose, select your reason and optionally attach photos.
+
+### Return Window Rules
+- The return window is calculated from your delivery date.
+- If your order contains products with different return windows, the shortest window applies to the entire order.
+- Non-returnable products make return ineligible even if other products in the order are returnable.
+
+---
+
+## Replacement Dispatch (Admin)
+
+When a customer requests a replacement:
+1. The Returns Management page shows a **"Replacement"** chip on the request.
+2. Admin approves using **"Send Replacement"** — the order moves to status 8 (Returned) with `return_type=replacement`.
+3. Once the replacement is shipped, admin clicks **"Dispatch Replacement"**, optionally adds a tracking number.
+4. Customer receives an email notification when the replacement is dispatched.

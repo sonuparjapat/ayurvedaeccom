@@ -1428,3 +1428,59 @@ For a Return Requested / Returned order: amber banner.
 ### Mobile (Order Detail)
 - Status 6/7/8/9: "SPECIAL STATUS BANNER" shows with emoji, label, cancel reason, and refund info.
 - Progress stepper (`StatusTimeline`) is hidden for these statuses.
+
+---
+
+## Return & Replacement Policy — Testing Checklist
+
+### Admin — Product Return Policy Setup
+1. Go to `/admin/products` → Add New (or edit an existing product).
+2. Under **Return & Replacement Policy**: check "Is Returnable", set "Return Window" to 14 days, check "Replacement Available".
+3. Save. The products list should show a "14d Return + Replace" badge.
+4. Add another product with "Is Returnable" checked but "Replacement Available" unchecked, set 7-day window → badge shows "7d Return".
+5. Add a product with "Is Returnable" unchecked → badge shows "Non-Returnable" in red.
+
+### Customer — Product Page
+1. Navigate to each product type. **Expected**: correct policy badge (green for returnable, red for non-returnable).
+2. Returnable: badge shows "X-Day Returns & Replacement" or "X-Day Returns".
+3. Non-returnable: badge shows "Non-Returnable — This product cannot be returned or exchanged".
+
+### Customer — Cart
+1. Add a non-returnable product to cart.
+2. **Expected**: ⚠️ warning banner appears above the checkout button.
+3. Remove non-returnable items. **Expected**: warning disappears.
+
+### Customer — Checkout
+1. In checkout order summary, each item shows its policy: "Xd return policy" (green) or "Non-Returnable" (red).
+
+### Customer — Order Detail (after delivery)
+1. Mark an order as delivered (set status=5 via admin or DB).
+2. Visit `/orders/[id]`. **Expected**: "Request Return" button shows with "Return by [date] · X days left" below it.
+3. Click "Request Return". **Expected**: return type buttons (💰 Refund / 🔄 Replacement) appear; Replacement only shows if `can_replace=true`.
+4. Select a type, add reason, submit. **Expected**: return request created with correct `return_type`.
+5. Test with expired window (set `delivered_at` to 30 days ago). **Expected**: No "Request Return" button; ineligibility message shows.
+6. Test with non-returnable product. **Expected**: No button, ineligibility message.
+
+### Customer — My Account Orders List
+1. Find a delivered order with a return window still open.
+2. **Expected**: orange chip shows "Return by [date] · Xd left".
+3. Wait/simulate past the window. **Expected**: chip disappears, "Delivered successfully" shows instead.
+
+### Admin — Returns Management (`/admin/returns`)
+1. After a customer submits a return request (status 7), open the request in the table.
+2. **Expected**: shows "Customer wants Replacement" or "Customer wants Refund" chip.
+3. If replacement: click "Send Replacement" → order moves to status 8 with return_type=replacement.
+4. Click "Dispatch Replacement", enter a tracking number, submit → `replacement_dispatched_at` is set.
+5. Admin table shows dispatched confirmation for replacement returns.
+6. If refund: existing Credit Wallet / Razorpay Refund / Mark Completed buttons still work.
+
+### Bulk Import
+1. Download the admin bulk import CSV template.
+2. **Expected**: template has `return_window_days` and `replacement_available` columns.
+3. Upload a CSV with valid values (e.g. `7,false`). **Expected**: products created with correct policy.
+
+### Mobile
+- Product detail: same policy badge logic as web.
+- Cart: same non-returnable warning.
+- Account orders: same countdown chip.
+- Order detail: Return modal shows Refund/Replacement choice; eligibility enforced.

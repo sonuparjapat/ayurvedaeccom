@@ -1541,6 +1541,11 @@ if (checkingAddress) {
                       <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name || 'Product'}</p>
                       {item?.variant_label && <p style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Variant: {item.variant_label}</p>}
                       <p style={{ fontSize: 11, color: '#999', marginTop: 2 }}>Qty: {item?.quantity || 1}</p>
+                      {item.is_returnable === false ? (
+                        <p style={{ fontSize: 10, color: '#be123c', marginTop: 2, fontWeight: 600 }}>Non-Returnable</p>
+                      ) : (
+                        <p style={{ fontSize: 10, color: '#059669', marginTop: 2 }}>{item.return_window_days ?? 7}d return policy</p>
+                      )}
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', flexShrink: 0 }}>
                       ₹{((Number(item?.price) || 0) * (Number(item?.quantity) || 1)).toFixed(2)}
