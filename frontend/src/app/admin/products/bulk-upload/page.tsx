@@ -652,10 +652,10 @@ export default function BulkUploadPage() {
               <div className="example-header">📄 CSV Example</div>
               <div style={{ overflowX: 'auto' }}>
                 <table className="example-table">
-                  <thead><tr><th>name</th><th>sku</th><th>price</th><th>inventory</th><th>category_id</th><th>gst%</th><th>hsn</th></tr></thead>
+                  <thead><tr><th>name</th><th>sku</th><th>price</th><th>inventory</th><th>category_id</th><th>gst%</th><th>hsn</th><th>is_returnable</th><th>return_window_days</th><th>replacement_available</th></tr></thead>
                   <tbody>
-                    <tr><td>iPhone 15</td><td>APL001</td><td>79999</td><td>10</td><td>1</td><td>18</td><td>8517</td></tr>
-                    <tr><td>Nike Shoes</td><td>NK101</td><td>2999</td><td>25</td><td>2</td><td></td><td></td></tr>
+                    <tr><td>Ashwagandha 60</td><td>AYU001</td><td>499</td><td>100</td><td>1</td><td>12</td><td>3004</td><td>true</td><td>7</td><td>false</td></tr>
+                    <tr><td>Herbal Oil</td><td>AYU002</td><td>299</td><td>50</td><td>2</td><td></td><td></td><td>false</td><td>0</td><td>false</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -678,6 +678,9 @@ export default function BulkUploadPage() {
             <span>Invalid rows will be skipped with detailed errors.</span>
             <span>If GST / HSN is blank, system uses category defaults.</span>
             <span>Download Categories CSV for category_id reference.</span>
+            <span><strong>is_returnable</strong>: true / false — whether the product can be returned (default: true).</span>
+            <span><strong>return_window_days</strong>: number of days after delivery to return (default: 7). Set to 0 if non-returnable.</span>
+            <span><strong>replacement_available</strong>: true / false — whether a replacement can be offered instead of refund (default: false).</span>
           </div>
         </div>
 

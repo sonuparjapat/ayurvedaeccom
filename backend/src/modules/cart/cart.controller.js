@@ -182,6 +182,9 @@ exports.getCart = async (req, res) => {
       p.unit,
       p.min_order_qty,
       p.max_order_qty,
+      p.is_returnable,
+      p.return_window_days,
+      p.replacement_available,
       COALESCE(pv.price, p.price) as effective_price,
       COALESCE(pv.compareprice, p.compareprice) as effective_compareprice,
       COALESCE(pv.inventory, p.inventory) as effective_inventory

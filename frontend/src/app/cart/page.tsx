@@ -32,6 +32,8 @@ interface CartItem {
   min_order_qty?: number
   max_order_qty?: number
   is_returnable?: boolean
+  return_window_days?: number
+  replacement_available?: boolean
 }
 
 interface CouponResult {
