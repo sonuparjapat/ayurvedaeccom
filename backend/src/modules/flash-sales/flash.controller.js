@@ -175,11 +175,22 @@ exports.adminUpdate = async (req, res) => {
     )
 
     if (Array.isArray(products)) {
-      await client.query('DELETE FROM flash_sale_products WHERE flash_sale_id=$1', [id])
+      // Remove products no longer in the list (but keep rows that are still present to preserve sold_count)
+      const keepIds = products.map(p => p.product_id).filter(Boolean)
+      if (keepIds.length) {
+        await client.query(
+          `DELETE FROM flash_sale_products WHERE flash_sale_id=$1 AND product_id != ALL($2::int[])`,
+          [id, keepIds]
+        )
+      } else {
+        await client.query('DELETE FROM flash_sale_products WHERE flash_sale_id=$1', [id])
+      }
       for (const p of products) {
         await client.query(
           `INSERT INTO flash_sale_products (flash_sale_id, product_id, special_price, stock_limit)
-           VALUES ($1,$2,$3,$4)`,
+           VALUES ($1,$2,$3,$4)
+           ON CONFLICT (flash_sale_id, product_id)
+           DO UPDATE SET special_price = EXCLUDED.special_price, stock_limit = EXCLUDED.stock_limit`,
           [id, p.product_id, p.special_price || null, p.stock_limit || null]
         )
       }

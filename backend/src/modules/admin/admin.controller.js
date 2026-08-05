@@ -2622,9 +2622,50 @@ exports.adminApproveReturn = async (req, res) => {
     if (!ord.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Order not found' }) }
     if (ord.rows[0].status !== 7) { await client.query('ROLLBACK'); return res.status(400).json({ message: 'Order is not in Return Requested state' }) }
 
+    // Helper: restore inventory for all items in this order
+    const restoreInventory = async () => {
+      const items = await client.query(
+        `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id=$1`, [id]
+      )
+      for (const item of items.rows) {
+        if (item.variant_id) {
+          await client.query(
+            `UPDATE product_variants SET inventory=inventory+$1, updated_at=NOW() WHERE id=$2`,
+            [item.quantity, item.variant_id]
+          )
+        } else {
+          await client.query(
+            `UPDATE products SET inventory=inventory+$1, updated_at=NOW() WHERE id=$2`,
+            [item.quantity, item.product_id]
+          )
+        }
+      }
+    }
+
+    // Helper: deduct loyalty points that were earned when this order was delivered
+    const deductEarnedLoyalty = async (userId) => {
+      const lpRes = await client.query(
+        `SELECT COALESCE(SUM(points), 0) AS pts FROM loyalty_points WHERE order_id=$1 AND type='earn' AND source='order'`,
+        [id]
+      )
+      const pts = Number(lpRes.rows[0]?.pts || 0)
+      if (pts > 0) {
+        await client.query(
+          `UPDATE users SET loyalty_points_balance = GREATEST(0, loyalty_points_balance - $1) WHERE id=$2`,
+          [pts, userId]
+        )
+        await client.query(
+          `INSERT INTO loyalty_points (user_id, points, type, source, order_id, description) VALUES ($1,$2,'redeem','return',$3,$4)`,
+          [userId, pts, id, `Loyalty points revoked — order #${id} returned`]
+        )
+      }
+    }
+
     // Handle replacement approval
     if (refund_method === 'replacement') {
       await client.query(`UPDATE orders SET status=8, return_type='replacement', updated_at=NOW() WHERE id=$1`, [id])
+      await restoreInventory()
+      await deductEarnedLoyalty(ord.rows[0].user_id)
       await client.query('COMMIT')
       try {
         const uRow = await pool.query(`SELECT u.name, u.email, o.invoice_no FROM users u JOIN orders o ON o.user_id=u.id WHERE o.id=$1`, [id])
@@ -2638,6 +2679,8 @@ exports.adminApproveReturn = async (req, res) => {
 
     const order = ord.rows[0]
     await client.query(`UPDATE orders SET status=8, updated_at=NOW() WHERE id=$1`, [id])
+    await restoreInventory()
+    await deductEarnedLoyalty(order.user_id)
 
     if (refund_method === 'razorpay' && order.payment_method === 'online' && order.razorpay_payment_id && order.refund_status !== 'processed') {
       // Trigger Razorpay bank refund immediately
@@ -2668,7 +2711,7 @@ exports.adminApproveReturn = async (req, res) => {
     const amount = Number(order.total_amount)
     const userId = order.user_id
     await client.query(
-      `INSERT INTO wallet_transactions (user_id, amount, type, source, description) VALUES ($1,$2,'credit','refund','Return refund for order #' || $3)`,
+      `INSERT INTO wallet_transactions (user_id, amount, type, source, order_id, description) VALUES ($1,$2,'credit','refund',$3,'Return refund for order #' || $3)`,
       [userId, amount, id]
     )
     await client.query(`UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id=$2`, [amount, userId])

@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
@@ -33,6 +34,9 @@ const faqRoutes = require('./modules/faq/faq.routes');
 const quizRoutes = require('./modules/quiz/quiz.routes');
 
 const app = express();
+
+/* ================= COMPRESSION ================= */
+app.use(compression({ threshold: 1024 })); // compress responses > 1KB
 
 /* ================= SECURITY HEADERS ================= */
 app.use(helmet({

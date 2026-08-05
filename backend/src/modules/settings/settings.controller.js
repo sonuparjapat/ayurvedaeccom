@@ -1,4 +1,5 @@
 const pool = require('../../config/db')
+const { invalidateCache: invalidateAppSettings } = require('../../services/appSettings.service')
 
 /* ================= GET ALL ================= */
 
@@ -102,6 +103,7 @@ exports.updateSetting = async (req, res) => {
       })
     }
 
+    invalidateAppSettings()
     res.status(200).json({
       success: true,
       data: result.rows[0]

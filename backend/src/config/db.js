@@ -23,6 +23,9 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === "production"
     ? { rejectUnauthorized: false }
     : false,
+  max: 20,                    // max connections in the pool (default is 10)
+  idleTimeoutMillis: 30000,   // release idle connections after 30s
+  connectionTimeoutMillis: 5000, // fail fast if pool is exhausted
 });
 
 pool.on("connect", () => {

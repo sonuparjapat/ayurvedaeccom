@@ -857,7 +857,7 @@ export default function OrderDetailScreen() {
   const openAddressChange = async () => {
     try {
       const res = await api.get('/users/address')
-      setSavedAddresses(res.data?.addresses || res.data || [])
+      setSavedAddresses(res.data?.data || [])
       setSelectedAddressId(null)
       setShowAddressChange(true)
     } catch { toast.error('Could not load addresses') }

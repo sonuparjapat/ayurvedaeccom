@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const { emitToAdmin, emitToUser } = require('../../socket');
 const { createNotification } = require('../../services/notification.service');
 const { getLoyaltySettings } = require('../../services/loyaltySettings.service');
+const { getAppSettings: getCachedAppSettings } = require('../../services/appSettings.service');
 const sendOrderConfirmationEmail = require('../../services/email/orderConfirmation');
 const { sendOrderCancelledEmail, sendReturnRequestedEmail } = require('../../services/email/orderStatusEmail');
 const { sendDeliveryOTP: sendDeliveryOTPSms } = require('../../services/sms')
@@ -31,35 +32,8 @@ const razorpay = new Razorpay({
 
 /* ================= UTILS ================= */
 
-const getAppSettings = async (client) => {
-
-  const config = {
-    delivery_charge: 0,
-    platform_fee: 0,
-    free_delivery_limit: 500,
-  };
-
-  const { rows } = await client.query(`
-    SELECT key, value, type
-    FROM app_settings
-    WHERE is_active = true
-  `);
-
-  rows.forEach(row => {
-
-    let val = row.value;
-
-    if (row.type === "number") val = Number(val);
-    if (row.type === "boolean") val = val === "true";
-
-    if (config.hasOwnProperty(row.key)) {
-      config[row.key] = val;
-    }
-
-  });
-
-  return config;
-};
+// Use the cached version — avoids a DB round-trip on every order creation
+const getAppSettings = () => getCachedAppSettings();
 
 
 /* ================= REFERRAL REWARD HELPER ================= */
@@ -104,6 +78,41 @@ async function creditReferralReward(client, userId, orderId) {
   } catch (refErr) {
     console.error('[Referral reward]', refErr.message);
     // Non-fatal — don't break the order flow
+  }
+}
+
+/* ================= FLASH SALE ROLLBACK HELPER ================= */
+// Call inside an open transaction (client). Decrements flash sale counts when
+// an order that used flash-sale pricing is cancelled (any path).
+async function rollbackFlashSaleCounts(client, orderId) {
+  try {
+    // price_logs records flash_sale_id per item at order creation time
+    const rows = await client.query(
+      `SELECT flash_sale_id, product_id, quantity
+       FROM price_logs
+       WHERE order_id = $1 AND reason_type = 'flash_sale' AND flash_sale_id IS NOT NULL`,
+      [orderId]
+    );
+    if (!rows.rowCount) return;
+
+    const saleIds = new Set();
+    for (const r of rows.rows) {
+      await client.query(
+        `UPDATE flash_sale_products
+         SET sold_count = GREATEST(0, sold_count - $1)
+         WHERE flash_sale_id = $2 AND product_id = $3`,
+        [r.quantity, r.flash_sale_id, r.product_id]
+      );
+      saleIds.add(r.flash_sale_id);
+    }
+    for (const saleId of saleIds) {
+      await client.query(
+        `UPDATE flash_sales SET uses_count = GREATEST(0, uses_count - 1) WHERE id = $1`,
+        [saleId]
+      );
+    }
+  } catch (err) {
+    console.error('[FlashSale rollback]', err.message);
   }
 }
 
@@ -188,7 +197,6 @@ if (addr.pincode) {
   }
   deliveryDays = pincodeCheck.rows[0].delivery_days || 5
   if (paymentMethod === 'cod' && pincodeCheck.rows[0].cod_available === false) {
-    await client.query('ROLLBACK')
     client.release()
     return res.status(400).json({ success: false, message: 'Cash on Delivery is not available for your pincode. Please choose online payment.' })
   }
@@ -605,58 +613,59 @@ if (addr.pincode) {
       console.error('Price log write failed (non-fatal):', logErr.message)
     }
 
-    /* ================= UPDATE FLASH SALE COUNTS (DB only — emit AFTER commit) ================= */
+    /* ================= UPDATE FLASH SALE COUNTS (atomic compare-and-swap) ================= */
 
     // Collect socket events to fire after COMMIT so clients never see pre-commit state
     const pendingSocketEvents = []
 
-    try {
-      const flashSaleIdsUsed = new Set()
+    for (const item of cart) {
+      const flashSaleId = flashSaleIdMap[item.product_id]
+      if (!flashSaleId) continue
 
-      for (const item of cart) {
-        const flashSaleId = flashSaleIdMap[item.product_id]
-        if (!flashSaleId) continue
-        flashSaleIdsUsed.add(flashSaleId)
+      // Atomically increment sold_count only if stock_limit not yet reached.
+      // If no row is returned the slot was just taken by a concurrent order — abort.
+      const updProd = await client.query(
+        `UPDATE flash_sale_products
+         SET sold_count = sold_count + $1
+         WHERE flash_sale_id = $2 AND product_id = $3
+           AND (stock_limit IS NULL OR sold_count + $1 <= stock_limit)
+         RETURNING sold_count, stock_limit`,
+        [item.quantity, flashSaleId, item.product_id]
+      )
 
-        const updProd = await client.query(
-          `UPDATE flash_sale_products SET sold_count = sold_count + $1
-           WHERE flash_sale_id = $2 AND product_id = $3
-           RETURNING sold_count, stock_limit`,
-          [item.quantity, flashSaleId, item.product_id]
-        )
-        const pr = updProd.rows[0]
-        if (pr) {
-          pendingSocketEvents.push(['flash_product_update', {
-            saleId: flashSaleId,
-            productId: item.product_id,
-            soldCount: pr.sold_count,
-            stockLimit: pr.stock_limit,
-          }])
-          if (pr.stock_limit && pr.sold_count >= pr.stock_limit) {
-            pendingSocketEvents.push(['flash_product_sold_out', {
-              saleId: flashSaleId,
-              productId: item.product_id,
-            }])
-          }
-        }
+      if (!updProd.rows.length) {
+        // Flash sale stock exhausted between eligibility check and now — reject the order
+        await client.query('ROLLBACK')
+        return res.status(400).json({
+          success: false,
+          message: 'Sorry, the flash sale stock just ran out for one of your items. Please place a regular order.'
+        })
       }
 
-      for (const saleId of flashSaleIdsUsed) {
-        const updSale = await client.query(
-          `UPDATE flash_sales SET uses_count = uses_count + 1 WHERE id = $1
-           RETURNING uses_count, max_uses, title`,
-          [saleId]
-        )
-        const sr = updSale.rows[0]
-        if (sr && sr.max_uses && sr.uses_count >= sr.max_uses) {
-          pendingSocketEvents.push(['flash_sale_exhausted', {
-            saleId,
-            title: sr.title,
-          }])
-        }
+      const pr = updProd.rows[0]
+      pendingSocketEvents.push(['flash_product_update', {
+        saleId: flashSaleId, productId: item.product_id,
+        soldCount: pr.sold_count, stockLimit: pr.stock_limit,
+      }])
+      if (pr.stock_limit && pr.sold_count >= pr.stock_limit) {
+        pendingSocketEvents.push(['flash_product_sold_out', { saleId: flashSaleId, productId: item.product_id }])
       }
-    } catch (flashErr) {
-      console.error('Flash sale count update failed (non-fatal):', flashErr.message)
+    }
+
+    // Increment flash sale uses_count (per-sale, not per-product)
+    const flashSaleIdsUsed = new Set(
+      cart.map(i => flashSaleIdMap[i.product_id]).filter(Boolean)
+    )
+    for (const saleId of flashSaleIdsUsed) {
+      const updSale = await client.query(
+        `UPDATE flash_sales SET uses_count = uses_count + 1 WHERE id = $1
+         RETURNING uses_count, max_uses, title`,
+        [saleId]
+      )
+      const sr = updSale.rows[0]
+      if (sr && sr.max_uses && sr.uses_count >= sr.max_uses) {
+        pendingSocketEvents.push(['flash_sale_exhausted', { saleId, title: sr.title }])
+      }
     }
 
     /* ================= COD STOCK DEDUCTION ================= */
@@ -941,11 +950,11 @@ exports.verifyPayment = async (req, res) => {
     ]);
 
     /* ================= CLEAR CART ================= */
-
-    await client.query(
-      "DELETE FROM cart WHERE user_id=$1",
-      [userId]
-    );
+    // Skip for Buy Now orders — they were never created from cart
+    const isBuyNow = orderData.shipping_address?.is_buy_now === true;
+    if (!isBuyNow) {
+      await client.query("DELETE FROM cart WHERE user_id=$1", [userId]);
+    }
 
     /* ================= REFERRAL REWARD (online — fire after payment verified) ================= */
     await creditReferralReward(client, userId, orderId);
@@ -1195,6 +1204,9 @@ exports.cancelOrder = async (req, res) => {
       );
       await client.query(`DELETE FROM coupon_uses WHERE order_id = $1`, [id]);
     }
+
+    // Restore flash sale slots if applicable
+    await rollbackFlashSaleCounts(client, id);
 
     await client.query("COMMIT");
 
@@ -1866,7 +1878,7 @@ exports.razorpayWebhook = async (req, res) => {
 
     // Find order by razorpay_order_id — lock row
     const orderRes = await client.query(
-      `SELECT id, user_id, payment_status, expires_at FROM orders WHERE razorpay_order_id=$1 FOR UPDATE`,
+      `SELECT id, user_id, payment_status, status, expires_at, shipping_address FROM orders WHERE razorpay_order_id=$1 FOR UPDATE`,
       [razorpay_order_id]
     );
     if (!orderRes.rows.length) {
@@ -1879,6 +1891,32 @@ exports.razorpayWebhook = async (req, res) => {
     // Idempotency — already processed (browser verify beat us)
     if (order.payment_status === 'paid') {
       await client.query('ROLLBACK');
+      return res.status(200).json({ received: true });
+    }
+
+    // Order was cancelled (e.g. cleanup ran before webhook arrived) — auto-refund captured payment
+    if (order.status === 6 || order.payment_status === 'cancelled') {
+      await client.query('ROLLBACK');
+      client.release();
+      try {
+        const refund = await razorpay.payments.refund(razorpay_payment_id, {
+          speed: 'normal',
+          notes: { reason: 'Order cancelled before payment could be confirmed' },
+        });
+        await pool.query(
+          `UPDATE orders SET refund_id=$1, refund_status=$2, payment_status='refunded', updated_at=NOW() WHERE razorpay_order_id=$3`,
+          [refund.id, refund.status === 'processed' ? 'processed' : 'pending', razorpay_order_id]
+        );
+        logPayment(order.id, 'webhook_refund_cancelled_order', {
+          status: refund.status,
+          gatewayPaymentId: razorpay_payment_id,
+          gatewayRefundId: refund.id,
+          initiatedBy: 'system',
+          notes: 'Order was already cancelled when webhook arrived',
+        });
+      } catch (refundErr) {
+        console.error('[WEBHOOK] Auto-refund for cancelled order failed:', refundErr.message);
+      }
       return res.status(200).json({ received: true });
     }
 
@@ -1912,8 +1950,11 @@ exports.razorpayWebhook = async (req, res) => {
       [razorpay_payment_id, orderId]
     );
 
-    // Clear cart
-    await client.query(`DELETE FROM cart WHERE user_id=$1`, [userId]);
+    // Clear cart — skip for Buy Now orders (never created from cart)
+    const isBuyNow = order.shipping_address?.is_buy_now === true;
+    if (!isBuyNow) {
+      await client.query(`DELETE FROM cart WHERE user_id=$1`, [userId]);
+    }
 
     // Credit referral reward
     await creditReferralReward(client, userId, orderId);
@@ -1989,7 +2030,7 @@ exports.reorder = async (req, res) => {
 
     const itemsRes = await pool.query(
       `SELECT oi.product_id, oi.variant_id, oi.quantity,
-              p.name, p.status,
+              p.name, p.status, p.max_order_qty,
               COALESCE(pv.inventory, p.inventory) AS eff_inv
        FROM order_items oi
        JOIN products p ON p.id = oi.product_id
@@ -2001,12 +2042,15 @@ exports.reorder = async (req, res) => {
     let added = 0;
     for (const item of itemsRes.rows) {
       if (item.status !== 'active' || item.eff_inv <= 0) continue;
+      const maxQty = Number(item.max_order_qty) || 100;
+      const safeQty = Math.min(item.quantity, maxQty, item.eff_inv);
+      if (safeQty <= 0) continue;
       await pool.query(`
         INSERT INTO cart (user_id, product_id, variant_id, quantity)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (user_id, product_id, COALESCE(variant_id, -1))
-        DO UPDATE SET quantity = cart.quantity + EXCLUDED.quantity, updated_at = NOW()
-      `, [userId, item.product_id, item.variant_id || null, item.quantity]);
+        DO UPDATE SET quantity = LEAST(cart.quantity + EXCLUDED.quantity, $4), updated_at = NOW()
+      `, [userId, item.product_id, item.variant_id || null, safeQty]);
       added++;
     }
 
@@ -2202,6 +2246,7 @@ exports.buyNow = async (req, res) => {
         name: shipping?.name || '', phone: shipping?.phone || '',
         address: `${addr.street}, ${addr.city}, ${addr.state} - ${addr.pincode}`,
         address_id: addr.id, type: addr.type,
+        is_buy_now: true,
         price_breakup: { subtotal, gst: totalTax, delivery, platform_fee: PLATFORM,
           discount: discountAmount, wallet_discount: walletDiscountApplied,
           coupon_code: appliedCouponCode, grand_total: finalTotal }
@@ -2234,25 +2279,36 @@ exports.buyNow = async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6)
     `, [orderId, item.product_id, variantId || null, item.variant_label || null, quantity, price]);
 
-    // Flash sale count update
+    // Flash sale count — atomic compare-and-swap (prevents oversell under concurrency)
     const pendingSocketEvents = [];
     if (flashSaleId) {
-      try {
-        const up = await client.query(
-          `UPDATE flash_sale_products SET sold_count=sold_count+$1 WHERE flash_sale_id=$2 AND product_id=$3 RETURNING sold_count,stock_limit`,
-          [quantity, flashSaleId, productId]
-        );
-        const pr = up.rows[0];
-        if (pr) {
-          pendingSocketEvents.push(['flash_product_update', { saleId: flashSaleId, productId, soldCount: pr.sold_count, stockLimit: pr.stock_limit }]);
-          if (pr.stock_limit && pr.sold_count >= pr.stock_limit)
-            pendingSocketEvents.push(['flash_product_sold_out', { saleId: flashSaleId, productId }]);
-        }
-        const us = await client.query(`UPDATE flash_sales SET uses_count=uses_count+1 WHERE id=$1 RETURNING uses_count,max_uses,title`, [flashSaleId]);
-        const sr = us.rows[0];
-        if (sr && sr.max_uses && sr.uses_count >= sr.max_uses)
-          pendingSocketEvents.push(['flash_sale_exhausted', { saleId: flashSaleId, title: sr.title }]);
-      } catch (_) {}
+      const up = await client.query(
+        `UPDATE flash_sale_products
+         SET sold_count = sold_count + $1
+         WHERE flash_sale_id = $2 AND product_id = $3
+           AND (stock_limit IS NULL OR sold_count + $1 <= stock_limit)
+         RETURNING sold_count, stock_limit`,
+        [quantity, flashSaleId, productId]
+      );
+      if (!up.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          success: false,
+          message: 'Sorry, the flash sale stock just ran out for this item. Please place a regular order.'
+        });
+      }
+      const pr = up.rows[0];
+      pendingSocketEvents.push(['flash_product_update', { saleId: flashSaleId, productId, soldCount: pr.sold_count, stockLimit: pr.stock_limit }]);
+      if (pr.stock_limit && pr.sold_count >= pr.stock_limit)
+        pendingSocketEvents.push(['flash_product_sold_out', { saleId: flashSaleId, productId }]);
+
+      const us = await client.query(
+        `UPDATE flash_sales SET uses_count = uses_count + 1 WHERE id = $1 RETURNING uses_count, max_uses, title`,
+        [flashSaleId]
+      );
+      const sr = us.rows[0];
+      if (sr && sr.max_uses && sr.uses_count >= sr.max_uses)
+        pendingSocketEvents.push(['flash_sale_exhausted', { saleId: flashSaleId, title: sr.title }]);
     }
 
     // COD: deduct stock only — do NOT clear cart
@@ -2330,7 +2386,7 @@ exports.updateOrderAddress = async (req, res) => {
     await client.query('BEGIN');
 
     const orderRes = await client.query(
-      `SELECT id, status, user_id FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE`,
+      `SELECT id, status, user_id, payment_method FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE`,
       [id, userId]
     );
     if (!orderRes.rows.length) {
@@ -2354,6 +2410,23 @@ exports.updateOrderAddress = async (req, res) => {
     }
 
     const addr = addrRes.rows[0];
+
+    // Validate new pincode serviceability
+    if (addr.pincode) {
+      const pcRes = await client.query(
+        `SELECT delivery_days, cod_available FROM serviceable_pincodes WHERE pincode=$1 AND is_active=TRUE LIMIT 1`,
+        [addr.pincode]
+      );
+      if (!pcRes.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ success: false, message: `Sorry, we don't deliver to pincode ${addr.pincode} yet.` });
+      }
+      if (order.payment_method === 'cod' && pcRes.rows[0].cod_available === false) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ success: false, message: 'Cash on Delivery is not available for the selected pincode.' });
+      }
+    }
+
     const newShipping = {
       name: addr.name,
       phone: addr.phone,
@@ -2363,8 +2436,8 @@ exports.updateOrderAddress = async (req, res) => {
     };
 
     await client.query(
-      `UPDATE orders SET shipping_address=$1, updated_at=NOW() WHERE id=$2`,
-      [JSON.stringify(newShipping), id]
+      `UPDATE orders SET shipping_address=$1, address_id=$2, updated_at=NOW() WHERE id=$3`,
+      [JSON.stringify(newShipping), addr.id, id]
     );
 
     await client.query('COMMIT');

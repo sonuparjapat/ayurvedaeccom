@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import api from '../../api/axios'
+import { useStore } from '../../store'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
 
 const TX_COLORS: Record<string, { bg: string; color: string; sign: string }> = {
@@ -25,6 +26,7 @@ const TIER_COLORS: Record<string, { color: string; bg: string; emoji: string }> 
 
 export default function WalletScreen() {
   const insets = useSafeAreaInsets()
+  const user = useStore(s => s.user)
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'wallet' | 'loyalty'>('wallet')
@@ -32,10 +34,11 @@ export default function WalletScreen() {
   const [tierData, setTierData] = useState<any>(null)
 
   useEffect(() => {
+    if (!user) { router.replace('/auth'); return }
     api.get('/wallet').then(r => setData(r.data)).catch(() => {}).finally(() => setLoading(false))
     api.get('/wallet/settings').then(r => { if (r.data?.settings) setCfg(r.data.settings) }).catch(() => {})
     api.get('/wallet/tier').then(r => { if (r.data) setTierData(r.data) }).catch(() => {})
-  }, [])
+  }, [user])
 
   const ptsPerRupee = cfg.loyalty_earn_rate > 0 ? Math.round(1 / cfg.loyalty_earn_rate) : 10
   const rupeePerPt = cfg.loyalty_redeem_rate || 0.1

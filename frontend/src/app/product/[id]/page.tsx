@@ -674,6 +674,7 @@ const addToCart = async () => {
               >
                 <img
                   src={product.images[activeImg]}
+                  alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
                 />
 
@@ -741,6 +742,7 @@ const addToCart = async () => {
 
                     <img
                       src={img}
+                      alt={`${product.name} - image ${i + 1}`}
                       className="w-full h-full object-cover"
                     />
 

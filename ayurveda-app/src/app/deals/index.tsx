@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import api from '../../api/axios'
+import { getGuestSession } from '../../utils/guestSession'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
 import { toast } from '../../components/ui/Toast'
 import { useStore } from '../../store'
@@ -78,7 +79,13 @@ function ProductCard({ item, delay }: { item: Product; delay: number }) {
 
   const handleAdd = async () => {
     try {
-      const res = await api.post('/cart', { productId: item.id, quantity: 1 })
+      const payload: any = { productId: item.id, quantity: 1 }
+      const { user } = useStore.getState()
+      if (!user?.id) {
+        const sessionId = await getGuestSession()
+        if (sessionId) payload.sessionId = sessionId
+      }
+      const res = await api.post('/cart', payload)
       const items = res.data?.items || cartData.items
       setCartData({ items, subtotal: res.data?.subtotal || 0, totalItems: items.length })
       toast.success('Added to cart')

@@ -81,6 +81,30 @@ const cleanExpiredOrders = async () => {
         );
       }
 
+      // Restore flash sale slots if applicable
+      const flashRows = await client.query(
+        `SELECT flash_sale_id, product_id, quantity FROM price_logs
+         WHERE order_id = $1 AND reason_type = 'flash_sale' AND flash_sale_id IS NOT NULL`,
+        [order.id]
+      );
+      if (flashRows.rowCount) {
+        const saleIds = new Set();
+        for (const r of flashRows.rows) {
+          await client.query(
+            `UPDATE flash_sale_products SET sold_count = GREATEST(0, sold_count - $1)
+             WHERE flash_sale_id = $2 AND product_id = $3`,
+            [r.quantity, r.flash_sale_id, r.product_id]
+          );
+          saleIds.add(r.flash_sale_id);
+        }
+        for (const saleId of saleIds) {
+          await client.query(
+            `UPDATE flash_sales SET uses_count = GREATEST(0, uses_count - 1) WHERE id = $1`,
+            [saleId]
+          );
+        }
+      }
+
       await client.query("COMMIT");
       processed++;
     } catch (err) {

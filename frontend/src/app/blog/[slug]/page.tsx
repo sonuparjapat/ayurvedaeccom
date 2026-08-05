@@ -73,12 +73,6 @@ export default function BlogPostPage() {
       .finally(() => setLoading(false))
   }, [slug])
 
-  // Dynamic document title for SEO
-  useEffect(() => {
-    if (post?.title) {
-      document.title = `${post.meta_title || post.title} | Oroganix`
-    }
-  }, [post])
 
   const formatDate = (d: string) => {
     return new Date(d).toLocaleDateString('en-IN', {

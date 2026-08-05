@@ -12,6 +12,13 @@ export const metadata: Metadata = {
     type: 'website',
     url: `${SITE_URL}/shipping`,
     siteName: 'Oroganix',
+    images: [{ url: 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png', width: 1536, height: 1024, alt: 'Oroganix' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Shipping Policy | Oroganix',
+    description: 'Free delivery above ₹499. Standard 3-5 days, express 1-2 days in major cities.',
+    images: ['https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'],
   },
 }
 

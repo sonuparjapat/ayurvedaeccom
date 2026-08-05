@@ -1367,6 +1367,33 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
       );
     }
 
+    /* ================= PERFORMANCE INDEXES ================= */
+
+    // Webhook order lookup — runs on every Razorpay payment callback
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_razorpay_order_id ON orders(razorpay_order_id) WHERE razorpay_order_id IS NOT NULL`);
+
+    // orderCleanup cron: WHERE payment_status='unpaid' AND expires_at < NOW()
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_expires ON orders(expires_at, payment_status) WHERE expires_at IS NOT NULL`);
+
+    // autoCancelOrders cron: WHERE status=0 AND created_at < NOW() - interval
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at) WHERE status = 0`);
+
+    // Flash sale rollback: WHERE order_id=$1 AND reason_type='flash_sale' AND flash_sale_id IS NOT NULL
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_price_logs_flash_sale ON price_logs(flash_sale_id) WHERE flash_sale_id IS NOT NULL`);
+
+    // Loyalty rollback / return deduction: WHERE order_id=$1 AND type='earn'/'redeem' AND source=...
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_loyalty_order ON loyalty_points(order_id, type, source) WHERE order_id IS NOT NULL`);
+
+    // Cart: nearly every API call fetches cart by user_id
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_cart_user ON cart(user_id)`);
+
+    // Coupon rollback on cancel: DELETE FROM coupon_uses WHERE order_id=$1
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_coupon_uses_order ON coupon_uses(order_id)`);
+
+    // Full-text product search using pg_trgm (extension already created above)
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING gin(name gin_trgm_ops)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_desc_trgm ON products USING gin(short_description gin_trgm_ops)`);
+
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

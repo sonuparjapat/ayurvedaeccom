@@ -21,7 +21,7 @@ import { notify as hapticNotify, Haptics } from '../../utils/haptics'
 const { width: W } = Dimensions.get('window')
 
 interface Address {
-  id: number; street: string; city: string; state: string; pincode: string; isDefault?: boolean
+  id: number; street: string; city: string; state: string; pincode: string; is_default?: boolean
 }
 interface Setting { key: string; value: string; type: string }
 type PayMethod = 'cod' | 'online'
@@ -204,13 +204,14 @@ export default function CheckoutScreen() {
   const [loyaltyBalance, setLoyaltyBalance] = useState(0)
   const [loyaltyApplied, setLoyaltyApplied] = useState(false)
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)
+  const [loyaltyRedeemRate, setLoyaltyRedeemRate] = useState(0.1)
   // Inline add address form
   const [showAddrForm, setShowAddrForm] = useState(false)
   const [newAddr, setNewAddr] = useState({ street: '', city: '', state: '', pincode: '', type: 'home', email: '' })
   const [addingAddr, setAddingAddr] = useState(false)
 
   useEffect(() => {
-    if (!user) { setAuthOpen(true); router.back(); return }
+    if (!user) { setAuthOpen(true); return }
     init()
     api.get('/coupons/public').then(r => setAvailableCoupons(r.data?.coupons || [])).catch(() => {})
     api.get('/wallet').then(r => {
@@ -238,6 +239,8 @@ export default function CheckoutScreen() {
       if (settingRes.status === 'fulfilled') {
         const d = settingRes.value.data?.delivery || {}
         setSettings(Object.entries(d).map(([key, value]) => ({ key, value: String(value), type: 'number' })) as any)
+        const rate = Number(settingRes.value.data?.settings?.loyalty_redeem_rate)
+        if (rate > 0) setLoyaltyRedeemRate(rate)
       }
     } catch { } finally { setLoadingInit(false) }
   }
@@ -250,11 +253,11 @@ export default function CheckoutScreen() {
     if (!/^\d{6}$/.test(pincode)) { toast.error('Enter valid 6-digit pincode'); return }
     setAddingAddr(true)
     try {
-      await api.post('/users/address', { ...newAddr, isDefault: addresses.length === 0 })
+      await api.post('/users/address', { ...newAddr, is_default: addresses.length === 0 })
       const res = await api.get('/users/address')
       const list: Address[] = res.data?.data || []
       setAddresses(list)
-      const def = list.find(a => a.isDefault) || list[0]
+      const def = list.find(a => a.is_default) || list[0]
       if (def) setSelectedAddr(def)
       setShowAddrForm(false)
       setNewAddr({ street: '', city: '', state: '', pincode: '', type: 'home', email: '' })
@@ -338,7 +341,7 @@ export default function CheckoutScreen() {
         couponCode: appliedCoupon?.code || undefined,
         walletDiscount: walletDiscount > 0 ? walletDiscount : undefined,
         loyaltyDiscount: loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
-        loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount * 10) : undefined,
+        loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount / loyaltyRedeemRate) : undefined,
       }
       if (isBuyNow && buyNowItem) {
         orderPayload.productId = buyNowItem.productId
@@ -522,7 +525,7 @@ export default function CheckoutScreen() {
                         {selectedAddr?.id === addr.id && <View style={ss.addrRadioDot} />}
                       </View>
                       <View style={{ flex: 1 }}>
-                        {addr.isDefault && (
+                        {addr.is_default && (
                           <View style={ss.defaultBadge}><Text style={ss.defaultBadgeText}>⭐ Default</Text></View>
                         )}
                         <Text style={ss.addrStreet}>{addr.street}</Text>
@@ -724,16 +727,16 @@ export default function CheckoutScreen() {
                         <Text style={{ fontSize: 16 }}>⭐</Text>
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#78350f' }}>{loyaltyBalance} Points = ₹{(loyaltyBalance * 0.1).toFixed(2)}</Text>
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#78350f' }}>{loyaltyBalance} Points = ₹{(loyaltyBalance * loyaltyRedeemRate).toFixed(2)}</Text>
                         <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: '#92400e' }}>
-                          {loyaltyApplied ? `₹${loyaltyDiscount.toFixed(2)} discount applied` : '1 point = ₹0.10'}
+                          {loyaltyApplied ? `₹${loyaltyDiscount.toFixed(2)} discount applied` : `1 point = ₹${loyaltyRedeemRate.toFixed(2)}`}
                         </Text>
                       </View>
                     </View>
                     <TouchableOpacity
                       onPress={() => {
                         if (loyaltyApplied) { setLoyaltyApplied(false); setLoyaltyDiscount(0) }
-                        else { const max = loyaltyBalance * 0.1; const use = Math.min(max, total); setLoyaltyDiscount(+use.toFixed(2)); setLoyaltyApplied(true) }
+                        else { const max = loyaltyBalance * loyaltyRedeemRate; const use = Math.min(max, total); setLoyaltyDiscount(+use.toFixed(2)); setLoyaltyApplied(true) }
                       }}
                       style={{ backgroundColor: loyaltyApplied ? '#fee2e2' : '#d97706', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 }}
                     >

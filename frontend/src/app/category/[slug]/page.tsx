@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Head from 'next/head'
 import axios from '@/lib/axios'
 
 import { Header } from '@/components/layout/header'
@@ -325,11 +324,6 @@ export default function CategoryPage() {
   const isNumericSlug = /^\d+$/.test(String(slug))
 
   // Dynamic document title for SEO
-  useEffect(() => {
-    if (categoryInfo?.name) {
-      document.title = `${categoryInfo.name} - Shop Online | Oroganix`
-    }
-  }, [categoryInfo])
 
   /* ================= SEARCH DEBOUNCE ================= */
 
@@ -1056,11 +1050,6 @@ export default function CategoryPage() {
 
   return (
     <>
-      <Head>
-        <title>{categoryName} | Shop Online</title>
-        <meta name="description" content={`Buy best ${categoryName} products online at best price.`} />
-      </Head>
-
       {/* CollectionPage JSON-LD */}
       {categoryInfo && (
         <script
@@ -1094,7 +1083,7 @@ export default function CategoryPage() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 container mx-auto px-4 pb-8 relative z-10">
-                <h1 className="text-4xl lg:text-5xl font-black text-white drop-shadow-lg">{categoryName}</h1>
+                <h2 className="text-4xl lg:text-5xl font-black text-white drop-shadow-lg">{categoryName}</h2>
               </div>
             </section>
           )}

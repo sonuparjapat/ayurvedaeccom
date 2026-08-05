@@ -42,6 +42,27 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 }
 
-export default function CategoryLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+export default async function CategoryLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Products', item: `${SITE_URL}/products` },
+      { '@type': 'ListItem', position: 3, name: slug.replace(/-/g, ' '), item: `${SITE_URL}/category/${slug}` },
+    ],
+  }
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
+      {children}
+    </>
+  )
 }

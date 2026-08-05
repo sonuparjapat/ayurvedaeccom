@@ -12,11 +12,13 @@ export const metadata: Metadata = {
     type: 'website',
     url: `${SITE_URL}/about`,
     siteName: 'Oroganix',
+    images: [{ url: 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png', width: 1536, height: 1024, alt: 'Oroganix - Premium Ayurvedic Products' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'About Oroganix - Our Story & Mission',
     description: 'Authentic, lab-tested Ayurvedic herbs and organic products sourced directly from certified Indian farms.',
+    images: ['https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'],
   },
 }
 

@@ -12,11 +12,13 @@ export const metadata: Metadata = {
     type: 'website',
     url: `${SITE_URL}/faq`,
     siteName: 'Oroganix',
+    images: [{ url: 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png', width: 1536, height: 1024, alt: 'Oroganix FAQ' }],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'FAQ | Oroganix',
     description: 'Answers to common questions about shipping, returns, product quality, payments, and more.',
+    images: ['https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'],
   },
 }
 

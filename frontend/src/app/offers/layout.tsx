@@ -12,11 +12,13 @@ export const metadata: Metadata = {
     type: 'website',
     url: `${SITE_URL}/offers`,
     siteName: 'Oroganix',
+    images: [{ url: 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png', width: 1536, height: 1024, alt: 'Oroganix Offers & Bundles' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Offers & Bundles | Oroganix',
     description: 'Best deals on premium Ayurvedic products. Wellness bundles, flash sales, and exclusive offers.',
+    images: ['https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'],
   },
 }
 

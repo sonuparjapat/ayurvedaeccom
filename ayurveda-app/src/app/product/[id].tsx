@@ -41,6 +41,9 @@ interface Product {
   video_url?: string; fssai_number?: string; coa_url?: string; safety_tags?: string[]
   focus_keyword?: string; min_order_qty?: number; max_order_qty?: number
   is_returnable?: boolean; return_window_days?: number; replacement_available?: boolean; sort_order?: number
+  gst_percent?: number; faqs?: { question: string; answer: string }[]
+  slug?: string; sku?: string; barcode?: string; sale_price?: string
+  meta_title?: string; meta_description?: string
 }
 interface Review { id?: number; name: string; user_name?: string; rating: number; comment: string; images?: string[]; order_id?: number }
 // console.log("hii")

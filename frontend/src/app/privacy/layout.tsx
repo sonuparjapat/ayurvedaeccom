@@ -13,6 +13,13 @@ export const metadata: Metadata = {
     type: 'website',
     url: `${SITE_URL}/privacy`,
     siteName: 'Oroganix',
+    images: [{ url: 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png', width: 1536, height: 1024, alt: 'Oroganix' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Privacy Policy | Oroganix',
+    description: 'How we collect, use, and protect your personal information at Oroganix.',
+    images: ['https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'],
   },
 }
 
