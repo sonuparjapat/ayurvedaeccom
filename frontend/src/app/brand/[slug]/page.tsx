@@ -41,7 +41,7 @@ export default function BrandPage() {
   useEffect(() => {
     if (!brand) return
     setLoading(true)
-    axios.get(`/shop?brand_id=${brand.id}&sortBy=${sort}&limit=12&page=${page}`)
+    axios.get(`/shop/public?brand_id=${brand.id}&sortBy=${sort}&limit=12&page=${page}`)
       .then(r => {
         setProducts(r.data.products || [])
         setTotalPages(r.data.totalPages || 1)

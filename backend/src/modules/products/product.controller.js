@@ -983,7 +983,9 @@ exports.getProductReviews = async (req, res) => {
           WHERE oi.product_id = r.product_id
             AND o.user_id = r.user_id
             AND o.status = 5
-        ) AS is_verified_purchase
+        ) AS is_verified_purchase,
+        r.admin_reply,
+        r.admin_replied_at
 
       FROM reviews r
 
@@ -1232,8 +1234,13 @@ exports.getProductVariants = async (req, res) => {
 ───────────────────────────────────────────────────────── */
 exports.notifyMe = async (req, res) => {
   try {
-    const { productId, variantId, email } = req.body
+    const { productId, variantId } = req.body
     const userId = req.user?.id || null
+    let email = req.body.email || null
+    if (!email && userId) {
+      const uRes = await pool.query('SELECT email FROM users WHERE id=$1', [userId])
+      email = uRes.rows[0]?.email || null
+    }
 
     if (!productId || !email) {
       return res.status(400).json({ success: false, message: 'productId and email required' })

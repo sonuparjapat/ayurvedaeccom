@@ -4,20 +4,28 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Question { q: string; options: string[] }
 interface QuizResult {
   dosha: string; description: string; tips: string[]; categories: string[]
   color: string; emoji: string; vataScore: number; pittaScore: number; kaphaScore: number
 }
+interface Product {
+  id: number; name: string; slug: string; price: string; compareprice?: string
+  images: string[]; averagerating?: number; reviewcount?: number
+  category_name?: string; return_window_days?: number; is_returnable?: boolean
+}
 
 export default function DoshaQuizPage() {
   const [questions, setQuestions] = useState<Question[]>([])
-  const [step, setStep] = useState(0) // -1 = intro, 0..n-1 = question, n = result
+  const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<number[]>([])
   const [result, setResult] = useState<QuizResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [started, setStarted] = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [productsLoading, setProductsLoading] = useState(false)
 
   useEffect(() => {
     axios.get('/quiz/questions').then(r => setQuestions(r.data.questions || [])).catch(() => {})
@@ -32,6 +40,12 @@ export default function DoshaQuizPage() {
         const res = await axios.post('/quiz/result', { answers: newAnswers })
         setResult(res.data)
         setStep(questions.length)
+        // Fetch real product recommendations
+        setProductsLoading(true)
+        axios.get(`/quiz/recommendations/${res.data.dosha}`)
+          .then(r => setProducts(r.data.products || []))
+          .catch(() => {})
+          .finally(() => setProductsLoading(false))
       } catch {
         toast.error('Could not save result')
       } finally {
@@ -46,6 +60,7 @@ export default function DoshaQuizPage() {
     setAnswers([])
     setStep(0)
     setResult(null)
+    setProducts([])
     setStarted(true)
   }
 
@@ -89,7 +104,7 @@ export default function DoshaQuizPage() {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 px-4 py-12">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto space-y-6">
           <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
             {/* Header */}
             <div className="p-8 text-white text-center" style={{ background: `linear-gradient(135deg, ${accent}, ${accent}99)` }}>
@@ -137,9 +152,9 @@ export default function DoshaQuizPage() {
                 </ul>
               </div>
 
-              {/* Recommended categories */}
+              {/* Category quick links */}
               <div>
-                <h3 className="font-bold text-gray-900 mb-3">Recommended For You</h3>
+                <h3 className="font-bold text-gray-900 mb-3">Wellness Areas for You</h3>
                 <div className="flex flex-wrap gap-2">
                   {result.categories.map((cat, i) => (
                     <Link
@@ -159,10 +174,75 @@ export default function DoshaQuizPage() {
                   Retake Quiz
                 </button>
                 <Link href="/products" className="flex-1 py-3 text-center text-white rounded-2xl font-semibold transition-all" style={{ backgroundColor: accent }}>
-                  Shop Products
+                  Shop All
                 </Link>
               </div>
             </div>
+          </div>
+
+          {/* ── Real Product Recommendations ── */}
+          <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900">Products Recommended for {result.dosha} Types</h3>
+              <p className="text-sm text-gray-500 mt-1">Curated based on your constitution</p>
+            </div>
+            {productsLoading ? (
+              <div className="flex items-center justify-center py-12 gap-3">
+                <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-gray-500">Finding products for you…</span>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-sm">No products found for your dosha yet.</div>
+            ) : (
+              <div className="p-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {products.map(p => {
+                  const img = Array.isArray(p.images) ? p.images[0] : null
+                  const price = Number(p.price)
+                  const compare = p.compareprice ? Number(p.compareprice) : null
+                  const discount = compare && compare > price ? Math.round(((compare - price) / compare) * 100) : null
+                  return (
+                    <Link key={p.id} href={`/product/${p.id}`} className="group block rounded-2xl border border-gray-100 hover:border-emerald-300 hover:shadow-md transition-all overflow-hidden">
+                      <div className="relative aspect-square bg-gray-50">
+                        {img ? (
+                          <Image src={img} alt={p.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="200px" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-300 text-3xl">🌿</div>
+                        )}
+                        {discount && (
+                          <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-lg">{discount}% OFF</span>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="text-xs text-gray-400 mb-0.5 truncate">{p.category_name}</p>
+                        <p className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 mb-1">{p.name}</p>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-sm font-bold text-gray-900">₹{price}</span>
+                          {compare && compare > price && (
+                            <span className="text-xs text-gray-400 line-through">₹{compare}</span>
+                          )}
+                        </div>
+                        {p.averagerating && Number(p.averagerating) > 0 ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-yellow-400 text-xs">★</span>
+                            <span className="text-xs text-gray-500">{Number(p.averagerating).toFixed(1)} ({p.reviewcount})</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+            {products.length > 0 && (
+              <div className="px-6 pb-6">
+                <Link href={`/products?search=${encodeURIComponent(result.categories[0] || '')}`}
+                  className="block w-full py-3 text-center rounded-2xl font-semibold text-white transition-all hover:opacity-90"
+                  style={{ backgroundColor: accent }}
+                >
+                  View All {result.dosha} Products →
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

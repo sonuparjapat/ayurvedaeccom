@@ -20,6 +20,12 @@ router.put(
   allowRoles(1, 2),
   controller.updateUser
 )
+router.delete(
+  "/user/:id",
+  auth,
+  allowRoles(1, 2),
+  controller.adminDeleteUser
+)
 router.post(
   "/create",
   auth,
@@ -206,6 +212,7 @@ router.get('/export/users', auth, admin, controller.exportUsersCSV)
 /* ─── REVIEWS MODERATION ─── */
 router.get('/reviews', auth, admin, controller.adminListReviews)
 router.put('/reviews/:id', auth, admin, controller.adminUpdateReview)
+router.put('/reviews/:id/reply', auth, admin, controller.adminReplyReview)
 router.delete('/reviews/:id', auth, admin, controller.adminDeleteReview)
 
 /* ─── ABANDONED CARTS ─── */

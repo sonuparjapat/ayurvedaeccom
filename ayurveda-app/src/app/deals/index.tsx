@@ -78,7 +78,7 @@ function ProductCard({ item, delay }: { item: Product; delay: number }) {
 
   const handleAdd = async () => {
     try {
-      const res = await api.post('/cart', { product_id: item.id, quantity: 1 })
+      const res = await api.post('/cart', { productId: item.id, quantity: 1 })
       const items = res.data?.items || cartData.items
       setCartData({ items, subtotal: res.data?.subtotal || 0, totalItems: items.length })
       toast.success('Added to cart')
@@ -130,7 +130,7 @@ export default function DealsScreen() {
     try {
       const [flashRes, prodRes] = await Promise.allSettled([
         p === 1 ? api.get('/flash-sales/active') : Promise.resolve({ data: { data: [] } }),
-        api.get(`/shop?discount=true&page=${p}&limit=20`),
+        api.get(`/shop/public?discount=true&page=${p}&limit=20`),
       ])
       if (flashRes.status === 'fulfilled' && p === 1) {
         setFlashSales(flashRes.value.data?.data || flashRes.value.data?.sales || [])

@@ -152,7 +152,7 @@ export default function CartPage() {
   const moveToCart = async (productId: number) => {
     try {
       await axios.post('/cart', { productId, quantity: 1 })
-      await axios.delete(`/shop/wishlist/${productId}`)
+      await axios.delete(`/shop/${productId}`)
       fetchCart()
       getwishlist()
       toast.success('Moved to cart!')

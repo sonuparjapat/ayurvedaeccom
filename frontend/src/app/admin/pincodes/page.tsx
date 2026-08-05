@@ -16,6 +16,7 @@ interface Pincode {
   state: string
   delivery_days: number
   is_active: boolean
+  cod_available: boolean
   created_at: string
 }
 
@@ -37,7 +38,7 @@ interface BulkResult {
 }
 
 const EMPTY: Omit<Pincode, 'id' | 'created_at'> = {
-  pincode: '', city: '', state: '', delivery_days: 3, is_active: true,
+  pincode: '', city: '', state: '', delivery_days: 3, is_active: true, cod_available: true,
 }
 
 const CSV_TEMPLATE = `pincode,city,state,delivery_days,is_active
@@ -144,7 +145,7 @@ export default function AdminPincodesPage() {
 
   const openEdit = (r: Pincode) => {
     setEditingId(r.id)
-    setForm({ pincode: r.pincode, city: r.city, state: r.state, delivery_days: r.delivery_days, is_active: r.is_active })
+    setForm({ pincode: r.pincode, city: r.city, state: r.state, delivery_days: r.delivery_days, is_active: r.is_active, cod_available: r.cod_available !== false })
     setModalTab('single')
     resetBulk()
     setShowModal(true)
@@ -353,7 +354,7 @@ export default function AdminPincodesPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-slate-50">
-                  {['Pincode', 'City', 'State', 'Delivery Days', 'Status', 'Actions'].map(h => (
+                  {['Pincode', 'City', 'State', 'Delivery Days', 'Status', 'COD', 'Actions'].map(h => (
                     <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -372,6 +373,11 @@ export default function AdminPincodesPage() {
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${r.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {r.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${r.cod_available !== false ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-500'}`}>
+                        {r.cod_available !== false ? '✓ COD' : '✗ No COD'}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
@@ -470,12 +476,21 @@ export default function AdminPincodesPage() {
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Delivery Days</label>
                     <input type="number" value={form.delivery_days} onChange={e => set('delivery_days', e.target.value)} min={1} max={30} placeholder="3" className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" />
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Status</label>
-                    <label className="inline-flex items-center gap-2.5 cursor-pointer">
-                      <input type="checkbox" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
-                      <span className="text-sm text-gray-700 font-medium">Active</span>
-                    </label>
+                  <div className="flex gap-6">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Status</label>
+                      <label className="inline-flex items-center gap-2.5 cursor-pointer">
+                        <input type="checkbox" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
+                        <span className="text-sm text-gray-700 font-medium">Active</span>
+                      </label>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">COD Available</label>
+                      <label className="inline-flex items-center gap-2.5 cursor-pointer">
+                        <input type="checkbox" checked={(form as any).cod_available !== false} onChange={e => set('cod_available', e.target.checked)} className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
+                        <span className="text-sm text-gray-700 font-medium">Cash on Delivery allowed</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
                 <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3 shrink-0">

@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from '@/lib/axios'
+import { useAuth } from '@/context/auth-context'
 import { Eye, EyeOff, AlertCircle, CheckCircle, Lock, Mail, Leaf, ArrowRight, Shield, Sparkles } from 'lucide-react'
 
 export default function UserLogin() {
   const router = useRouter()
+  const { login } = useAuth()
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
@@ -27,9 +29,10 @@ export default function UserLogin() {
     if (msg) { setError(msg); return }
     try {
       setLoading(true); setError(''); setSuccess('')
-      await axios.post('/users/login', formData)
+      const res = await axios.post('/users/login', formData)
+      await login(res.data.user)
       setSuccess('Login Successful')
-      setTimeout(() => router.push('/dashboard'), 1000)
+      setTimeout(() => router.push('/account'), 1000)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed')
     } finally {

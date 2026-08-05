@@ -90,6 +90,44 @@ exports.getQuestions = (req, res) => {
   res.json({ success: true, questions: QUESTIONS })
 }
 
+exports.getDoshaProducts = async (req, res) => {
+  try {
+    const { dosha } = req.params
+    const info = DOSHA_INFO[dosha]
+    if (!info) return res.status(400).json({ success: false, message: 'Invalid dosha' })
+
+    // Search products whose category_name matches any of the dosha's recommended categories
+    const cats = info.categories
+    const placeholders = cats.map((_, i) => `$${i + 1}`).join(',')
+    const result = await pool.query(
+      `SELECT id, name, slug, price, compareprice, images, averagerating, reviewcount, inventory,
+              category_name, is_returnable, return_window_days
+       FROM products
+       WHERE is_active = TRUE AND inventory > 0
+         AND category_name ILIKE ANY(ARRAY[${cats.map((_, i) => `$${i + 1}`).join(',')}])
+       ORDER BY is_bestseller DESC, averagerating DESC, reviewcount DESC
+       LIMIT 12`,
+      cats.map(c => `%${c}%`)
+    )
+
+    // Fallback: if no category match, return top-rated products
+    if (!result.rows.length) {
+      const fallback = await pool.query(
+        `SELECT id, name, slug, price, compareprice, images, averagerating, reviewcount, inventory,
+                category_name, is_returnable, return_window_days
+         FROM products WHERE is_active = TRUE AND inventory > 0
+         ORDER BY is_bestseller DESC, averagerating DESC LIMIT 8`
+      )
+      return res.json({ success: true, products: fallback.rows, dosha, categories: cats })
+    }
+
+    res.json({ success: true, products: result.rows, dosha, categories: cats })
+  } catch (err) {
+    console.error('[DOSHA PRODUCTS]', err)
+    res.status(500).json({ success: false, message: 'Failed to fetch recommendations' })
+  }
+}
+
 exports.submitResult = async (req, res) => {
   try {
     const { answers, sessionId } = req.body

@@ -370,6 +370,7 @@ function CheckoutInner() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
   const [couponError, setCouponError] = useState('')
   const [availableCoupons, setAvailableCoupons] = useState<any[]>([])
+  const [bestCoupon, setBestCoupon] = useState<{ code: string; saving: number; description?: string } | null>(null)
   // Wallet state
   const [walletBalance, setWalletBalance] = useState(0)
   const [walletApplied, setWalletApplied] = useState(false)
@@ -534,6 +535,14 @@ useEffect(() => {
     }).catch(() => {})
   }
 }, [loginuserdata?.id])
+
+// Fetch best coupon whenever cart total changes
+useEffect(() => {
+  if (appliedCoupon || subtotal <= 0) { setBestCoupon(null); return }
+  axios.get('/coupons/best', { params: { amount: subtotal } })
+    .then(r => setBestCoupon(r.data.best || null))
+    .catch(() => {})
+}, [subtotal, appliedCoupon])
 
 const applyCoupon = async () => {
   if (!couponInput.trim()) return
@@ -1324,6 +1333,32 @@ if (checkingAddress) {
                         </button>
 
                       </div>
+
+                      {/* ── BEST COUPON SUGGESTION BANNER ── */}
+                      {bestCoupon && !appliedCoupon && (
+                        <div style={{ marginBottom: 16, padding: '12px 16px', background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)', border: '1.5px solid #6ee7b7', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 18 }}>🏷️</span>
+                            <div>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: '#065f46', margin: 0 }}>Save ₹{bestCoupon.saving.toFixed(2)} with <span style={{ letterSpacing: '0.06em' }}>{bestCoupon.code}</span></p>
+                              {bestCoupon.description && <p style={{ fontSize: 11, color: '#059669', margin: '2px 0 0' }}>{bestCoupon.description}</p>}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setCouponInput(bestCoupon.code)
+                              setTimeout(() => {
+                                axios.post('/coupons/apply', { code: bestCoupon.code, cartTotal: subtotal })
+                                  .then(r => { setAppliedCoupon({ code: r.data.coupon.code, discount: r.data.discount }); toast.success(`🎉 Saved ₹${r.data.discount.toFixed(2)} with ${r.data.coupon.code}!`) })
+                                  .catch(err => setCouponError(err?.response?.data?.message || 'Could not apply coupon'))
+                              }, 0)
+                            }}
+                            style={{ padding: '8px 18px', borderRadius: 10, background: '#059669', color: '#fff', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            Apply Now
+                          </button>
+                        </div>
+                      )}
 
                       {/* ── COUPON SECTION ── */}
                       <div style={{ marginBottom: 24, padding: '20px', background: 'var(--parchment)', border: '1px dashed var(--border)', borderRadius: 16 }}>

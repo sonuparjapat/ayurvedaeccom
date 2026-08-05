@@ -1805,6 +1805,13 @@ const addToCart = async () => {
 
                 <p className="text-gray-700 text-sm leading-relaxed">{r.comment}</p>
 
+                {r.admin_reply && (
+                  <div className="mt-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+                    <p className="text-xs font-bold text-emerald-700 mb-1 flex items-center gap-1">🌿 Seller Response</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{r.admin_reply}</p>
+                  </div>
+                )}
+
                 {r.images?.length > 0 && (
                   <div className="flex gap-2 flex-wrap mt-3">
                     {r.images.map((img: any, imgIdx: number) => (

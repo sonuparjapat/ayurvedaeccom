@@ -96,7 +96,7 @@ export default function WishlistPage() {
     try {
       setProcessingId(productId)
       await new Promise(r => setTimeout(r, 280))
-      await axios.delete(`/shop/wishlist/${productId}`)
+      await axios.delete(`/shop/${productId}`)
       toast.success("Removed from wishlist")
       getwishlist({ params: { page, limit, search } })
     } catch {

@@ -6,5 +6,6 @@ const ctrl = require('./quiz.controller')
 // Public — no auth required to take quiz or submit
 router.get('/questions', ctrl.getQuestions)
 router.post('/result', ctrl.submitResult)
+router.get('/recommendations/:dosha', ctrl.getDoshaProducts)
 
 module.exports = router

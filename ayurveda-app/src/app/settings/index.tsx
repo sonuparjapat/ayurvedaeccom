@@ -65,7 +65,7 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await api.post('/auth/logout').catch(() => {})
+            await api.post('/users/logout').catch(() => {})
             await AsyncStorage.multiRemove(['stored_user', 'auth_token', 'guest_session_id'])
             setUser(null)
             router.replace('/')
@@ -89,7 +89,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.delete('/users/me')
+              await api.delete('/users/account')
               await AsyncStorage.multiRemove(['stored_user', 'auth_token', 'guest_session_id'])
               setUser(null)
               toast.success('Account deleted')

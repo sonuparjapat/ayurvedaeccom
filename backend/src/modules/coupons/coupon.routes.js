@@ -7,6 +7,9 @@ const { admin } = require('../../middlewares/admin');
 // Public — available offers (optionalAuth so logged-in users see their personal coupons)
 router.get('/public', optionalAuth, controller.getActiveCoupons);
 
+// Public — best coupon for a given cart total (used by checkout for auto-suggestion)
+router.get('/best', optionalAuth, controller.getBestCoupon);
+
 // User — apply coupon (optionalAuth: works for guests, per-user check when logged in)
 router.post('/apply', optionalAuth, controller.applyCoupon);
 

@@ -482,7 +482,7 @@ const generateInvoice = async () => {
     setLoading(true)
 
     await axios.post(
-      `admin/invoices/generate/${current.id}`
+      `/admin/invoices/generate/${current.id}`
     )
 
     notify.success('Invoice generated')

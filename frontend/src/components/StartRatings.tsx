@@ -23,7 +23,7 @@ export default function StarRating({
 
     try {
 
-      await axios.post('/shop/review', {
+      await axios.post('/shop/reviews/product', {
         productId,
         rating: value,
         comment: '',
@@ -33,8 +33,7 @@ export default function StarRating({
       refresh()
       toast.success('Thanks for rating ⭐')
 
-    } catch(err) {
-console.log(err,"eror")
+    } catch {
       toast.error('Please login first')
 
     }

@@ -417,6 +417,13 @@ await client.query(`
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS replacement_dispatched_at TIMESTAMP`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS replacement_tracking VARCHAR(100)`);
 
+    /* ── Admin reply on reviews ── */
+    await client.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS admin_reply TEXT`);
+    await client.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS admin_replied_at TIMESTAMP`);
+
+    /* ── COD availability on pincodes ── */
+    await client.query(`ALTER TABLE serviceable_pincodes ADD COLUMN IF NOT EXISTS cod_available BOOLEAN DEFAULT TRUE`);
+
     /* ================= PAYMENTS ================= */
     await client.query(`
       CREATE TABLE IF NOT EXISTS payments (

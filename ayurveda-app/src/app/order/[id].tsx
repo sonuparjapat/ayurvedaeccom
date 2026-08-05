@@ -789,12 +789,10 @@ export default function OrderDetailScreen() {
   }
 
   const handleReorder = async () => {
-    if (!order?.items?.length) return
     setActionLoading(true)
     try {
-      for (const item of order.items) {
-        await api.post('/cart', { productId: item.product_id, quantity: item.quantity })
-      }
+      await api.post(`/orders/${id}/reorder`)
+      toast.success('Items added to cart!')
       router.push('/cart')
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Could not add items to cart')
@@ -829,7 +827,8 @@ export default function OrderDetailScreen() {
         if (result.type === 'success' && result.url) {
           const params = new URL(result.url).searchParams
           if (params.get('razorpay_payment_id')) {
-            await api.post(`/orders/${order.id}/verify-payment`, {
+            await api.post('/orders/verify', {
+              orderId: order.id,
               razorpay_order_id: params.get('razorpay_order_id'),
               razorpay_payment_id: params.get('razorpay_payment_id'),
               razorpay_signature: params.get('razorpay_signature'),
@@ -857,7 +856,7 @@ export default function OrderDetailScreen() {
 
   const openAddressChange = async () => {
     try {
-      const res = await api.get('/addresses')
+      const res = await api.get('/users/address')
       setSavedAddresses(res.data?.addresses || res.data || [])
       setSelectedAddressId(null)
       setShowAddressChange(true)

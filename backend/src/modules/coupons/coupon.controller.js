@@ -243,6 +243,64 @@ exports.adminUpdate = async (req, res) => {
   }
 };
 
+/* ─── PUBLIC: best applicable coupon for a cart total ───────────────────── */
+
+exports.getBestCoupon = async (req, res) => {
+  try {
+    const userId = req.user?.id || null
+    const cartTotal = Number(req.query.amount || 0)
+    if (cartTotal <= 0) return res.json({ success: false, best: null })
+
+    const baseFilter = `
+      is_active = TRUE
+      AND (usage_limit = 0 OR used_count < usage_limit)
+      AND (valid_from IS NULL OR valid_from <= NOW())
+      AND (valid_to IS NULL OR valid_to >= NOW())
+      AND min_order <= $1
+    `
+    const userFilter = userId ? `(user_id IS NULL OR user_id = $2)` : `user_id IS NULL`
+    const params = userId ? [cartTotal, userId] : [cartTotal]
+
+    const result = await pool.query(
+      `SELECT id, code, type, value, min_order, max_discount, description, valid_to, usage_per_user
+       FROM coupons WHERE ${baseFilter} AND ${userFilter}
+       ORDER BY user_id DESC NULLS LAST, value DESC LIMIT 20`,
+      params
+    )
+
+    if (!result.rows.length) return res.json({ success: true, best: null })
+
+    // Filter out per-user exhausted coupons
+    let rows = result.rows
+    if (userId) {
+      const usedRes = await pool.query(
+        `SELECT coupon_id, COUNT(*) AS uses FROM coupon_uses WHERE user_id=$1 GROUP BY coupon_id`,
+        [userId]
+      )
+      const usedMap = {}
+      usedRes.rows.forEach(r => { usedMap[r.coupon_id] = Number(r.uses) })
+      rows = rows.filter(c => {
+        const perUser = Number(c.usage_per_user) || 0
+        return perUser === 0 || (usedMap[c.id] || 0) < perUser
+      })
+    }
+
+    if (!rows.length) return res.json({ success: true, best: null })
+
+    // Pick coupon with highest savings
+    let best = null, bestSaving = -1
+    for (const c of rows) {
+      const saving = calcDiscount(c, cartTotal)
+      if (saving > bestSaving) { bestSaving = saving; best = c }
+    }
+
+    res.json({ success: true, best: best ? { ...best, saving: bestSaving } : null })
+  } catch (err) {
+    console.error('[GET BEST COUPON]', err)
+    res.status(500).json({ success: false, best: null })
+  }
+}
+
 /* ─── ADMIN: delete coupon ───────────────────────────────────────────────── */
 
 exports.adminDelete = async (req, res) => {

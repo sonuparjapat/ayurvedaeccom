@@ -37,7 +37,7 @@ async function autoCancelOrders() {
   try {
     const res = await pool.query(
       `SELECT o.id, o.user_id, o.payment_method, o.payment_status, o.total_amount,
-              o.razorpay_payment_id, o.created_at,
+              o.razorpay_payment_id, o.created_at, o.wallet_discount, o.coupon_code,
               u.name AS user_name, u.email AS user_email,
               i.invoice_no
        FROM orders o
@@ -95,6 +95,48 @@ async function autoCancelOrders() {
          WHERE id = $2`,
         [CANCEL_REASON, order.id]
       )
+
+      // 3a. Refund wallet credits used on this order
+      const walletUsed = Number(order.wallet_discount || 0)
+      if (walletUsed > 0) {
+        await client.query(
+          `UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2`,
+          [walletUsed, order.user_id]
+        )
+        await client.query(
+          `INSERT INTO wallet_transactions (user_id, amount, type, source, order_id, description)
+           VALUES ($1, $2, 'credit', 'refund', $3, $4)`,
+          [order.user_id, walletUsed, order.id, `Wallet refund for auto-cancelled order #${order.id}`]
+        )
+      }
+
+      // 3b. Restore loyalty points used on this order
+      const lpRes = await client.query(
+        `SELECT COALESCE(SUM(points), 0) AS pts FROM loyalty_points WHERE order_id = $1 AND type = 'redeem'`,
+        [order.id]
+      )
+      const loyaltyPts = Number(lpRes.rows[0]?.pts || 0)
+      if (loyaltyPts > 0) {
+        await client.query(
+          `UPDATE users SET loyalty_points_balance = loyalty_points_balance + $1 WHERE id = $2`,
+          [loyaltyPts, order.user_id]
+        )
+        await client.query(
+          `INSERT INTO loyalty_points (user_id, points, type, source, order_id, description)
+           VALUES ($1, $2, 'earn', 'refund', $3, $4)`,
+          [order.user_id, loyaltyPts, order.id, `Points restored for auto-cancelled order #${order.id}`]
+        )
+      }
+
+      // 3c. Decrement coupon usage so it can be reused
+      if (order.coupon_code) {
+        await client.query(
+          `UPDATE coupons SET used_count = GREATEST(0, used_count - 1), updated_at = NOW()
+           WHERE UPPER(code) = UPPER($1)`,
+          [order.coupon_code]
+        )
+        await client.query(`DELETE FROM coupon_uses WHERE order_id = $1`, [order.id])
+      }
 
       await client.query('COMMIT')
       console.log(`[AutoCancel] Order #${order.id} cancelled.`)

@@ -177,7 +177,7 @@ const addr = addrRes.rows[0];
 let deliveryDays = 5
 if (addr.pincode) {
   const pincodeCheck = await client.query(
-    `SELECT delivery_days FROM serviceable_pincodes WHERE pincode=$1 AND is_active=TRUE LIMIT 1`,
+    `SELECT delivery_days, cod_available FROM serviceable_pincodes WHERE pincode=$1 AND is_active=TRUE LIMIT 1`,
     [addr.pincode]
   );
   if (!pincodeCheck.rows.length) {
@@ -187,6 +187,11 @@ if (addr.pincode) {
     });
   }
   deliveryDays = pincodeCheck.rows[0].delivery_days || 5
+  if (paymentMethod === 'cod' && pincodeCheck.rows[0].cod_available === false) {
+    await client.query('ROLLBACK')
+    client.release()
+    return res.status(400).json({ success: false, message: 'Cash on Delivery is not available for your pincode. Please choose online payment.' })
+  }
 }
 
 /* ================= ADDRESS SNAPSHOT ================= */
@@ -350,6 +355,17 @@ if (addr.pincode) {
       if (!minOk) {
         await client.query("ROLLBACK");
         return res.status(400).json({ success: false, message: `Minimum order value of ₹${c.min_order} required for this coupon.` });
+      }
+
+      if (Number(c.usage_per_user) > 0) {
+        const used = await client.query(
+          'SELECT COUNT(*) FROM coupon_uses WHERE coupon_id=$1 AND user_id=$2',
+          [c.id, userId]
+        );
+        if (Number(used.rows[0].count) >= Number(c.usage_per_user)) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({ success: false, message: 'You have already used this coupon the maximum allowed times.' });
+        }
       }
 
       discountAmount = c.type === 'percent'
@@ -1137,6 +1153,48 @@ exports.cancelOrder = async (req, res) => {
       `UPDATE orders SET status=6, cancel_reason=$1, updated_at=NOW() WHERE id=$2`,
       [reason || "Cancelled by customer", id]
     );
+
+    // Refund wallet credits used on this order
+    const walletUsed = Number(order.wallet_discount || 0);
+    if (walletUsed > 0) {
+      await client.query(
+        `UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2`,
+        [walletUsed, userId]
+      );
+      await client.query(
+        `INSERT INTO wallet_transactions (user_id, amount, type, source, order_id, description)
+         VALUES ($1, $2, 'credit', 'refund', $3, $4)`,
+        [userId, walletUsed, id, `Wallet refund for cancelled order #${id}`]
+      );
+    }
+
+    // Restore loyalty points used on this order
+    const lpRes = await client.query(
+      `SELECT COALESCE(SUM(points), 0) AS pts FROM loyalty_points WHERE order_id = $1 AND type = 'redeem'`,
+      [id]
+    );
+    const loyaltyPts = Number(lpRes.rows[0]?.pts || 0);
+    if (loyaltyPts > 0) {
+      await client.query(
+        `UPDATE users SET loyalty_points_balance = loyalty_points_balance + $1 WHERE id = $2`,
+        [loyaltyPts, userId]
+      );
+      await client.query(
+        `INSERT INTO loyalty_points (user_id, points, type, source, order_id, description)
+         VALUES ($1, $2, 'earn', 'refund', $3, $4)`,
+        [userId, loyaltyPts, id, `Points restored for cancelled order #${id}`]
+      );
+    }
+
+    // Decrement coupon usage so it can be reused
+    if (order.coupon_code) {
+      await client.query(
+        `UPDATE coupons SET used_count = GREATEST(0, used_count - 1), updated_at = NOW()
+         WHERE UPPER(code) = UPPER($1)`,
+        [order.coupon_code]
+      );
+      await client.query(`DELETE FROM coupon_uses WHERE order_id = $1`, [id]);
+    }
 
     await client.query("COMMIT");
 
@@ -1995,12 +2053,16 @@ exports.buyNow = async (req, res) => {
     let deliveryDays = 5;
     if (addr.pincode) {
       const pc = await client.query(
-        `SELECT delivery_days FROM serviceable_pincodes WHERE pincode=$1 AND is_active=TRUE LIMIT 1`,
+        `SELECT delivery_days, cod_available FROM serviceable_pincodes WHERE pincode=$1 AND is_active=TRUE LIMIT 1`,
         [addr.pincode]
       );
       if (!pc.rows.length)
         return res.status(400).json({ success: false, message: `Sorry, we don't deliver to pincode ${addr.pincode} yet.` });
       deliveryDays = pc.rows[0].delivery_days || 5;
+      if (paymentMethod === 'cod' && pc.rows[0].cod_available === false) {
+        client.release();
+        return res.status(400).json({ success: false, message: 'Cash on Delivery is not available for your pincode. Please choose online payment.' });
+      }
     }
 
     await client.query('BEGIN');
@@ -2085,6 +2147,16 @@ exports.buyNow = async (req, res) => {
       if (!(subtotal >= Number(c.min_order))) {
         await client.query('ROLLBACK');
         return res.status(400).json({ success: false, message: `Minimum order value of ₹${c.min_order} required.` });
+      }
+      if (Number(c.usage_per_user) > 0) {
+        const used = await client.query(
+          'SELECT COUNT(*) FROM coupon_uses WHERE coupon_id=$1 AND user_id=$2',
+          [c.id, userId]
+        );
+        if (Number(used.rows[0].count) >= Number(c.usage_per_user)) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ success: false, message: 'You have already used this coupon the maximum allowed times.' });
+        }
       }
       discountAmount = c.type === 'percent' ? (subtotal * Number(c.value)) / 100 : Number(c.value);
       if (Number(c.max_discount) > 0) discountAmount = Math.min(discountAmount, Number(c.max_discount));

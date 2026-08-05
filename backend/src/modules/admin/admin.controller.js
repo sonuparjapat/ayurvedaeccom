@@ -256,6 +256,26 @@ exports.updateUser = async (req, res) => {
 }
 
 
+/* ================= ADMIN DELETE USER ================= */
+
+exports.adminDeleteUser = async (req, res) => {
+  try {
+    const { id } = req.params
+    // Prevent deleting superadmins unless caller is superadmin
+    const target = await pool.query('SELECT role FROM users WHERE id=$1', [id])
+    if (!target.rows.length) return res.status(404).json({ success: false, message: 'User not found' })
+    if (target.rows[0].role === 1 && req.user.role !== 1) {
+      return res.status(403).json({ success: false, message: 'Cannot delete a superadmin' })
+    }
+    await pool.query(`UPDATE users SET is_active=false, updated_at=NOW() WHERE id=$1`, [id])
+    console.log(`[ADMIN DELETE USER] User #${id} deactivated by admin #${req.user.id}`)
+    res.json({ success: true, message: 'User deactivated' })
+  } catch (err) {
+    console.error('[ADMIN DELETE USER]', err)
+    res.status(500).json({ success: false, message: 'Failed to deactivate user' })
+  }
+}
+
 /* ================= GET USERS ================= */
 
 exports.users = async (req, res) => {
@@ -2013,15 +2033,16 @@ exports.adminListPincodes = async (req, res) => {
 
 exports.adminCreatePincode = async (req, res) => {
   try {
-    const { pincode, city, state, delivery_days, is_active } = req.body
+    const { pincode, city, state, delivery_days, is_active, cod_available } = req.body
     if (!pincode) return res.status(400).json({ success: false, message: 'pincode required' })
     const result = await pool.query(
-      `INSERT INTO serviceable_pincodes (pincode, city, state, delivery_days, is_active) VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (pincode) DO UPDATE SET city=$2, state=$3, delivery_days=$4, is_active=$5 RETURNING *`,
-      [pincode, city || null, state || null, delivery_days || 5, is_active !== false]
+      `INSERT INTO serviceable_pincodes (pincode, city, state, delivery_days, is_active, cod_available) VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (pincode) DO UPDATE SET city=$2, state=$3, delivery_days=$4, is_active=$5, cod_available=$6 RETURNING *`,
+      [pincode, city || null, state || null, delivery_days || 5, is_active !== false, cod_available !== false]
     )
     res.status(201).json({ success: true, pincode: result.rows[0] })
   } catch (err) {
+    console.error('[ADMIN CREATE PINCODE]', err)
     res.status(500).json({ success: false, message: 'Failed to save pincode' })
   }
 }
@@ -2029,14 +2050,15 @@ exports.adminCreatePincode = async (req, res) => {
 exports.adminUpdatePincode = async (req, res) => {
   try {
     const { id } = req.params
-    const { city, state, delivery_days, is_active } = req.body
+    const { city, state, delivery_days, is_active, cod_available } = req.body
     const result = await pool.query(
-      `UPDATE serviceable_pincodes SET city=$1, state=$2, delivery_days=$3, is_active=$4 WHERE id=$5 RETURNING *`,
-      [city, state, delivery_days, is_active, id]
+      `UPDATE serviceable_pincodes SET city=$1, state=$2, delivery_days=$3, is_active=$4, cod_available=$5 WHERE id=$6 RETURNING *`,
+      [city, state, delivery_days, is_active, cod_available !== false, id]
     )
     if (!result.rows.length) return res.status(404).json({ success: false, message: 'Not found' })
     res.json({ success: true, pincode: result.rows[0] })
   } catch (err) {
+    console.error('[ADMIN UPDATE PINCODE]', err)
     res.status(500).json({ success: false, message: 'Failed to update' })
   }
 }
@@ -2396,6 +2418,7 @@ exports.adminListReviews = async (req, res) => {
     }
     const r = await pool.query(
       `SELECT r.id, r.rating, r.comment, r.images, r.status, r.created_at,
+              r.admin_reply, r.admin_replied_at,
               u.name as user_name, p.name as product_name, p.id as product_id
        FROM reviews r
        LEFT JOIN users u ON u.id = r.user_id
@@ -2452,6 +2475,25 @@ exports.adminDeleteReview = async (req, res) => {
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ message: 'Delete failed' })
+  }
+}
+
+/* ─── ADMIN REPLY TO REVIEW ─── */
+exports.adminReplyReview = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { reply } = req.body
+    if (!reply || !reply.trim()) return res.status(400).json({ message: 'Reply text is required' })
+    const r = await pool.query(
+      `UPDATE reviews SET admin_reply=$1, admin_replied_at=NOW() WHERE id=$2 RETURNING id`,
+      [reply.trim(), id]
+    )
+    if (!r.rowCount) return res.status(404).json({ message: 'Review not found' })
+    console.log(`[ADMIN REPLY] Review #${id} replied`)
+    res.json({ success: true })
+  } catch (err) {
+    console.error('[ADMIN REPLY REVIEW]', err)
+    res.status(500).json({ message: 'Failed to save reply' })
   }
 }
 

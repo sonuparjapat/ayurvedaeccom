@@ -107,10 +107,7 @@ export default function AdminUsers() {
 
     try {
 
-      await axios.delete(
-        `/auth/user/${deleteItem.id}`,
-        { withCredentials: true }
-      )
+      await axios.delete(`/admin/user/${deleteItem.id}`)
 
       toast.success("Deleted")
 

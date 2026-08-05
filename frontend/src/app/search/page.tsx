@@ -69,7 +69,7 @@ function ProductCard({ product }: { product: Product }) {
     if (!loginuserdata?.id) { toast.error('Please login to wishlist'); return }
     try {
       if (isWishlisted) {
-        await axios.delete(`/shop/wishlist/${product.id}`)
+        await axios.delete(`/shop/${product.id}`)
         toast.success('Removed from wishlist')
       } else {
         await axios.post('/shop/wishlist', { productId: product.id })
@@ -193,7 +193,7 @@ function SearchContent() {
 
   // Fetch categories once
   useEffect(() => {
-    axios.get('/shop/products/categories').then(r => {
+    axios.get('/shop/categories').then(r => {
       setCategories(r.data?.categories || [])
     }).catch(() => {})
   }, [])
@@ -203,7 +203,7 @@ function SearchContent() {
     setLoading(true)
     try {
       const sort = SORT_OPTIONS[sortIdx]
-      const res = await axios.get('/shop/products', {
+      const res = await axios.get('/shop/public', {
         params: {
           search: q.trim(),
           page: resetPage ? 1 : pg,

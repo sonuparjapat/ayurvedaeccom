@@ -178,7 +178,6 @@ const resetForms = () => {
   const handleRegister = async (e: React.FormEvent) => {
 
     e.preventDefault()
-console.log("HIIIIIIIIIIIIIII")
     setErrors({})
     setSuccessMessage('')
 

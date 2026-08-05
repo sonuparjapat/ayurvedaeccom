@@ -323,7 +323,7 @@ function NotifyMeButton({ productId, variantId }: { productId: number; variantId
     if (subscribed) return
     setLoading(true)
     try {
-      await api.post('/products/notify-stock', { product_id: productId, variant_id: variantId || null })
+      await api.post('/shop/notify-me', { productId, variantId: variantId || null })
       setSubscribed(true)
       toast.success('You will be notified when back in stock!')
     } catch { toast.error('Could not subscribe to notification') }

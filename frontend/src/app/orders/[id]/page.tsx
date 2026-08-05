@@ -127,7 +127,7 @@ export default function OrderDetailPage() {
             .finally(() => setReturnEligibilityLoading(false))
         }
         if (searchParams?.get('action') === 'change-address') {
-          axios.get('/addresses').then(r => {
+          axios.get('/users/address').then(r => {
             setAddresses(r.data?.addresses || r.data || [])
             setSelectedAddressId(null)
             setShowAddressModal(true)
@@ -160,7 +160,7 @@ export default function OrderDetailPage() {
 
   const openAddressModal = async () => {
     try {
-      const res = await axios.get('/addresses')
+      const res = await axios.get('/users/address')
       setAddresses(res.data?.addresses || res.data || [])
       setSelectedAddressId(null)
       setShowAddressModal(true)
@@ -208,9 +208,7 @@ export default function OrderDetailPage() {
     if (!order?.items?.length) return
     setReordering(true)
     try {
-      for (const item of order.items) {
-        await axios.post('/cart', { productId: item.product_id, quantity: item.quantity, variantId: item.variant_id || undefined })
-      }
+      await axios.post(`/orders/${id}/reorder`)
       toast.success('Items added to cart!')
       router.push('/cart')
     } catch (err: any) {
