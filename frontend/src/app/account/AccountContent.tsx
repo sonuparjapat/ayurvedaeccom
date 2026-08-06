@@ -502,6 +502,25 @@ export default function AccountContent() {
     phone: '',
   })
 
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      notify.error('Only JPG, PNG, or WEBP images allowed')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      notify.error('Image must be under 5MB')
+      return
+    }
+    setAvatarFile(file)
+    setAvatarPreview(URL.createObjectURL(file))
+  }
+
   /* notifications settings */
   const [notifSettings, setNotifSettings] = useState({
     orderUpdates: true,
@@ -668,13 +687,23 @@ useEffect(() => {
 
     setProfileSaving(true);
 
-    const res = await updateProfile(editForm);
+    if (avatarFile) {
+      const fd = new FormData()
+      fd.append('name', editForm.name)
+      fd.append('email', editForm.email)
+      fd.append('phone', editForm.phone)
+      fd.append('avatar', avatarFile)
+      await axios.put('/users/profile', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    } else {
+      await updateProfile(editForm)
+    }
 
     notify.success("Profile updated");
 
     setIsEditing(false);
     setProfileSuccess(true);
-fetchUser()
+    setAvatarFile(null)
+    fetchUser()
     setTimeout(() => setProfileSuccess(false), 3000);
 
   } catch (err: any) {
@@ -953,10 +982,16 @@ const handleSaveAddress = async (data: any) => {
           <div className="container mx-auto px-4 py-8 relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-5">
-                <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur border-2 border-white/30 flex items-center justify-center shadow-xl">
-                  <span className="text-3xl font-black text-white">
-                    {loginuserdata?.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </span>
+                <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-white/20 backdrop-blur border-2 border-white/30 shadow-xl">
+                  {(loginuserdata as any)?.avatar ? (
+                    <img src={(loginuserdata as any).avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-3xl font-black text-white">
+                        {loginuserdata?.name?.charAt(0)?.toUpperCase() || 'U'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest mb-0.5">Welcome back</p>
@@ -1064,6 +1099,25 @@ const handleSaveAddress = async (data: any) => {
 
                         {isEditing ? (
                           <form onSubmit={handleProfileUpdate} className="space-y-4">
+                            {/* Avatar Picker */}
+                            <div className="flex items-center gap-4">
+                              <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-200 bg-emerald-50 shrink-0">
+                                {avatarPreview || (loginuserdata as any)?.avatar ? (
+                                  <img src={avatarPreview || (loginuserdata as any).avatar} alt="Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-emerald-100">
+                                    <span className="text-2xl font-black text-emerald-600">{loginuserdata?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} />
+                                <button type="button" onClick={() => avatarInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold border border-emerald-300 text-emerald-700 rounded-xl hover:bg-emerald-50 transition-colors">
+                                  <Upload size={14} /> Change Photo
+                                </button>
+                                <p className="text-xs text-gray-400 mt-1">JPG, PNG or WEBP · max 5MB</p>
+                              </div>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Full Name</label>

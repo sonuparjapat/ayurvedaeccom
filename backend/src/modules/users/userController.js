@@ -69,54 +69,43 @@ exports.updateProfile = async (req, res) => {
     const { name, email, phone } = req.body;
 
     if (!name || !email) {
-      // Return 400 bad request if name or email is not provided
-      return res.status(400).json({
-        message: "Name and email are required",
-      });
+      return res.status(400).json({ message: "Name and email are required" });
     }
 
-    // Check for duplicate email
     const check = await pool.query(
       "SELECT id FROM users WHERE email=$1 AND id != $2",
       [email, userId]
     );
 
     if (check.rowCount) {
-      // Return 400 bad request if email already exists
-      return res.status(400).json({
-        message: "Email already exists",
-      });
+      return res.status(400).json({ message: "Email already exists" });
     }
 
-    // Update user profile
-    const result = await pool.query(
-      `
-      UPDATE users
-      SET
-        name=$1,
-        email=$2,
-        phone=$3,
-        updated_at=NOW()
-      WHERE id=$4
-      RETURNING id,name,email,phone
-      `,
-      [name, email, phone, userId]
-    );
+    let avatar_url = null;
+    if (req.file) {
+      const { uploadImageToAWS } = require('../../utils/awsImageUpload');
+      avatar_url = await uploadImageToAWS(req.file, 'avatars');
+    }
 
-    // Return the updated user profile
-    res.json({
-      success: true,
-      user: result.rows[0],
-    });
+    const result = avatar_url
+      ? await pool.query(
+          `UPDATE users SET name=$1, email=$2, phone=$3, avatar=$4, updated_at=NOW()
+           WHERE id=$5 RETURNING id,name,email,phone,avatar`,
+          [name, email, phone || null, avatar_url, userId]
+        )
+      : await pool.query(
+          `UPDATE users SET name=$1, email=$2, phone=$3, updated_at=NOW()
+           WHERE id=$4 RETURNING id,name,email,phone,avatar`,
+          [name, email, phone || null, userId]
+        );
+
+    res.json({ success: true, user: result.rows[0] });
 
   } catch (err) {
 
     console.error(err);
 
-    // Return 500 internal server error if something goes wrong
-    res.status(500).json({
-      message: "Update failed",
-    });
+    res.status(500).json({ message: "Update failed" });
   }
 };
 exports.deleteAccount = async (req, res) => {

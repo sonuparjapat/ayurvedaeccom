@@ -61,7 +61,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to add review images."
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to update your profile picture or add review images.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to use the camera to take a profile photo."
         }
       ]
     ],

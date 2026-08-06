@@ -388,7 +388,7 @@ Token location: Authorization: Bearer <token>  (HTTP header)
                 ['POST', '/login-otp', 'public', 'Request OTP → { email } | Verify OTP → { email, otp }'],
                 ['POST', '/google-login', 'public', 'Google OAuth login. Body: { id_token }'],
                 ['GET', '/profile', 'auth', 'Get logged-in user profile.'],
-                ['PUT', '/profile', 'auth', 'Update profile (name, phone).'],
+                ['PUT', '/profile', 'auth', 'Update profile (name, email, phone, avatar). Accepts multipart/form-data; avatar field is optional JPEG/PNG/WEBP max 5MB, stored on S3 under avatars/.'],
                 ['POST', '/change-password', 'auth', 'Change password. Body: { current_password, new_password }'],
                 ['GET', '/addresses', 'auth', 'List saved addresses.'],
                 ['POST', '/addresses', 'auth', 'Add new address.'],

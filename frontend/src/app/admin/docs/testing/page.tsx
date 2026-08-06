@@ -1618,6 +1618,62 @@ const SECTIONS: TestSection[] = [
     ],
   },
 
+  /* ── PROFILE PICTURE ── */
+  {
+    id: 'avatar', label: 'Profile Picture Upload', icon: Users,
+    platform: ['web', 'mobile'], color: '#7c3aed',
+    cases: [
+      {
+        id: 'avatar-1', title: 'Web — Upload Profile Photo', severity: 'high',
+        steps: [
+          'Log in as customer → Account → click "Edit Profile"',
+          'Click "Change Photo" → select a JPG/PNG under 5MB',
+          'Verify preview appears in the avatar circle',
+          'Click "Save Changes"',
+        ],
+        expected: 'Profile photo updates in header avatar and in edit form preview. Refreshing the page shows the saved photo.',
+        where: 'Web: /account profile tab.',
+      },
+      {
+        id: 'avatar-2', title: 'Web — Invalid File Rejection', severity: 'medium',
+        steps: [
+          'Edit Profile → try uploading a PDF or GIF file',
+          'Try uploading an image over 5MB',
+        ],
+        expected: 'Error toast: "Only JPG, PNG, or WEBP images allowed" or "Image must be under 5MB". Form does not submit.',
+        where: 'Web: /account profile tab.',
+      },
+      {
+        id: 'avatar-3', title: 'Mobile — Camera Photo', severity: 'high',
+        steps: [
+          'Open mobile app → Account tab',
+          'Tap the avatar circle in the header → tap "Camera"',
+          'Allow camera permission if prompted',
+          'Take a photo, confirm crop, then tap "Save Changes"',
+        ],
+        expected: 'Avatar updates immediately in the header after save. Re-opening the account screen shows the new photo.',
+        where: 'Mobile: Account screen header.',
+      },
+      {
+        id: 'avatar-4', title: 'Mobile — Gallery Photo', severity: 'high',
+        steps: [
+          'Account tab → tap avatar → "Photo Library"',
+          'Allow library permission if prompted → select a photo → crop → save',
+        ],
+        expected: 'Avatar saves and displays in header. No permission prompt shown on subsequent opens (permission is remembered).',
+        where: 'Mobile: Account screen.',
+      },
+      {
+        id: 'avatar-5', title: 'Mobile — Permission Denied', severity: 'medium',
+        steps: [
+          'Deny camera/library permission when prompted',
+        ],
+        expected: 'Alert appears: "Permission Required" with explanation. Avatar is not changed. No crash.',
+        where: 'Mobile: Account screen.',
+      },
+    ],
+  },
+
   /* ── 26. BULK OPERATIONS ── */
   {
     id: 'bulk', label: 'Bulk Product Operations', icon: Upload,

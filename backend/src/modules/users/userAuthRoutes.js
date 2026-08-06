@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit')
 const controller=require("./userAuthController");
 const { auth } = require("../../middlewares/auth");
 const usercontroller=require("./userController")
+const upload = require('../../config/multer')
 const {exportData}=require("./user.export.controller")
 const {
   getSettings,
@@ -37,7 +38,7 @@ router.post("/logout",controller.logout)
 router.post("/verify-email", controller.verifyEmail)
 // route.put('/users/profile',auth,controller.updateUserProfile)
 // profile routes 
-router.put("/profile", auth, usercontroller.updateProfile);
+router.put("/profile", auth, upload.single('avatar'), usercontroller.updateProfile);
 router.delete("/account", auth, usercontroller.deleteAccount);
 
 router.put("/change-password", auth, usercontroller.changePassword);

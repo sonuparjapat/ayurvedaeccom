@@ -257,7 +257,7 @@ export default function UserManualPage() {
           <Table
             headers={['Tab', 'What it does']}
             rows={[
-              ['Profile', 'View and edit name, email, phone number. See your unique referral code.'],
+              ['Profile', 'View and edit name, email, phone number. Upload or change profile picture (web: click Change Photo in edit form; mobile: tap the avatar in the header). See your unique referral code.'],
               ['Orders', 'View all past and current orders. Click any order for detailed tracking and invoice download.'],
               ['Wishlist', 'All saved products. Add directly to cart from here.'],
               ['Addresses', 'Save multiple delivery addresses (Home, Work, Other). Set one as default.'],
@@ -1127,7 +1127,7 @@ export default function UserManualPage() {
               ['Cart', 'View cart, adjust quantities, proceed to checkout.'],
               ['Checkout', 'Address, coupon, wallet credits, loyalty points redemption (1pt = ₹0.10), payment via Razorpay. Wallet and loyalty discounts are shown in the price breakdown and deducted from the total.'],
               ['Orders', 'List of all orders with status. Tap to see full tracking timeline, cancel, return, re-order, download invoice (PDF), retry payment for unpaid online orders, and tap "Track" to open the courier website (Delhivery, BlueDart, DTDC, etc.). Tap "Chat" to open a support ticket.'],
-              ['Account', 'Profile, wishlist, cart, addresses, support link. Quick links to Wallet and Notifications screens. Displays your unique Referral Code with Copy and Share buttons. Auto-refreshes all data (profile, verification status, orders, addresses) every time you open the screen.'],
+              ['Account', 'Profile with photo (tap avatar to change — camera or gallery), wishlist, cart, addresses, support link. Quick links to Wallet and Notifications screens. Displays your unique Referral Code with Copy and Share buttons. Auto-refreshes all data (profile, verification status, orders, addresses) every time you open the screen.'],
               ['Wallet', 'Wallet balance card, transaction history (credit/debit), and loyalty points earned/redeemed — all in one screen with tabs.'],
               ['Notifications', 'In-app notification inbox showing all order status updates, grouped by date and linked to the order detail screen.'],
               ['Support', 'Create and view support tickets. Chat with support team.'],

@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import {
-  ActivityIndicator, Alert, Clipboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, StatusBar,
+  ActivityIndicator, Alert, Clipboard, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, StatusBar,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import * as Location from 'expo-location'
+import * as ImagePicker from 'expo-image-picker'
 import { toast } from '../../components/ui/Toast'
 import Animated, { FadeIn, FadeInDown, FadeInRight, useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -212,6 +213,7 @@ export default function AccountScreen() {
   const [showEditProfile, setShowEditProfile] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' })
   const [savingProfile, setSavingProfile] = useState(false)
+  const [avatarUri, setAvatarUri] = useState<string | null>(null)
 
   // Change Password modal
   const [showChangePwd, setShowChangePwd] = useState(false)
@@ -313,16 +315,72 @@ export default function AccountScreen() {
     finally { setLoading(false) }
   }
 
+  const pickAvatar = () => {
+    Alert.alert('Change Profile Photo', 'Choose an option', [
+      {
+        text: 'Camera',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync()
+          if (status !== 'granted') {
+            Alert.alert('Permission Required', 'Camera access is needed to take a profile photo.')
+            return
+          }
+          const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: 'images',
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          })
+          if (!result.canceled && result.assets[0]) setAvatarUri(result.assets[0].uri)
+        },
+      },
+      {
+        text: 'Photo Library',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+          if (status !== 'granted') {
+            Alert.alert('Permission Required', 'Photo library access is needed to select a profile picture.')
+            return
+          }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: 'images',
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          })
+          if (!result.canceled && result.assets[0]) setAvatarUri(result.assets[0].uri)
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ])
+  }
+
   const saveProfile = async () => {
     if (!editForm.name || !editForm.email) { toast.warning('Name and email are required'); return }
     setSavingProfile(true)
     try {
-      const res = await api.put('/users/profile', editForm)
-      // Use server-returned data so store reflects what backend actually saved
+      let res
+      if (avatarUri) {
+        const formData = new FormData()
+        formData.append('name', editForm.name)
+        formData.append('email', editForm.email)
+        formData.append('phone', editForm.phone)
+        formData.append('avatar', { uri: avatarUri, type: 'image/jpeg', name: 'avatar.jpg' } as any)
+        res = await api.put('/users/profile', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      } else {
+        res = await api.put('/users/profile', editForm)
+      }
       const updated = res.data?.user || res.data
-      const merged = { ...user!, name: updated?.name || editForm.name, email: updated?.email || editForm.email, phone: updated?.phone || editForm.phone || '' }
+      const merged = {
+        ...user!,
+        name: updated?.name || editForm.name,
+        email: updated?.email || editForm.email,
+        phone: updated?.phone || editForm.phone || '',
+        avatar: updated?.avatar || (user as any)?.avatar || null,
+      }
       setUser(merged)
       await AsyncStorage.setItem('stored_user', JSON.stringify(merged))
+      setAvatarUri(null)
       setShowEditProfile(false)
       toast.success('Profile updated successfully')
     } catch (e: any) {
@@ -437,9 +495,18 @@ export default function AccountScreen() {
         <View style={ss.headerBlob} />
 
         <Animated.View entering={FadeIn.delay(100)} style={ss.avatarRow}>
-          <LinearGradient colors={[Colors.sage, Colors.gold]} style={ss.avatar}>
-            <Text style={ss.avatarText}>{initials}</Text>
-          </LinearGradient>
+          <TouchableOpacity onPress={() => { setShowEditProfile(true) }} activeOpacity={0.8} style={{ position: 'relative' }}>
+            {(user as any)?.avatar ? (
+              <Image source={{ uri: (user as any).avatar }} style={ss.avatarImg} />
+            ) : (
+              <LinearGradient colors={[Colors.sage, Colors.gold]} style={ss.avatar}>
+                <Text style={ss.avatarText}>{initials}</Text>
+              </LinearGradient>
+            )}
+            <View style={ss.avatarEditBadge}>
+              <Text style={{ fontSize: 10 }}>📷</Text>
+            </View>
+          </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={ss.userName}>{user.name}</Text>
             <Text style={ss.userEmail}>{user.email}</Text>
@@ -750,6 +817,22 @@ export default function AccountScreen() {
             <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
               <View style={ms.handle} />
               <Text style={ms.title}>Edit Profile</Text>
+              {/* Avatar picker */}
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <TouchableOpacity onPress={pickAvatar} activeOpacity={0.8} style={{ position: 'relative' }}>
+                  {avatarUri || (user as any)?.avatar ? (
+                    <Image source={{ uri: avatarUri || (user as any).avatar }} style={ms.avatarLarge} />
+                  ) : (
+                    <LinearGradient colors={[Colors.sage, Colors.gold]} style={ms.avatarLarge}>
+                      <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 32 }}>{initials}</Text>
+                    </LinearGradient>
+                  )}
+                  <View style={ms.avatarCameraBtn}>
+                    <Text style={{ fontSize: 14 }}>📷</Text>
+                  </View>
+                </TouchableOpacity>
+                <Text style={{ fontFamily: Fonts.medium, fontSize: 11, color: Colors.textDim, marginTop: 6 }}>Tap to change photo</Text>
+              </View>
               <ModalField label="Full Name" placeholder="Your full name" value={editForm.name} onChangeText={(t: string) => setEditForm(p => ({ ...p, name: t }))} />
               <ModalField label="Email Address" placeholder="you@example.com" value={editForm.email} keyboardType="email-address" onChangeText={(t: string) => setEditForm(p => ({ ...p, email: t }))} />
               <ModalField label="Phone Number" placeholder="+91 98765 43210" value={editForm.phone} keyboardType="phone-pad" onChangeText={(t: string) => setEditForm(p => ({ ...p, phone: t }))} />
@@ -958,6 +1041,8 @@ const ss = StyleSheet.create({
 
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
   avatar: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' },
+  avatarImg: { width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' },
+  avatarEditBadge: { position: 'absolute', bottom: -2, right: -2, backgroundColor: '#fff', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' },
   avatarText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 22 },
   userName: { color: '#fff', fontFamily: Fonts.bold, fontSize: 17 },
   userEmail: { color: 'rgba(255,255,255,0.55)', fontFamily: Fonts.regular, fontSize: 12, marginTop: 2 },
@@ -1047,4 +1132,6 @@ const ms = StyleSheet.create({
   locBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f0faf5', borderWidth: 1, borderColor: '#a7f3d0', borderRadius: 12, paddingVertical: 11, paddingHorizontal: 14, marginBottom: 16 },
   locBtnIcon: { fontSize: 15 },
   locBtnText: { fontFamily: Fonts.medium, fontSize: 13, color: Colors.forest, flex: 1 },
+  avatarLarge: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: '#d1fae5', overflow: 'hidden' },
+  avatarCameraBtn: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#fff', borderRadius: 16, width: 28, height: 28, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#d1fae5' },
 })

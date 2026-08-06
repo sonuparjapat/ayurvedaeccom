@@ -1696,7 +1696,8 @@ exports.getMe = async (req, res) => {
         referral_code,
         wallet_balance,
         referred_by,
-        created_at
+        created_at,
+        avatar
       FROM users
       WHERE id=$1
     `,[userId])
