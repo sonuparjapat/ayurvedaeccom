@@ -326,7 +326,7 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
               ['order_status_logs', 'id (serial)', 'order_id, old_status, new_status, new_label, old_label, note, changed_by, created_at', 'Full timeline history per order'],
               ['admin_logs', 'id (serial)', 'admin_id, action, entity_type, entity_id, details (JSON), ip_address, created_at', 'Audit trail'],
               ['settings (app_settings)', 'id (serial)', 'key, value, type (number/string/boolean/json), description, is_active', 'Key-value store for platform config. Standard keys: free_delivery_limit, delivery_charge, platform_fee. Read via GET /admin/settings (public — used in auth context). Cart and checkout on both web and mobile read chargesMap from this — changes take effect immediately.'],
-              ['company_settings', 'id (serial)', 'company_name, email, support_email, phone, website, gst_number, pan_number, address_line1, city, state, country, pincode, logo_url, social_links (JSONB: facebook/instagram/twitter/youtube), privacy_policy, terms_conditions, shipping_policy, return_policy, fssai_number, bank_name, bank_account, bank_ifsc, bank_branch, is_active, extra_data (JSONB)', 'Single-row table. logo_url uploaded to S3. state is used to determine CGST/SGST vs IGST on invoices. fssai_number + bank fields appear on the PDF tax invoice. companydata[0] loaded globally in auth context for header/footer.'],
+              ['company_settings', 'id (serial)', 'company_name, email, support_email, phone, website, gst_number, pan_number, address_line1, city, state, country, pincode, logo_url, social_links (JSONB: facebook/instagram/twitter/youtube), privacy_policy, terms_conditions, shipping_policy, return_policy, fssai_number, bank_name, bank_account, bank_ifsc, bank_branch, is_active, extra_data (JSONB)', 'Single-row table. logo_url uploaded to S3. state determines CGST/SGST vs IGST on invoices. fssai_number + bank fields appear on tax invoices. extra_data is the Platform Config store: hero.{eyebrow,title_line1,title_line2,title_line3,subtitle,cta_primary,cta_secondary}, stats[], trust_items[], ticker[], features[], brand.primary_color, banners[]. All fields consumed by web hero-section + features-section and mobile HeroCarousel + TrustStrip + Ticker + WhyUs. Public endpoint: GET /company/config (no auth).'],
             ]}
           />
 
@@ -467,6 +467,7 @@ Token location: Authorization: Bearer <token>  (HTTP header)
               prefix: '/push', label: 'Push Notifications',
               routes: [
                 ['POST', '/push-token', 'auth', 'Register Expo push token. Body: { token, platform: "android"|"ios" }'],
+                ['DELETE', '/push-token', 'auth', 'Delete push token (disables notifications for this device).'],
                 ['GET', '/notifications', 'auth', 'User notification inbox — order updates sourced from order_status_logs JOIN order_status_master.'],
               ]
             },

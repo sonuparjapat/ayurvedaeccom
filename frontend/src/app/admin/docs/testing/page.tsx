@@ -1339,17 +1339,27 @@ const SECTIONS: TestSection[] = [
         steps: [
           'Admin → Push Notifications → Broadcast',
           'Enter Title, Body → Send',
+          'On Android: notification must appear as heads-up banner (slides in from top)',
         ],
-        expected: 'All registered devices receive push notification. Notification shows in device tray.',
-        where: 'Mobile: device notification tray.',
+        expected: 'All registered devices receive push notification as a high-priority heads-up banner (like Flipkart). Channel ID is "default", priority is "high". Notification shows even when app is in foreground.',
+        where: 'Mobile: device notification tray + heads-up banner.',
       },
       {
         id: 'push-3', title: 'Order Status Push Notification', severity: 'high',
         steps: [
           'Admin → update an order status (e.g. to Shipped)',
         ],
-        expected: 'Customer gets push notification on mobile with order status update.',
+        expected: 'Customer gets push notification on mobile as heads-up banner with order status update.',
         where: 'Mobile: notification tray.',
+      },
+      {
+        id: 'push-5', title: 'Push Notification Permission Prompt', severity: 'high',
+        steps: [
+          'Fresh install (or clear app data) → open app → login',
+          'Watch for OS permission dialog',
+        ],
+        expected: 'Android shows notification permission dialog (Android 13+) after login. Android channel "Oroganix Notifications" is created at app boot (even before login) with IMPORTANCE_MAX so heads-up banners work.',
+        where: 'Mobile: OS permission dialog on first login.',
       },
       {
         id: 'push-4', title: 'User Notifications Inbox (Web)', severity: 'medium',
@@ -1572,6 +1582,38 @@ const SECTIONS: TestSection[] = [
         ],
         expected: 'Invoice PDF shows FSSAI licence number in footer compliance card. Bank details (name, account, IFSC) appear in a "Payment Details" section of the PDF. If FSSAI or bank fields are empty, those sections are hidden from the PDF.',
         where: 'Admin: /admin/company | Admin: /admin/invoices.',
+      },
+      {
+        id: 'comp-4', title: 'Platform Config — Hero Section', severity: 'high',
+        steps: [
+          'Admin → Company → click "Platform Config" tab',
+          'Change Headline Line 1 to "Experience" and Headline Line 2 to "Pure Nature"',
+          'Change Primary CTA to "Buy Now"',
+          'Save → open web homepage',
+        ],
+        expected: 'Hero headline now reads "Experience / Pure Nature / of Ayurveda". Primary button reads "Buy Now". Changes apply immediately without rebuild on both web and mobile (mobile uses cached config — may need app restart or 10-min cache expiry).',
+        where: 'Web: homepage hero | Mobile: home screen carousel (after cache refresh).',
+      },
+      {
+        id: 'comp-5', title: 'Platform Config — Trust Strip & Stats', severity: 'medium',
+        steps: [
+          'Admin → Company → Platform Config tab',
+          'Edit Hero Stats (e.g., change "10,000+" to "15,000+")',
+          'Edit a Trust Item (change emoji or label)',
+          'Save → refresh homepage',
+        ],
+        expected: 'Web hero stat row and trust strip update. Mobile Trust Strip (dark green stats row on home screen) updates after cache refresh.',
+        where: 'Web: hero bottom | Mobile: home screen trust strip.',
+      },
+      {
+        id: 'comp-6', title: 'Platform Config — Promotional Banners', severity: 'medium',
+        steps: [
+          'Admin → Company → Platform Config tab',
+          'Click "Add Banner" → paste an image URL, set link to /products, alt to "Summer Sale"',
+          'Save → open mobile app (after cache clears)',
+        ],
+        expected: 'Mobile hero carousel shows the banner image instead of text-only fallback slides. Web homepage shows banners in hero carousel (if banner carousel section is present).',
+        where: 'Mobile: home screen hero carousel.',
       },
     ],
   },

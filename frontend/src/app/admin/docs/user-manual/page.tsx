@@ -483,7 +483,7 @@ export default function UserManualPage() {
               ['Returns', 'View return requests from customers. Approve or reject returns, credit wallet refunds, and mark refunds complete.'],
               ['Export Data', 'Download orders, users, and revenue data as CSV files.'],
               ['Settings', 'Platform configuration — delivery charges, platform fees, free delivery threshold.'],
-              ['Company', 'Manage all company branding and info. Upload your website logo (file upload or URL) — the logo appears in the web header, footer, and mobile app. Fill in company name, GST number, PAN number, primary email, support email, phone, website, and full address. Add Facebook, Instagram, Twitter, and YouTube links — they show in the footer. All four policy pages (Privacy, Terms, Shipping, Return) are edited here. Also fill in FSSAI licence number and bank details (bank name, branch, account number, IFSC) — these appear on tax invoices (required for GST compliance). Save once to update across the entire storefront.'],
+              ['Company', 'Two-tab page. Company Info tab: logo (file or URL), GST/PAN, contact details, address, social links, bank details (for invoices), FSSAI number, and all four policy pages. Platform Config tab: controls homepage content across web and mobile — hero headline (3 lines), eyebrow text, subtitle, CTA button labels, 3 hero stats, trust strip items, scrolling ticker phrases, feature cards ("Why Choose Us"), brand primary color, and promotional banner slides. All changes take effect immediately on both web and mobile app.'],
               ['Logs', 'Audit trail of all admin actions.'],
               ['Jobs', 'Background task queue status and history.'],
             ]}

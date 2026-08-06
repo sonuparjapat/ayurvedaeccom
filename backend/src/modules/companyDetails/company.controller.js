@@ -27,6 +27,11 @@ exports.createCompany = async (req, res) => {
       try { parsedSocial = typeof social_links === 'string' ? JSON.parse(social_links) : social_links; } catch {}
     }
 
+    let parsedExtra = {};
+    if (extra_data) {
+      try { parsedExtra = typeof extra_data === 'string' ? JSON.parse(extra_data) : extra_data; } catch {}
+    }
+
     await client.query("BEGIN");
 
     const result = await client.query(
@@ -42,7 +47,7 @@ exports.createCompany = async (req, res) => {
         email || null, phone || null, website || null, gst_number || null, pan_number || null,
         address_line1 || null, city || null, state || null, country || null,
         pincode || null, support_email || null, logo_url,
-        JSON.stringify(parsedSocial), extra_data ? JSON.stringify(extra_data) : '{}',
+        JSON.stringify(parsedSocial), JSON.stringify(parsedExtra),
         privacy_policy || null, terms_conditions || null,
         shipping_policy || null, return_policy || null,
         fssai_number || null, bank_name || null, bank_account || null, bank_ifsc || null, bank_branch || null,
@@ -148,10 +153,15 @@ exports.updateCompany = async (req, res) => {
       'fssai_number', 'bank_name', 'bank_account', 'bank_ifsc', 'bank_branch',
     ]);
 
+    // Parse extra_data if sent as string
+    if (body.extra_data && typeof body.extra_data === 'string') {
+      try { body.extra_data = JSON.parse(body.extra_data); } catch { delete body.extra_data; }
+    }
+
     const fields = Object.keys(body).filter(f => ALLOWED_FIELDS.has(f));
     const values = fields.map((f) => {
       const v = body[f];
-      if (f === 'social_links') return typeof v === 'object' ? JSON.stringify(v) : v;
+      if (f === 'social_links' || f === 'extra_data') return typeof v === 'object' ? JSON.stringify(v) : v;
       return v;
     });
 
@@ -171,6 +181,20 @@ exports.updateCompany = async (req, res) => {
   }
 };
 
+
+/* ================= PUBLIC CONFIG (no auth required) ================= */
+exports.getPublicConfig = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT company_name, logo_url, social_links, extra_data, support_email, phone, email
+       FROM company_settings WHERE is_active = true ORDER BY id ASC LIMIT 1`
+    );
+    if (!result.rows.length) return res.json({ success: true, data: {} });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+};
 
 /* ================= DELETE (SOFT) ================= */
 exports.deleteCompany = async (req, res) => {

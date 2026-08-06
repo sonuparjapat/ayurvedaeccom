@@ -25,6 +25,8 @@ const sendExpoNotification = async (token, title, body, data = {}) => {
       body,
       data,
       channelId: 'default',
+      priority: 'high',
+      _displayInForeground: true,
     }
     const r = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',

@@ -5,6 +5,7 @@ const controller = require('./company.controller');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+router.get('/config', controller.getPublicConfig);
 router.post('/', upload.single('logo'), controller.createCompany);
 router.get('/', controller.getCompanies);
 router.get('/:id', controller.getCompanyById);

@@ -60,7 +60,7 @@ async function toggleWishlistApi(productId: number) {
 }
 
 // ─── HERO SLIDES — fallback used when no banners from API ─────────────────────
-const FALLBACK_SLIDES = [
+const BASE_FALLBACK_SLIDES = [
   { tag: 'WELCOME', title: 'Ancient Wisdom, Modern Health', subtitle: '100% organic · lab tested · farm direct', bg_color1: '#0a1f14', bg_color2: '#1a3a2a', cta_text: 'Shop Now', cta_link: '/products', image_url: '' },
   { tag: 'BESTSELLERS', title: "Nature's Purest Remedies", subtitle: 'Handpicked from 200+ Indian farms', bg_color1: '#0c1f1a', bg_color2: '#163028', cta_text: 'Explore', cta_link: '/products', image_url: '' },
 ]
@@ -188,7 +188,7 @@ function HeroCarousel({ slides }: { slides: BannerSlide[] }) {
   const [activeSlide, setActiveSlide] = useState(0)
   const flatRef = useRef<FlatList>(null)
   const timerRef = useRef<any>(null)
-  const data = slides.length > 0 ? slides : FALLBACK_SLIDES
+  const data = slides.length > 0 ? slides : BASE_FALLBACK_SLIDES
 
   const startTimer = useCallback(() => {
     timerRef.current = setInterval(() => {
@@ -765,6 +765,28 @@ export default function HomeScreen() {
   const user = useStore(s => s.user)
   const cartCount = useStore(s => s.cartCount)
 
+  const companyData = useStore(s => s.companyData)
+  const extra = (companyData as any)?.[0]?.extra_data || {}
+  const heroConfig = extra.hero || {}
+  // Build dynamic fallback slides from admin config; fall back to hardcoded if not set
+  const FALLBACK_SLIDES: BannerSlide[] = extra.banners?.length
+    ? extra.banners.map((b: any) => ({
+        tag: b.tag || 'FEATURED',
+        title: b.title || heroConfig.title_line1 || 'Ancient Wisdom, Modern Health',
+        subtitle: b.subtitle || heroConfig.subtitle?.slice(0, 60) || '100% organic · lab tested · farm direct',
+        image_url: b.image_url || '',
+        bg_color1: b.bg_color1 || '#0a1f14',
+        bg_color2: b.bg_color2 || '#1a3a2a',
+        cta_text: b.cta_text || heroConfig.cta_primary || 'Shop Now',
+        cta_link: b.link || '/products',
+      }))
+    : BASE_FALLBACK_SLIDES.map((s, i) => ({
+        ...s,
+        title: i === 0 ? (heroConfig.title_line1 ? `${heroConfig.title_line1} ${heroConfig.title_line2 || ''}`.trim() : s.title) : s.title,
+        subtitle: i === 0 && heroConfig.subtitle ? heroConfig.subtitle.slice(0, 60) + '…' : s.subtitle,
+        cta_text: i === 0 && heroConfig.cta_primary ? heroConfig.cta_primary : s.cta_text,
+      }))
+
   const [products, setProducts] = useState<Product[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [banners, setBanners] = useState<BannerSlide[]>([])
@@ -964,7 +986,7 @@ export default function HomeScreen() {
 
         {/* Hero carousel */}
         <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-          <HeroCarousel slides={banners} />
+          <HeroCarousel slides={banners.length ? banners : FALLBACK_SLIDES} />
         </View>
 
         {/* Filter pills — real categories */}

@@ -1430,6 +1430,48 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
   } finally {
     client.release();
   }
+
+  // Critical column migrations run OUTSIDE the main transaction so they
+  // always apply even if the main transaction rolled back (e.g. due to an
+  // index creation error on the hosted DB).
+  await runSafeColumnMigrations();
 };
+
+/* Each statement runs in its own connection so one failure never blocks others. */
+async function runSafeColumnMigrations() {
+  const migrations = [
+    // invoices GST compliance columns
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS cgst_amount NUMERIC(10,2) DEFAULT 0`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sgst_amount NUMERIC(10,2) DEFAULT 0`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS igst_amount NUMERIC(10,2) DEFAULT 0`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS place_of_supply VARCHAR(100)`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_method VARCHAR(30)`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10,2) DEFAULT 0`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS seller_gstin VARCHAR(50)`,
+    // invoice_items GST columns
+    `ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS hsn_code VARCHAR(30)`,
+    `ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS unit VARCHAR(20) DEFAULT 'Nos'`,
+    `ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS gst_percent NUMERIC(5,2) DEFAULT 0`,
+    `ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS taxable_value NUMERIC(10,2) DEFAULT 0`,
+    `ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS cgst_rate NUMERIC(5,2) DEFAULT 0`,
+    `ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS cgst_amount NUMERIC(10,2) DEFAULT 0`,
+    `ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS sgst_rate NUMERIC(5,2) DEFAULT 0`,
+    `ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS sgst_amount NUMERIC(10,2) DEFAULT 0`,
+    `ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS igst_rate NUMERIC(5,2) DEFAULT 0`,
+    `ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS igst_amount NUMERIC(10,2) DEFAULT 0`,
+    // company settings bank & compliance
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS fssai_number VARCHAR(30)`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100)`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_account VARCHAR(40)`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_ifsc VARCHAR(20)`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_branch VARCHAR(100)`,
+    // push tokens
+    `ALTER TABLE push_tokens ADD COLUMN IF NOT EXISTS device_type VARCHAR(20) DEFAULT 'mobile'`,
+  ]
+  for (const sql of migrations) {
+    const c = await pool.connect()
+    try { await c.query(sql) } catch (e) { console.warn('[migration skip]', e.message) } finally { c.release() }
+  }
+}
 
 module.exports = initDB;

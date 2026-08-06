@@ -7,7 +7,7 @@ const PROJECT_ID = 'dcbef284-0025-4bac-a63e-27fcc1e7c0f0'
 
 const isExpoGo = Constants.appOwnership === 'expo'
 
-// Call once on app boot (before login) so foreground alerts work immediately.
+// Call once on app boot (before login) so foreground alerts + channel exist immediately.
 export async function setupNotificationHandler() {
   try {
     if (isExpoGo) return
@@ -16,9 +16,21 @@ export async function setupNotificationHandler() {
       handleNotification: async () => ({
         shouldShowAlert: true,
         shouldPlaySound: true,
-        shouldSetBadge: false,
+        shouldSetBadge: true,
       }),
     })
+    // Create channel at boot so heads-up banners work even before login
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Oroganix Notifications',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#10b981',
+        sound: 'default',
+        enableVibrate: true,
+        showBadge: true,
+      })
+    }
   } catch {}
 }
 

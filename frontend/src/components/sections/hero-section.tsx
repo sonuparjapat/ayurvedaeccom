@@ -41,6 +41,15 @@ const pills = [
 export function HeroSection() {
   const { companydata } = useAuth()
   const extra = companydata?.extra_data || {}
+  const hero = extra.hero || {}
+
+  const eyebrow: string = hero.eyebrow || 'Authentic Ayurvedic Products'
+  const titleLine1: string = hero.title_line1 || 'Discover the'
+  const titleLine2: string = hero.title_line2 || 'Ancient Wisdom'
+  const titleLine3: string = hero.title_line3 || 'of Ayurveda'
+  const subtitle: string = hero.subtitle || 'Experience the healing power of nature with our premium collection of Ayurvedic herbs, dry fruits, dehydrated foods, and fresh tofu. Sourced directly from Indian farms and delivered to your doorstep.'
+  const ctaPrimary: string = hero.cta_primary || 'Shop Now'
+  const ctaSecondary: string = hero.cta_secondary || 'Watch Our Story'
 
   const benefits = DEFAULT_BENEFITS
   const stats: { value: string; label: string; icon: any }[] =
@@ -385,25 +394,21 @@ export function HeroSection() {
             <div className="left-col">
               <span className="eyebrow">
                 <span className="dot-pulse dot-green" />
-                Authentic Ayurvedic Products
+                {eyebrow}
                 <span className="dot-pulse dot-amber" style={{ animationDelay: '.4s' }} />
               </span>
 
               <div className="headline-wrap">
                 <h1 className="headline">
-                  <span style={{ display: 'block' }}>Discover the</span>
+                  <span style={{ display: 'block' }}>{titleLine1}</span>
                   <span style={{ display: 'block' }}>
-                    <span className="grad">Ancient Wisdom</span>
+                    <span className="grad">{titleLine2}</span>
                   </span>
-                  <span style={{ display: 'block' }}>of Ayurveda</span>
+                  <span style={{ display: 'block' }}>{titleLine3}</span>
                 </h1>
               </div>
 
-              <p className="description">
-                Experience the healing power of nature with our premium collection of Ayurvedic herbs,
-                dry fruits, dehydrated foods, and fresh tofu.{' '}
-                <strong>Sourced directly from Indian farms</strong> and delivered to your doorstep.
-              </p>
+              <p className="description">{subtitle}</p>
 
               <div className="benefits-grid">
                 {benefits.map((b) => (
@@ -418,14 +423,14 @@ export function HeroSection() {
 
               <div className="cta-row">
                 <Link href="/products" className="btn-primary">
-                  Shop Now
+                  {ctaPrimary}
                   <ArrowRight className="arrow-icon" style={{ width: 18, height: 18 }} />
                 </Link>
                 <Link href="/about" className="btn-secondary">
                   <span className="play-bubble">
                     <Play style={{ width: 13, height: 13, color: '#6ee7b7', fill: '#6ee7b7' }} />
                   </span>
-                  Watch Our Story
+                  {ctaSecondary}
                   <ChevronRight className="chevron-icon" style={{ width: 16, height: 16 }} />
                 </Link>
               </div>
