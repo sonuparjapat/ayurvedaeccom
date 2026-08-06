@@ -20,6 +20,7 @@ router.post("/:id/cancel", auth, controller.cancelOrder);
 router.post("/:id/return", auth, upload.array("images", 5), controller.returnOrder);
 router.get("/:id/return-eligibility", auth, controller.getReturnEligibility);
 router.get("/:id/timeline", auth, controller.getOrderTimeline);
+router.get("/:id/shipment-events", auth, controller.getOrderShipmentEvents);
 router.post("/:id/retry-payment", auth, controller.retryPayment);
 router.post("/:id/reorder", auth, controller.reorder);
 router.patch("/:id/address", auth, controller.updateOrderAddress);

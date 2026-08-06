@@ -65,6 +65,9 @@ interface Product {
   is_featured?: boolean
   is_bestseller?: boolean
   weight_grams?: number
+  length_cm?: number
+  width_cm?: number
+  height_cm?: number
   total_sold?: number
   specifications?: any[]
   product_type?: string
@@ -164,6 +167,16 @@ export default function ProductDetailPage() {
   const [reviewRating, setReviewRating] = useState<number>(0)
   const [filteredReviews, setFilteredReviews] = useState<any[] | null>(null)
   const [filterLoading, setFilterLoading] = useState(false)
+  const [helpfulVotes, setHelpfulVotes] = useState<Record<number, { count: number; voted: boolean }>>({})
+  const [helpfulLoading, setHelpfulLoading] = useState<number | null>(null)
+
+  // Seed helpful votes from main reviews context data
+  useEffect(() => {
+    if (!reviewsData?.data) return
+    const map: Record<number, { count: number; voted: boolean }> = {}
+    reviewsData.data.forEach((rev: any) => { map[rev.id] = { count: rev.helpful_count || 0, voted: !!rev.user_found_helpful } })
+    setHelpfulVotes(prev => ({ ...prev, ...map }))
+  }, [reviewsData])
 
   // Write review
   const [wRating, setWRating] = useState(0)
@@ -216,9 +229,15 @@ const handlepagechage=(page:number)=>{
     }
     setFilterLoading(true)
     axios.get(`/shop/reviews/product/${id}`, {
-      params: { sortBy: reviewSort, rating: reviewRating || undefined, page: 1, limit: 50 }
+      params: { sort: reviewSort, rating: reviewRating || undefined, page: 1, limit: 50 }
     })
-      .then(r => setFilteredReviews(r.data?.data || []))
+      .then(r => {
+        const rows = r.data?.data || []
+        setFilteredReviews(rows)
+        const map: Record<number, { count: number; voted: boolean }> = {}
+        rows.forEach((rev: any) => { map[rev.id] = { count: rev.helpful_count || 0, voted: !!rev.user_found_helpful } })
+        setHelpfulVotes(prev => ({ ...prev, ...map }))
+      })
       .catch(() => {})
       .finally(() => setFilterLoading(false))
   }, [reviewSort, reviewRating, id])
@@ -843,13 +862,20 @@ const addToCart = async () => {
                 </div>
               )}
 
-              {/* WEIGHT */}
-              {product.weight_grams != null && product.weight_grams > 0 && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Weight size={16} className="text-gray-500" />
-                  <span>Net Weight: {product.weight_grams}g</span>
+              {/* WEIGHT & DIMENSIONS */}
+              {(product.weight_grams != null && product.weight_grams > 0) || (product.length_cm || product.width_cm || product.height_cm) ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+                  {product.weight_grams != null && product.weight_grams > 0 && (
+                    <span className="flex items-center gap-1.5"><Weight size={15} className="text-gray-500" />Net Weight: {product.weight_grams}g</span>
+                  )}
+                  {(product.length_cm || product.width_cm || product.height_cm) && (
+                    <span className="flex items-center gap-1.5">
+                      <Package size={15} className="text-gray-500" />
+                      Dimensions: {[product.length_cm, product.width_cm, product.height_cm].filter(Boolean).join(' × ')} cm
+                    </span>
+                  )}
                 </div>
-              )}
+              ) : null}
 
               {/* TAGS */}
               {product.tags && product.tags.length > 0 && (() => {
@@ -1763,6 +1789,25 @@ const addToCart = async () => {
                     ))}
                   </div>
                 )}
+
+                {/* Helpful Vote */}
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
+                  <span className="text-xs text-gray-400">Was this helpful?</span>
+                  <button
+                    onClick={async () => {
+                      if (!loginuserdata?.id) { toast.error('Please login to vote'); return }
+                      if (helpfulLoading === r.id) return
+                      setHelpfulLoading(r.id)
+                      try {
+                        const res = await axios.post(`/shop/reviews/${r.id}/helpful`)
+                        setHelpfulVotes(prev => ({ ...prev, [r.id]: { count: res.data.helpful_count, voted: res.data.voted } }))
+                      } catch { toast.error('Could not vote') } finally { setHelpfulLoading(null) }
+                    }}
+                    className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors ${helpfulVotes[r.id]?.voted ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'border-gray-200 text-gray-500 hover:border-emerald-200 hover:text-emerald-600'}`}
+                  >
+                    👍 {helpfulLoading === r.id ? '…' : helpfulVotes[r.id]?.count || 0}
+                  </button>
+                </div>
               </div>
             )
           })}

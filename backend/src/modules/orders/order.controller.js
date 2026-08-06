@@ -417,6 +417,19 @@ if (addr.pincode) {
 
     const finalTotal = Math.max(0, total - walletDiscountApplied - loyaltyDiscountApplied);
 
+    /* ================= COD ORDER VALUE CAP ================= */
+    if (paymentMethod === 'cod') {
+      const MAX_COD = Number(process.env.MAX_COD_AMOUNT || settings.max_cod_amount || 5000)
+      if (MAX_COD > 0 && finalTotal > MAX_COD) {
+        await client.query('ROLLBACK')
+        client.release()
+        return res.status(400).json({
+          success: false,
+          message: `Cash on Delivery is available only for orders up to ₹${MAX_COD.toLocaleString('en-IN')}. Please use online payment for this order.`
+        })
+      }
+    }
+
     /* ================= CREATE ORDER ================= */
 
   const expectedDeliveryDate = new Date()
@@ -757,11 +770,11 @@ if (addr.pincode) {
       emitToAdmin('new_order', { order_id: orderId, user_id: userId });
     } catch (_) {}
 
-    /* ================= ORDER CONFIRMATION EMAIL ================= */
+    /* ================= ORDER CONFIRMATION EMAIL + SMS ================= */
     if (paymentMethod === 'cod') {
       try {
         const [uRes, invRes] = await Promise.all([
-          pool.query(`SELECT name, email FROM users WHERE id=$1`, [userId]),
+          pool.query(`SELECT name, email, phone FROM users WHERE id=$1`, [userId]),
           pool.query(`SELECT invoice_no, shipping_address FROM orders WHERE id=$1`, [orderId]),
         ])
         const uRow = uRes.rows[0] || {}
@@ -777,6 +790,12 @@ if (addr.pincode) {
             paymentMethod: 'cod',
             address: invRow.shipping_address?.address || '',
           })
+        }
+        // SMS for COD order confirmation
+        if (uRow.phone) {
+          sendDeliveryOTPSms  // already imported — use sendOrderStatusSMS for confirmation
+          const { sendOrderStatusSMS } = require('../../services/sms')
+          sendOrderStatusSMS(uRow.phone, invRow.invoice_no || `#${orderId}`, 'Order Placed (COD)').catch(() => {})
         }
       } catch (_) {}
     }
@@ -991,6 +1010,13 @@ exports.verifyPayment = async (req, res) => {
           address: orderInfo?.shipping_address?.address || '',
         })
       }
+      // SMS confirmation after successful online payment
+      const phoneRow = await pool.query(`SELECT phone FROM users WHERE id=$1`, [userId])
+      const phone = phoneRow.rows[0]?.phone
+      if (phone) {
+        const { sendOrderStatusSMS } = require('../../services/sms')
+        sendOrderStatusSMS(phone, orderInfo?.invoice_no || `#${orderId}`, 'Payment Confirmed').catch(() => {})
+      }
     } catch (_) {}
 
     res.json({ success: true });
@@ -1040,6 +1066,7 @@ exports.getOrderById = async (req, res) => {
         o.refund_id,
         o.refund_amount,
         o.refund_status,
+        o.tracking_token,
 
         i.id           AS invoice_id,
         i.invoice_no   AS invoice_number,
@@ -1724,6 +1751,34 @@ exports.getOrderTimeline = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+/* ================= CUSTOMER SHIPMENT EVENTS ================= */
+
+exports.getOrderShipmentEvents = async (req, res) => {
+  try {
+    const userId = req.user.id
+    const { id } = req.params
+
+    const own = await pool.query(
+      `SELECT id, courier_name, tracking_number, tracking_url, expected_delivery_date,
+              shipped_at, out_for_delivery_at, delivered_at, delivery_attempts, rto_initiated_at, status
+       FROM orders WHERE id=$1 AND user_id=$2`,
+      [id, userId]
+    )
+    if (!own.rowCount) return res.status(404).json({ success: false, message: 'Order not found' })
+
+    const events = await pool.query(
+      `SELECT id, status_code, status_label, description, location, event_time, source
+       FROM shipment_events WHERE order_id=$1 ORDER BY event_time ASC, id ASC`,
+      [id]
+    )
+
+    res.json({ success: true, events: events.rows, shipment: own.rows[0] })
+  } catch (err) {
+    console.error('[SHIPMENT EVENTS]', err)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
 
 /* ================= RETRY PAYMENT (for unpaid online orders) ================= */
 

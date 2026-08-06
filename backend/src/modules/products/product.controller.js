@@ -966,6 +966,15 @@ exports.getProductReviews = async (req, res) => {
     // Add userId for is_mine detection (even if null)
     reviewQueryParams.push(userId || 0);
 
+    const sortMode = req.query.sort || 'newest'
+    const orderClause = sortMode === 'helpful'
+      ? `r.helpful_count DESC, r.created_at DESC`
+      : sortMode === 'highest'
+      ? `r.rating DESC, r.created_at DESC`
+      : sortMode === 'lowest'
+      ? `r.rating ASC, r.created_at DESC`
+      : `r.created_at DESC`
+
     const reviewsQuery = `
       SELECT
         r.id,
@@ -975,6 +984,7 @@ exports.getProductReviews = async (req, res) => {
         r.created_at,
         r.product_id,
         r.order_id,
+        r.helpful_count,
         u.name AS user_name,
         (r.user_id = $${reviewQueryParams.length}) AS is_mine,
         EXISTS (
@@ -984,6 +994,10 @@ exports.getProductReviews = async (req, res) => {
             AND o.user_id = r.user_id
             AND o.status = 5
         ) AS is_verified_purchase,
+        EXISTS (
+          SELECT 1 FROM review_helpful_votes rhv
+          WHERE rhv.review_id = r.id AND rhv.user_id = $${reviewQueryParams.length}
+        ) AS user_found_helpful,
         r.admin_reply,
         r.admin_replied_at
 
@@ -994,7 +1008,7 @@ exports.getProductReviews = async (req, res) => {
 
       WHERE ${whereClause}
 
-      ORDER BY r.created_at DESC
+      ORDER BY ${orderClause}
 
       LIMIT $${reviewQueryParams.length - 2}
       OFFSET $${reviewQueryParams.length - 1}
@@ -1432,5 +1446,59 @@ exports.getTrending = async (req, res) => {
   } catch (err) {
     console.error('[TRENDING]', err)
     res.status(500).json({ success: false, products: [] })
+  }
+}
+
+/* ================= REVIEW HELPFUL VOTE ================= */
+exports.voteReviewHelpful = async (req, res) => {
+  const userId = req.user?.id
+  const reviewId = parseInt(req.params.id)
+  if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' })
+  if (!reviewId) return res.status(400).json({ success: false, message: 'Invalid review' })
+  const client = await pool.connect()
+  try {
+    // Check review exists and is approved
+    const rev = await client.query(`SELECT id FROM reviews WHERE id=$1 AND status='approved'`, [reviewId])
+    if (!rev.rows.length) return res.status(404).json({ success: false, message: 'Review not found' })
+
+    // Check if already voted
+    const existing = await client.query(
+      `SELECT id FROM review_helpful_votes WHERE review_id=$1 AND user_id=$2`, [reviewId, userId]
+    )
+    if (existing.rows.length) {
+      // Toggle off
+      await client.query(`DELETE FROM review_helpful_votes WHERE review_id=$1 AND user_id=$2`, [reviewId, userId])
+      await client.query(`UPDATE reviews SET helpful_count = GREATEST(0, helpful_count - 1) WHERE id=$1`, [reviewId])
+      const r = await client.query(`SELECT helpful_count FROM reviews WHERE id=$1`, [reviewId])
+      return res.json({ success: true, voted: false, helpful_count: r.rows[0].helpful_count })
+    }
+
+    await client.query(`INSERT INTO review_helpful_votes (review_id, user_id) VALUES ($1, $2)`, [reviewId, userId])
+    await client.query(`UPDATE reviews SET helpful_count = helpful_count + 1 WHERE id=$1`, [reviewId])
+    const r = await client.query(`SELECT helpful_count FROM reviews WHERE id=$1`, [reviewId])
+    res.json({ success: true, voted: true, helpful_count: r.rows[0].helpful_count })
+  } catch (err) {
+    console.error('[voteReviewHelpful]', err.message)
+    res.status(500).json({ success: false, message: 'Failed to vote' })
+  } finally {
+    client.release()
+  }
+}
+
+/* ================= GET USER HELPFUL VOTES (for a product) ================= */
+exports.getUserHelpfulVotes = async (req, res) => {
+  const userId = req.user?.id
+  const productId = parseInt(req.params.productId)
+  if (!userId) return res.json({ success: true, voted_review_ids: [] })
+  try {
+    const result = await pool.query(
+      `SELECT rhv.review_id FROM review_helpful_votes rhv
+       JOIN reviews r ON r.id = rhv.review_id
+       WHERE r.product_id=$1 AND rhv.user_id=$2`,
+      [productId, userId]
+    )
+    res.json({ success: true, voted_review_ids: result.rows.map(r => r.review_id) })
+  } catch (err) {
+    res.json({ success: true, voted_review_ids: [] })
   }
 }

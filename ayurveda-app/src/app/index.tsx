@@ -1112,6 +1112,16 @@ export default function HomeScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
+
+          {/* Ayush Disclaimer */}
+          <View style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: '#fffbeb', borderRadius: 10, padding: 12, borderWidth: 0.5, borderColor: '#fcd34d' }}>
+            <Text style={{ fontFamily: Fonts.bold, fontSize: 11, color: '#92400e', marginBottom: 3 }}>⚠️ Ayush Disclaimer</Text>
+            <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: '#78350f', lineHeight: 15 }}>
+              These products are Ayurvedic formulations. Results may vary. Not intended to diagnose, treat, cure, or prevent any disease.
+              Consult a qualified Ayurvedic practitioner before use if you are pregnant, nursing, or on medication.
+              Keep out of reach of children.
+            </Text>
+          </View>
         </View>
       </Animated.ScrollView>
 

@@ -75,4 +75,9 @@ router.delete(
   controller.deleteReview
 );
 router.delete("/:productId", auth, controller.removeWishlist);
+
+// Review helpful votes
+router.post("/reviews/:id/helpful", auth, controller.voteReviewHelpful);
+router.get("/reviews/helpful-votes/:productId", auth, controller.getUserHelpfulVotes);
+
 module.exports = router;

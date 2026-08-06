@@ -509,9 +509,42 @@ const SECTIONS: TestSection[] = [
         steps: [
           'Admin → Edit product → add FAQs in JSON format or WYSIWYG',
           'Save → open product on web',
+          'Open same product on mobile app',
         ],
-        expected: 'FAQ accordion visible on product page. Structured data (JSON-LD FAQPage) present in page source.',
-        where: 'Web: /product/[slug] → view source → search FAQPage.',
+        expected: 'Web: FAQ accordion visible in Description tab. Mobile: FAQs shown inside Description tab (NOT outside any tab). Structured data (JSON-LD FAQPage) in web page source.',
+        where: 'Web: /product/[slug] | Mobile: Product Detail → Description tab.',
+      },
+      {
+        id: 'prod-10', title: 'Product Dimensions Display', severity: 'medium',
+        steps: [
+          'Admin → Edit product → fill length_cm=10, width_cm=8, height_cm=12 → Save',
+          'Open product on web',
+          'Open product on mobile app',
+        ],
+        expected: 'Web: dimensions shown as "10 × 8 × 12 cm" next to the weight line with a package icon. Mobile: same "📦 10 × 8 × 12 cm" displayed in the weight row. If dimensions are empty, neither platform shows the field.',
+        where: 'Web: /product/[slug] (right side info panel) | Mobile: Product Detail screen.',
+      },
+      {
+        id: 'prod-11', title: 'Safety Tags as Certification Badges', severity: 'medium',
+        steps: [
+          'Admin → Edit product → add safety_tags: ["Vegan", "Gluten Free", "Lab Tested"] → Save',
+          'Open product on web and mobile',
+        ],
+        expected: 'Web: green badge chips with tick mark in the safety section. Mobile: same green pill chips under "Safety & Certifications" label.',
+        where: 'Web: /product/[slug] | Mobile: Product Detail.',
+      },
+      {
+        id: 'prod-12', title: 'Bulk Upload CSV — Dimensions + Specs + FAQs', severity: 'high',
+        steps: [
+          'Admin → Products → Bulk Upload → Download Template',
+          'Fill length_cm=10, width_cm=8, height_cm=12 for a product row',
+          'Fill specifications as JSON: [{"key":"Shelf Life","value":"24 months"}]',
+          'Fill faqs as JSON: [{"question":"Is it organic?","answer":"Yes."}]',
+          'Fill safety_tags as pipe-separated: Vegan|Gluten Free',
+          'Upload CSV → Validate → Import',
+        ],
+        expected: 'Product created with all fields. Dimensions visible on product page. Specs table populated. FAQ accordion shows. Safety badges show.',
+        where: 'Admin: /admin/products/bulk-upload → Web: /product/[slug].',
       },
       {
         id: 'prod-9', title: 'Related Products', severity: 'low',
@@ -785,6 +818,18 @@ const SECTIONS: TestSection[] = [
         ],
         expected: 'PDF is fully GST Rule 46 compliant — shows CGST+SGST or IGST breakdown per line, seller GSTIN, HSN codes, amount in words, bank details, FSSAI. Download works without 500 error.',
         where: 'Admin: /admin/invoices. Web: /orders/[id].',
+      },
+      {
+        id: 'adord-4b', title: 'B2B Invoice — Buyer GSTIN on PDF', severity: 'high',
+        steps: [
+          'Create/find an order that has buyer_gstin set (e.g. "27ABCDE1234F1Z5")',
+          'Admin → Invoices → Generate invoice for that order',
+          'Download PDF',
+          'Check the buyer address section of the PDF',
+          'Also verify orders.is_igst is stamped: same state = false, different state = true',
+        ],
+        expected: 'PDF shows buyer GSTIN in teal/green below the shipping address. is_igst column on orders table is set correctly (intra-state = false, inter-state = true). Voided invoices still show GSTIN if present.',
+        where: 'Admin: /admin/invoices | DB: orders.is_igst.',
       },
       {
         id: 'adord-5', title: 'Filter Orders by Status/Date', severity: 'medium',
@@ -1860,6 +1905,243 @@ const SECTIONS: TestSection[] = [
         ],
         expected: 'Email notification sent to all registered users for that product.',
         where: 'Admin: /admin/stock-notifications.',
+      },
+    ],
+  },
+
+  /* ── SHIPMENT TRACKING ── */
+  {
+    id: 'tracking', label: 'Shipment Tracking', icon: Truck,
+    platform: ['admin', 'web', 'mobile'], color: '#0891b2',
+    cases: [
+      {
+        id: 'track-1', title: 'Mark order as Shipped (admin)', severity: 'critical',
+        steps: [
+          'Admin → Orders → find a Confirmed/Processing order → click Truck icon',
+          'Select courier from dropdown (e.g. Delhivery)',
+          'Enter AWB/tracking number',
+          'Set expected delivery date',
+          'Click Save Shipment',
+        ],
+        expected: 'Order status changes to Shipped (3). Tracking URL auto-generated and shown. System event "Order Shipped" added to timeline. Customer gets push notification on mobile.',
+        where: 'Admin: /admin/orders.',
+      },
+      {
+        id: 'track-2', title: 'Add manual tracking event (admin)', severity: 'high',
+        steps: [
+          'Admin → Shipment Tracking → find in-transit order → View Events',
+          'Click Add Event',
+          'Choose preset: "Out for Delivery"',
+          'Enter optional location and description',
+          'Submit',
+        ],
+        expected: 'Event stored in DB with source=manual. Customer sees event immediately in order detail. out_for_delivery_at column stamped. Customer gets "Out for Delivery!" push notification.',
+        where: 'Admin: /admin/tracking.',
+      },
+      {
+        id: 'track-3', title: 'Add Delivery Attempted event', severity: 'high',
+        steps: [
+          'Admin → Tracking → add event → select DELIVERY_ATTEMPTED',
+          'Submit',
+          'Check order detail — verify delivery_attempts count incremented',
+          'Verify customer push notification sent',
+        ],
+        expected: 'delivery_attempts column incremented. Customer sees "Delivery Attempted" in timeline with attempt number. Push notification sent.',
+        where: 'Admin: /admin/tracking.',
+      },
+      {
+        id: 'track-4', title: 'RTO Initiated event', severity: 'medium',
+        steps: [
+          'Admin → Tracking → add event → select RTO_INITIATED',
+          'Submit',
+          'Open mobile app → go to that order',
+        ],
+        expected: 'rto_initiated_at column stamped. Mobile order detail shows a red "Return to Origin" banner. Event visible in timeline.',
+        where: 'Admin: /admin/tracking. Mobile: order detail.',
+      },
+      {
+        id: 'track-5', title: 'Customer sees tracking timeline (web)', severity: 'critical',
+        steps: [
+          'Mark an order as shipped + add 2-3 events (admin)',
+          'Log in as customer on web → Account → Orders → expand order',
+          'Click tracking panel',
+        ],
+        expected: 'Full event timeline shown: each event has icon, status label, description, location, and timestamp. EDD shown. Tracking URL link present. Most recent event highlighted.',
+        where: 'Web: Account → Orders.',
+      },
+      {
+        id: 'track-6', title: 'Customer sees tracking timeline (mobile)', severity: 'critical',
+        steps: [
+          'Mark an order as shipped + add events (admin)',
+          'Log in on mobile → tap order in Order History',
+          'Scroll to Shipment Tracking section',
+        ],
+        expected: 'Events timeline shows all events newest-first. EDD displayed. "Track on courier website" button links to correct carrier URL. RTO banner appears if RTO event present.',
+        where: 'Mobile: Order detail screen.',
+      },
+      {
+        id: 'track-7', title: 'Webhook receiver (simulated)', severity: 'high',
+        steps: [
+          'Send POST to /api/courier/webhook/shiprocket with body: { "awb": "<valid tracking number>", "current_status_id": 3, "current_status": "Out for Delivery", "location": "Mumbai", "current_timestamp": "2026-08-06 10:00:00" }',
+          'Check DB: shipment_events should have a new row with source=webhook',
+          'Check mobile app — customer should see new event in timeline',
+        ],
+        expected: 'HTTP 200 returned immediately. Event inserted asynchronously. order status and tracking columns updated. Push notification sent to user.',
+        where: 'Backend: POST /api/courier/webhook/shiprocket (no auth required).',
+      },
+      {
+        id: 'track-8', title: 'In-transit orders list', severity: 'medium',
+        steps: [
+          'Admin → Shipment Tracking page',
+          'Verify all orders with status=Shipped and a tracking number appear in the table',
+          'Search by order ID or customer name',
+        ],
+        expected: 'Table lists in-transit orders with courier, AWB, last event, EDD. Search filters correctly.',
+        where: 'Admin: /admin/tracking.',
+      },
+    ],
+  },
+
+  /* ── GST REPORTS & INVOICE VOID ── */
+  {
+    id: 'gst', label: 'GST Reports & Invoice Void', icon: FileText,
+    platform: ['admin'], color: '#dc2626',
+    cases: [
+      {
+        id: 'gst-1', title: 'GST Dashboard loads', severity: 'high',
+        steps: [
+          'Admin → Compliance → GST Reports',
+          'Page loads with FY selector (default: current financial year)',
+          'Verify 8 summary cards: Total Taxable Value, CGST, SGST, IGST, Total GST, Total Invoice Value, Invoice Count, Avg Invoice Value',
+          'Verify monthly breakdown table (Apr–Mar)',
+          'Verify HSN summary table',
+        ],
+        expected: 'All data populated from invoices table. FY change updates all cards + tables.',
+        where: 'Admin: /admin/gst.',
+      },
+      {
+        id: 'gst-2', title: 'GSTR-1 Summary tab', severity: 'high',
+        steps: [
+          'Admin → GST Reports → GSTR-1 tab',
+          'Set from/to date range covering some invoices',
+          'Click Fetch',
+        ],
+        expected: 'Table lists each invoice with: invoice no, date, customer, HSN, taxable value, CGST, SGST, IGST, total. Voided invoices NOT shown.',
+        where: 'Admin: /admin/gst → GSTR-1 tab.',
+      },
+      {
+        id: 'gst-3', title: 'Export Invoices CSV', severity: 'critical',
+        steps: [
+          'Admin → GST Reports → Export section',
+          'Set from/to dates, select Type = Invoices',
+          'Click Download CSV',
+        ],
+        expected: 'CSV file downloads with correct filename (gstr1-invoices-from-to.csv). Contains: Invoice No, Date, Customer Name, Taxable Value, CGST, SGST, IGST, Invoice Total, HSN Codes. No voided invoices.',
+        where: 'Admin: /admin/gst → Export.',
+      },
+      {
+        id: 'gst-4', title: 'Export HSN Summary CSV', severity: 'critical',
+        steps: [
+          'Admin → GST Reports → Export section',
+          'Set from/to dates, select Type = HSN Summary',
+          'Click Download CSV',
+        ],
+        expected: 'CSV downloads in GSTR-1 Table 12 format: HSN Code, Description, UQC, Quantity, Taxable Value, CGST Rate, CGST Amount, SGST Rate, SGST Amount, IGST Rate, IGST Amount, Total Tax.',
+        where: 'Admin: /admin/gst → Export.',
+      },
+      {
+        id: 'gst-5', title: 'Void an invoice', severity: 'critical',
+        steps: [
+          'Admin → Invoices → find a non-voided invoice → click red ⊗ icon',
+          'Void dialog opens with GST law warning',
+          'Enter reason (at least 5 characters)',
+          'Click Confirm Void',
+          'Verify invoice now shows "VOIDED" badge',
+          'Check GST Reports — voided invoice should NOT appear in GSTR-1 export',
+        ],
+        expected: 'Invoice marked is_voided=true. credit_note_number auto-set to CN-{invoice_no}. Void button hidden on already-voided invoices. Invoice excluded from all GST exports.',
+        where: 'Admin: /admin/invoices.',
+      },
+      {
+        id: 'gst-6', title: 'Void reason validation', severity: 'medium',
+        steps: [
+          'Admin → Invoices → void → enter reason with 3 characters → try to submit',
+        ],
+        expected: 'Error: "Reason must be at least 5 characters". Form does not submit.',
+        where: 'Admin: /admin/invoices → void modal.',
+      },
+      {
+        id: 'gst-7', title: 'Invoice NOT deleted — only voided', severity: 'critical',
+        steps: [
+          'Void an invoice',
+          'Check DB: SELECT is_voided, voided_at, void_reason, credit_note_number FROM invoices WHERE id = X',
+        ],
+        expected: 'Row still exists. is_voided=true. voided_at is a timestamp. void_reason is the entered text. credit_note_number = "CN-" + invoice_number. Invoice number still sequential — no gaps.',
+        where: 'Database: invoices table.',
+      },
+    ],
+  },
+
+  /* ── PERMISSION PRIMING ── */
+  {
+    id: 'permissions', label: 'Permission Priming (Mobile)', icon: Bell,
+    platform: ['mobile'], color: '#7c3aed',
+    cases: [
+      {
+        id: 'perm-1', title: 'First-launch permissions screen appears', severity: 'critical',
+        steps: [
+          'Fresh install of app (or clear AsyncStorage key permissions_requested_v1)',
+          'Open app',
+          'Wait for bootstrap to complete',
+        ],
+        expected: 'Full-screen permission priming screen appears after home screen loads. Shows 3 permission cards: Order Notifications, Camera, Photo Library — each with icon, title, description, and "why" badge.',
+        where: 'Mobile: first launch.',
+      },
+      {
+        id: 'perm-2', title: 'Allow Permissions flow', severity: 'critical',
+        steps: [
+          'On permissions screen → tap "Allow Permissions"',
+          'Verify each OS permission dialog appears one at a time (Notifications → Camera → Photos)',
+          'Grant all three',
+        ],
+        expected: 'All three dialogs appear sequentially with 500ms gap. Done screen shows all three as "✓ Granted" in green. "Start Shopping" button redirects to home page.',
+        where: 'Mobile: permissions screen.',
+      },
+      {
+        id: 'perm-3', title: 'Skip for Now', severity: 'high',
+        steps: [
+          'On permissions screen → tap "Skip for Now"',
+        ],
+        expected: 'AsyncStorage key permissions_requested_v1 set to "true". User goes directly to home page. Screen never appears again on subsequent launches.',
+        where: 'Mobile: permissions screen.',
+      },
+      {
+        id: 'perm-4', title: 'Denied permission — settings link shown', severity: 'high',
+        steps: [
+          'On permissions screen → tap "Allow Permissions"',
+          'Deny at least one OS permission dialog',
+          'Reach Done screen',
+        ],
+        expected: 'Denied permissions shown as "✗ Denied" in red. "Open Settings to Change Permissions" button appears. Tapping it opens device Settings app.',
+        where: 'Mobile: permissions done screen.',
+      },
+      {
+        id: 'perm-5', title: 'Screen only appears once', severity: 'critical',
+        steps: [
+          'Go through permissions flow (allow or skip)',
+          'Close and reopen app',
+        ],
+        expected: 'Permission priming screen does NOT appear on second launch. User goes straight to home.',
+        where: 'Mobile: second and subsequent launches.',
+      },
+      {
+        id: 'perm-6', title: 'Back gesture disabled on permissions screen', severity: 'high',
+        steps: [
+          'On permissions screen during requesting phase',
+          'Try to swipe back or press hardware back button (Android)',
+        ],
+        expected: 'Back gesture and hardware back button do nothing — gestureEnabled: false on the Stack.Screen. User cannot bypass the screen mid-flow.',
+        where: 'Mobile: permissions screen (requesting step).',
       },
     ],
   },

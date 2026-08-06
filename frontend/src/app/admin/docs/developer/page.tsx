@@ -5,7 +5,7 @@ import {
   Code2, Database, Globe, Lock, Zap, Bell, Package, ShoppingCart,
   Users, Tag, BarChart3, MessageSquare, Settings, Cpu, GitBranch,
   Server, Key, ArrowRight, CheckCircle, AlertCircle, Info, Printer,
-  Layers, Shield, FileCode, Terminal
+  Layers, Shield, FileCode, Terminal, Truck, FileText
 } from 'lucide-react'
 
 /* ═══════════════════════════════════════════════════
@@ -25,6 +25,8 @@ const SECTIONS = [
   { id: 'modules',    label: 'Backend Modules',        icon: FileCode },
   { id: 'frontend',   label: 'Frontend Structure',     icon: Server },
   { id: 'mobile',     label: 'Mobile App',             icon: Code2 },
+  { id: 'tracking',   label: 'Shipment Tracking',      icon: Truck },
+  { id: 'gst',        label: 'GST Module',             icon: FileText },
   { id: 'deploy',     label: 'Deployment Notes',       icon: Terminal },
 ]
 
@@ -1298,8 +1300,11 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 //
 // Products: enhanced fields
 //   brand_id (FK→brands), tags (JSONB), is_featured, is_bestseller,
-//   cost_price, weight_grams, dimensions, low_stock_threshold,
-//   total_sold, specifications (JSONB), barcode
+//   cost_price, weight_grams, length_cm, width_cm, height_cm,
+//   low_stock_threshold, total_sold, specifications (JSONB), faqs (JSONB),
+//   safety_tags (TEXT[]), meta_keywords, barcode,
+//   gst_percent, hsn_code, cess_percent, fssai_number, coa_url,
+//   is_returnable, return_window_days, replacement_available
 //   Filters: brand_id, is_featured=true, is_bestseller=true
 //
 // product_categories: many-to-many junction (additional categories)
@@ -1307,9 +1312,12 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 //
 // Customer-facing display:
 //   Web: brand filter dropdown, subcategory chips on category page,
-//        bestseller badges, specs table, brand name link, tags pills
+//        bestseller badges, specs table, FAQs accordion, brand name link, tags pills,
+//        safety_tags as certification chips, dimensions (L×W×H cm) next to weight,
+//        FSSAI badge, COA lab report link, video embed
 //   Mobile: same features + subcategory chips in products listing,
-//        brand in search suggestions, specs section in product detail`}</Code>
+//        brand in search suggestions, specs table + FAQs in Description tab,
+//        dimensions (L×W×H cm) next to weight badge`}</Code>
           <H3>Visitor analytics tracking</H3>
           <Code>{`// Database: page_views table (path, referrer, user_agent, ip, device_type, browser, user_id, session_id)
 // Backend:  POST /api/analytics/pageview — records a page view (public, no auth)
@@ -1485,6 +1493,135 @@ const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.c
 // Sitemap (sitemap.ts):
 //   Products (slug URLs), Categories (slug), Blog posts, Static pages
 // robots.ts: disallow /admin/, /checkout, /api/, /account`}</Code>
+        </Section>
+
+        {/* ═══ SHIPMENT TRACKING ═══ */}
+        <Section id="tracking" title="Shipment Tracking System" icon={Truck}>
+          <H3>Architecture</H3>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            A single <code>shipment_events</code> table stores all courier status events. The <code>source</code> column distinguishes origin: <code>manual</code> (admin-entered), <code>webhook</code> (courier push), <code>api</code> (polled), <code>system</code> (auto-generated). The customer UI renders identically regardless of source, so the full flow can be tested via manual entries today and will work with live courier data automatically when webhooks are configured.
+          </p>
+          <Table
+            headers={['Table / Column', 'Type', 'Purpose']}
+            rows={[
+              ['shipment_events.id', 'SERIAL PK', 'Primary key'],
+              ['shipment_events.order_id', 'INTEGER FK → orders', 'Which order this event belongs to'],
+              ['shipment_events.status_code', 'VARCHAR(30)', 'Internal code e.g. MANIFESTED, OUT_FOR_DELIVERY, DELIVERED'],
+              ['shipment_events.status_label', 'VARCHAR(100)', 'Human-readable label shown in UI'],
+              ['shipment_events.description', 'TEXT', 'Optional detail text'],
+              ['shipment_events.location', 'VARCHAR(150)', 'City/hub name from courier'],
+              ['shipment_events.event_time', 'TIMESTAMP', 'When the event actually occurred (not created_at)'],
+              ['shipment_events.source', 'VARCHAR(20)', 'manual / webhook / api / system'],
+              ['shipment_events.raw_payload', 'JSONB', 'Full courier webhook body stored for debugging'],
+              ['orders.tracking_url', 'VARCHAR(500)', 'Auto-generated courier tracking URL'],
+              ['orders.out_for_delivery_at', 'TIMESTAMP', 'Stamped when OUT_FOR_DELIVERY event added'],
+              ['orders.delivery_attempts', 'INTEGER', 'Incremented on each DELIVERY_ATTEMPTED event'],
+              ['orders.rto_initiated_at', 'TIMESTAMP', 'Stamped when RTO_INITIATED event added'],
+              ['orders.buyer_gstin', 'VARCHAR(20)', 'Optional B2B buyer GST number'],
+              ['orders.is_igst', 'BOOLEAN', 'True = inter-state order (IGST applies)'],
+            ]}
+          />
+          <H3>Backend API</H3>
+          <Table
+            headers={['Method', 'Endpoint', 'Auth', 'Description']}
+            rows={[
+              ['PUT', '/api/admin/orders/:id/shipment', 'Admin', 'Update courier, AWB, EDD. Auto-generates tracking URL. Adds system event. Pushes notification on first shipment.'],
+              ['POST', '/api/admin/orders/:id/shipment-events', 'Admin', 'Manually add a tracking event with preset or custom data.'],
+              ['GET', '/api/admin/orders/:id/shipment-events', 'Admin', 'List all events + shipment info for an order.'],
+              ['GET', '/api/admin/tracking/in-transit', 'Admin', 'All orders with status=3 and a tracking number.'],
+              ['POST', '/api/admin/tracking/webhook/:provider', 'None (public)', 'Courier webhook endpoint — responds 200 immediately, processes async. Mounted in app.js before admin auth.'],
+              ['POST', '/api/courier/webhook/:provider', 'None (public)', 'Alternate public webhook URL (app.js top-level). Same handler.'],
+              ['GET', '/api/orders/:id/shipment-events', 'User (owner)', 'Customer-facing endpoint — verifies order ownership, returns events + shipment info.'],
+            ]}
+          />
+          <H3>Carrier tracking URL generation</H3>
+          <Code>{`// backend/src/modules/admin/admin.shipping.controller.js
+// getCarrierTrackingUrl(courierName, trackingNumber)
+// Supports: Shiprocket, Delhivery, BlueDart, Ekart, DTDC,
+//           XpressBees, Ecom Express, India Post, FedEx, DHL,
+//           Aramex, Shadowfax, Dunzo, Porter, WeFast
+// Falls back to: google.com/search?q=track+<awb>`}</Code>
+          <H3>Shiprocket webhook format</H3>
+          <Code>{`POST /api/courier/webhook/shiprocket
+{
+  "awb": "1234567890",
+  "current_status_id": 6,        // maps to internal status
+  "current_status": "In Transit",
+  "location": "Mumbai Hub",
+  "current_timestamp": "2026-08-06 14:30:00"
+}
+// SHIPROCKET_STATUS_MAP: 0→PENDING, 1→MANIFESTED, 2→IN_TRANSIT,
+// 3→OUT_FOR_DELIVERY, 4→DELIVERED, 5→DELIVERY_ATTEMPTED,
+// 6→IN_TRANSIT, 7→RTO_INITIATED, 8→RTO_DELIVERED, etc.`}</Code>
+          <H3>Push notifications on tracking events</H3>
+          <Code>{`// sendPushToUser(userId, title, body, data)
+// Called automatically for:
+//   - First shipment (order marked shipped)
+//   - OUT_FOR_DELIVERY event
+//   - DELIVERY_ATTEMPTED event
+//   - DELIVERED event
+// Uses expo-server-sdk to send to stored push token`}</Code>
+          <H3>Mobile integration (ayurveda-app)</H3>
+          <Code>{`// Order detail screen: ayurveda-app/src/app/order/[id].tsx
+// fetchOrder() also calls GET /orders/:id/shipment-events
+// Shows: EDD, tracking URL, events timeline, RTO banner, attempt count
+// Permission priming: ayurveda-app/src/app/permissions/index.tsx
+//   - First launch detected via AsyncStorage key 'permissions_requested_v1'
+//   - Requests: Notifications, Camera, Photo Library (sequentially)
+//   - Stack.Screen in _layout.tsx: presentation: fullScreenModal, gestureEnabled: false`}</Code>
+        </Section>
+
+        {/* ═══ GST MODULE ═══ */}
+        <Section id="gst" title="GST Module" icon={FileText}>
+          <H3>Overview</H3>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            GST data is sourced entirely from existing <code>invoices</code> and <code>invoice_items</code> tables — the invoice controller already stores <code>cgst_amount</code>, <code>sgst_amount</code>, <code>igst_amount</code> per line item and per invoice. No new data entry is needed.
+          </p>
+          <H3>New DB columns</H3>
+          <Table
+            headers={['Table', 'Column', 'Purpose']}
+            rows={[
+              ['invoices', 'is_voided BOOLEAN DEFAULT FALSE', 'Marks invoice as voided — never deleted'],
+              ['invoices', 'voided_at TIMESTAMP', 'When it was voided'],
+              ['invoices', 'void_reason VARCHAR(200)', 'Admin-entered reason (min 5 chars)'],
+              ['invoices', 'credit_note_number VARCHAR(100)', 'Auto-set to CN-{invoice_number}'],
+              ['orders', 'buyer_gstin VARCHAR(20)', 'Optional B2B buyer GSTIN (for B2B invoices)'],
+              ['orders', 'is_igst BOOLEAN DEFAULT FALSE', 'True if inter-state (IGST applies instead of CGST+SGST)'],
+            ]}
+          />
+          <H3>Backend API — GST routes (all Admin-auth)</H3>
+          <Table
+            headers={['Method', 'Endpoint', 'Description']}
+            rows={[
+              ['GET', '/api/admin/gst/dashboard?year=YYYY', 'FY summary (Apr–Mar): monthly totals + HSN summary. year defaults to current FY.'],
+              ['GET', '/api/admin/gst/gstr1?from=YYYY-MM-DD&to=YYYY-MM-DD', 'Invoice-wise GSTR-1 data for date range (voided invoices excluded).'],
+              ['GET', '/api/admin/gst/export?from=&to=&type=invoices|hsn', 'CSV download. type=invoices → B2C invoice CSV. type=hsn → HSN Table 12 CSV.'],
+              ['POST', '/api/admin/invoices/:id/void', 'Void an invoice. Body: { reason: string (min 5 chars) }. Sets is_voided, voided_at, credit_note_number.'],
+            ]}
+          />
+          <H3>GSTR-1 export formats</H3>
+          <Code>{`// type=invoices CSV columns:
+Invoice No, Date, Customer Name, Phone, Taxable Value,
+CGST Rate, CGST Amount, SGST Rate, SGST Amount,
+IGST Rate, IGST Amount, Invoice Total, HSN Codes
+
+// type=hsn CSV columns (Table 12 format):
+HSN Code, Description, UQC, Quantity,
+Taxable Value, CGST Rate, CGST Amount,
+SGST Rate, SGST Amount, IGST Rate, IGST Amount, Total Tax`}</Code>
+          <H3>Tax logic (CGST/SGST vs IGST)</H3>
+          <Code>{`// products table already has: gst_percent NUMERIC(5,2) DEFAULT 18
+// invoice_items stores per-item: cgst_amount, sgst_amount, igst_amount
+// Invoice totals: invoices.total_cgst, total_sgst, total_igst
+
+// is_igst=true  → IGST = full gst_percent on taxable value
+// is_igst=false → CGST = gst_percent/2, SGST = gst_percent/2
+// is_igst is set on orders based on shipping state vs business state`}</Code>
+          <H3>Files</H3>
+          <Code>{`backend/src/modules/gst/gst.controller.js   — gstDashboard, gstr1Summary, gstr1Export, voidInvoice
+backend/src/modules/gst/gst.routes.js        — /api/admin/gst/* routes
+frontend/src/app/admin/gst/page.tsx          — GST dashboard + GSTR-1 + export UI
+frontend/src/app/admin/invoices/page.tsx     — Void button + void modal added`}</Code>
         </Section>
 
         {/* ═══ DEPLOY ═══ */}

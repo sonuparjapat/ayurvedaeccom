@@ -33,7 +33,7 @@ interface Product {
   price: string; compareprice?: string; inventory: number; images: string[]
   averagerating: string; reviewcount: number; category_name?: string; brand?: string
   brand_id?: number; brand_display_name?: string; tags?: string[]
-  is_bestseller?: boolean; weight_grams?: number; total_sold?: number
+  is_bestseller?: boolean; weight_grams?: number; length_cm?: number; width_cm?: number; height_cm?: number; total_sold?: number
   specifications?: any[]
   product_type?: string; unit?: string; tax_included?: boolean
   shipping_class?: string; allow_backorder?: boolean
@@ -798,10 +798,15 @@ export default function ProductDetailScreen() {
             )}
           </LinearGradient>
 
-          {/* Weight */}
-          {product.weight_grams != null && product.weight_grams > 0 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-              <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.textDim }}>Net Wt: {product.weight_grams}g</Text>
+          {/* Weight & Dimensions */}
+          {((product.weight_grams != null && product.weight_grams > 0) || product.length_cm || product.width_cm || product.height_cm) && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 14 }}>
+              {product.weight_grams != null && product.weight_grams > 0 && (
+                <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.textDim }}>⚖️ Net Wt: {product.weight_grams}g</Text>
+              )}
+              {(product.length_cm || product.width_cm || product.height_cm) && (
+                <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.textDim }}>📦 {[product.length_cm, product.width_cm, product.height_cm].filter(Boolean).join(' × ')} cm</Text>
+              )}
             </View>
           )}
 
@@ -1114,6 +1119,19 @@ export default function ProductDetailScreen() {
                   </View>
                 </View>
               )}
+
+              {/* FAQs */}
+              {product.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
+                <View style={{ marginTop: 20 }}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest, marginBottom: 10 }}>Frequently Asked Questions</Text>
+                  {product.faqs.map((faq: any, i: number) => (
+                    <View key={i} style={{ backgroundColor: '#f8fafc', borderRadius: 12, marginBottom: 8, borderWidth: 0.5, borderColor: Colors.border, overflow: 'hidden' }}>
+                      <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, padding: 12, paddingBottom: 6 }}>Q: {faq.question}</Text>
+                      <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, paddingHorizontal: 12, paddingBottom: 12, lineHeight: 18 }}>A: {faq.answer}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </Animated.View>
           )}
 
@@ -1272,19 +1290,6 @@ export default function ProductDetailScreen() {
               )}
             </Animated.View>
           )}
-          {/* FAQs */}
-          {product.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
-            <View style={{ marginTop: 16 }}>
-              <Text style={{ fontFamily: Fonts.bold, fontSize: 15, color: Colors.forest, marginBottom: 10 }}>Frequently Asked Questions</Text>
-              {product.faqs.map((faq: any, i: number) => (
-                <View key={i} style={{ backgroundColor: '#f8fafc', borderRadius: 12, marginBottom: 8, borderWidth: 0.5, borderColor: Colors.border, overflow: 'hidden' }}>
-                  <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, padding: 12, paddingBottom: 6 }}>Q: {faq.question}</Text>
-                  <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, paddingHorizontal: 12, paddingBottom: 12, lineHeight: 18 }}>A: {faq.answer}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
           {/* ── Frequently Bought Together ───────────────────── */}
           {bundles.length > 0 && (
             <View style={{ marginTop: 24 }}>

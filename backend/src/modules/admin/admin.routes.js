@@ -135,16 +135,9 @@ router.get('/low-stock', auth, admin, controller.getLowStockProducts)
 router.get('/orders', controller.getOrders)
 router.get('/invoices', admin, invoicecontroller.getInvoices)
 router.get('/', controller.getCarts)
-router.post(
-  '/invoices/generate/:orderId',
-  admin,
-  invoicecontroller.generateInvoice
-)
-router.get(
-  '/invoices/:id/pdf',
-  admin,
- invoicecontroller.downloadInvoice
-)
+router.post('/invoices/generate/:orderId', admin, invoicecontroller.generateInvoice)
+router.get('/invoices/:id/pdf', admin, invoicecontroller.downloadInvoice)
+router.post('/invoices/:id/void', auth, admin, require('../gst/gst.controller').voidInvoice)
 // ===================analytics routes =========================
 router.get('/overview',auth,admin, analyticscontroller.getOverviewAnalytics);
 // get status code 
@@ -177,7 +170,15 @@ router.put('/orders/:id/status', controller.updateOrderStatus)
 
 // router.post('/orders/:id/invoice', invoicecontroller.generateInvoice)
 
-router.post('/orders/:id/tracking', shipingcontroller.addTracking)
+// Shipment management (new full tracking system)
+router.put('/orders/:id/shipment', auth, admin, shipingcontroller.updateShipment)
+router.get('/orders/:id/shipment-events', auth, admin, shipingcontroller.getShipmentEvents)
+router.post('/orders/:id/shipment-events', auth, admin, shipingcontroller.addTrackingEvent)
+router.get('/tracking/in-transit', auth, admin, shipingcontroller.getInTransitOrders)
+// Webhook receiver - no auth (called by courier APIs like Shiprocket)
+router.post('/tracking/webhook/:provider', shipingcontroller.webhookReceiver)
+// Legacy alias kept for backward compat
+router.post('/orders/:id/tracking', auth, admin, shipingcontroller.addTracking)
 router.get('/tracking/search', auth, admin, controller.searchByTracking)
 
 /* ─── PRODUCT VARIANTS ADMIN CRUD ─── */
@@ -244,6 +245,15 @@ router.delete('/brands/:id', auth, admin, controller.adminDeleteBrand)
 /* ─── PRODUCT PERFORMANCE + FUNNEL ANALYTICS ─── */
 router.get('/analytics/products', auth, admin, controller.getProductPerformance)
 router.get('/analytics/funnel', auth, admin, controller.getFunnelAnalytics)
+
+/* ─── SALES REPORTS ─── */
+const reportsCtrl = require('./admin.reports.controller')
+router.get('/reports/top-products', auth, admin, reportsCtrl.topProductsByRevenue)
+router.get('/reports/category-revenue', auth, admin, reportsCtrl.categoryRevenue)
+router.get('/reports/state-revenue', auth, admin, reportsCtrl.stateRevenue)
+router.get('/reports/profit-margins', auth, admin, reportsCtrl.profitMarginReport)
+router.get('/reports/monthly-trend', auth, admin, reportsCtrl.monthlyRevenueTrend)
+router.get('/reports/coupon-usage', auth, admin, reportsCtrl.couponUsageReport)
 
 /* ─── RBAC: PERMISSIONS ─── */
 router.get('/my-permissions', auth, admin, deptCtrl.getMyPermissions)

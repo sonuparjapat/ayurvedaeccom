@@ -241,6 +241,24 @@ if (cess_percent !== '') {
 if (hsn_code && hsn_code.length > 30) {
   rowErrors.push('Invalid hsn_code')
 }
+
+// Optional dimension fields — validate if present
+for (const [field, val] of [['length_cm', r.length_cm], ['width_cm', r.width_cm], ['height_cm', r.height_cm]]) {
+  if (String(val || '').trim() !== '') {
+    const num = Number(val)
+    if (isNaN(num) || num < 0) rowErrors.push(`Invalid ${field} (must be a positive number)`)
+  }
+}
+
+// Validate specifications JSON if provided
+if (String(r.specifications || '').trim()) {
+  try { JSON.parse(r.specifications) } catch { rowErrors.push('specifications must be valid JSON array') }
+}
+
+// Validate faqs JSON if provided
+if (String(r.faqs || '').trim()) {
+  try { JSON.parse(r.faqs) } catch { rowErrors.push('faqs must be valid JSON array') }
+}
     if (
       sku &&
       csvSku.has(

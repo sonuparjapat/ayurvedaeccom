@@ -829,8 +829,13 @@ const handleSaveAddress = async (data: any) => {
     if (trackingData[orderId]) return
     setTrackingLoading(orderId)
     try {
-      const res = await axios.get(`/orders/${orderId}/timeline`)
-      setTrackingData(prev => ({ ...prev, [orderId]: res.data }))
+      const [timelineRes, eventsRes] = await Promise.allSettled([
+        axios.get(`/orders/${orderId}/timeline`),
+        axios.get(`/orders/${orderId}/shipment-events`),
+      ])
+      const td = timelineRes.status === 'fulfilled' ? timelineRes.value.data : {}
+      const ev = eventsRes.status === 'fulfilled' ? eventsRes.value.data : {}
+      setTrackingData(prev => ({ ...prev, [orderId]: { ...td, shipmentEvents: ev.events || [], shipment: ev.shipment || null } }))
     } catch { /* silent */ } finally {
       setTrackingLoading(null)
     }
@@ -1536,11 +1541,41 @@ const handleSaveAddress = async (data: any) => {
                                         </div>
                                         {/* Courier Info */}
                                         {tr.tracking_number ? (
-                                          <div className="bg-white rounded-xl border border-emerald-100 p-3 flex flex-wrap gap-4 text-xs">
-                                            <div><p className="text-gray-400 font-medium uppercase tracking-wide">Courier</p><p className="font-bold text-gray-800 mt-0.5">{tr.courier_name || '—'}</p></div>
-                                            <div><p className="text-gray-400 font-medium uppercase tracking-wide">Tracking No.</p><p className="font-bold text-gray-800 mt-0.5 font-mono">{tr.tracking_number}</p></div>
-                                            {tr.shipped_at && <div><p className="text-gray-400 font-medium uppercase tracking-wide">Shipped</p><p className="font-bold text-gray-800 mt-0.5">{new Date(tr.shipped_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</p></div>}
-                                            {tr.estimated_delivery && <div><p className="text-gray-400 font-medium uppercase tracking-wide">Est. Delivery</p><p className="font-bold text-emerald-700 mt-0.5">{new Date(tr.estimated_delivery).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</p></div>}
+                                          <div className="space-y-3">
+                                            <div className="bg-white rounded-xl border border-emerald-100 p-3 flex flex-wrap gap-4 text-xs">
+                                              <div><p className="text-gray-400 font-medium uppercase tracking-wide">Courier</p><p className="font-bold text-gray-800 mt-0.5">{tr.courier_name || '—'}</p></div>
+                                              <div><p className="text-gray-400 font-medium uppercase tracking-wide">Tracking No.</p><p className="font-bold text-gray-800 mt-0.5 font-mono">{tr.tracking_number}</p></div>
+                                              {tr.shipped_at && <div><p className="text-gray-400 font-medium uppercase tracking-wide">Shipped</p><p className="font-bold text-gray-800 mt-0.5">{new Date(tr.shipped_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</p></div>}
+                                              {(td.shipment?.expected_delivery_date || tr.estimated_delivery) && <div><p className="text-gray-400 font-medium uppercase tracking-wide">Est. Delivery</p><p className="font-bold text-emerald-700 mt-0.5">{new Date(td.shipment?.expected_delivery_date || tr.estimated_delivery).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</p></div>}
+                                              {td.shipment?.tracking_url && (
+                                                <div className="w-full">
+                                                  <a href={td.shipment.tracking_url} target="_blank" rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline font-semibold">
+                                                    <Truck size={10} /> Track on {tr.courier_name} →
+                                                  </a>
+                                                </div>
+                                              )}
+                                            </div>
+                                            {td.shipmentEvents && td.shipmentEvents.length > 0 && (
+                                              <div className="relative pl-4">
+                                                <div className="absolute left-1.5 top-0 bottom-0 w-0.5 bg-emerald-200" />
+                                                <div className="space-y-2.5">
+                                                  {[...td.shipmentEvents].reverse().map((ev: any, i: number) => (
+                                                    <div key={ev.id} className="relative flex gap-2">
+                                                      <div className={`absolute -left-2.5 top-1 w-2.5 h-2.5 rounded-full border-2 border-white ${i === 0 ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                                                      <div>
+                                                        <p className="text-xs font-semibold text-gray-900">{ev.status_label}</p>
+                                                        {ev.description && <p className="text-xs text-gray-500">{ev.description}</p>}
+                                                        <p className="text-[10px] text-gray-400 mt-0.5">
+                                                          {ev.location && `📍 ${ev.location} · `}
+                                                          {new Date(ev.event_time).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+                                                        </p>
+                                                      </div>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
                                           </div>
                                         ) : (
                                           <p className="text-xs text-gray-400 text-center py-2">Tracking details will appear once the order is shipped.</p>

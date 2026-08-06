@@ -46,3 +46,64 @@ exports.getTracking = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to get tracking" });
   }
 };
+
+/* ================= PUBLIC TRACKING BY TOKEN (no login required) ================= */
+exports.getTrackingByToken = async (req, res) => {
+  try {
+    const { token } = req.params
+    // UUID format validation
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(token)) {
+      return res.status(400).json({ success: false, message: 'Invalid tracking link' })
+    }
+
+    const orderRes = await pool.query(`
+      SELECT
+        o.id, o.invoice_no, o.status, o.tracking_token,
+        o.tracking_number, o.courier_name, o.shipped_at, o.created_at,
+        o.expected_delivery_date, o.total_amount, o.payment_method,
+        json_agg(
+          json_build_object(
+            'name', p.name,
+            'quantity', oi.quantity,
+            'image', p.images->>0,
+            'variant_label', oi.variant_label
+          ) ORDER BY oi.id
+        ) AS items
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      JOIN products p ON p.id = oi.product_id
+      WHERE o.tracking_token = $1
+      GROUP BY o.id
+    `, [token])
+
+    if (!orderRes.rows.length) {
+      return res.status(404).json({ success: false, message: 'Order not found' })
+    }
+
+    const order = orderRes.rows[0]
+
+    // Fetch tracking info
+    const trackRes = await pool.query(`SELECT status, location, updated_at FROM tracking WHERE order_id=$1`, [order.id])
+
+    res.json({
+      success: true,
+      data: {
+        invoice_no: order.invoice_no,
+        status: order.status,
+        tracking_number: order.tracking_number,
+        courier_name: order.courier_name,
+        shipped_at: order.shipped_at,
+        created_at: order.created_at,
+        expected_delivery_date: order.expected_delivery_date,
+        total_amount: order.total_amount,
+        payment_method: order.payment_method,
+        items: order.items,
+        tracking: trackRes.rows[0] || null,
+      }
+    })
+  } catch (err) {
+    console.error('[getTrackingByToken]', err.message)
+    res.status(500).json({ success: false, message: 'Failed to fetch tracking' })
+  }
+}

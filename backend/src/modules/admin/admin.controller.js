@@ -912,11 +912,12 @@ let uploadedImages=[]
  // Images user kept
 const oldImages = normalizeArray(body.oldImages);
 
-// 1️⃣ Get current images from DB
+// 1️⃣ Get current images + price from DB
 const existing = await pool.query(
-  "SELECT images, inventory FROM products WHERE id=$1",
+  "SELECT images, inventory, price FROM products WHERE id=$1",
   [id]
 );
+const oldPrice = Number(existing.rows[0]?.price || 0);
 const oldInventory = Number(existing.rows[0]?.inventory || 0);
 
 if (!existing.rowCount) {
@@ -1162,6 +1163,66 @@ const finalImages = [
       if (newInventory !== null && newInventory <= 10) {
         const prodName = result.rows[0]?.name || `Product #${id}`
         emitToAdmin('low_stock_alert', { productId: parseInt(id), productName: prodName, inventory: newInventory })
+      }
+    }
+
+    // ── Price drop alerts ──
+    const newPrice = Number(body.price)
+    if (oldPrice > 0 && newPrice > 0 && newPrice < oldPrice) {
+      try {
+        // Find users who wishlisted this product and have price_drops enabled
+        const wishers = await pool.query(
+          `SELECT w.user_id, u.email, u.name, us.price_drops
+           FROM wishlist w
+           JOIN users u ON u.id = w.user_id
+           LEFT JOIN user_settings us ON us.user_id = w.user_id
+           WHERE w.product_id = $1 AND u.is_active = TRUE AND (us.price_drops IS NULL OR us.price_drops = TRUE)`,
+          [id]
+        )
+        const productName = result.rows[0]?.name || `Product #${id}`
+        const productUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/product/${result.rows[0]?.slug || id}`
+        const savingsPct = Math.round(((oldPrice - newPrice) / oldPrice) * 100)
+
+        for (const w of wishers.rows) {
+          // In-app notification
+          createNotification(
+            w.user_id, 'price_drop',
+            `💸 Price Drop! ${productName}`,
+            `Price dropped from ₹${oldPrice.toFixed(0)} to ₹${newPrice.toFixed(0)} (${savingsPct}% off) — grab it now!`,
+            { product_id: parseInt(id), old_price: oldPrice, new_price: newPrice }
+          )
+          // Push notification
+          sendPushToUser(
+            w.user_id,
+            `💸 Price Drop Alert!`,
+            `${productName} is now ₹${newPrice.toFixed(0)} (was ₹${oldPrice.toFixed(0)})`,
+            { type: 'price_drop', product_id: parseInt(id) }
+          )
+          // Email notification
+          if (w.email) {
+            mailer.sendTransacEmail({
+              sender: { email: process.env.MAIL_FROM || 'noreply@oroganix.com', name: process.env.APP_NAME || 'Oroganix' },
+              to: [{ email: w.email }],
+              subject: `💸 Price Drop: ${productName} is now ₹${newPrice.toFixed(0)}`,
+              htmlContent: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
+                  <h2 style="color:#1a5c38">Price Drop Alert!</h2>
+                  <p>Hi ${w.name || 'there'},</p>
+                  <p>Great news! <strong>${productName}</strong> in your wishlist just dropped in price.</p>
+                  <table style="width:100%;margin:16px 0;border-collapse:collapse">
+                    <tr><td style="padding:8px;background:#f9fafb;border-radius:4px;color:#6b7280">Old Price</td><td style="padding:8px;text-decoration:line-through;color:#ef4444">₹${oldPrice.toFixed(2)}</td></tr>
+                    <tr><td style="padding:8px;background:#f0fdf4;border-radius:4px;color:#15803d;font-weight:bold">New Price</td><td style="padding:8px;color:#15803d;font-weight:bold;font-size:20px">₹${newPrice.toFixed(2)}</td></tr>
+                    <tr><td style="padding:8px">You Save</td><td style="padding:8px;color:#16a34a;font-weight:bold">${savingsPct}% off</td></tr>
+                  </table>
+                  <a href="${productUrl}" style="display:inline-block;background:#1a5c38;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:8px">Shop Now →</a>
+                  <p style="color:#9ca3af;font-size:12px;margin-top:24px">You're receiving this because you wishlisted this product. <a href="${process.env.FRONTEND_URL || ''}/account">Manage notifications</a></p>
+                </div>
+              `,
+            }).catch(() => {})
+          }
+        }
+      } catch (e) {
+        console.error('[PRICE-DROP-ALERT]', e.message)
       }
     }
 
@@ -1860,6 +1921,12 @@ exports.adminBulkUpdateOrderStatus = async (req, res) => {
             `Your order status has been updated to: ${statusLabel}`, { order_id: id, status });
           sendPushToUser(user_id, `Order Update 📦`, `Order #${id} is now: ${statusLabel}`,
             { type: 'order_update', order_id: id, status });
+          // SMS for key statuses in bulk update too
+          const phoneRow2 = await pool.query(`SELECT phone FROM users WHERE id=$1`, [user_id])
+          const phone2 = phoneRow2.rows[0]?.phone
+          if (phone2 && [2, 3, 4, 5, 6, 9].includes(status)) {
+            sendOrderStatusSMS(phone2, invoice_no || `#${id}`, statusLabel).catch(() => {})
+          }
         }
         emitToAdmin('order_status_changed', { order_id: id, new_status: status });
       } catch (notifErr) {

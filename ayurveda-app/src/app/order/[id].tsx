@@ -52,9 +52,16 @@ interface OrderItem {
   product_id: number; name: string; quantity: number; price: string; image?: string; variant_label?: string
 }
 
+interface ShipmentEvent {
+  id: number; status_code: string; status_label: string; description?: string
+  location?: string; event_time: string; source: string
+}
+
 interface OrderDetail {
   id: number; invoice_no?: string; status: number; payment_method: string; payment_status: string
   total_amount: string; created_at: string; tracking_number?: string; shipped_at?: string
+  courier_name?: string; tracking_url?: string; expected_delivery_date?: string
+  out_for_delivery_at?: string; delivery_attempts?: number; rto_initiated_at?: string
   shipping_address: any; razorpay_payment_id?: string; cancel_reason?: string; return_reason?: string
   invoice_id?: number; invoice_number?: string; invoice_date?: string; pdf_url?: string
   coupon_code?: string; discount_amount?: string
@@ -747,6 +754,8 @@ export default function OrderDetailScreen() {
   const [addressLoading, setAddressLoading] = useState(false)
   const [returnEligibility, setReturnEligibility] = useState<any>(null)
   const [returnEligibilityLoading, setReturnEligibilityLoading] = useState(false)
+  const [shipmentEvents, setShipmentEvents] = useState<ShipmentEvent[]>([])
+  const [shipmentInfo, setShipmentInfo] = useState<any>(null)
 
   useEffect(() => { if (!user) { router.replace('/auth'); return } }, [user])
   useEffect(() => { if (id) fetchOrder() }, [id])
@@ -787,6 +796,12 @@ export default function OrderDetailScreen() {
         setTimelineLogs(timelineRes.value.data?.timeline || [])
         setEstimatedDelivery(timelineRes.value.data?.tracking?.estimated_delivery || null)
       }
+      // Fetch shipment events
+      try {
+        const evRes = await api.get(`/orders/${id}/shipment-events`)
+        setShipmentEvents(evRes.data?.events || [])
+        setShipmentInfo(evRes.data?.shipment || null)
+      } catch { /* not yet shipped — no events */ }
     } finally { setLoading(false) }
   }
 
@@ -1005,35 +1020,87 @@ export default function OrderDetailScreen() {
 
             {/* ── TRACKING ── */}
             {order.tracking_number && (() => {
-              const carrierUrl = (order as any).courier_name ? getCarrierUrl((order as any).courier_name, order.tracking_number!) : null
+              const trackUrl = order.tracking_url || (order.courier_name ? getCarrierUrl(order.courier_name, order.tracking_number!) : null)
               return (
               <Animated.View entering={FadeInDown.delay(140)} style={ss.card}>
-                <Text style={ss.cardTitle}>Tracking Info</Text>
-                {(order as any).courier_name && (
-                  <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.textDim, marginBottom: 8 }}>
-                    Courier: {(order as any).courier_name}
-                  </Text>
-                )}
+                <Text style={ss.cardTitle}>Shipment Tracking</Text>
+
+                {/* Courier + AWB row */}
                 <View style={ss.trackingRow}>
                   <View style={ss.trackingIconWrap}>
                     <Text style={{ fontSize: 22 }}>🚚</Text>
                   </View>
                   <View style={{ flex: 1 }}>
+                    {order.courier_name && (
+                      <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: Colors.forest, marginBottom: 1 }}>
+                        {order.courier_name}
+                      </Text>
+                    )}
                     <Text style={ss.trackingNo}>{order.tracking_number}</Text>
                     {order.shipped_at && (
                       <Text style={ss.trackingDate}>
                         Shipped: {new Date(order.shipped_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </Text>
                     )}
+                    {order.expected_delivery_date && (
+                      <Text style={[ss.trackingDate, { color: Colors.gold, fontFamily: Fonts.bold }]}>
+                        Est. Delivery: {new Date(order.expected_delivery_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </Text>
+                    )}
                   </View>
-                  <TouchableOpacity
-                    onPress={() => { if (carrierUrl) Linking.openURL(carrierUrl) }}
-                    style={[ss.trackingBadge, !carrierUrl && { opacity: 0.5 }]}
-                    disabled={!carrierUrl}
-                  >
-                    <Text style={ss.trackingBadgeText}>Track ›</Text>
-                  </TouchableOpacity>
+                  {trackUrl && (
+                    <TouchableOpacity
+                      onPress={() => WebBrowser.openBrowserAsync(trackUrl!)}
+                      style={ss.trackingBadge}
+                    >
+                      <Text style={ss.trackingBadgeText}>Track ›</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
+
+                {/* RTO banner */}
+                {order.rto_initiated_at && (
+                  <View style={{ backgroundColor: '#fef2f2', borderRadius: 10, padding: 10, marginTop: 10 }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: '#dc2626' }}>⚠️ Return to Origin Initiated</Text>
+                    <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                      The courier could not deliver your order and has initiated a return.
+                    </Text>
+                  </View>
+                )}
+
+                {/* Shipment Events Timeline */}
+                {shipmentEvents.length > 0 && (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: Colors.forest, marginBottom: 10 }}>
+                      Delivery Updates
+                    </Text>
+                    {[...shipmentEvents].reverse().map((ev, i) => (
+                      <View key={ev.id} style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                        <View style={{ alignItems: 'center', width: 20 }}>
+                          <View style={{
+                            width: 10, height: 10, borderRadius: 5, marginTop: 3,
+                            backgroundColor: i === 0 ? Colors.forest : Colors.border,
+                          }} />
+                          {i < shipmentEvents.length - 1 && (
+                            <View style={{ width: 1.5, flex: 1, backgroundColor: Colors.border, marginTop: 4, minHeight: 16 }} />
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontFamily: Fonts.bold, fontSize: 12, color: i === 0 ? Colors.forest : Colors.sage }}>
+                            {ev.status_label}
+                          </Text>
+                          {ev.description ? (
+                            <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: Colors.textDim }}>{ev.description}</Text>
+                          ) : null}
+                          <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: Colors.textDim, marginTop: 1 }}>
+                            {ev.location ? `📍 ${ev.location}  ` : ''}
+                            {new Date(ev.event_time).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </Animated.View>
               )
             })()}

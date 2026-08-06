@@ -4,6 +4,11 @@ const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
+const morgan = require("morgan");
+const logger = require("./utils/logger");
+
+// Patch console.error/warn so existing code auto-routes through Winston
+logger.patchConsole();
 
 const trackingRoutes = require("./modules/tracking/tracking.routes");
 const authRoutes = require("./modules/auth/auth.routes");
@@ -32,6 +37,7 @@ const newsletterRoutes = require('./modules/newsletter/newsletter.routes');
 const notificationsRoutes = require('./modules/notifications/notifications.routes');
 const faqRoutes = require('./modules/faq/faq.routes');
 const quizRoutes = require('./modules/quiz/quiz.routes');
+const giftCardRoutes = require('./modules/giftcards/giftcard.routes');
 
 const app = express();
 
@@ -73,6 +79,12 @@ const orderLimiter = rateLimit({
 
 app.use(globalLimiter);
 
+/* ================= HTTP REQUEST LOGGING ================= */
+app.use(morgan('combined', {
+  stream: { write: (msg) => logger.http(msg.trim()) },
+  skip: (req) => req.url === '/health' || req.url === '/ping',
+}));
+
 /* ================= CORS CONFIG ================= */
 
 
@@ -100,6 +112,13 @@ app.post(
   '/api/orders/webhook',
   express.raw({ type: 'application/json' }),
   require('./modules/orders/order.controller').razorpayWebhook
+);
+
+// Courier webhook — public endpoint (no auth, responds 200 immediately)
+app.post(
+  '/api/courier/webhook/:provider',
+  express.json(),
+  require('./modules/admin/admin.shipping.controller').webhookReceiver
 );
 
 /* ================= MIDDLEWARE ================= */
@@ -142,6 +161,8 @@ app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/faq', faqRoutes);
 app.use('/api/quiz', quizRoutes);
+app.use('/api/gift-cards', giftCardRoutes);
+app.use('/api/admin/gst', require('./modules/gst/gst.routes'));
 
 
 /* ================= 404 HANDLER ================= */

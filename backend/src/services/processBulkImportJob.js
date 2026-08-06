@@ -294,6 +294,30 @@ const finalCess =
           imageUrls
         )]
 
+      // Parse specifications JSON safely
+      let specsJson = '[]'
+      if (r.specifications) {
+        try { specsJson = JSON.stringify(JSON.parse(r.specifications)) } catch { specsJson = '[]' }
+      }
+
+      // Parse faqs JSON safely
+      let faqsJson = '[]'
+      if (r.faqs) {
+        try { faqsJson = JSON.stringify(JSON.parse(r.faqs)) } catch { faqsJson = '[]' }
+      }
+
+      // Parse safety_tags (pipe-separated or JSON array)
+      let safetyTagsArr = '{}'
+      if (r.safety_tags) {
+        try {
+          const parsed = JSON.parse(r.safety_tags)
+          if (Array.isArray(parsed)) safetyTagsArr = `{${parsed.map(t => `"${t}"`).join(',')}}`
+        } catch {
+          const tags = r.safety_tags.split('|').map(t => t.trim()).filter(Boolean)
+          safetyTagsArr = tags.length ? `{${tags.map(t => `"${t}"`).join(',')}}` : '{}'
+        }
+      }
+
       await pool.query(`
         INSERT INTO products (
           name, slug, shortdescription, longdescription,
@@ -302,20 +326,23 @@ const finalCess =
           images, meta_title, meta_description, meta_keywords,
           gst_percent, hsn_code, cess_percent,
           brand_id, tags, is_featured, is_bestseller,
-          cost_price, weight_grams, barcode, low_stock_threshold,
+          cost_price, weight_grams, length_cm, width_cm, height_cm, barcode, low_stock_threshold,
           product_type, unit, tax_included, shipping_class,
           allow_backorder, highlights, ingredients, benefits,
           usage_instructions, storage_instructions, warnings,
           video_url, fssai_number, coa_url, focus_keyword,
-          min_order_qty, max_order_qty, is_returnable, return_window_days, replacement_available, sort_order
+          min_order_qty, max_order_qty, is_returnable, return_window_days, replacement_available, sort_order,
+          specifications, faqs, safety_tags
         )
         VALUES (
           $1,$2,$3,$4,$5,$6,$7,$8,
           $9,$10,$11,$12,$13,$14,$15,$16,
           $17,$18,$19,
-          $20,$21,$22,$23,$24,$25,$26,$27,
-          $28,$29,$30,$31,$32,$33,$34,$35,
-          $36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48
+          $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,
+          $31,$32,$33,$34,$35,$36,$37,$38,
+          $39,$40,$41,$42,$43,$44,$45,
+          $46,$47,$48,$49,$50,$51,
+          $52,$53,$54
         )
       `,[
         name,
@@ -328,11 +355,14 @@ const finalCess =
         r.meta_title || '', r.meta_description || '', r.meta_keywords || '',
         finalGst, finalHsn, finalCess,
         r.brand_id ? Number(r.brand_id) : null,
-        r.tags ? JSON.stringify(r.tags.split(',').map(t => t.trim()).filter(Boolean)) : '[]',
+        r.tags ? JSON.stringify(r.tags.split('|').map(t => t.trim()).filter(Boolean)) : '[]',
         r.is_featured === 'true' || r.is_featured === '1',
         r.is_bestseller === 'true' || r.is_bestseller === '1',
         r.cost_price ? Number(r.cost_price) : null,
         r.weight_grams ? Number(r.weight_grams) : null,
+        r.length_cm ? Number(r.length_cm) : null,
+        r.width_cm ? Number(r.width_cm) : null,
+        r.height_cm ? Number(r.height_cm) : null,
         r.barcode || null,
         r.low_stock_threshold ? Number(r.low_stock_threshold) : 10,
         r.product_type || 'simple',
@@ -356,6 +386,9 @@ const finalCess =
         r.return_window_days ? Number(r.return_window_days) : 7,
         r.replacement_available === 'true' || r.replacement_available === '1' ? true : false,
         r.sort_order ? Number(r.sort_order) : 0,
+        specsJson,
+        faqsJson,
+        safetyTagsArr,
       ])
 
       successCount++

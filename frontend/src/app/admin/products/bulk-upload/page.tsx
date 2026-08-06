@@ -652,10 +652,10 @@ export default function BulkUploadPage() {
               <div className="example-header">📄 CSV Example</div>
               <div style={{ overflowX: 'auto' }}>
                 <table className="example-table">
-                  <thead><tr><th>name</th><th>sku</th><th>price</th><th>inventory</th><th>category_id</th><th>gst%</th><th>hsn</th><th>is_returnable</th><th>return_window_days</th><th>replacement_available</th></tr></thead>
+                  <thead><tr><th>name</th><th>sku</th><th>price</th><th>inventory</th><th>category_id</th><th>gst_percent</th><th>hsn_code</th><th>weight_grams</th><th>length_cm</th><th>width_cm</th><th>height_cm</th><th>is_returnable</th><th>return_window_days</th><th>replacement_available</th><th>safety_tags</th></tr></thead>
                   <tbody>
-                    <tr><td>Ashwagandha 60</td><td>AYU001</td><td>499</td><td>100</td><td>1</td><td>12</td><td>3004</td><td>true</td><td>7</td><td>false</td></tr>
-                    <tr><td>Herbal Oil</td><td>AYU002</td><td>299</td><td>50</td><td>2</td><td></td><td></td><td>false</td><td>0</td><td>false</td></tr>
+                    <tr><td>Ashwagandha 60</td><td>AYU001</td><td>499</td><td>100</td><td>1</td><td>12</td><td>3004</td><td>120</td><td>8</td><td>6</td><td>10</td><td>true</td><td>7</td><td>false</td><td>Vegan|GlutenFree</td></tr>
+                    <tr><td>Herbal Oil 100ml</td><td>AYU002</td><td>299</td><td>50</td><td>2</td><td></td><td></td><td>200</td><td></td><td></td><td></td><td>false</td><td>0</td><td>false</td><td></td></tr>
                   </tbody>
                 </table>
               </div>
@@ -681,6 +681,11 @@ export default function BulkUploadPage() {
             <span><strong>is_returnable</strong>: true / false — whether the product can be returned (default: true).</span>
             <span><strong>return_window_days</strong>: number of days after delivery to return (default: 7). Set to 0 if non-returnable.</span>
             <span><strong>replacement_available</strong>: true / false — whether a replacement can be offered instead of refund (default: false).</span>
+            <span><strong>weight_grams</strong>: product weight in grams — used for shipping charge calculation.</span>
+            <span><strong>length_cm / width_cm / height_cm</strong>: optional dimensions in centimetres — used for volumetric shipping.</span>
+            <span><strong>safety_tags</strong>: pipe-separated badges (e.g. Vegan|Gluten Free|No Added Sugar) shown on product page.</span>
+            <span><strong>specifications</strong>: JSON array e.g. <code>{`[{"key":"Shelf Life","value":"24 months"}]`}</code></span>
+            <span><strong>faqs</strong>: JSON array e.g. <code>{`[{"question":"Is organic?","answer":"Yes."}]`}</code></span>
           </div>
         </div>
 

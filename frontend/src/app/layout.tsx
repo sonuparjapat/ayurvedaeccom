@@ -8,7 +8,8 @@ import { AuthProvider } from "@/context/auth-context";
 import { AuthSheet } from "@/components/auth/AuthSheet";
 import PageTracker from "@/components/analytics/PageTracker";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { CompareBar } from "@/components/compare/CompareBar";
+import { CompareBar } from "@/components/compare/CompareBar"
+import { AyushDisclaimer } from "@/components/layout/AyushDisclaimer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -110,6 +111,7 @@ export default function RootLayout({
           className={`${inter.variable} font-sans antialiased bg-background text-foreground relative z-0`}
         >
           <PageTracker />
+          <AyushDisclaimer />
           <ErrorBoundary>
           {children}
           </ErrorBoundary>

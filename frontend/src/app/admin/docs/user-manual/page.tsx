@@ -5,7 +5,7 @@ import {
   BookOpen, ShoppingCart, Package, Users, BarChart3, Tag, Zap, Image,
   MessageSquare, Bell, Wallet, Star, MapPin, CreditCard, Truck,
   Settings, Shield, Search, Heart, RotateCcw, Download, ChevronRight,
-  CheckCircle, AlertCircle, Info, Printer, ExternalLink
+  CheckCircle, AlertCircle, Info, Printer, ExternalLink, FileText, XCircle
 } from 'lucide-react'
 
 /* ═══════════════════════════════════════════════════
@@ -39,6 +39,8 @@ const SECTIONS = [
   { id: 'admin-visitors',   label: 'Admin: Visitors',        icon: BarChart3 },
   { id: 'admin-settings',   label: 'Admin: Settings',        icon: Settings },
   { id: 'admin-pincodes',   label: 'Admin: Pincodes',        icon: MapPin },
+  { id: 'admin-tracking',   label: 'Admin: Shipment Tracking', icon: Truck },
+  { id: 'admin-gst',        label: 'Admin: GST Reports',       icon: FileText },
   { id: 'mobile-app',      label: 'Mobile App',              icon: Bell },
   { id: 'order-flow',      label: 'Order Status Guide',      icon: CheckCircle },
 ]
@@ -513,6 +515,7 @@ export default function UserManualPage() {
                   ['SKU', 'Stock Keeping Unit — your internal product code', 'A unique reference code for inventory management (e.g., TRP-250-ORG). Useful for warehouse operations, bulk imports, and matching with your supplier catalog.'],
                   ['Barcode', 'Product barcode number (EAN/UPC)', 'For scanning with barcode readers in warehouse/fulfillment. Not shown to customers. Leave empty if you do not use barcodes.'],
                   ['Weight (grams)', 'Net weight of the product', 'Shows on the product page as product information. Used for shipping cost calculation if you charge by weight. Important for compliance (net weight must be displayed for food products).'],
+                  ['Length / Width / Height (cm)', 'Physical dimensions of the product package', 'Shows as shipping dimensions on the product detail page (e.g., "10 × 8 × 12 cm"). Used by logistics partners for volumetric weight calculations. Helps customers understand the package size. All three are optional — fill in all or leave all empty.'],
                   ['Low Stock Threshold', 'Alert number — notify when stock drops below this', 'When inventory falls below this number, the product appears in Admin → Stock Alerts. Set to 10 if you want to be warned when only 10 units remain so you can reorder from your supplier.'],
                   ['Tags', 'Comma-separated labels (e.g., "bestseller, new, organic")', 'Tags appear as small badges on product cards. Customers can also find products by searching for tags. Use tags to highlight product attributes.'],
                   ['Featured', 'Toggle on/off', 'Featured products appear in the "Featured Products" section on the homepage. Turn this on for products you want to promote prominently. Only a limited number should be featured at a time to keep the homepage curated.'],
@@ -536,6 +539,11 @@ export default function UserManualPage() {
                   ['Min Order Qty', 'Minimum quantity per order (default: 1)', 'Prevents customers from ordering too few. Set to 2 or more for bulk-only products (e.g., "minimum 3 packs per order"). Cart will reject quantities below this.'],
                   ['Max Order Qty', 'Maximum quantity per order (default: 100)', 'Prevents stock hoarding. Set to a reasonable limit (e.g., 10) if you want to ensure fair distribution. Cart will reject quantities above this.'],
                   ['Is Returnable', 'Toggle: can this product be returned?', 'When OFF, customers cannot request a return for this product after delivery. Essential for food items, herbs, opened supplements, and perishable goods that cannot be resold.'],
+                  ['Return Window (days)', 'How many days after delivery to allow returns (default: 7)', 'Shown on the product page as "7-Day Returns". Set to a lower number (e.g., 3) for perishables or a higher number (e.g., 30) for high-value items. Only applies when Is Returnable is ON.'],
+                  ['Replacement Available', 'Toggle: is replacement available (in addition to return/refund)?', 'When ON, the product page shows "Returns & Replacement". Useful for damaged-goods scenarios where you offer a replacement product instead of a refund.'],
+                  ['Safety Tags', 'Certification/compliance badges (e.g., Vegan, Gluten Free, Organic)', 'Shows as green badge chips on the product page in a "Safety & Certifications" row. Use for claims like "Vegan", "Gluten Free", "Lab Tested", "No Added Sugar". Enter each tag as a separate line — they render as individual badges.'],
+                  ['FAQs', 'Frequently Asked Questions for this product', 'Shows as a collapsible FAQ accordion in the Description tab on the product page. Add 3-5 common questions customers ask about this product (dosage, ingredients, suitability, etc.). Improves SEO and reduces support tickets.'],
+                  ['Meta Keywords', 'Comma-separated SEO keyword phrases', 'Used in the HTML meta keywords tag for search engine indexing. While Google largely ignores meta keywords today, they help with site search and some analytics platforms. Example: "triphala, organic ayurveda, digestion supplement".'],
                   ['Sort Order', 'Display position number (0, 1, 2...)', 'Controls product ordering in listings. Lower numbers appear first. Products with sort_order=0 show before sort_order=5. Leave at 0 for default ordering.'],
                   ['Highlights', 'Key product features (bullet points)', 'Shows as a quick summary section on the product page. List 3-5 key features customers care about (e.g., "100% Organic", "Lab Tested", "No Preservatives"). Easier to scan than the long description.'],
                   ['Ingredients', 'Complete ingredient list', 'Mandatory for Ayurvedic and food products. Shows in a dedicated "Ingredients" section on the product page. Customers check this for allergies and dietary preferences.'],
@@ -1115,6 +1123,67 @@ export default function UserManualPage() {
           <InfoBox type="info">Setting a pincode to Inactive (instead of deleting it) is useful for temporary delivery suspensions. When the issue is resolved, just toggle it back to Active — no need to re-enter all the data.</InfoBox>
         </Section>
 
+        {/* ═══ SHIPMENT TRACKING ═══ */}
+        <Section id="admin-tracking" title="Admin: Shipment Tracking" icon={Truck} color="#0891b2">
+          <p className="text-sm text-gray-600 leading-relaxed mb-3">
+            The Shipment Tracking panel (<strong>Sidebar → Logistics → Shipment Tracking</strong>) gives a live view of all in-transit orders and lets you build a detailed tracking timeline for each shipment. It works manually today (admin adds events) and will auto-populate from courier webhooks (Shiprocket / Delhivery) when integrated.
+          </p>
+          <InfoBox type="info">
+            <strong>Webhook URL for couriers:</strong> The card at the top of the tracking page shows your unique webhook URL (<code>/api/courier/webhook/shiprocket</code>). Paste this URL into your Shiprocket or Delhivery dashboard so they push live status updates automatically.
+          </InfoBox>
+          <Table
+            headers={['Action', 'How to do it', 'Effect']}
+            rows={[
+              ['Mark an order as Shipped', 'Admin: Orders → find order → click Truck icon → choose courier, enter AWB / tracking number, set EDD', 'Order status → Shipped. Tracking URL auto-generated. Customer & mobile app get push notification + email.'],
+              ['Add a tracking event', 'Tracking page → find order → View Events → Add Event → choose preset or type custom', 'Event stored in DB. Customer sees it instantly in their order timeline on web and mobile.'],
+              ['View in-transit orders', 'Tracking page → table shows all orders with status = Shipped', 'Quick overview with courier name, AWB, last event, EDD.'],
+              ['Preset events', 'Manifested, In Transit, Out for Delivery, Delivery Attempted, Delivered, RTO Initiated, RTO Delivered', 'Each preset triggers the right order-status change and push notification automatically.'],
+              ['Out for Delivery event', 'Add event → select OUT_FOR_DELIVERY', 'Order column out_for_delivery_at stamped. Customer gets "Out for Delivery!" push.'],
+              ['Delivery Attempted event', 'Add event → select DELIVERY_ATTEMPTED', 'delivery_attempts counter incremented. Customer gets "Delivery Attempted" push.'],
+              ['RTO Initiated event', 'Add event → select RTO_INITIATED', 'rto_initiated_at stamped. Order flagged for return-to-origin tracking.'],
+            ]}
+          />
+          <InfoBox type="tip">
+            <strong>Testing without a courier:</strong> Use <strong>Add Event</strong> on the tracking page to manually add any status. This lets you walk through the full customer experience (they see the timeline on web + mobile in real time) before you have a real courier integration.
+          </InfoBox>
+        </Section>
+
+        {/* ═══ GST REPORTS ═══ */}
+        <Section id="admin-gst" title="Admin: GST Reports & Compliance" icon={FileText} color="#dc2626">
+          <p className="text-sm text-gray-600 leading-relaxed mb-3">
+            The GST module (<strong>Sidebar → Compliance → GST Reports</strong>) handles all Indian GST record-keeping and GSTR-1 export so you can file returns with the government portal (gst.gov.in) each month. Data is pulled directly from your existing invoices — nothing extra to enter.
+          </p>
+          <InfoBox type="info">
+            <strong>Filing deadline:</strong> GSTR-1 (outward supplies) must be filed by the <strong>11th of the following month</strong>. E.g., July invoices → file by August 11th.
+          </InfoBox>
+          <Table
+            headers={['Feature', 'Location', 'What it does']}
+            rows={[
+              ['GST Dashboard', 'GST Reports → Dashboard tab', 'Financial-year summary (Apr–Mar): total taxable value, CGST, SGST, IGST, invoices count. Monthly breakdown table + HSN-wise summary.'],
+              ['GSTR-1 Summary', 'GST Reports → GSTR-1 tab', 'Date-range filter. Lists all B2C (consumer) invoices with HSN, rate, CGST/SGST/IGST amounts — ready for review before export.'],
+              ['Export invoices CSV', 'GSTR-1 → set dates → Type: Invoices → Download', 'Downloads invoice-wise CSV for upload to gst.gov.in B2C (Others) section.'],
+              ['Export HSN summary CSV', 'GSTR-1 → set dates → Type: HSN Summary → Download', 'Downloads HSN-wise Table 12 CSV required under GSTR-1.'],
+              ['Void an invoice', 'Invoices page → red ⊗ icon → enter reason → Confirm Void', 'Marks invoice is_voided=true. Auto-generates credit note number (CN-INV-XXXX). The invoice is NEVER deleted — Indian GST law requires sequential numbering to be preserved.'],
+            ]}
+          />
+          <InfoBox type="warning">
+            <strong>Never delete invoices.</strong> Indian GST law requires all invoice numbers to remain in sequence and on record. If an invoice was issued in error, use the <strong>Void</strong> function — it marks the invoice void and creates a credit note reference. Voided invoices are excluded from GSTR-1 exports automatically.
+          </InfoBox>
+          <Table
+            headers={['Tax type', 'When applied', 'Split']}
+            rows={[
+              ['CGST + SGST', 'Customer and your business are in the same state', '50% each of the GST rate (e.g., 18% GST = 9% CGST + 9% SGST)'],
+              ['IGST', 'Customer is in a different state', '100% of the GST rate (e.g., 18% GST = 18% IGST)'],
+            ]}
+          />
+          <InfoBox type="info">
+            <strong>B2B Buyer GSTIN on invoices:</strong> If an order has a buyer GSTIN recorded (from the checkout or order details), it is automatically shown on the invoice PDF in the billing address section. This makes the invoice valid for the buyer to claim Input Tax Credit (ITC). The is_igst flag is also stamped on the order at invoice generation time for accurate GSTR-1 categorisation.
+          </InfoBox>
+          <InfoBox type="tip">
+            <strong>Filing workflow:</strong> (1) Go to GST Reports → GSTR-1 → set month range. (2) Review the summary. (3) Export both CSVs (Invoices + HSN Summary). (4) Log in to gst.gov.in → File GSTR-1 → upload CSVs. (5) Submit before the 11th.
+          </InfoBox>
+        </Section>
+
         {/* ═══ 17. MOBILE APP ═══ */}
         <Section id="mobile-app" title="Mobile App" icon={Bell} color="#7c3aed">
           <p className="text-sm text-gray-600 leading-relaxed">The Oroganix mobile app (React Native / Expo) provides the full shopping experience on Android and iOS.</p>
@@ -1123,7 +1192,7 @@ export default function UserManualPage() {
             rows={[
               ['Home', 'Featured products, categories, banners, flash sale countdown.'],
               ['Products', 'Browse all products with search and category filter. Pull down on the list to refresh and load the latest products instantly.'],
-              ['Product Detail', 'Full product info, variants, add to cart, wishlist, reviews, Q&A tab. Tap any product image to open a full-screen zoom viewer (pinch to zoom on iOS). Tap the Share icon in the top bar to share the product via any installed app (WhatsApp, email, etc.).'],
+              ['Product Detail', 'Full product info — price, weight, dimensions (L×W×H cm), variants, safety certification badges, video link, FSSAI badge, COA/lab report link, return policy. Description tab shows full text, specifications table, and FAQs accordion. Reviews and Q&A in separate tabs. Tap any product image for full-screen zoom viewer. Tap Share to share via WhatsApp, email, etc.'],
               ['Cart', 'View cart, adjust quantities, proceed to checkout.'],
               ['Checkout', 'Address, coupon, wallet credits, loyalty points redemption (1pt = ₹0.10), payment via Razorpay. Wallet and loyalty discounts are shown in the price breakdown and deducted from the total.'],
               ['Orders', 'List of all orders with status. Tap to see full tracking timeline, cancel, return, re-order, download invoice (PDF), retry payment for unpaid online orders, and tap "Track" to open the courier website (Delhivery, BlueDart, DTDC, etc.). Tap "Chat" to open a support ticket.'],
@@ -1146,6 +1215,12 @@ export default function UserManualPage() {
           <InfoBox type="tip">After logging in, the <strong>top bar shows your default delivery address</strong> (city + pincode) below the logo. Tap it to jump straight to the Addresses section in your Account. If no address is saved, it shows "Select address ›".</InfoBox>
           <InfoBox type="tip">During checkout, if you have <strong>wallet credits</strong> or <strong>loyalty points</strong>, the app shows Apply/Redeem cards. Tap <strong>Apply</strong> to use wallet credits or <strong>Redeem</strong> to convert loyalty points (1 point = ₹0.10). Both discounts appear in the price breakdown. Tap <strong>Remove</strong> to undo.</InfoBox>
           <InfoBox type="info">If the Featured Products section shows a <strong>"Server is starting up"</strong> message, the backend server is on a free hosting plan and takes a moment to wake up. The app <strong>automatically retries up to 3 times</strong> — you will see "Server warming up (1/3)" below the skeleton cards. You can also tap <strong>Retry</strong> to reload manually at any time.</InfoBox>
+          <InfoBox type="tip">
+            <strong>First-launch permissions:</strong> On the very first app open, a full-screen <strong>Permissions</strong> screen appears before the home page. It explains why each permission is needed and asks for: <strong>Order Notifications</strong> (so you never miss a delivery update), <strong>Camera</strong> (for profile photo / returns), and <strong>Photo Library</strong> (for reviews and profile picture). Tap <strong>Allow Permissions</strong> to grant them one by one, or <strong>Skip for Now</strong> to proceed without. If any permission is denied, the Done screen shows an <strong>Open Settings</strong> button to enable it later. This screen only appears once — ever.
+          </InfoBox>
+          <InfoBox type="info">
+            <strong>Order tracking timeline (mobile):</strong> In the Order Detail screen, a live shipment timeline shows every event (Manifested → In Transit → Out for Delivery → Delivered) with location, timestamp, and description. If a delivery was attempted but failed, the attempt count is shown. If the order is being returned (RTO), a red banner appears. The expected delivery date and a "Track on courier website" link are also shown.
+          </InfoBox>
         </Section>
 
         {/* ═══ 18. ORDER STATUS GUIDE ═══ */}

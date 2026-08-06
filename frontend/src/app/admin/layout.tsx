@@ -39,6 +39,8 @@ import {
   Clock,
   AlertCircle,
   Shield,
+  Truck,
+  FileText,
 } from 'lucide-react'
 import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
@@ -163,6 +165,8 @@ export default function AdminLayout({
     { label: 'Push Notifications', href: '/admin/push-notifications', emoji: '🔔' },
     { label: 'Export Data', href: '/admin/export', emoji: '📤' },
     { label: 'Customer Segments', href: '/admin/segments', emoji: '🎯' },
+    { label: 'Shipment Tracking', href: '/admin/tracking', emoji: '🚚' },
+    { label: 'GST Reports', href: '/admin/gst', emoji: '📋' },
   ]
 
 
@@ -360,9 +364,17 @@ export default function AdminLayout({
             Visitors
           </MenuItem>
 
+          <MenuItem href="/admin/reports" icon={<FileText size={18} />} perm="analytics.view">
+            Sales Reports
+          </MenuItem>
+
           <div className="pt-2 pb-1 px-3">
             <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Marketing</p>
           </div>
+
+          <MenuItem href="/admin/gift-cards" icon={<Tag size={18} />} perm="products.manage">
+            Gift Cards
+          </MenuItem>
 
           <MenuItem href="/admin/banners" icon={<Image size={18} />} perm="banners.manage">
             Banners
@@ -430,6 +442,22 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/qa" icon={<MessageSquare size={18} />} perm="reviews.manage">
             Q&amp;A Moderation
+          </MenuItem>
+
+          <div className="pt-2 pb-1 px-3">
+            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Logistics</p>
+          </div>
+
+          <MenuItem href="/admin/tracking" icon={<Truck size={18} />} perm="orders.view">
+            Shipment Tracking
+          </MenuItem>
+
+          <div className="pt-2 pb-1 px-3">
+            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Compliance</p>
+          </div>
+
+          <MenuItem href="/admin/gst" icon={<FileText size={18} />} perm="invoices.view">
+            GST Reports
           </MenuItem>
 
           <div className="pt-2 pb-1 px-3">

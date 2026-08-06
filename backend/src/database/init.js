@@ -503,6 +503,7 @@ await client.query(`
       ['loyalty_redeem_rate',       '0.1',    'number',  'Rupee value of each loyalty point (0.1 = 10 pts = ₹1)'],
       ['loyalty_min_redeem_points', '50',     'number',  'Minimum points required before redemption is allowed'],
       ['loyalty_max_redeem_percent','20',     'number',  'Maximum % of order total that can be paid via loyalty points'],
+      ['max_cod_amount',           '5000',   'number',  'Maximum order value (₹) allowed for Cash on Delivery (0 = unlimited)'],
     ]
     for (const [key, value, type, description] of defaultSettings) {
       await client.query(
@@ -1226,6 +1227,58 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     /* ================= SAFETY TAGS ================= */
     await client.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS safety_tags TEXT[] DEFAULT '{}'`);
 
+    /* ================= GIFT CARDS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS gift_cards (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(20) UNIQUE NOT NULL,
+        amount NUMERIC(10,2) NOT NULL CHECK (amount > 0),
+        balance NUMERIC(10,2) NOT NULL CHECK (balance >= 0),
+        issued_to_email VARCHAR(150),
+        issued_to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        purchased_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        purchased_by_order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        used_at TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_gift_cards_code ON gift_cards(UPPER(code))`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_gift_cards_email ON gift_cards(issued_to_email)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_gift_cards_active ON gift_cards(is_active)`);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS gift_card_uses (
+        id SERIAL PRIMARY KEY,
+        gift_card_id INTEGER NOT NULL REFERENCES gift_cards(id) ON DELETE CASCADE,
+        order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        amount_used NUMERIC(10,2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS gift_card_discount NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS gift_card_code TEXT`);
+
+    /* ================= PUBLIC ORDER TRACKING TOKEN ================= */
+    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_token UUID DEFAULT gen_random_uuid()`);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_tracking_token ON orders(tracking_token)`);
+
+    /* ================= REVIEW HELPFUL VOTING ================= */
+    await client.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS helpful_count INT DEFAULT 0`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS review_helpful_votes (
+        id SERIAL PRIMARY KEY,
+        review_id INTEGER NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(review_id, user_id)
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_review_helpful_review ON review_helpful_votes(review_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_review_helpful_user ON review_helpful_votes(user_id)`);
+
     /* ================= DOSHA QUIZ RESULTS ================= */
     await client.query(`
       CREATE TABLE IF NOT EXISTS quiz_results (
@@ -1467,6 +1520,33 @@ async function runSafeColumnMigrations() {
     `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_branch VARCHAR(100)`,
     // push tokens
     `ALTER TABLE push_tokens ADD COLUMN IF NOT EXISTS device_type VARCHAR(20) DEFAULT 'mobile'`,
+    // shipment tracking extended columns
+    `ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_url VARCHAR(500)`,
+    `ALTER TABLE orders ADD COLUMN IF NOT EXISTS out_for_delivery_at TIMESTAMP`,
+    `ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_attempts INTEGER DEFAULT 0`,
+    `ALTER TABLE orders ADD COLUMN IF NOT EXISTS rto_initiated_at TIMESTAMP`,
+    `ALTER TABLE orders ADD COLUMN IF NOT EXISTS buyer_gstin VARCHAR(20)`,
+    `ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_igst BOOLEAN DEFAULT FALSE`,
+    // invoice void columns (Indian GST compliance - never delete invoices, only void)
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS is_voided BOOLEAN DEFAULT FALSE`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS voided_at TIMESTAMP`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS void_reason VARCHAR(200)`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS credit_note_number VARCHAR(100)`,
+    // shipment_events table (created via migration, safe to re-run)
+    `CREATE TABLE IF NOT EXISTS shipment_events (
+       id SERIAL PRIMARY KEY,
+       order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+       status_code VARCHAR(30) NOT NULL,
+       status_label VARCHAR(100) NOT NULL,
+       description TEXT,
+       location VARCHAR(150),
+       event_time TIMESTAMP NOT NULL DEFAULT NOW(),
+       source VARCHAR(20) NOT NULL DEFAULT 'manual' CHECK (source IN ('manual','webhook','api','system')),
+       raw_payload JSONB,
+       created_at TIMESTAMP DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_shipment_events_order ON shipment_events(order_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_shipment_events_time ON shipment_events(event_time DESC)`,
   ]
   for (const sql of migrations) {
     const c = await pool.connect()

@@ -17,6 +17,9 @@ import { useStore } from '../store'
 import { setupNotificationHandler } from '../utils/pushNotifications'
 import { Colors } from '../constants/theme'
 import { ToastContainer, ToastRef, setToastRef } from '../components/ui/Toast'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
+const PERMS_KEY = 'permissions_requested_v1'
 
 function usePushDeepLink() {
   useEffect(() => {
@@ -73,6 +76,14 @@ function Inner() {
     }
   }, [authOpen, bootstrapped])
 
+  // First-launch permission priming: show once, never again
+  useEffect(() => {
+    if (!bootstrapped) return
+    AsyncStorage.getItem(PERMS_KEY).then(val => {
+      if (!val) router.push('/permissions' as any)
+    })
+  }, [bootstrapped])
+
   if (!fontsLoaded || !bootstrapped) {
     return (
       <View style={s.splash}>
@@ -103,6 +114,7 @@ function Inner() {
       <Stack.Screen name="account/subscriptions" options={{ presentation: 'card' }} />
       <Stack.Screen name="quiz/index" options={{ presentation: 'card', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="onboarding/index" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
+      <Stack.Screen name="permissions/index" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
       <Stack.Screen name="settings/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />
       <Stack.Screen name="deals/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />
       <Stack.Screen name="compare/index" options={{ presentation: 'card', animation: 'slide_from_bottom' }} />

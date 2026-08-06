@@ -104,6 +104,7 @@ export default function AdminProductForm({
     status: 'draft',
     meta_title: '',
     meta_description: '',
+    meta_keywords: '',
     images: [],
     hsn_code: '',
     cess_percent: 0,
@@ -111,6 +112,9 @@ export default function AdminProductForm({
     is_featured: false,
     is_bestseller: false,
     weight_grams: '',
+    length_cm: '',
+    width_cm: '',
+    height_cm: '',
     low_stock_threshold: 10,
     specifications: '[]',
     product_type: 'simple',
@@ -655,15 +659,6 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
           />
 
           <Input
-            label="Weight (grams) — for shipping calculation"
-            type="number"
-            value={form.weight_grams}
-            readOnly={isView}
-            placeholder="e.g. 500"
-            onChange={(v: string) => setForm({ ...form, weight_grams: v })}
-          />
-
-          <Input
             label="Low Stock Alert Threshold — notify when stock drops below"
             type="number"
             value={form.low_stock_threshold}
@@ -921,9 +916,41 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
       {/* SHIPPING */}
 
-      <Section title="Shipping">
-        <p className="text-xs text-gray-500 mb-2">Controls how shipping charges are calculated for this product.</p>
+      <Section title="Shipping & Dimensions">
+        <p className="text-xs text-gray-500 mb-2">Shipping class and physical dimensions are used for shipping charge calculation and packaging. Weight is required for most courier APIs.</p>
         <Grid>
+          <Input
+            label="Weight (grams) — for shipping calculation"
+            type="number"
+            value={form.weight_grams}
+            readOnly={isView}
+            placeholder="e.g. 500"
+            onChange={(v: string) => setForm({ ...form, weight_grams: v })}
+          />
+          <Input
+            label="Length (cm)"
+            type="number"
+            value={form.length_cm}
+            readOnly={isView}
+            placeholder="e.g. 10"
+            onChange={(v: string) => setForm({ ...form, length_cm: v })}
+          />
+          <Input
+            label="Width (cm)"
+            type="number"
+            value={form.width_cm}
+            readOnly={isView}
+            placeholder="e.g. 8"
+            onChange={(v: string) => setForm({ ...form, width_cm: v })}
+          />
+          <Input
+            label="Height (cm)"
+            type="number"
+            value={form.height_cm}
+            readOnly={isView}
+            placeholder="e.g. 12"
+            onChange={(v: string) => setForm({ ...form, height_cm: v })}
+          />
           <div className="space-y-1">
             <label className="text-sm font-medium">Shipping Class</label>
             <select
@@ -998,9 +1025,12 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
           <Input label="Meta Title (browser tab + Google title)" value={form.meta_title} readOnly={isView}
             placeholder="e.g. Organic Triphala Powder 500g | Oroganix"
             onChange={(v: string) => setForm({ ...form, meta_title: v })} />
-          <Input label="Meta Description (Google search snippet)" value={form.meta_description} readOnly={isView}
+          <Input label="Meta Description (Google search snippet — keep under 160 chars)" value={form.meta_description} readOnly={isView}
             placeholder="e.g. Buy pure organic Triphala powder for digestion. Lab-tested, no preservatives. Free shipping above ₹499."
             onChange={(v: string) => setForm({ ...form, meta_description: v })} />
+          <Input label="Meta Keywords (comma separated — supplementary SEO hints)" value={form.meta_keywords} readOnly={isView}
+            placeholder="e.g. triphala powder, organic triphala, ayurvedic digestion"
+            onChange={(v: string) => setForm({ ...form, meta_keywords: v })} />
           <Input label="Focus Keyword (primary SEO keyword)" value={form.focus_keyword} readOnly={isView}
             placeholder="e.g. organic triphala powder"
             onChange={(v: string) => setForm({ ...form, focus_keyword: v })} />

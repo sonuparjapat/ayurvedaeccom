@@ -66,6 +66,14 @@ export default function AdminOrdersPage() {
   const [trackingResults, setTrackingResults] = useState<any[]>([])
   const [trackingSearching, setTrackingSearching] = useState(false)
 
+  // Shipment events for tracking mode
+  const [shipmentEvents, setShipmentEvents] = useState<any[]>([])
+  const [shipmentInfo, setShipmentInfo] = useState<any>(null)
+  const [eventsLoading, setEventsLoading] = useState(false)
+  const [savingShipment, setSavingShipment] = useState(false)
+
+  const COURIERS = ['Delhivery', 'BlueDart', 'DTDC', 'Shadowfax', 'Ecom Express', 'FedEx', 'XpressBees', 'Shiprocket', 'Ekart', 'India Post', 'Gati', 'Professional', 'SmartR']
+
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [bulkStatus, setBulkStatus] = useState('')
   const [bulkUpdating, setBulkUpdating] = useState(false)
@@ -344,6 +352,8 @@ const openModal = async (m: string, order: any) => {
   setCurrent(order)
   setOpen(true)
   setOrderItems([])
+  setShipmentEvents([])
+  setShipmentInfo(null)
 
   if (m === 'view' || m === 'edit') {
     try {
@@ -364,6 +374,38 @@ const openModal = async (m: string, order: any) => {
       setTimelineLoading(false)
     }
   }
+
+  if (m === 'tracking') {
+    setEventsLoading(true)
+    try {
+      const res = await axios.get(`/admin/orders/${order.id}/shipment-events`)
+      setShipmentEvents(res.data?.events || [])
+      setShipmentInfo(res.data?.shipment || null)
+    } catch {}
+    finally { setEventsLoading(false) }
+  }
+}
+
+const saveShipment = async () => {
+  if (!current?.courier_name || !current?.tracking_number) {
+    return notify.error('Courier name & tracking number required')
+  }
+  setSavingShipment(true)
+  try {
+    await axios.put(`/admin/orders/${current.id}/shipment`, {
+      courier_name: current.courier_name,
+      tracking_number: current.tracking_number,
+      expected_delivery_date: current.expected_delivery_date || undefined,
+    })
+    notify.success('Shipment updated')
+    // Refresh events
+    const res = await axios.get(`/admin/orders/${current.id}/shipment-events`)
+    setShipmentEvents(res.data?.events || [])
+    setShipmentInfo(res.data?.shipment || null)
+    load()
+  } catch (err: any) {
+    notify.error(err?.response?.data?.message || 'Update failed')
+  } finally { setSavingShipment(false) }
 }
 
   const getPaymentBadge = (status: string) => {
@@ -1453,56 +1495,90 @@ const generateInvoice = async () => {
 
       {/* ================= TRACKING ================= */}
 
-     {mode == 'tracking' && current && (
+      {mode === 'tracking' && current && (
+        <div className="space-y-5">
+          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <Truck className="w-5 h-5 text-purple-600" /> Shipment Details
+          </h3>
 
-  <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Courier Partner *</label>
+              <select
+                value={current.courier_name || ''}
+                onChange={e => setCurrent({ ...current, courier_name: e.target.value })}
+                className="w-full border rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+              >
+                <option value="">Select courier…</option>
+                {COURIERS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">AWB / Tracking Number *</label>
+              <input
+                placeholder="Enter AWB number"
+                value={current.tracking_number || ''}
+                onChange={e => setCurrent({ ...current, tracking_number: e.target.value })}
+                className="w-full border rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Expected Delivery Date</label>
+              <input
+                type="date"
+                value={current.expected_delivery_date ? String(current.expected_delivery_date).split('T')[0] : ''}
+                onChange={e => setCurrent({ ...current, expected_delivery_date: e.target.value })}
+                className="w-full border rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+              />
+            </div>
+          </div>
 
-    <h3 className="text-lg font-bold">
-      Add Tracking Details
-    </h3>
+          {shipmentInfo?.tracking_url && (
+            <a href={shipmentInfo.tracking_url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-sm text-blue-600 hover:underline">
+              Track on {shipmentInfo.courier_name} website →
+            </a>
+          )}
 
+          <button
+            onClick={saveShipment}
+            disabled={savingShipment}
+            className="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-indigo-600 text-white font-semibold disabled:opacity-50"
+          >
+            {savingShipment ? 'Saving…' : 'Save Shipment Details'}
+          </button>
 
-    <input
-      placeholder="Courier Name"
-      value={current.courier_name || ''}
-      onChange={(e)=>
-        setCurrent({
-          ...current,
-          courier_name: e.target.value
-        })
-      }
-      className="w-full border px-3 py-2 rounded"
-    />
-
-
-    <input
-      placeholder="Tracking Number"
-      value={current.tracking_number || ''}
-      onChange={(e)=>
-        setCurrent({
-          ...current,
-          tracking_number: e.target.value
-        })
-      }
-      className="w-full border px-3 py-2 rounded"
-    />
-
-
-    <button
-      onClick={saveTracking}
-      disabled={loading}
-       className="
-    w-full py-3 rounded-xl
-    bg-gradient-to-r from-purple-600 to-indigo-600
-    text-white font-semibold
-    disabled:opacity-50
-  "
-    >
-     {loading ? 'Saving...' : 'Save Tracking'}
-    </button>
-
-  </div>
-)}
+          {/* Tracking Events Timeline */}
+          <div className="border-t pt-4">
+            <h4 className="font-semibold text-gray-800 mb-3 text-sm">Tracking Events</h4>
+            {eventsLoading ? (
+              <div className="text-center py-4 text-gray-400 text-sm">Loading events…</div>
+            ) : shipmentEvents.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-4">No events yet. Save shipment details first, then add events from the Tracking page.</p>
+            ) : (
+              <div className="relative">
+                <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-gray-200" />
+                <div className="space-y-3">
+                  {[...shipmentEvents].reverse().map((ev: any) => (
+                    <div key={ev.id} className="relative flex gap-3 pl-8">
+                      <div className="absolute left-1.5 top-1.5 w-3 h-3 rounded-full bg-purple-500 border-2 border-white shadow" />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{ev.status_label}</p>
+                        {ev.description && <p className="text-xs text-gray-500">{ev.description}</p>}
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {ev.location && `📍 ${ev.location} · `}
+                          {new Date(ev.event_time).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          {' · '}<span className="capitalize">{ev.source}</span>
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
 
       {/* ================= TIMELINE ================= */}

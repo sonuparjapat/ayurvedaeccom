@@ -386,7 +386,12 @@ function CheckoutInner() {
   // Loyalty points state (1 point = ₹0.1)
   const [loyaltyBalance, setLoyaltyBalance] = useState(0)
   const [loyaltyApplied, setLoyaltyApplied] = useState(false)
-  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)   
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)
+  // Gift card state
+  const [giftCardInput, setGiftCardInput] = useState('')
+  const [giftCardApplying, setGiftCardApplying] = useState(false)
+  const [appliedGiftCard, setAppliedGiftCard] = useState<{ code: string; discount: number } | null>(null)
+  const [giftCardError, setGiftCardError] = useState('')
   const {fetchCart, loginuserdata, cartdata,cartloading,settings, loading: authLoading}=useAuth()
   const searchParams = useSearchParams()
   const isBuyNow = searchParams.get('mode') === 'buynow'
@@ -520,7 +525,8 @@ const {
   const freeLimit = Number(chargesMap.free_delivery_limit || 500);
   const finalDelivery = cartSubtotal >= freeLimit ? 0 : deliveryCharge;
   const couponDiscount = appliedCoupon?.discount || 0;
-  const finalTotal = Math.max(0, cartSubtotal + cartTax + finalDelivery + platformCharge - couponDiscount - walletDiscount - loyaltyDiscount);
+  const giftCardDiscount = appliedGiftCard?.discount || 0;
+  const finalTotal = Math.max(0, cartSubtotal + cartTax + finalDelivery + platformCharge - couponDiscount - walletDiscount - loyaltyDiscount - giftCardDiscount);
 
   return {
     subtotal: +cartSubtotal.toFixed(2),
@@ -635,7 +641,9 @@ if (!validateShipping()) return;
       walletDiscount: walletDiscount > 0 ? walletDiscount : undefined,
       loyaltyDiscount: loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
       loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount * 10) : undefined,
-      pricing: { subtotal, tax, delivery, platformFee, discount, total }
+      giftCardCode: appliedGiftCard?.code || undefined,
+      giftCardDiscount: giftCardDiscount > 0 ? giftCardDiscount : undefined,
+      pricing: { subtotal, tax, delivery, platformFee, discount, giftCardDiscount, total }
     };
 
     if (isBuyNow && buyNowItem) {
@@ -1284,6 +1292,11 @@ if (checkingAddress) {
                             }}>
                               No extra charges
                             </div>
+                            {total > 5000 && (
+                              <p style={{ fontSize: 11, color: '#dc2626', marginTop: 6 }}>
+                                ⚠️ COD not available for orders above ₹5,000. Please use online payment.
+                              </p>
+                            )}
                           </div>
                           <AnimatePresence>
                             {paymentMethod === 'cod' ? (
@@ -1542,7 +1555,7 @@ if (checkingAddress) {
                           className="cta-btn"
                           style={{ flex: 1 }}
                           onClick={placeOrder}
-                          disabled={processing}
+                          disabled={processing || (paymentMethod === 'cod' && total > 5000)}
                         >
                           {processing ? (
                             <>

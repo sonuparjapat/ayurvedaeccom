@@ -89,7 +89,7 @@ function buildItemsTableHtml(itemsWithTax, isInterState) {
 }
 
 function buildInvoiceHtml({ company, isInterState, invoiceNo, orderId, invoiceDate, paymentMethod,
-  buyerName, buyerEmail, buyerPhone, buyerAddress, placeOfSupply,
+  buyerName, buyerEmail, buyerPhone, buyerAddress, buyerGstin, placeOfSupply,
   items_table, subtotal, totalCgst, totalSgst, totalIgst, discountAmount,
   delivery, platformFee, tax, total }) {
 
@@ -256,6 +256,7 @@ body { font-family:'DM Sans',sans-serif; background:#e8e4df; padding:32px 16px; 
         ${buyerEmail ? `<span class="mono">${buyerEmail}</span>` : ''}
         ${buyerPhone ? `<span class="mono">${buyerPhone}</span>` : ''}
         <span style="display:block;font-size:11px;color:var(--ink-muted);margin-top:3px">${buyerAddress}</span>
+        ${buyerGstin ? `<span style="display:block;font-size:11px;font-family:'DM Mono',monospace;color:#2d5a3d;margin-top:4px;font-weight:600">GSTIN: ${buyerGstin}</span>` : ''}
       </div>
     </div>
     <div class="meta-cell">
@@ -537,6 +538,7 @@ exports.generateInvoice = async (req, res) => {
 
     /* ── build PDF ── */
     const items_table = buildItemsTableHtml(itemsWithTax, isInterState)
+    const buyerGstin = order.buyer_gstin || null
     const finalHtml = buildInvoiceHtml({
       company, isInterState, invoiceNo, orderId, items_table,
       invoiceDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
@@ -545,6 +547,7 @@ exports.generateInvoice = async (req, res) => {
       buyerEmail: address.email || '',
       buyerPhone: address.phone || '',
       buyerAddress,
+      buyerGstin,
       placeOfSupply: address.state || '',
       subtotal, totalCgst, totalSgst, totalIgst,
       discountAmount, delivery, platformFee, tax, total
@@ -564,7 +567,10 @@ exports.generateInvoice = async (req, res) => {
     const pdfUrl = await uploadInvoiceToAWS(pdfBuffer, invoiceNo)
 
     await client.query(`UPDATE invoices SET pdf_url=$1 WHERE id=$2`, [pdfUrl, invoiceId])
-    await client.query(`UPDATE orders SET is_invoiced=true, invoice_no=$1, invoice_date=NOW() WHERE id=$2`, [invoiceNo, orderId])
+    await client.query(
+      `UPDATE orders SET is_invoiced=true, invoice_no=$1, invoice_date=NOW(), is_igst=$2 WHERE id=$3`,
+      [invoiceNo, isInterState, orderId]
+    )
 
     await client.query("COMMIT")
 
@@ -591,7 +597,7 @@ exports.downloadInvoice = async (req, res) => {
     const invRes = await pool.query(`
       SELECT i.*,
              o.id AS ord_id, o.shipping_address, o.payment_method AS ord_payment_method,
-             o.delivery_charge, o.platform_fee,
+             o.delivery_charge, o.platform_fee, o.buyer_gstin,
              u.name AS user_name, u.email AS user_email, u.phone AS user_phone
       FROM invoices i
       JOIN orders o ON o.id = i.order_id
@@ -660,6 +666,7 @@ exports.downloadInvoice = async (req, res) => {
       buyerEmail: address.email || inv.user_email || '',
       buyerPhone: address.phone || inv.user_phone || '',
       buyerAddress,
+      buyerGstin: inv.buyer_gstin || null,
       placeOfSupply: inv.place_of_supply || address.state || '',
       subtotal: fmt2(inv.subtotal),
       totalCgst, totalSgst, totalIgst,

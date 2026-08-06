@@ -399,6 +399,26 @@ export default function OrderDetailPage() {
                       Track Shipment <ExternalLink size={11} />
                     </a>
                   )}
+                  {order?.tracking_token && (
+                    <button
+                      onClick={() => {
+                        const url = `${window.location.origin}/track/${order.tracking_token}`
+                        if (navigator.share) {
+                          navigator.share({ title: `Order #${order.invoice_no}`, url })
+                        } else {
+                          navigator.clipboard.writeText(url)
+                          alert('Tracking link copied to clipboard!')
+                        }
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        background: 'rgba(255,255,255,0.1)', color: '#a7f3d0', fontSize: 12, fontWeight: 600,
+                        padding: '8px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer'
+                      }}
+                    >
+                      🔗 Share Tracking
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

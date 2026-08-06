@@ -17,10 +17,13 @@ import {
   Package,
   Filter,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  XCircle,
+  AlertTriangle,
 } from 'lucide-react'
 
 import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 
 import DynamicTable from '@/components/table/table'
 import AppModal from '@/components/modal/AppModal'
@@ -43,6 +46,29 @@ export default function AdminInvoicesPage() {
 
   const [open, setOpen] = useState(false)
   const [current, setCurrent] = useState<any>(null)
+
+  // Void invoice state
+  const [voidOpen, setVoidOpen] = useState(false)
+  const [voidTarget, setVoidTarget] = useState<any>(null)
+  const [voidReason, setVoidReason] = useState('')
+  const [voiding, setVoiding] = useState(false)
+
+  const handleVoid = async () => {
+    if (!voidReason || voidReason.trim().length < 5) return toast.error('Please enter a reason (min 5 characters)')
+    setVoiding(true)
+    try {
+      await axios.post(`/admin/invoices/${voidTarget.id}/void`, { reason: voidReason })
+      toast.success(`Invoice ${voidTarget.invoice_no} voided. Credit note issued.`)
+      setVoidOpen(false)
+      setVoidReason('')
+      setVoidTarget(null)
+      load()
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Void failed')
+    } finally {
+      setVoiding(false)
+    }
+  }
 
 
   /* LOAD */
@@ -202,32 +228,34 @@ export default function AdminInvoicesPage() {
 
 
     action: (
-
       <div className="flex gap-2 justify-center">
-
         <button
-          onClick={() => {
-            setCurrent(i)
-            setOpen(true)
-          }}
+          onClick={() => { setCurrent(i); setOpen(true) }}
           className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
           title="View Details"
         >
           <Eye size={16} />
         </button>
-
-
         <a
-           href={i?.pdf_url}
-          target="_blank"
+          href={i?.pdf_url} target="_blank"
           className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
           title="Download PDF"
         >
           <Download size={16} />
         </a>
-
+        {!i.is_voided && (
+          <button
+            onClick={() => { setVoidTarget(i); setVoidOpen(true) }}
+            className="p-2 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+            title="Void Invoice"
+          >
+            <XCircle size={16} />
+          </button>
+        )}
+        {i.is_voided && (
+          <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-semibold">VOIDED</span>
+        )}
       </div>
-
     )
 
   }))
@@ -363,7 +391,47 @@ export default function AdminInvoicesPage() {
       )}
 
 
-      {/* MODAL */}
+      {/* VOID MODAL */}
+      <AppModal open={voidOpen} onClose={() => { setVoidOpen(false); setVoidReason('') }} title="Void Invoice">
+        {voidTarget && (
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-red-800">This cannot be undone</p>
+                <p className="text-sm text-red-700 mt-1">
+                  Invoice <strong>{voidTarget.invoice_no}</strong> will be marked as voided. A credit note number will be issued.
+                  The original invoice number is preserved (as required by Indian GST law — invoice numbers cannot be deleted or reused).
+                </p>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Reason for voiding *</label>
+              <textarea
+                value={voidReason}
+                onChange={e => setVoidReason(e.target.value)}
+                rows={3}
+                placeholder="e.g. Order cancelled by customer, duplicate invoice generated, incorrect amount…"
+                className="w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-red-400 outline-none resize-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">Min 5 characters required</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setVoidOpen(false); setVoidReason('') }}
+                className="flex-1 px-4 py-2.5 border rounded-xl text-sm font-medium hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={handleVoid} disabled={voiding || voidReason.trim().length < 5}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                <XCircle size={16} />
+                {voiding ? 'Voiding…' : 'Void Invoice'}
+              </button>
+            </div>
+          </div>
+        )}
+      </AppModal>
+
+      {/* INVOICE DETAIL MODAL */}
 
       <AppModal
         open={open}
