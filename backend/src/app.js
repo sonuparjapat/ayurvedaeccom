@@ -38,6 +38,7 @@ const notificationsRoutes = require('./modules/notifications/notifications.route
 const faqRoutes = require('./modules/faq/faq.routes');
 const quizRoutes = require('./modules/quiz/quiz.routes');
 const giftCardRoutes = require('./modules/giftcards/giftcard.routes');
+const gamesRoutes = require('./modules/games/games.routes');
 
 const app = express();
 
@@ -162,6 +163,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/faq', faqRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/gift-cards', giftCardRoutes);
+app.use('/api/games', gamesRoutes);
 app.use('/api/admin/gst', require('./modules/gst/gst.routes'));
 
 

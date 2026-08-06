@@ -41,6 +41,11 @@ import {
   Shield,
   Truck,
   FileText,
+  Brain,
+  Gamepad2,
+  Gift,
+  Trophy,
+  Sparkles,
 } from 'lucide-react'
 import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
@@ -167,6 +172,11 @@ export default function AdminLayout({
     { label: 'Customer Segments', href: '/admin/segments', emoji: '🎯' },
     { label: 'Shipment Tracking', href: '/admin/tracking', emoji: '🚚' },
     { label: 'GST Reports', href: '/admin/gst', emoji: '📋' },
+    { label: 'Quiz Manager', href: '/admin/quiz', emoji: '🧠' },
+    { label: 'Games & Rewards', href: '/admin/games', emoji: '🎮' },
+    { label: 'Reward Logs', href: '/admin/reward-logs', emoji: '🏆' },
+    { label: 'Gift Cards', href: '/admin/gift-cards', emoji: '🎁' },
+    { label: 'Sales Reports', href: '/admin/reports', emoji: '📊' },
   ]
 
 
@@ -231,23 +241,19 @@ export default function AdminLayout({
       {/* ================= SIDEBAR ================= */}
 
       <aside
-
         className={`
-
-          w-64 bg-slate-900 text-white flex flex-col shrink-0
+          w-64 text-white flex flex-col shrink-0
           fixed md:sticky md:top-0 inset-y-0 left-0 z-50 h-screen
-
           transform transition-transform duration-300
-
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
           md:translate-x-0
-
         `}
+        style={{ background: 'linear-gradient(180deg, #0f1e14 0%, #162b1c 40%, #1a3020 100%)' }}
       >
 
         {/* Logo */}
 
-        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
+        <div className="h-16 flex items-center justify-between px-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
 
           <Link href="/admin/dashboard" className="flex items-center gap-3">
             <div style={{ position: 'relative', overflow: 'hidden', width: 170, height: 48, borderRadius: 8, background: '#fff', flexShrink: 0 }}>
@@ -368,8 +374,10 @@ export default function AdminLayout({
             Sales Reports
           </MenuItem>
 
-          <div className="pt-2 pb-1 px-3">
-            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Marketing</p>
+          <div className="pt-3 pb-1 px-3 flex items-center gap-2">
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+            <p className="text-[10px] uppercase font-bold tracking-widest" style={{ color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>Marketing</p>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
           </div>
 
           <MenuItem href="/admin/gift-cards" icon={<Tag size={18} />} perm="products.manage">
@@ -400,8 +408,10 @@ export default function AdminLayout({
             Blog
           </MenuItem>
 
-          <div className="pt-2 pb-1 px-3">
-            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Engagement</p>
+          <div className="pt-3 pb-1 px-3 flex items-center gap-2">
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+            <p className="text-[10px] uppercase font-bold tracking-widest" style={{ color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>Engagement</p>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
           </div>
 
           <MenuItem href="/admin/flash-sales" icon={<Zap size={18} />} perm="flash_sales.manage">
@@ -444,48 +454,72 @@ export default function AdminLayout({
             Q&amp;A Moderation
           </MenuItem>
 
-          <div className="pt-2 pb-1 px-3">
-            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Logistics</p>
+          <MenuItem href="/admin/quiz" icon={<Brain size={18} />} perm="settings.manage">
+            Quiz Manager
+          </MenuItem>
+
+          <MenuItem href="/admin/games" icon={<Gamepad2 size={18} />} perm="settings.manage">
+            Games &amp; Rewards
+          </MenuItem>
+
+          <MenuItem href="/admin/reward-logs" icon={<Trophy size={18} />} perm="analytics.view">
+            Reward Logs
+          </MenuItem>
+
+          <div className="pt-3 pb-1 px-3 flex items-center gap-2">
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+            <p className="text-[10px] uppercase font-bold tracking-widest" style={{ color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>Logistics</p>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
           </div>
 
           <MenuItem href="/admin/tracking" icon={<Truck size={18} />} perm="orders.view">
             Shipment Tracking
           </MenuItem>
 
-          <div className="pt-2 pb-1 px-3">
-            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Compliance</p>
+          <div className="pt-3 pb-1 px-3 flex items-center gap-2">
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+            <p className="text-[10px] uppercase font-bold tracking-widest" style={{ color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>Compliance</p>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
           </div>
 
           <MenuItem href="/admin/gst" icon={<FileText size={18} />} perm="invoices.view">
             GST Reports
           </MenuItem>
 
-          <div className="pt-2 pb-1 px-3">
-            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Reports</p>
+          <div className="pt-3 pb-1 px-3 flex items-center gap-2">
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+            <p className="text-[10px] uppercase font-bold tracking-widest" style={{ color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>Reports</p>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
           </div>
 
           <MenuItem href="/admin/export" icon={<Download size={18} />} perm="export.access">
             Export Data
           </MenuItem>
 
-          <div className="pt-2 pb-1 px-3">
-            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Support</p>
+          <div className="pt-3 pb-1 px-3 flex items-center gap-2">
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+            <p className="text-[10px] uppercase font-bold tracking-widest" style={{ color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>Support</p>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
           </div>
 
           <MenuItem href="/admin/support" icon={<MessageSquare size={18} />} perm="support.manage">
             Tickets
           </MenuItem>
 
-          <div className="pt-2 pb-1 px-3">
-            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Content</p>
+          <div className="pt-3 pb-1 px-3 flex items-center gap-2">
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+            <p className="text-[10px] uppercase font-bold tracking-widest" style={{ color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>Content</p>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
           </div>
 
           <MenuItem href="/admin/about" icon={<BookOpen size={18} />} perm="settings.manage">
             About Page
           </MenuItem>
 
-          <div className="pt-2 pb-1 px-3">
-            <p className="text-xs uppercase text-slate-500 font-semibold tracking-widest">Documentation</p>
+          <div className="pt-3 pb-1 px-3 flex items-center gap-2">
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+            <p className="text-[10px] uppercase font-bold tracking-widest" style={{ color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>Docs</p>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
           </div>
 
           <MenuItem href="/admin/docs/user-manual" icon={<BookOpen size={18} />}>
@@ -505,7 +539,7 @@ export default function AdminLayout({
 
         {/* Logout */}
 
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
 
           <button
             onClick={logoutfun}
@@ -686,16 +720,25 @@ function MenuItem({ href, icon, children, badge, perm, superAdminOnly }: any) {
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 px-3 py-2 rounded-md transition text-sm ${
-        isActive
-          ? 'bg-emerald-700 text-white font-semibold'
-          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-      }`}
+      style={isActive ? {
+        display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px',
+        borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#ffffff',
+        background: 'linear-gradient(90deg, rgba(52,211,153,0.22) 0%, rgba(16,185,129,0.1) 100%)',
+        borderLeft: '3px solid #34d399', textDecoration: 'none',
+        boxShadow: '0 0 12px rgba(52,211,153,0.08)',
+      } : {
+        display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px',
+        borderRadius: 8, fontSize: 13, fontWeight: 400, color: 'rgba(255,255,255,0.6)',
+        background: 'transparent', borderLeft: '3px solid transparent',
+        textDecoration: 'none', transition: 'all 0.15s',
+      }}
+      onMouseEnter={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.95)'; (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)' } }}
+      onMouseLeave={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'; (e.currentTarget as HTMLElement).style.background = 'transparent' } }}
     >
-      {icon}
-      <span className="flex-1">{children}</span>
+      <span style={{ opacity: isActive ? 1 : 0.7, display: 'flex', alignItems: 'center' }}>{icon}</span>
+      <span style={{ flex: 1 }}>{children}</span>
       {badge != null && badge > 0 && (
-        <span className="text-[10px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-4.5 text-center leading-none">
+        <span style={{ fontSize: 10, fontWeight: 700, background: '#ef4444', color: '#fff', borderRadius: 20, padding: '1px 6px', minWidth: 18, textAlign: 'center', lineHeight: '16px' }}>
           {badge > 99 ? '99+' : badge}
         </span>
       )}

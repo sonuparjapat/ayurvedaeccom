@@ -41,6 +41,10 @@ const SECTIONS = [
   { id: 'admin-pincodes',   label: 'Admin: Pincodes',        icon: MapPin },
   { id: 'admin-tracking',   label: 'Admin: Shipment Tracking', icon: Truck },
   { id: 'admin-gst',        label: 'Admin: GST Reports',       icon: FileText },
+  { id: 'admin-quiz',       label: 'Admin: Quiz Manager',      icon: Zap },
+  { id: 'admin-games',      label: 'Admin: Games & Rewards',   icon: Star },
+  { id: 'admin-reward-logs',label: 'Admin: Reward Logs',       icon: BarChart3 },
+  { id: 'user-games',       label: 'Customer: Games Hub',      icon: Heart },
   { id: 'mobile-app',      label: 'Mobile App',              icon: Bell },
   { id: 'order-flow',      label: 'Order Status Guide',      icon: CheckCircle },
 ]
