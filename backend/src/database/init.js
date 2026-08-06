@@ -1394,6 +1394,33 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING gin(name gin_trgm_ops)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_products_desc_trgm ON products USING gin(short_description gin_trgm_ops)`);
 
+    /* ================= INVOICE GST COMPLIANCE COLUMNS ================= */
+    await client.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS cgst_amount NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sgst_amount NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS igst_amount NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS place_of_supply VARCHAR(100)`);
+    await client.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_method VARCHAR(30)`);
+    await client.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS seller_gstin VARCHAR(50)`);
+
+    await client.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS hsn_code VARCHAR(30)`);
+    await client.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS unit VARCHAR(20) DEFAULT 'Nos'`);
+    await client.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS gst_percent NUMERIC(5,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS taxable_value NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS cgst_rate NUMERIC(5,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS cgst_amount NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS sgst_rate NUMERIC(5,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS sgst_amount NUMERIC(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS igst_rate NUMERIC(5,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS igst_amount NUMERIC(10,2) DEFAULT 0`);
+
+    /* ================= COMPANY SETTINGS — BANK & FSSAI ================= */
+    await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS fssai_number VARCHAR(30)`);
+    await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100)`);
+    await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_account VARCHAR(40)`);
+    await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_ifsc VARCHAR(20)`);
+    await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_branch VARCHAR(100)`);
+
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

@@ -72,16 +72,12 @@ export default function AdminLayout({
   const [serverStats, setServerStats] = useState<{ connectedUsers: number; cpu: number; memory: number; uptime: number } | null>(null)
   const [statsOpen, setStatsOpen] = useState(false)
 
+  // Fetch bell alert counts once on mount; socket handles subsequent real-time increments
   useEffect(() => {
-    const fetchAlerts = () => {
-      axios.get('/admin/stats').then((r: any) => {
-        const d = r.data
-        setBellAlerts({ pendingOrders: d.pendingOrders || 0, openTickets: d.openTickets || 0, lowStock: d.lowStockItems || 0 })
-      }).catch(() => {})
-    }
-    fetchAlerts()
-    const t = setInterval(fetchAlerts, 30000)
-    return () => clearInterval(t)
+    axios.get('/admin/stats').then((r: any) => {
+      const d = r.data
+      setBellAlerts({ pendingOrders: d.pendingOrders || 0, openTickets: d.openTickets || 0, lowStock: d.lowStockItems || 0 })
+    }).catch(() => {})
   }, [])
 
   // Socket for live server stats

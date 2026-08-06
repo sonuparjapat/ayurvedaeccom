@@ -79,7 +79,6 @@ export default function AnalyticsPage() {
       setData(res.data.data)
 
     } catch (err: any) {
-      console.log(err,"err")
       toast.error(err?.response?.data?.message || "Analytics failed")
     } finally {
       setLoading(false)
@@ -407,7 +406,7 @@ export default function AnalyticsPage() {
             </div>
 
             <button
-              onClick={fetchAnalytics}
+              onClick={() => { fetchAnalytics(); fetchProductPerf(perfSort); fetchFunnel() }}
               className="bg-black text-white px-4 py-2 rounded-lg apply-btn"
             >
               Apply

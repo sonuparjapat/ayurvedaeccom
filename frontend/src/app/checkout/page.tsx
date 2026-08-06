@@ -122,7 +122,7 @@ const GlobalStyles = () => (
 
     /* ── Card header — animated gradient ── */
     .card-header-luxury {
-      padding: 28px 32px;
+      padding: 36px 44px;
       border-bottom: 1px solid var(--border);
       background: linear-gradient(-45deg, #1a1612, #2c2317, #0e2318, #1a1612, #2c2317);
       background-size: 400% 400%;
@@ -158,11 +158,12 @@ const GlobalStyles = () => (
 
     /* ── Payment option ── */
     .pay-option {
-      flex: 1; padding: 28px 20px 24px;
+      width: 100%; padding: 24px 28px;
       border: 1.5px solid var(--border); border-radius: 20px;
-      cursor: pointer; text-align: center;
-      transition: border-color 0.3s, background 0.3s, transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s;
+      cursor: pointer; text-align: left;
+      transition: border-color 0.3s, background 0.3s, transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s;
       background: var(--parchment); position: relative; overflow: hidden;
+      display: flex; align-items: center; gap: 22px;
     }
     .pay-option.selected {
       border-color: var(--gold); background: white; transform: translateY(-4px);
@@ -219,7 +220,7 @@ const GlobalStyles = () => (
 
     /* ── Summary ── */
     .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 14px; color: #666; }
-    .summary-row.total { color: var(--ink); font-size: 20px; font-weight: 700; padding-top: 18px; letter-spacing: -0.01em; }
+    .summary-row.total { color: var(--ink); font-size: 16px; font-weight: 600; padding-top: 18px; letter-spacing: -0.01em; }
     .summary-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 8px 0; }
     .free-badge { background: linear-gradient(135deg, var(--sage), #2d4a2e); color: #a8d5a9; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; }
 
@@ -293,7 +294,14 @@ const GlobalStyles = () => (
     .checkout-nav { position: sticky; top: 0; z-index: 50; background: rgba(253,249,242,0.88); backdrop-filter: blur(24px); border-bottom: 1px solid var(--border); padding: 20px 0; }
 
     /* ── Responsive ── */
-    @media (max-width: 768px) { .card-header-luxury { padding: 22px 24px; } .success-card { padding: 40px 28px; } }
+    @media (max-width: 1100px) {
+      .card-header-luxury { padding: 28px 32px; }
+    }
+    @media (max-width: 768px) {
+      .card-header-luxury { padding: 22px 24px; }
+      .success-card { padding: 40px 28px; }
+      .pay-option { padding: 18px 20px; gap: 16px; }
+    }
 
     /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 6px; }
@@ -911,7 +919,7 @@ if (checkingAddress) {
 
         {/* ─── PROGRESS NAV ─── */}
         <div className="checkout-nav">
-          <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 24px' }}>
+          <div style={{ maxWidth: 1440, margin: '0 auto', padding: '0 48px' }}>
 
             {/* Brand line */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 20 }}>
@@ -939,14 +947,20 @@ if (checkingAddress) {
         </div>
 
         {/* ─── MAIN CONTENT ─── */}
-        <main style={{ flex: 1, maxWidth: 960, margin: '0 auto', width: '100%', padding: '40px 24px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 340px', gap: 28, alignItems: 'start' }}
+        <main style={{ flex: 1, maxWidth: 1440, margin: '0 auto', width: '100%', padding: '52px 48px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 500px', gap: 44, alignItems: 'start' }}
           className="checkout-main-grid"
         >
 
           <style jsx>{`
-            @media (max-width: 900px) {
+            @media (max-width: 1100px) {
               .checkout-main-grid {
                 grid-template-columns: 1fr !important;
+                padding: 32px 24px !important;
+              }
+            }
+            @media (max-width: 600px) {
+              .checkout-main-grid {
+                padding: 20px 16px !important;
               }
             }
           `}</style>
@@ -973,14 +987,14 @@ if (checkingAddress) {
                         </div>
                         <div>
                           <p style={{ fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(201,169,110,0.6)', marginBottom: 2 }}>Step 1 of 2</p>
-                          <h2 className="display-font" style={{ fontSize: 26, fontWeight: 300, color: 'white', letterSpacing: '-0.01em' }}>
+                          <h2 className="display-font" style={{ fontSize: 34, fontWeight: 300, color: 'white', letterSpacing: '-0.01em' }}>
                             Delivery Details
                           </h2>
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ padding: '32px' }}>
+                    <div style={{ padding: '40px' }}>
                       {addresses.length > 0 && (
   <div style={{ marginBottom: 24 }}>
 
@@ -1212,14 +1226,14 @@ if (checkingAddress) {
                         </div>
                         <div>
                           <p style={{ fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(201,169,110,0.6)', marginBottom: 2 }}>Step 2 of 2</p>
-                          <h2 className="display-font" style={{ fontSize: 26, fontWeight: 300, color: 'white', letterSpacing: '-0.01em' }}>
+                          <h2 className="display-font" style={{ fontSize: 34, fontWeight: 300, color: 'white', letterSpacing: '-0.01em' }}>
                             Payment Method
                           </h2>
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ padding: '32px' }}>
+                    <div style={{ padding: '40px' }}>
 
                       {/* Shipping summary chip */}
                       <div style={{ padding: '14px 18px', background: 'var(--parchment)', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 28, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -1235,7 +1249,7 @@ if (checkingAddress) {
 
                       <label className="input-label" style={{ marginBottom: 14, display: 'block' }}>Choose Payment</label>
 
-                      <div style={{ display: 'flex', gap: 14, marginBottom: 32 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 32 }}>
 
                         {/* ── COD ── */}
                         <button
@@ -1243,43 +1257,48 @@ if (checkingAddress) {
                           onClick={() => setPaymentMethod('cod')}
                         >
                           <motion.div
-                            animate={{ scale: paymentMethod === 'cod' ? 1.1 : 1 }}
+                            animate={{ scale: paymentMethod === 'cod' ? 1.06 : 1 }}
                             transition={{ type: 'spring', stiffness: 380, damping: 22 }}
                             style={{
-                              width: 62, height: 62, borderRadius: 18, margin: '0 auto 14px',
+                              width: 72, height: 72, borderRadius: 20, flexShrink: 0,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               background: paymentMethod === 'cod'
                                 ? 'linear-gradient(135deg, #1a4a28, #2d7a3d)'
                                 : 'rgba(0,0,0,0.05)',
                               transition: 'background 0.3s ease',
-                              boxShadow: paymentMethod === 'cod' ? '0 8px 24px rgba(45,90,62,0.45)' : 'none',
+                              boxShadow: paymentMethod === 'cod' ? '0 10px 28px rgba(45,90,62,0.45)' : 'none',
                             }}
                           >
-                            <IndianRupee size={28} style={{ color: paymentMethod === 'cod' ? '#a8d5b0' : '#bbb' }} />
+                            <IndianRupee size={32} style={{ color: paymentMethod === 'cod' ? '#a8d5b0' : '#bbb' }} />
                           </motion.div>
-                          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Cash on Delivery</p>
-                          <p style={{ fontSize: 12, color: '#999', lineHeight: 1.4, marginBottom: 10 }}>Pay when it arrives</p>
-                          <div style={{
-                            display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-                            fontSize: 9.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-                            background: paymentMethod === 'cod' ? 'rgba(45,90,62,0.1)' : 'rgba(0,0,0,0.04)',
-                            border: `1px solid ${paymentMethod === 'cod' ? 'rgba(45,90,62,0.22)' : 'transparent'}`,
-                            color: paymentMethod === 'cod' ? '#2d5a3d' : '#bbb',
-                            transition: 'all 0.3s ease',
-                          }}>
-                            No extra charges
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Cash on Delivery</p>
+                            <p style={{ fontSize: 13, color: '#888', lineHeight: 1.5, marginBottom: 10 }}>Pay conveniently when your order arrives at your doorstep</p>
+                            <div style={{
+                              display: 'inline-block', padding: '4px 12px', borderRadius: 20,
+                              fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                              background: paymentMethod === 'cod' ? 'rgba(45,90,62,0.1)' : 'rgba(0,0,0,0.04)',
+                              border: `1px solid ${paymentMethod === 'cod' ? 'rgba(45,90,62,0.22)' : 'transparent'}`,
+                              color: paymentMethod === 'cod' ? '#2d5a3d' : '#bbb',
+                              transition: 'all 0.3s ease',
+                            }}>
+                              No extra charges
+                            </div>
                           </div>
                           <AnimatePresence>
-                            {paymentMethod === 'cod' && (
+                            {paymentMethod === 'cod' ? (
                               <motion.div
+                                key="check-cod"
                                 initial={{ scale: 0, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0, opacity: 0 }}
                                 transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-                                style={{ position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: '50%', background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(201,169,110,0.5)' }}
+                                style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(201,169,110,0.55)', flexShrink: 0 }}
                               >
-                                <CheckCircle size={13} color="white" />
+                                <CheckCircle size={17} color="white" />
                               </motion.div>
+                            ) : (
+                              <motion.div key="uncheck-cod" style={{ width: 30, height: 30, borderRadius: '50%', border: '2px solid var(--border)', flexShrink: 0 }} />
                             )}
                           </AnimatePresence>
                         </button>
@@ -1290,44 +1309,49 @@ if (checkingAddress) {
                           onClick={() => setPaymentMethod('online')}
                         >
                           <motion.div
-                            animate={{ scale: paymentMethod === 'online' ? 1.1 : 1 }}
+                            animate={{ scale: paymentMethod === 'online' ? 1.06 : 1 }}
                             transition={{ type: 'spring', stiffness: 380, damping: 22 }}
                             style={{
-                              width: 62, height: 62, borderRadius: 18, margin: '0 auto 14px',
+                              width: 72, height: 72, borderRadius: 20, flexShrink: 0,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               background: paymentMethod === 'online'
                                 ? 'linear-gradient(135deg, #1a1a60, #3d2a8a)'
                                 : 'rgba(0,0,0,0.05)',
                               transition: 'background 0.3s ease',
-                              boxShadow: paymentMethod === 'online' ? '0 8px 24px rgba(61,42,138,0.45)' : 'none',
+                              boxShadow: paymentMethod === 'online' ? '0 10px 28px rgba(61,42,138,0.45)' : 'none',
                             }}
                           >
-                            <CreditCard size={28} style={{ color: paymentMethod === 'online' ? '#c4b5fd' : '#bbb' }} />
+                            <CreditCard size={32} style={{ color: paymentMethod === 'online' ? '#c4b5fd' : '#bbb' }} />
                           </motion.div>
-                          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>Online Payment</p>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 6 }}>
-                            {['UPI', 'Cards', 'Net'].map(m => (
-                              <span key={m} style={{
-                                fontSize: 8.5, fontWeight: 700, padding: '2px 6px', borderRadius: 5,
-                                background: paymentMethod === 'online' ? 'rgba(124,58,237,0.1)' : 'rgba(0,0,0,0.05)',
-                                color: paymentMethod === 'online' ? '#7c3aed' : '#bbb',
-                                border: `1px solid ${paymentMethod === 'online' ? 'rgba(124,58,237,0.2)' : 'transparent'}`,
-                                letterSpacing: '0.06em', textTransform: 'uppercase', transition: 'all 0.3s ease',
-                              }}>{m}</span>
-                            ))}
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>Online Payment</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                              {['UPI', 'Cards', 'Net Banking', 'Wallets'].map(m => (
+                                <span key={m} style={{
+                                  fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+                                  background: paymentMethod === 'online' ? 'rgba(124,58,237,0.1)' : 'rgba(0,0,0,0.05)',
+                                  color: paymentMethod === 'online' ? '#7c3aed' : '#bbb',
+                                  border: `1px solid ${paymentMethod === 'online' ? 'rgba(124,58,237,0.2)' : 'transparent'}`,
+                                  letterSpacing: '0.06em', textTransform: 'uppercase', transition: 'all 0.3s ease',
+                                }}>{m}</span>
+                              ))}
+                            </div>
+                            <p style={{ fontSize: 12, color: '#999' }}>Powered by Razorpay · Instant confirmation</p>
                           </div>
-                          <p style={{ fontSize: 11, color: '#999' }}>Powered by Razorpay</p>
                           <AnimatePresence>
-                            {paymentMethod === 'online' && (
+                            {paymentMethod === 'online' ? (
                               <motion.div
+                                key="check-online"
                                 initial={{ scale: 0, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0, opacity: 0 }}
                                 transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-                                style={{ position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: '50%', background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(201,169,110,0.5)' }}
+                                style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(201,169,110,0.55)', flexShrink: 0 }}
                               >
-                                <CheckCircle size={13} color="white" />
+                                <CheckCircle size={17} color="white" />
                               </motion.div>
+                            ) : (
+                              <motion.div key="uncheck-online" style={{ width: 30, height: 30, borderRadius: '50%', border: '2px solid var(--border)', flexShrink: 0 }} />
                             )}
                           </AnimatePresence>
                         </button>
@@ -1481,10 +1505,10 @@ if (checkingAddress) {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⭐</div>
                               <div>
-                                <p style={{ fontSize: 13, fontWeight: 700, color: '#78350f' }}>{loyaltyBalance} Loyalty Points = ₹{(loyaltyBalance * 0.1).toFixed(2)}</p>
+                                <p style={{ fontSize: 13, fontWeight: 700, color: '#78350f' }}>{loyaltyBalance} Loyalty Points = ₹{(loyaltyBalance * (chargesMap.loyalty_redeem_rate || 0.1)).toFixed(2)}</p>
                                 {loyaltyApplied
                                   ? <p style={{ fontSize: 11, color: '#92400e' }}>₹{loyaltyDiscount.toFixed(2)} discount applied</p>
-                                  : <p style={{ fontSize: 11, color: '#b45309' }}>Use points for extra discount (1 pt = ₹0.10)</p>}
+                                  : <p style={{ fontSize: 11, color: '#b45309' }}>Use points for extra discount (1 pt = ₹{Number(chargesMap.loyalty_redeem_rate || 0.1).toFixed(2)})</p>}
                               </div>
                             </div>
                             {loyaltyApplied ? (
@@ -1494,7 +1518,7 @@ if (checkingAddress) {
                               </button>
                             ) : (
                               <button onClick={() => {
-                                const maxDiscount = loyaltyBalance * 0.1
+                                const maxDiscount = loyaltyBalance * (chargesMap.loyalty_redeem_rate || 0.1)
                                 const use = Math.min(maxDiscount, total)
                                 setLoyaltyDiscount(+use.toFixed(2))
                                 setLoyaltyApplied(true)
@@ -1544,19 +1568,19 @@ if (checkingAddress) {
           </div>
 
           {/* ─── RIGHT — ORDER SUMMARY ─── */}
-          <div style={{ position: 'sticky', top: 140 }}>
+          <div style={{ position: 'sticky', top: 160 }}>
             <div className="glass-card">
 
               <div className="card-header-luxury">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <ShoppingBag size={16} style={{ color: 'var(--gold)' }} />
-                  <h3 className="display-font" style={{ fontSize: 22, fontWeight: 300, color: 'white' }}>
+                  <h3 className="display-font" style={{ fontSize: 30, fontWeight: 300, color: 'white' }}>
                     Your Order
                   </h3>
                 </div>
               </div>
 
-              <div style={{ padding: '24px' }}>
+              <div style={{ padding: '32px' }}>
 
                 {/* Cart items with thumbnails */}
                 {effectiveItems.map((item: any, i: number) => (
@@ -1654,30 +1678,34 @@ if (checkingAddress) {
 
                   <div className="summary-divider" />
 
-                  <div className="summary-row total">
-                    <span>Total</span>
-                    <span style={{ background: 'linear-gradient(135deg, var(--gold-dark), var(--gold))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 800 }}>₹{total}</span>
+                  <div className="summary-row total" style={{ paddingTop: 22, marginTop: 4 }}>
+                    <span className="display-font" style={{ fontSize: 20, fontWeight: 400, letterSpacing: '-0.01em' }}>Total Amount</span>
+                    <span className="display-font" style={{ background: 'linear-gradient(135deg, var(--gold-dark), var(--gold))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 800, fontSize: 32 }}>₹{total}</span>
                   </div>
 
                 </div>
 
-                {/* Trust badges — pill style */}
-                <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {/* Trust badges */}
+                <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {[
-                    { icon: Lock,     text: '256-bit SSL' },
-                    { icon: Shield,   text: 'Buyer Protected' },
-                    { icon: Truck,    text: 'Fast Delivery' },
-                    { icon: Sparkles, text: '100% Natural' },
-                  ].map(({ icon: Icon, text }, i) => (
+                    { icon: Lock,     text: '256-bit SSL',      sub: 'Encrypted' },
+                    { icon: Shield,   text: 'Buyer Protected',  sub: 'Guaranteed' },
+                    { icon: Truck,    text: 'Fast Delivery',    sub: 'Pan India' },
+                    { icon: Sparkles, text: '100% Natural',     sub: 'Certified' },
+                  ].map(({ icon: Icon, text, sub }, i) => (
                     <motion.div
                       key={text}
                       className="trust-pill"
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + i * 0.05 }}
+                      style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4, padding: '12px 14px' }}
                     >
-                      <Icon size={12} style={{ color: 'var(--gold)', flexShrink: 0 }} />
-                      <span style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>{text}</span>
+                      <Icon size={16} style={{ color: 'var(--gold)', flexShrink: 0 }} />
+                      <div>
+                        <p style={{ fontSize: 11, color: 'var(--ink)', fontWeight: 700, lineHeight: 1 }}>{text}</p>
+                        <p style={{ fontSize: 10, color: '#b8a898', marginTop: 2 }}>{sub}</p>
+                      </div>
                     </motion.div>
                   ))}
                 </div>

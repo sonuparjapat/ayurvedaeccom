@@ -74,8 +74,8 @@ export default function AdminSupportPage() {
       if (filterCategory) params.category = filterCategory
       if (search) params.search = search
       const r = await api.get('/support/admin/tickets', { params })
-      setTickets(r.data.tickets)
-      setTotal(r.data.total)
+      setTickets(r.data.tickets || [])
+      setTotal(r.data.total || 0)
     } catch { } finally { setLoading(false) }
   }
 
@@ -85,7 +85,7 @@ export default function AdminSupportPage() {
     setTicketPriority(t.priority)
     try {
       const r = await api.get(`/support/admin/tickets/${t.id}`)
-      setMessages(r.data.messages)
+      setMessages(r.data.messages || [])
     } catch { }
   }
 
@@ -97,7 +97,8 @@ export default function AdminSupportPage() {
 
   // Socket: admin room + selected ticket room
   useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '')
+    const socket = io(apiBase, {
       transports: ['websocket', 'polling'],
     })
     socketRef.current = socket
@@ -107,9 +108,13 @@ export default function AdminSupportPage() {
       setNotifCount(n => n + 1)
       loadTickets()
     })
-    socket.on('ticket_reply', (data: any) => {
+    socket.on('ticket_reply', (data: { ticket_id: number }) => {
       setNotifCount(n => n + 1)
-      loadTickets()
+      setTickets(prev => prev.map(t =>
+        t.id === data.ticket_id
+          ? { ...t, updated_at: new Date().toISOString(), message_count: String(Number(t.message_count) + 1) }
+          : t
+      ))
     })
     return () => { socket.disconnect() }
   }, [])

@@ -1,7 +1,8 @@
 ﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import axios from '@/lib/axios'
+import { io, Socket } from 'socket.io-client'
 import { notify } from '@/app/utils/notify'
 import {
   Eye, Users, Monitor, Smartphone, Globe, Clock, TrendingUp,
@@ -46,6 +47,7 @@ export default function AdminVisitorsPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(false)
   const [period, setPeriod] = useState('7d')
+  const socketRef = useRef<Socket | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -59,9 +61,15 @@ export default function AdminVisitorsPage() {
   useEffect(() => { load() }, [period])
 
   useEffect(() => {
-    const interval = setInterval(load, 60000)
-    return () => clearInterval(interval)
-  }, [period])
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '')
+    const socket = io(apiBase, { transports: ['websocket', 'polling'] })
+    socketRef.current = socket
+    socket.emit('join_admin')
+    socket.on('server_stats', (data: { connectedUsers: number }) => {
+      setStats(prev => prev ? { ...prev, liveVisitors: data.connectedUsers } : prev)
+    })
+    return () => { socket.disconnect() }
+  }, [])
 
   const maxViews = stats?.dailyChart?.length
     ? Math.max(...stats.dailyChart.map(d => Number(d.views)), 1)

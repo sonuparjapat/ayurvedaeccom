@@ -101,7 +101,7 @@ export default function AdminInvoicesPage() {
       textColor: 'text-blue-600'
     },
     {
-      label: 'Total Revenue',
+      label: 'Page Revenue',
       value: `₹${list.reduce((sum, i) => sum + Number(i.total || 0), 0).toLocaleString('en-IN')}`,
       icon: DollarSign,
       color: 'from-green-500 to-emerald-600',
@@ -109,21 +109,16 @@ export default function AdminInvoicesPage() {
       textColor: 'text-green-600'
     },
     {
-      label: 'This Month',
-      value: list.filter(i => {
-        const invoiceDate = new Date(i.invoice_date)
-        const now = new Date()
-        return invoiceDate.getMonth() === now.getMonth() && 
-               invoiceDate.getFullYear() === now.getFullYear()
-      }).length,
+      label: 'Total Pages',
+      value: meta.pages || 1,
       icon: Calendar,
       color: 'from-purple-500 to-purple-600',
       bgColor: 'bg-purple-50',
       textColor: 'text-purple-600'
     },
     {
-      label: 'Avg. Value',
-      value: list.length > 0 
+      label: 'Avg. Value (Page)',
+      value: list.length > 0
         ? `₹${Math.round(list.reduce((sum, i) => sum + Number(i.total || 0), 0) / list.length).toLocaleString('en-IN')}`
         : '₹0',
       icon: TrendingUp,
@@ -449,12 +444,12 @@ export default function AdminInvoicesPage() {
                 <div className="flex justify-between items-center py-3 border-b border-gray-200">
                   <span className="text-gray-600 font-medium">Subtotal</span>
                   <span className="font-bold text-gray-900 text-lg">
-                    ₹{Number(current.total).toLocaleString('en-IN')}
+                    ₹{Number(current.subtotal || 0).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-gray-200">
                   <span className="text-gray-600 font-medium">Tax & Fees</span>
-                  <span className="font-bold text-gray-900 text-lg">₹0.00</span>
+                  <span className="font-bold text-gray-900 text-lg">₹{Number(current?.tax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between items-center py-4 px-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white mt-4 shadow-lg">
                   <span className="font-bold text-lg">Total Amount</span>

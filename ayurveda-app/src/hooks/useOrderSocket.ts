@@ -27,7 +27,6 @@ export function useOrderSocket() {
         })
 
         socket.on('order_status_updated', (data: { order_id: number; status: number; status_label: string }) => {
-          // Update store so account orders tab reflects new status immediately
           const store = useStore.getState()
           if ((store as any).updateOrderStatus) {
             (store as any).updateOrderStatus(data.order_id, data.status)
@@ -52,9 +51,68 @@ export function useOrderSocket() {
             ]
           )
         })
-      } catch {
-        // socket.io-client not yet installed — run: npm install
-      }
+
+        socket.on('ticket_status_updated', (data: { ticket_id: number; status: string }) => {
+          Alert.alert(
+            '🎫 Ticket Updated',
+            `Your support ticket #${data.ticket_id} is now ${data.status.replace(/_/g, ' ')}`,
+            [
+              { text: 'View', onPress: () => router.push('/support' as any) },
+              { text: 'OK', style: 'cancel' },
+            ]
+          )
+        })
+
+        socket.on('refund_processed', (data: { order_id: number; amount: number }) => {
+          Alert.alert(
+            '💰 Refund Processed',
+            `₹${Number(data.amount).toFixed(2)} has been refunded for Order #${data.order_id}. It will reflect in your original payment method shortly.`,
+            [{ text: 'OK' }]
+          )
+        })
+
+        socket.on('refund_failed', (data: { order_id: number }) => {
+          Alert.alert(
+            '⚠️ Refund Issue',
+            `There was an issue processing your refund for Order #${data.order_id}. Our team will contact you shortly.`,
+            [{ text: 'OK' }]
+          )
+        })
+
+        socket.on('new_notification', (data: { title: string; body: string }) => {
+          Alert.alert(
+            data.title || '🔔 Notification',
+            data.body || '',
+            [{ text: 'OK' }]
+          )
+        })
+
+        socket.on('new_broadcast', (data: { title: string; body: string }) => {
+          Alert.alert(
+            data.title || '📢 Announcement',
+            data.body || '',
+            [{ text: 'OK' }]
+          )
+        })
+
+        socket.on('product_stock_update', (data: { product_id: number; stock: number }) => {
+          const store = useStore.getState()
+          if ((store as any).updateProductStock) {
+            (store as any).updateProductStock(data.product_id, data.stock)
+          }
+        })
+
+        socket.on('tracking_updated', (data: { order_id: number; courier_name: string; tracking_number: string }) => {
+          Alert.alert(
+            '🚚 Shipment Dispatched',
+            `Order #${data.order_id} is on the way!\nCourier: ${data.courier_name}\nTracking: ${data.tracking_number}`,
+            [
+              { text: 'Track Order', onPress: () => router.push(`/order/${data.order_id}` as any) },
+              { text: 'OK', style: 'cancel' },
+            ]
+          )
+        })
+      } catch { }
     }
 
     connect()

@@ -32,8 +32,10 @@ export function CartSheet() {
   const {
     handleCart, opencart, setOpencart,
     totalCartProducts, fetchCart, cartdata, cartloading,
-    loginuserdata, setOpenauth, setAuthMode, setPostLoginRedirect
+    loginuserdata, setOpenauth, setAuthMode, setPostLoginRedirect,
+    settings,
   } = useAuth()
+  const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_delivery_limit')?.value||500)
 
   const updateQuantity = async (productId: number, newQty: number, stock: number) => {
     if (newQty < 1) return
@@ -411,7 +413,7 @@ export function CartSheet() {
               <div className="cart-trust">
                 {[
                   { icon: Leaf, text: '100% Organic' },
-                  { icon: ShoppingBag, text: 'Free Delivery ₹500+' },
+                  { icon: ShoppingBag, text: `Free Delivery ₹${freeDeliveryLimit}+` },
                 ].map(({ icon: Icon, text }) => (
                   <span key={text} className="cart-trust-item">
                     <Icon size={11} />

@@ -717,7 +717,7 @@ const SECTIONS: TestSection[] = [
         where: 'Admin: order detail.',
       },
       {
-        id: 'adord-3', title: 'Add Tracking — Correct Flow', severity: 'high',
+        id: 'adord-3', title: 'Add Tracking — Correct Flow + Real-time Notification', severity: 'high',
         steps: [
           'Admin: move order to "Shipped" (status 3)',
           'Click the Truck 🚚 icon → enter Courier Name + Tracking Number → Save',
@@ -726,8 +726,10 @@ const SECTIONS: TestSection[] = [
           'Web: My Orders → Track Order button → should expand inline panel with courier + tracking (API: GET /orders/:id/timeline)',
           'Mobile: order detail → Progress section + tracking info card (same API)',
           'Verify Network tab shows /api/orders/:id/timeline — NOT /api/shop/orders/:id/timeline',
+          'Real-time check (web): open Account → Orders in another tab while logged in as the customer. When admin saves tracking, a toast notification should appear immediately (no refresh)',
+          'Real-time check (mobile): keep order detail open on device. Admin saves tracking → Alert.alert should appear with courier name + "Track Order" button within seconds',
         ],
-        expected: 'Tracking saved at status 3. Status 3→4 blocked without tracking. Customer sees tracking inline without leaving the page. No 404 on timeline call.',
+        expected: 'Tracking saved at status 3. Status 3→4 blocked without tracking. Customer sees tracking inline. Real-time socket event fires to customer on both web and mobile without any page refresh.',
         where: 'Admin: /admin/orders. Web: Account → My Orders. Mobile: order detail.',
       },
       {
@@ -740,14 +742,22 @@ const SECTIONS: TestSection[] = [
         where: 'Admin: /admin/orders.',
       },
       {
-        id: 'adord-4', title: 'Invoice Generate + Download', severity: 'high',
+        id: 'adord-4', title: 'Invoice Generate + Download (GST Compliant)', severity: 'high',
         steps: [
           'Admin → Invoices → find an eligible order → click Generate',
           'After generation, click Download PDF',
           'Verify: delivery charge and platform fee appear correctly in the PDF (not 0 or blank)',
+          'Verify: seller GSTIN shown in PDF header',
+          'Verify: each product line has HSN/SAC code',
+          'For intra-state order (buyer state = seller state): PDF shows CGST% + CGST Amt AND SGST% + SGST Amt columns',
+          'For inter-state order (buyer state ≠ seller state): PDF shows IGST% + IGST Amt column',
+          'Verify: tax summary at bottom shows correct CGST+SGST or IGST totals',
+          'Verify: Amount in Words shows Indian format (e.g., "One Thousand Two Hundred Fifty Rupees Only")',
+          'Verify: bank details appear in PDF (if set in Company Settings)',
+          'Verify: FSSAI licence number appears in PDF footer (if set in Company Settings)',
           'Customer: /orders/[id] → "Download Invoice" button (only appears after admin generates)',
         ],
-        expected: 'PDF contains product line items, GST, delivery charge, platform fee, grand total. Download works without 500 error.',
+        expected: 'PDF is fully GST Rule 46 compliant — shows CGST+SGST or IGST breakdown per line, seller GSTIN, HSN codes, amount in words, bank details, FSSAI. Download works without 500 error.',
         where: 'Admin: /admin/invoices. Web: /orders/[id].',
       },
       {
@@ -1418,6 +1428,19 @@ const SECTIONS: TestSection[] = [
         expected: 'Page views recorded. Top visited pages shown.',
         where: 'Admin: /admin/visitors.',
       },
+      {
+        id: 'ana-4', title: 'Live Visitor Count — Real-time (Socket)', severity: 'medium',
+        steps: [
+          'Open Admin → Visitors in browser A',
+          'Open the storefront in browser B (or incognito tab)',
+          'Watch the "Live Now" counter and green badge in the Visitors page header',
+          'Open a third tab on the storefront → counter should increment',
+          'Close one storefront tab → counter should decrement',
+          'Verify no full page reload occurs — only the number updates',
+        ],
+        expected: 'Live Now count updates within 1–2 seconds of connect/disconnect via WebSocket server_stats event. No polling interval, no full reload.',
+        where: 'Admin: /admin/visitors.',
+      },
     ],
   },
 
@@ -1496,11 +1519,11 @@ const SECTIONS: TestSection[] = [
       {
         id: 'comp-1', title: 'Update Company Info', severity: 'high',
         steps: [
-          'Admin → Company → fill: Name, Email, Phone, Address, GST No',
+          'Admin → Company → fill: Name, Email, Phone, Address, GST No, PAN No',
           'Add Social Links (Facebook, Instagram, Twitter, YouTube)',
           'Save',
         ],
-        expected: 'Footer on web shows updated contact info and social links. Invoices show updated company name/GST.',
+        expected: 'Footer on web shows updated contact info and social links. Invoices show updated company name, GST, and PAN.',
         where: 'Web: footer | Admin: invoices.',
       },
       {
@@ -1511,6 +1534,18 @@ const SECTIONS: TestSection[] = [
         ],
         expected: 'Social icons (FB, IG, Twitter, YouTube) appear in footer. Only filled ones show.',
         where: 'Web: footer.',
+      },
+      {
+        id: 'comp-3', title: 'Compliance & Banking Fields on Invoice', severity: 'high',
+        steps: [
+          'Admin → Company → fill FSSAI Licence Number (e.g., 12345678901234)',
+          'Fill Bank Name, Bank Branch, Account Number, IFSC Code',
+          'Save',
+          'Admin → Invoices → Generate invoice for any order',
+          'Download PDF',
+        ],
+        expected: 'Invoice PDF shows FSSAI licence number in footer compliance card. Bank details (name, account, IFSC) appear in a "Payment Details" section of the PDF. If FSSAI or bank fields are empty, those sections are hidden from the PDF.',
+        where: 'Admin: /admin/company | Admin: /admin/invoices.',
       },
     ],
   },

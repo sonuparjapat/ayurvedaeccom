@@ -221,6 +221,7 @@ exports.adminReply = async (req, res) => {
     const admin = (await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id])).rows[0];
     const fullMsg = { ...msg, sender_name: admin?.name || 'Support Team' };
     emitToTicket(id, 'new_message', fullMsg);
+    emitToAdmin('ticket_reply', { ticket_id: parseInt(id), sender: admin?.name || 'Admin' });
     if (ticket.user_id) {
       emitToUser(ticket.user_id, 'admin_replied', { ticket_id: parseInt(id), subject: ticket.subject });
       createNotification(ticket.user_id, 'support_reply', `Support replied: ${ticket.subject}`, message.trim(), { ticket_id: parseInt(id) });

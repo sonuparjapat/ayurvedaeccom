@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { io, Socket } from 'socket.io-client'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 
@@ -8,6 +9,7 @@ export default function JobsPage() {
 
   const [rows, setRows] =
     useState<any[]>([])
+  const socketRef = useRef<Socket | null>(null)
 
   const [loading, setLoading] =
     useState(false)
@@ -44,18 +46,28 @@ export default function JobsPage() {
   }
 
   useEffect(() => {
-
     load()
 
-    const t =
-      setInterval(
-        load,
-        5000
-      )
+    // Socket: live updates instead of polling
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '')
+    const socket = io(apiBase, { transports: ['websocket', 'polling'] })
+    socketRef.current = socket
+    socket.emit('join_admin')
 
-    return () =>
-      clearInterval(t)
+    socket.on('job_progress', (data: { id: number; job_type: string; status: string; progress?: number; result?: any; error?: string }) => {
+      setRows(prev => {
+        const exists = prev.some(r => r.id === data.id)
+        if (exists) {
+          return prev.map(r => r.id === data.id ? { ...r, ...data } : r)
+        }
+        // New job — prepend (will be filled properly on next load)
+        return [data, ...prev]
+      })
+      if (data.status === 'completed') toast.success(`Job ${data.job_type} completed`, { icon: '✅' })
+      if (data.status === 'failed') toast.error(`Job ${data.job_type} failed: ${data.error || ''}`)
+    })
 
+    return () => { socket.disconnect() }
   }, [])
 
   const filtered =

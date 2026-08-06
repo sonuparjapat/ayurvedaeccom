@@ -1,6 +1,8 @@
 const pool =
 require('../config/db')
 
+const { emitToAdmin } = require('../socket')
+
 const processCleanupQueue =
 require('../services/processCleanupQueue')
 
@@ -77,6 +79,7 @@ async function runWorker() {
           new Date()
       }
     )
+    emitToAdmin('job_progress', { id: job.id, job_type: job.job_type, status: 'processing', progress: 10 })
 
     try {
 
@@ -154,6 +157,7 @@ async function runWorker() {
             new Date()
         }
       )
+      emitToAdmin('job_progress', { id: job.id, job_type: job.job_type, status: 'completed', progress: 100, result: output })
 
     } catch (err) {
 
@@ -167,6 +171,7 @@ async function runWorker() {
             new Date()
         }
       )
+      emitToAdmin('job_progress', { id: job.id, job_type: job.job_type, status: 'failed', error: err.message })
 
     }
 

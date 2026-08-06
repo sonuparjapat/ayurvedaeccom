@@ -12,9 +12,10 @@ const FALLBACK_LOGO = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazon
 
 const emptyForm = {
   company_name: '', email: '', phone: '', website: '',
-  gst_number: '', address_line1: '', city: '', state: '',
+  gst_number: '', pan_number: '', address_line1: '', city: '', state: '',
   country: 'India', pincode: '', support_email: '',
   logo_url: '',
+  fssai_number: '', bank_name: '', bank_account: '', bank_ifsc: '', bank_branch: '',
   social_links: { facebook: '', instagram: '', twitter: '', youtube: '' },
   privacy_policy: '', terms_conditions: '', shipping_policy: '', return_policy: '',
 }
@@ -41,6 +42,12 @@ export default function CompanyPage() {
           phone: row.phone || '',
           website: row.website || '',
           gst_number: row.gst_number || '',
+          pan_number: row.pan_number || '',
+          fssai_number: row.fssai_number || '',
+          bank_name: row.bank_name || '',
+          bank_account: row.bank_account || '',
+          bank_ifsc: row.bank_ifsc || '',
+          bank_branch: row.bank_branch || '',
           address_line1: row.address_line1 || '',
           city: row.city || '',
           state: row.state || '',
@@ -231,7 +238,7 @@ export default function CompanyPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 { key: 'company_name', label: 'Company Name *', placeholder: 'Oroganix Pvt Ltd' },
-                { key: 'gst_number', label: 'GST Number', placeholder: '27AAAAA0000A1Z5' },
+                { key: 'gst_number', label: 'GST Number (GSTIN)', placeholder: '27AAAAA0000A1Z5' },
                 { key: 'email', label: 'Primary Email', placeholder: 'info@oroganix.com' },
                 { key: 'support_email', label: 'Support Email', placeholder: 'support@oroganix.com' },
                 { key: 'phone', label: 'Phone', placeholder: '+91 98765 43210' },
@@ -281,6 +288,32 @@ export default function CompanyPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Compliance & Banking */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="font-semibold text-gray-800 mb-1">Compliance & Banking</h3>
+            <p className="text-xs text-gray-500 mb-4">These fields appear on every generated tax invoice.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { key: 'pan_number', label: 'PAN Number', placeholder: 'AAAAA0000A' },
+                { key: 'fssai_number', label: 'FSSAI Licence Number', placeholder: '10020011000123' },
+                { key: 'bank_name', label: 'Bank Name', placeholder: 'State Bank of India' },
+                { key: 'bank_branch', label: 'Bank Branch', placeholder: 'Main Branch, Mumbai' },
+                { key: 'bank_account', label: 'Bank Account Number', placeholder: '1234567890123' },
+                { key: 'bank_ifsc', label: 'Bank IFSC Code', placeholder: 'SBIN0001234' },
+              ].map(({ key, label, placeholder }) => (
+                <div key={key}>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                  <input
+                    placeholder={placeholder}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    value={(form as any)[key]}
+                    onChange={e => set(key, e.target.value)}
+                  />
+                </div>
+              ))}
             </div>
           </div>
 

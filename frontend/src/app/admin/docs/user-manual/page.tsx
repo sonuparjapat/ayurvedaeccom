@@ -323,7 +323,7 @@ export default function UserManualPage() {
                   { step: '2', label: 'Apply Coupon', desc: 'Enter a coupon code for flat (₹) or percentage (%) discounts. The system validates and shows the discount instantly.' },
                   { step: '3', label: 'Use Wallet / Loyalty', desc: 'Apply available wallet balance or convert loyalty points to discount (1 point = ₹0.10). Both can be used together.' },
                   { step: '4', label: 'Review Order Summary', desc: 'See subtotal, GST, delivery charge, all discounts, and the final amount payable.' },
-                  { step: '5', label: 'Choose Payment', desc: 'Select Online (Razorpay) or Cash on Delivery (COD). COD may have a small convenience fee.' },
+                  { step: '5', label: 'Choose Payment', desc: 'Select from two full-width premium payment cards: Cash on Delivery (pay on arrival, no extra charges) or Online via Razorpay (UPI, debit/credit cards, net banking, wallets — instant confirmation).' },
                   { step: '6', label: 'Confirm & Pay', desc: 'Complete payment. For COD, the order is placed immediately. For online, complete the Razorpay payment screen.' },
                 ].map(s => (
                   <div key={s.step} className="flex gap-3 items-start bg-white rounded-xl p-3 border border-gray-100">
@@ -461,9 +461,9 @@ export default function UserManualPage() {
               ['Categories', 'Hierarchical category management — create parent and subcategories (unlimited depth). Each has slug (SEO URL), sort order, featured flag, banner image, GST/HSN/CESS tax defaults.'],
               ['Brands', 'Create and manage product brands with logo, slug, description, sort order, and active/inactive status. Products reference brands via dropdown.'],
               ['Users', 'View all registered customers. Create admin/staff accounts.'],
-              ['Invoices', 'View and download all generated invoices.'],
+              ['Invoices', 'View and download all generated tax invoices. Each invoice is GST-compliant: shows CGST + SGST (intra-state orders) or IGST (inter-state orders) per line item, seller GSTIN, HSN/SAC codes, FSSAI licence, bank details, and amount-in-words in Indian format.'],
               ['Analytics', 'Revenue charts (daily, weekly, monthly), order stats, product performance.'],
-              ['Visitors', 'Live visitor count, total/unique page views, daily traffic chart, top pages, device breakdown (desktop/mobile/tablet), browser breakdown. Filter by 24h, 7 days, 30 days, or 90 days. Auto-refreshes every 60 seconds.'],
+              ['Visitors', 'Live visitor count (real-time via WebSocket — updates instantly when users connect or leave), total/unique page views, daily traffic chart, top pages, device breakdown (desktop/mobile/tablet), browser breakdown. Filter by 24h, 7 days, 30 days, or 90 days.'],
               ['Blog', 'Create and manage blog posts with a full WYSIWYG rich text editor — format text with bold, italic, headings, lists, blockquotes, code blocks, insert images and links, change text color and alignment. Upload cover images, set categories, tags, author name, and SEO meta fields. Posts can be draft, published, or archived. View count tracking. Blog is accessible on both website (/blog) and mobile app.'],
               ['Bundles', 'Create product bundles ("Buy together & save"). Set discount type (flat/percent), select products, and manage bundle images. Customers can add entire bundles to cart.'],
               ['Subscriptions', 'View all auto-reorder subscriptions. See customer, product, frequency, next order date, total orders, and status (active/paused/cancelled).'],
@@ -483,7 +483,7 @@ export default function UserManualPage() {
               ['Returns', 'View return requests from customers. Approve or reject returns, credit wallet refunds, and mark refunds complete.'],
               ['Export Data', 'Download orders, users, and revenue data as CSV files.'],
               ['Settings', 'Platform configuration — delivery charges, platform fees, free delivery threshold.'],
-              ['Company', 'Manage all company branding and info. Upload your website logo (file upload or URL) — the logo appears in the web header, footer, and mobile app. Fill in company name, GST, primary email, support email, phone, website, and full address. Add Facebook, Instagram, Twitter, and YouTube links — they show in the footer. All four policy pages (Privacy, Terms, Shipping, Return) are edited here. Save once to update across the entire storefront.'],
+              ['Company', 'Manage all company branding and info. Upload your website logo (file upload or URL) — the logo appears in the web header, footer, and mobile app. Fill in company name, GST number, PAN number, primary email, support email, phone, website, and full address. Add Facebook, Instagram, Twitter, and YouTube links — they show in the footer. All four policy pages (Privacy, Terms, Shipping, Return) are edited here. Also fill in FSSAI licence number and bank details (bank name, branch, account number, IFSC) — these appear on tax invoices (required for GST compliance). Save once to update across the entire storefront.'],
               ['Logs', 'Audit trail of all admin actions.'],
               ['Jobs', 'Background task queue status and history.'],
             ]}
@@ -612,7 +612,7 @@ export default function UserManualPage() {
             <Table
               headers={['Action', 'When to use']}
               rows={[
-                ['Add Tracking', 'After shipping — add courier name and tracking number.'],
+                ['Add Tracking', 'After shipping — add courier name and tracking number. The customer is notified instantly on web and mobile via real-time push.'],
                 ['Generate OTP', 'For COD orders ready to deliver — generates a 6-digit OTP.'],
                 ['View Timeline', 'See the full status history for any order.'],
                 ['View Invoice', 'Open/download the PDF invoice for any order.'],

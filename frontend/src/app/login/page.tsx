@@ -8,7 +8,8 @@ import { Eye, EyeOff, AlertCircle, CheckCircle, Lock, Mail, Leaf, ArrowRight, Sh
 
 export default function UserLogin() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { login, settings } = useAuth()
+  const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_delivery_limit')?.value||500)
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
@@ -283,7 +284,7 @@ export default function UserLogin() {
             {[
               { color: '#10b981', text: 'Sourced directly from certified Indian farms' },
               { color: '#f59e0b', text: 'Third-party lab tested for purity & safety' },
-              { color: '#60a5fa', text: 'Free shipping on orders above ₹500' },
+              { color: '#60a5fa', text: `Free shipping on orders above ₹${freeDeliveryLimit}` },
             ].map((t, i) => (
               <div key={i} className="login-trust-item">
                 <span className="login-trust-dot" style={{ background: t.color, boxShadow: `0 0 6px ${t.color}60` }} />

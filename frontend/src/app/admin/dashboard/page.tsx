@@ -58,24 +58,35 @@ export default function AdminDashboard() {
     loadChart(chartPeriod)
   }, [chartPeriod])
 
-  /* ─── Socket.io — real-time new order toast ─── */
+  /* ─── Socket.io — real-time updates ─── */
   useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000', {
-      transports: ['websocket', 'polling'],
-    })
+    const apiRoot = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '')
+    const socket = io(apiRoot, { transports: ['websocket', 'polling'] })
     socketRef.current = socket
     socket.emit('join_admin')
+
     socket.on('new_order', (data: { order_id: number; user_id: number }) => {
-      const toast: NewOrderToast = { id: Date.now(), order_id: data.order_id, user_id: data.user_id, at: Date.now() }
-      setToasts(prev => [toast, ...prev].slice(0, 5))
-      axios.get('/admin/stats').then(r => setStats(r.data)).catch(() => {})
+      const toastEntry: NewOrderToast = { id: Date.now(), order_id: data.order_id, user_id: data.user_id, at: Date.now() }
+      setToasts(prev => [toastEntry, ...prev].slice(0, 5))
+      // Increment counters in-place — no REST call for stats
+      setStats(prev => ({ ...prev, totalOrders: prev.totalOrders + 1, pendingOrders: prev.pendingOrders + 1 }))
+      // Fetch updated recent orders list (payload lacks full customer/amount data)
       axios.get('/admin/recent-orders').then(r => setRecentOrders(r.data)).catch(() => {})
-      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toast.id)), 6000)
+      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toastEntry.id)), 6000)
     })
-    socket.on('order_status_changed', () => {
-      axios.get('/admin/stats').then(r => setStats(r.data)).catch(() => {})
-      axios.get('/admin/recent-orders').then(r => setRecentOrders(r.data)).catch(() => {})
+
+    socket.on('order_status_changed', (data: { order_id: number; new_status: number }) => {
+      // Update order row in-place; if status moves from pending (0) to confirmed (1), decrement pendingOrders
+      setRecentOrders(prev => prev.map((o: Order) =>
+        String(o.id) === String(data.order_id) ? { ...o, status: String(data.new_status) } : o
+      ))
+      setStats(prev => {
+        // Decrement pending when confirmed (1) or cancelled (6) from pending
+        if (data.new_status === 1 || data.new_status === 6) return { ...prev, pendingOrders: Math.max(0, prev.pendingOrders - 1) }
+        return prev
+      })
     })
+
     return () => { socket.disconnect() }
   }, [])
 

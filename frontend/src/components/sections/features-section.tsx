@@ -315,18 +315,23 @@ function SectionHeader({ isInView }: { isInView: boolean }) {
 export function FeaturesSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const isInView = useInView(sectionRef, { once: true, margin: '-80px' })
-  const { companydata } = useAuth()
+  const { companydata, settings } = useAuth()
+  const freeLimit = Number((settings||[]).find((s:any)=>s.key==='free_delivery_limit')?.value||500)
+
+  const baseFeatures = DEFAULT_FEATURES.map((f, i) =>
+    i === 0 ? { ...f, description: `On all orders above ₹${freeLimit}. Fast, tracked delivery across every corner of India.` } : f
+  )
 
   const rawFeatures = companydata?.extra_data?.features
   const features: Feature[] = rawFeatures?.length
     ? rawFeatures.map((f: any, i: number) => ({
-        ...DEFAULT_FEATURES[i % DEFAULT_FEATURES.length],
-        title: f.title || DEFAULT_FEATURES[i % DEFAULT_FEATURES.length].title,
-        description: f.description || DEFAULT_FEATURES[i % DEFAULT_FEATURES.length].description,
-        tag: f.tag || DEFAULT_FEATURES[i % DEFAULT_FEATURES.length].tag,
+        ...baseFeatures[i % baseFeatures.length],
+        title: f.title || baseFeatures[i % baseFeatures.length].title,
+        description: f.description || baseFeatures[i % baseFeatures.length].description,
+        tag: f.tag || baseFeatures[i % baseFeatures.length].tag,
         num: String(i + 1).padStart(2, '0'),
       }))
-    : DEFAULT_FEATURES
+    : baseFeatures
 
   return (
     <section ref={sectionRef} className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">

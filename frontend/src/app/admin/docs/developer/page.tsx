@@ -321,11 +321,12 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
             headers={['Table', 'Primary Key', 'Key Columns', 'Notes']}
             rows={[
               ['serviceable_pincodes', 'id (serial)', 'pincode (UNIQUE), city, state, delivery_days, is_active', 'Used for pincode serviceability check + ETA. GET /admin/pincodes supports ?search= for city/state/pincode filtering. Note: COUNT query uses separate $1 param — do not reuse the SELECT $3 placeholder in the COUNT.'],
-              ['invoices', 'id (serial)', 'order_id, invoice_no, subtotal, tax, total, pdf_url, created_at', 'PDF generated via Puppeteer + S3. downloadInvoice fetches delivery_charge + platform_fee from orders table. generateInvoice reads from shipping_address.price_breakup first, falls back to order columns.'],
+              ['invoices', 'id (serial)', 'order_id, invoice_no, subtotal, tax, total, pdf_url, cgst_amount, sgst_amount, igst_amount, place_of_supply, payment_method, discount_amount, seller_gstin, created_at', 'PDF generated via Puppeteer + Chromium + S3. generateInvoice compares seller state (company_settings.state) vs buyer state (shipping_address.state) — same state → CGST+SGST split; different state → IGST. All amounts stored in DB. downloadInvoice reconstructs from stored columns.'],
+              ['invoice_items', 'id (serial)', 'invoice_id, product_id, name, quantity, unit_price, total_price, hsn_code, unit, gst_percent, taxable_value, cgst_rate, cgst_amount, sgst_rate, sgst_amount, igst_rate, igst_amount', 'Per-line tax breakdown stored at generation time so re-downloads do not recalculate.'],
               ['order_status_logs', 'id (serial)', 'order_id, old_status, new_status, new_label, old_label, note, changed_by, created_at', 'Full timeline history per order'],
               ['admin_logs', 'id (serial)', 'admin_id, action, entity_type, entity_id, details (JSON), ip_address, created_at', 'Audit trail'],
               ['settings (app_settings)', 'id (serial)', 'key, value, type (number/string/boolean/json), description, is_active', 'Key-value store for platform config. Standard keys: free_delivery_limit, delivery_charge, platform_fee. Read via GET /admin/settings (public — used in auth context). Cart and checkout on both web and mobile read chargesMap from this — changes take effect immediately.'],
-              ['company_settings', 'id (serial)', 'company_name, email, support_email, phone, website, gst_number, address_line1, city, state, country, pincode, logo_url, social_links (JSONB: facebook/instagram/twitter/youtube), privacy_policy, terms_conditions, shipping_policy, return_policy, is_active, extra_data (JSONB)', 'Single-row table. logo_url is uploaded to S3 via multer. social_links is a JSONB column. companydata[0] is loaded globally in the auth context and used by the web header, footer, and exposed via GET /company.'],
+              ['company_settings', 'id (serial)', 'company_name, email, support_email, phone, website, gst_number, pan_number, address_line1, city, state, country, pincode, logo_url, social_links (JSONB: facebook/instagram/twitter/youtube), privacy_policy, terms_conditions, shipping_policy, return_policy, fssai_number, bank_name, bank_account, bank_ifsc, bank_branch, is_active, extra_data (JSONB)', 'Single-row table. logo_url uploaded to S3. state is used to determine CGST/SGST vs IGST on invoices. fssai_number + bank fields appear on the PDF tax invoice. companydata[0] loaded globally in auth context for header/footer.'],
             ]}
           />
 
@@ -560,6 +561,8 @@ emitToAdmin(event, data)            // sends to room admin_room
 emitToTicket(ticketId, event, data) // sends to room ticket_{id}
 emitToAll(event, data)              // broadcasts to ALL connected clients (flash sale etc.)`}</Code>
 
+          <InfoBox type="warning">Socket URL rule: always strip /api from NEXT_PUBLIC_API_URL / EXPO_PUBLIC_API_URL before connecting — socket.io must connect to the server root, not the REST path. Use <code>.replace(/\/api\/?$/, '')</code>.</InfoBox>
+
           <H3>Events Reference</H3>
           <Table
             headers={['Event Name', 'Direction', 'Room', 'Payload', 'When emitted']}
@@ -569,11 +572,21 @@ emitToAll(event, data)              // broadcasts to ALL connected clients (flas
               ['join_ticket', 'Client → Server', '—', '{ ticketId }', 'Open ticket chat view'],
               ['leave_ticket', 'Client → Server', '—', '{ ticketId }', 'Close ticket chat view'],
               ['new_order', 'Server → admin_room', 'admin_room', '{ order_id, user_id }', 'After order placed'],
-              ['order_status_updated', 'Server → user_{id}', 'user_{userId}', '{ order_id, status, status_label }', 'When admin updates order status'],
+              ['order_status_updated', 'Server → user_{id}', 'user_{userId}', '{ order_id, status, status_label }', 'Admin updates order status (customer notification)'],
+              ['order_status_changed', 'Server → admin_room', 'admin_room', '{ order_id, new_status }', 'Admin updates order status (admin panels in-place update)'],
+              ['tracking_updated', 'Server → user_{id}', 'user_{userId}', '{ order_id, courier_name, tracking_number }', 'Admin saves tracking info — alerts customer on web + mobile'],
               ['new_ticket', 'Server → admin_room', 'admin_room', '{ ticket_id, subject, user_name }', 'Customer creates support ticket'],
-              ['new_message', 'Server → ticket_{id}', 'ticket_{id}', '{ id, sender_type, message, created_at }', 'Any reply to ticket'],
+              ['ticket_reply', 'Server → admin_room', 'admin_room', '{ ticket_id, sender }', 'Customer OR admin replies to ticket — admin support page updates row in-place'],
+              ['new_message', 'Server → ticket_{id}', 'ticket_{id}', '{ id, sender_type, message, created_at }', 'Any reply to ticket (active chat view)'],
               ['ticket_status_updated', 'Server → user_{id}', 'user_{userId}', '{ ticket_id, status }', 'Admin changes ticket status'],
-              ['admin_replied', 'Server → user_{id}', 'user_{userId}', '{ ticket_id, subject }', 'Admin sends message'],
+              ['admin_replied', 'Server → user_{id}', 'user_{userId}', '{ ticket_id, subject }', 'Admin sends message on ticket'],
+              ['refund_processed', 'Server → user_{id}', 'user_{userId}', '{ order_id, amount }', 'Return/refund approved — alerts customer with amount'],
+              ['refund_failed', 'Server → user_{id}', 'user_{userId}', '{ order_id, error }', 'Refund processing failed'],
+              ['new_notification', 'Server → user_{id}', 'user_{userId}', '{ title, body, type }', 'Any targeted notification to a specific user'],
+              ['new_broadcast', 'Server → ALL', 'broadcast', '{ title, body }', 'Platform-wide announcement'],
+              ['product_stock_update', 'Server → ALL', 'broadcast', '{ product_id, stock }', 'Product stock level changed (admin edit / restock)'],
+              ['job_progress', 'Server → admin_room', 'admin_room', '{ id, job_type, status, progress, result?, error? }', 'jobWorker emits during bulk job processing'],
+              ['server_stats', 'Server → admin_room', 'admin_room', '{ connectedUsers, memPercent, loadAvg }', 'Emitted on every connect/disconnect — used for live visitor count'],
               ['flash_product_update', 'Server → ALL', 'broadcast', '{ saleId, productId, soldCount, stockLimit }', 'After each order — live sold_count for progress bars'],
               ['flash_product_sold_out', 'Server → ALL', 'broadcast', '{ saleId, productId }', 'When a product hits its stock_limit in the flash sale'],
               ['flash_sale_exhausted', 'Server → ALL', 'broadcast', '{ saleId, title }', 'When flash sale uses_count reaches max_uses'],
@@ -595,21 +608,35 @@ socket.on('flash_sale_exhausted', ({ saleId, title }) => {
   // useOrderSocket: shows toast warning if user has items in cart
 })`}</Code>
 
-          <H3>Frontend Usage</H3>
-          <Code>{`// frontend/src/hooks/useOrderSocket.ts
-import { io } from 'socket.io-client'
+          <H3>Frontend Usage (Web)</H3>
+          <Code>{`// frontend/src/hooks/useOrderSocket.ts — mounted in AccountContent for logged-in users
+// IMPORTANT: strip /api from URL before connecting
+const apiRoot = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\\/api\\/?$/, '')
+const socket = io(apiRoot)
+socket.emit('join_user', userId)
+socket.on('order_status_updated', (data) => toast.success(...))  // customer toast
+socket.on('tracking_updated', (data) => toast.success(...))      // tracking saved by admin
+socket.on('admin_replied', (data) => toast.info(...))
+socket.on('ticket_status_updated', (data) => toast.success(...))
+socket.on('flash_sale_exhausted', (data) => toast.warning(...))
+socket.on('flash_product_sold_out', (data) => toast.info(...))`}</Code>
 
-export function useOrderSocket(userId) {
-  useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_API_URL)
-    socket.emit('join_user', userId)
-    socket.on('order_status_updated', (data) => toast.success(...))
-    socket.on('admin_replied', (data) => toast.info(...))
-    socket.on('flash_sale_exhausted', (data) => toast.warning(...))
-    socket.on('flash_product_sold_out', (data) => toast.info(...))
-    return () => socket.disconnect()
-  }, [userId])
-}`}</Code>
+          <H3>Frontend Usage (Mobile)</H3>
+          <Code>{`// ayurveda-app/src/hooks/useOrderSocket.ts — mounted in _layout.tsx Inner component
+// Handles: order_status_updated, tracking_updated, ticket_status_updated,
+//          refund_processed, refund_failed, new_notification, new_broadcast,
+//          product_stock_update (→ store.updateProductStock), flash_sale_exhausted,
+//          flash_product_sold_out
+// tracking_updated shows Alert with courier name + "Track Order" navigation
+// refund_processed shows Alert with ₹ amount refunded`}</Code>
+
+          <H3>Admin Panel Socket Usage</H3>
+          <Code>{`// admin/dashboard   — new_order (in-place stats update), order_status_changed (in-place row update)
+// admin/orders      — new_order (load + highlight), order_status_changed (in-place row update)
+// admin/support     — new_ticket (toast + loadTickets), ticket_reply (in-place row updated_at)
+// admin/jobs        — job_progress (in-place row update + toast on complete/fail)
+// admin/visitors    — server_stats (updates liveVisitors counter in real-time)
+// admin/layout      — bell alerts fetched once on mount; socket events increment counts`}</Code>
         </Section>
 
         {/* ═══ ORDER FSM ═══ */}
@@ -660,9 +687,18 @@ Return window:
 adminRejectReturn:
   Sets status back to 5 (Delivered). Stores reason in return_reject_reason column (NOT cancel_reason).
 
-Invoice:
-  downloadInvoice (GET /admin/invoices/:id/pdf): fetches delivery_charge + platform_fee from orders table.
-  Previously had a ReferenceError on 'delivery'/'platform' variables — fixed.
+Invoice (GST-compliant):
+  generateInvoice (POST /admin/invoices/generate/:orderId):
+    1. Fetches company_settings for seller GSTIN, address, bank details, FSSAI.
+    2. Fetches order items with products.hsn_code + gst_percent + unit.
+    3. Determines isInterState = (seller state ≠ buyer state from shipping_address).
+    4. Per item: taxableValue = price*qty; if intraState → CGST(gst/2%) + SGST(gst/2%); if interState → IGST(gst%).
+    5. Stores all amounts in invoices + invoice_items tables (16 columns per item).
+    6. Generates HTML inline via buildInvoiceHtml() → Puppeteer → PDF → S3.
+  downloadInvoice (GET /admin/invoices/:id/pdf):
+    Reads stored invoice_items columns (cgst_rate, igst_rate etc.) to rebuild PDF.
+    isInterState reconstructed as: totalIgst > 0 && (totalCgst + totalSgst) === 0.
+  Invoice HTML includes: seller GSTIN, HSN per line, CGST+SGST or IGST column, amount-in-words (Indian numbering), bank details, FSSAI card, "Reverse Charge: No".
 
 payment_status lifecycle:
   COD order created  → 'pending'   (cash not yet collected)
@@ -769,7 +805,7 @@ case 'my_job_type':
 │   ├── page.tsx                 # Homepage (banners, featured, flash sale)
 │   ├── product/[id]/page.tsx    # Product detail
 │   ├── cart/page.tsx            # Cart page
-│   ├── checkout/page.tsx        # Checkout flow
+│   ├── checkout/page.tsx        # Checkout flow — full-width (max 1440px), 2-step (delivery → payment), horizontal .pay-option cards, sticky 500px order summary sidebar
 │   ├── orders/
 │   │   ├── page.tsx             # Order list
 │   │   └── [id]/page.tsx        # Order detail + tracking (Amazon-style)

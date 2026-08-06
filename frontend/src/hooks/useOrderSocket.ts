@@ -4,13 +4,21 @@ import { useEffect, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
 import toast from 'react-hot-toast'
 
-export function useOrderSocket(userId: number | string | undefined) {
+interface OrderSocketCallbacks {
+  onOrderStatusUpdated?: (data: { order_id: number; status: number; status_label: string }) => void
+}
+
+export function useOrderSocket(
+  userId: number | string | undefined,
+  callbacks?: OrderSocketCallbacks,
+) {
   const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
     if (!userId) return
 
-    const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
+    const apiRoot = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '')
+    const socket = io(apiRoot, {
       transports: ['websocket', 'polling'],
     })
     socketRef.current = socket
@@ -22,6 +30,7 @@ export function useOrderSocket(userId: number | string | undefined) {
         duration: 6000,
         icon: '📦',
       })
+      callbacks?.onOrderStatusUpdated?.(data)
     })
 
     socket.on('ticket_status_updated', (data: { ticket_id: number; status: string }) => {
@@ -36,6 +45,13 @@ export function useOrderSocket(userId: number | string | undefined) {
         duration: 6000,
         icon: '💬',
       })
+    })
+
+    socket.on('tracking_updated', (data: { order_id: number; courier_name: string; tracking_number: string }) => {
+      toast.success(
+        `Order #${data.order_id} shipped via ${data.courier_name} · Tracking: ${data.tracking_number}`,
+        { duration: 8000, icon: '🚚' }
+      )
     })
 
     // Flash sale exhausted — warn if user might have flash-priced items in cart

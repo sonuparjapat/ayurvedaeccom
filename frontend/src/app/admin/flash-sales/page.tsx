@@ -87,9 +87,11 @@ export default function FlashSalesPage() {
 
   const remove = async (id: number) => {
     if (!confirm('Delete this flash sale?')) return
-    await axios.delete(`/flash-sales/admin/${id}`)
-    notify.success('Deleted')
-    load()
+    try {
+      await axios.delete(`/flash-sales/admin/${id}`)
+      notify.success('Deleted')
+      load()
+    } catch (e: any) { notify.error(e?.response?.data?.message || 'Delete failed') }
   }
 
   const toggleProduct = (pid: number) => {

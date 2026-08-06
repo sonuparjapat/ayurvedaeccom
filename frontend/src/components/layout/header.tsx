@@ -37,8 +37,10 @@ const {
   categoriesdata,
   setOpenauth,
   setAuthMode,
-  companydata
+  companydata,
+  settings,
 } = useAuth()
+const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_delivery_limit')?.value||500)
  
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -945,7 +947,7 @@ const {
             <div className="top-bar-badges">
               <span className="top-badge gold">
                 <Sparkles size={10} />
-                Free Shipping ₹500+
+                Free Shipping ₹{freeDeliveryLimit}+
               </span>
               <span className="top-badge">
                 <Leaf size={10} />

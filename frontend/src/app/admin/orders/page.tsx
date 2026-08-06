@@ -77,7 +77,8 @@ export default function AdminOrdersPage() {
 
   /* ================= REAL-TIME ================= */
   useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000', {
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '')
+    const socket = io(apiBase, {
       transports: ['websocket', 'polling'],
     })
     socketRef.current = socket
@@ -87,7 +88,9 @@ export default function AdminOrdersPage() {
       setNewOrderIds(prev => new Set([...prev, data.order_id]))
       setTimeout(() => setNewOrderIds(prev => { const n = new Set(prev); n.delete(data.order_id); return n }), 5000)
     })
-    socket.on('order_status_changed', () => { load() })
+    socket.on('order_status_changed', (data: { order_id: number; new_status: number }) => {
+      setList(prev => prev.map(o => o.id === data.order_id ? { ...o, status: data.new_status } : o))
+    })
     return () => { socket.disconnect() }
   }, [])
 
@@ -203,7 +206,7 @@ const closeModal = () => {
 
       await axios.put(
         `/admin/orders/${current.id}/status`,
-        { status: editStatus }
+        { status: Number(editStatus) }
       )
 
       notify.success('Status updated')

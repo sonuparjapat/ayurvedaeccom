@@ -53,8 +53,6 @@ import {
 import Link from 'next/link'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
-import { io } from 'socket.io-client'
-
 import { useAuth } from '@/context/auth-context'
 import { useOrderSocket } from '@/hooks/useOrderSocket'
 import AppModal from '@/components/modal/AppModal'
@@ -486,7 +484,7 @@ export default function AccountContent() {
     fetchUser
   } = useAuth()
 
-  useOrderSocket(loginuserdata?.id)
+  const orderSocketRef = useOrderSocket(loginuserdata?.id)
 
   /* ================= STATES ================= */
 
@@ -649,18 +647,16 @@ useEffect(() => {
 
 }, [loginuserdata,loadOrders]);
 
-  // Real-time order status updates via socket
+  // In-place order row update using the existing user socket (no second connection)
   useEffect(() => {
-    if (!loginuserdata?.id) return
-    const socket = io(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000', {
-      transports: ['websocket', 'polling'],
-    })
-    socket.emit('join_user', loginuserdata.id)
-    socket.on('order_status_changed', ({ order_id, new_status }: { order_id: number; new_status: number }) => {
-      setPagedOrders(prev => prev.map(o => o.id === order_id ? { ...o, status: new_status } : o))
-    })
-    return () => { socket.disconnect() }
-  }, [loginuserdata?.id])
+    const socket = orderSocketRef.current
+    if (!socket) return
+    const handler = ({ order_id, status }: { order_id: number; status: number }) => {
+      setPagedOrders(prev => prev.map(o => o.id === order_id ? { ...o, status } : o))
+    }
+    socket.on('order_status_updated', handler)
+    return () => { socket.off('order_status_updated', handler) }
+  }, [orderSocketRef.current])
 
 
   /* ================= PROFILE ================= */

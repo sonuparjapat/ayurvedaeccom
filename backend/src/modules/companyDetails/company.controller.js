@@ -5,10 +5,11 @@ exports.createCompany = async (req, res) => {
   const client = await pool.connect();
   try {
     const {
-      company_name, email, phone, website, gst_number,
+      company_name, email, phone, website, gst_number, pan_number,
       address_line1, city, state, country, pincode,
       support_email, social_links, extra_data,
       privacy_policy, terms_conditions, shipping_policy, return_policy,
+      fssai_number, bank_name, bank_account, bank_ifsc, bank_branch,
     } = req.body;
 
     if (!company_name) {
@@ -30,19 +31,21 @@ exports.createCompany = async (req, res) => {
 
     const result = await client.query(
       `INSERT INTO company_settings
-      (company_name, email, phone, website, gst_number, address_line1, city, state, country,
+      (company_name, email, phone, website, gst_number, pan_number, address_line1, city, state, country,
        pincode, support_email, logo_url, social_links, extra_data,
-       privacy_policy, terms_conditions, shipping_policy, return_policy)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+       privacy_policy, terms_conditions, shipping_policy, return_policy,
+       fssai_number, bank_name, bank_account, bank_ifsc, bank_branch)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
       RETURNING *`,
       [
         company_name,
-        email || null, phone || null, website || null, gst_number || null,
+        email || null, phone || null, website || null, gst_number || null, pan_number || null,
         address_line1 || null, city || null, state || null, country || null,
         pincode || null, support_email || null, logo_url,
         JSON.stringify(parsedSocial), extra_data ? JSON.stringify(extra_data) : '{}',
         privacy_policy || null, terms_conditions || null,
         shipping_policy || null, return_policy || null,
+        fssai_number || null, bank_name || null, bank_account || null, bank_ifsc || null, bank_branch || null,
       ]
     );
 
@@ -138,10 +141,11 @@ exports.updateCompany = async (req, res) => {
     }
 
     const ALLOWED_FIELDS = new Set([
-      'company_name', 'email', 'phone', 'website', 'gst_number',
+      'company_name', 'email', 'phone', 'website', 'gst_number', 'pan_number',
       'address_line1', 'city', 'state', 'country', 'pincode',
       'support_email', 'logo_url', 'social_links', 'extra_data',
       'privacy_policy', 'terms_conditions', 'shipping_policy', 'return_policy',
+      'fssai_number', 'bank_name', 'bank_account', 'bank_ifsc', 'bank_branch',
     ]);
 
     const fields = Object.keys(body).filter(f => ALLOWED_FIELDS.has(f));
