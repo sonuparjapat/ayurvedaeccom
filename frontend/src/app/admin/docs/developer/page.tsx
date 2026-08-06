@@ -255,7 +255,13 @@ FRONTEND_URL=https://yourdomain.com
 # Google OAuth — web client ID
 GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
 # Google OAuth — Android client ID (mobile app sends this as token audience)
-GOOGLE_ANDROID_CLIENT_ID=xxxxx.apps.googleusercontent.com`}</Code>
+GOOGLE_ANDROID_CLIENT_ID=xxxxx.apps.googleusercontent.com
+
+# COD cap — orders above this amount cannot use Cash on Delivery (0 = unlimited)
+MAX_COD_AMOUNT=5000
+
+# Winston log level (error/warn/info/http/verbose/debug/silly). Default: http in prod, debug in dev.
+LOG_LEVEL=http`}</Code>
           <H3>frontend/.env.local</H3>
           <Code>{`# Points to the backend API
 NEXT_PUBLIC_API_URL=http://localhost:5000
@@ -280,12 +286,14 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
               ['product_categories', '(product_id, category_id)', 'product_id (FK), category_id (FK)', 'Many-to-many junction for additional categories beyond primary category_id'],
               ['categories', 'id (serial)', 'name, slug, parent_id (self-ref FK), level, sort_order, gst_percent, hsn_code, cess_percent, image_url, banner_url, is_active, is_featured', 'Supports nested categories via parent_id; level auto-computed'],
               ['related_products', 'id (serial)', 'product_id (FK), related_id (FK), type (related/cross_sell/upsell), sort_order', 'Explicit product relations for "You may also like"'],
-              ['orders', 'id (serial)', 'user_id, status (0-9), total_amount, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, address_id, coupon_id, discount_amount, wallet_used, loyalty_points_used, cod_otp, shipped_at, courier_name, tracking_number', 'status enum: see Order State Machine'],
+              ['orders', 'id (serial)', 'user_id, status (0-9), total_amount, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, address_id, coupon_id, discount_amount, wallet_used, loyalty_points_used, cod_otp, shipped_at, courier_name, tracking_number, tracking_token (UUID), gift_card_code, gift_card_discount', 'tracking_token: UUID for public order tracking at /track/:token. gift_card_* columns: applied gift card code and deduction amount.'],
               ['order_items', 'id (serial)', 'order_id, product_id, variant_id, quantity, unit_price, total_price, gst_amount', 'Snapshot prices at order time'],
               ['user_addresses', 'id (serial)', 'user_id, type (home/work/other), street, city, state, pincode, email, is_default', 'type CHECK IN (\'home\',\'work\',\'other\') lowercase only — backend lowercases on insert/update so Title Case from frontend never violates constraint'],
-              ['reviews', 'id (serial)', 'user_id, product_id, order_id (nullable), rating, comment, status (pending/approved/rejected)', 'order_id nullable — quick review from product page has no order_id; UNIQUE(user_id, product_id) enforces one review per user. Verified Purchase badge shown when order_id is set (via /reviews/order/:orderId/product/:productId endpoint).'],
+              ['reviews', 'id (serial)', 'user_id, product_id, order_id (nullable), rating, comment, status (pending/approved/rejected), helpful_count', 'order_id nullable — quick review from product page has no order_id; UNIQUE(user_id, product_id) enforces one review per user. helpful_count updated by trigger on review_helpful_votes.'],
               ['review_images', 'id (serial)', 'review_id (FK), url', 'Up to 5 images per review'],
+              ['review_helpful_votes', 'id (serial)', 'review_id (FK), user_id (FK)', 'UNIQUE(review_id, user_id). Toggle: if row exists → delete + decrement helpful_count, else insert + increment. Enables "Most Helpful" sort.'],
               ['wishlist', 'id (serial)', 'user_id, product_id', 'UNIQUE(user_id, product_id)'],
+              ['shared_wishlists', 'id (serial)', 'user_id (FK, UNIQUE), token (UUID), is_active', 'UNIQUE(user_id) — one share token per user. ON CONFLICT updates is_active=TRUE. Public page at /wishlist/share/:token.'],
               ['cart_items', 'id (serial)', 'user_id, product_id, variant_id, quantity', ''],
               ['coupons', 'id (serial)', 'code, type (flat/percent), value, min_order, max_discount, usage_limit, usage_per_user, used_count, valid_from, valid_to, is_active, user_id (nullable FK → users)', 'user_id = NULL means global coupon; set to a user ID for a personal offer only that user can apply'],
               ['coupon_uses', 'id (serial)', 'coupon_id, user_id, order_id, discount_amount', 'Tracks per-user usage and discount amount logged per order'],
@@ -305,6 +313,8 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxx`}</Code>
               ['wallet_transactions', 'id (serial)', 'user_id, type (credit/debit), amount, description, order_id', ''],
               ['loyalty_transactions', 'id (serial)', 'user_id, type (earn/redeem), points, order_id, description', ''],
               ['referrals', 'id (serial)', 'referrer_id, referred_id, status (pending/rewarded), reward_amount, rewarded_at', 'UNIQUE(referred_id) — one referral per user. Rewarded when referred user places first order.'],
+              ['gift_cards', 'id (serial)', 'code (UNIQUE, 20 chars), amount, balance, issued_to_email, is_active, expires_at', 'Auto-generated hex code. balance decrements on use. Validated at checkout before order creation. Route: GET /api/gift-cards/validate/:code.'],
+              ['gift_card_uses', 'id (serial)', 'gift_card_id (FK), order_id (FK), user_id (FK), amount_used', 'Audit trail for every partial or full redemption.'],
             ]}
           />
 
@@ -523,6 +533,48 @@ Token location: Authorization: Bearer <token>  (HTTP header)
                 ['POST /PUT /DELETE', '/flash-sales/*', 'admin', 'Manage flash sales.'],
                 ['GET', '/pincodes/check', 'public', 'Pincode serviceability check.'],
                 ['POST /PUT /DELETE', '/pincodes/*', 'admin', 'Manage serviceable pincodes.'],
+              ]
+            },
+            {
+              prefix: '/gift-cards', label: 'Gift Cards',
+              routes: [
+                ['GET', '/gift-cards/validate/:code', 'public', 'Validate gift card code. Returns balance, amount, code. Used by checkout before placing order.'],
+                ['GET', '/gift-cards/admin/list', 'admin', 'List all gift cards with balance, status, expiry. Paginated.'],
+                ['POST', '/gift-cards/admin/create', 'admin', 'Create gift card. Body: { amount, issued_to_email?, expires_at? }. Code is auto-generated.'],
+                ['PUT', '/gift-cards/admin/:id/deactivate', 'admin', 'Deactivate a gift card so it can no longer be redeemed.'],
+              ]
+            },
+            {
+              prefix: '/tracking', label: 'Order Tracking',
+              routes: [
+                ['GET', '/tracking/public/:token', 'public', 'Get order tracking by UUID token. Returns status, items, courier info. No auth needed — safe to share.'],
+                ['GET', '/tracking/:orderId', 'auth', 'Get full tracking for an order the logged-in user owns.'],
+              ]
+            },
+            {
+              prefix: '/shop (wishlist sharing)', label: 'Wishlist Sharing',
+              routes: [
+                ['POST', '/shop/wishlist/share', 'auth', 'Generate (or re-activate) a public share token for the user\'s wishlist. Returns { token, url }.'],
+                ['GET', '/shop/wishlist/share/:token', 'public', 'Fetch wishlist products by share token. No auth needed.'],
+                ['DELETE', '/shop/wishlist/share', 'auth', 'Revoke the user\'s share link (sets is_active=FALSE).'],
+              ]
+            },
+            {
+              prefix: '/shop (reviews)', label: 'Review Helpful Voting',
+              routes: [
+                ['POST', '/shop/reviews/:id/helpful', 'auth', 'Toggle helpful vote on a review. Returns { voted: bool, helpful_count: number }.'],
+                ['GET', '/shop/reviews/helpful-votes/:productId', 'auth', 'Get list of review IDs the user has voted helpful for a product.'],
+              ]
+            },
+            {
+              prefix: '/admin/reports', label: 'Admin Sales Reports',
+              routes: [
+                ['GET', '/admin/reports/top-products', 'admin', 'Top products by revenue. ?from=&to= date filter.'],
+                ['GET', '/admin/reports/category-revenue', 'admin', 'Revenue grouped by product category.'],
+                ['GET', '/admin/reports/state-revenue', 'admin', 'Revenue by shipping address state.'],
+                ['GET', '/admin/reports/profit-margins', 'admin', 'Products with margin % (price - cost_price) / price. Requires cost_price to be set on products.'],
+                ['GET', '/admin/reports/monthly-trend', 'admin', 'Revenue + order count per month. ?months= (default 12).'],
+                ['GET', '/admin/reports/coupon-usage', 'admin', 'Coupon usage report — total uses, discount given, revenue generated.'],
               ]
             },
           ].map(group => (

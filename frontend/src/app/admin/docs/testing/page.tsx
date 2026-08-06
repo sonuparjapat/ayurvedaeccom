@@ -2146,6 +2146,220 @@ const SECTIONS: TestSection[] = [
     ],
   },
 
+  /* ── GIFT CARDS ── */
+  {
+    id: 'gift-cards', label: 'Gift Cards', icon: Tag,
+    platform: ['admin', 'web'], color: '#16a34a',
+    cases: [
+      {
+        id: 'gc-1', title: 'Admin creates a gift card', severity: 'critical',
+        steps: [
+          'Admin → Gift Cards → click "Create Gift Card"',
+          'Enter amount: 500, recipient email (optional), no expiry',
+          'Click Create',
+        ],
+        expected: 'Card appears in table with a unique code (e.g., A1B2C3-D4E5F6), balance = 500, status = Active.',
+        where: 'Admin: /admin/gift-cards.',
+      },
+      {
+        id: 'gc-2', title: 'Customer applies gift card at checkout', severity: 'critical',
+        steps: [
+          'Add items to cart (total ~₹800)',
+          'Go to checkout Step 2',
+          'Enter the gift card code in the Gift Card section',
+          'Click Apply',
+        ],
+        expected: 'Gift card applied: discount of ₹500 shown. Final total = ₹300. "Gift Card Applied" row visible in order summary.',
+        where: 'Web: /checkout.',
+      },
+      {
+        id: 'gc-3', title: 'Gift card balance deducted after order', severity: 'critical',
+        steps: [
+          'Place order with gift card applied',
+          'Admin → Gift Cards → find the card',
+        ],
+        expected: 'Card balance reduced by amount used. If fully used, balance shows ₹0. gift_card_uses table has a new row for this order.',
+        where: 'Admin: /admin/gift-cards.',
+      },
+      {
+        id: 'gc-4', title: 'Invalid / expired gift card rejected', severity: 'high',
+        steps: [
+          'At checkout, enter an invalid or expired gift card code',
+          'Click Apply',
+        ],
+        expected: 'Error message shown under the input: "Gift card not found" or "Gift card has expired". Order total unchanged.',
+        where: 'Web: /checkout.',
+      },
+      {
+        id: 'gc-5', title: 'Admin deactivates gift card', severity: 'medium',
+        steps: [
+          'Admin → Gift Cards → find an active card → click Deactivate',
+          'Try to apply that code at checkout',
+        ],
+        expected: 'Card status changes to Inactive. At checkout: "This gift card has been deactivated".',
+        where: 'Admin: /admin/gift-cards and Web: /checkout.',
+      },
+    ],
+  },
+
+  /* ── COD CAP ── */
+  {
+    id: 'cod-cap', label: 'COD Order Value Cap', icon: CreditCard,
+    platform: ['web', 'mobile'], color: '#ea580c',
+    cases: [
+      {
+        id: 'cod-1', title: 'COD blocked for orders above ₹5,000', severity: 'critical',
+        steps: [
+          'Add items totalling ₹6,000 to cart',
+          'Go to checkout → choose Cash on Delivery',
+        ],
+        expected: 'Warning banner visible: "COD available only for orders up to ₹5,000". Place Order button is disabled.',
+        where: 'Web: /checkout.',
+      },
+      {
+        id: 'cod-2', title: 'COD allowed for orders at or below ₹5,000', severity: 'critical',
+        steps: [
+          'Cart total ≤ ₹5,000 → checkout → choose COD',
+          'Click Place Order',
+        ],
+        expected: 'Order placed successfully. No warning shown.',
+        where: 'Web: /checkout.',
+      },
+    ],
+  },
+
+  /* ── HELPFUL VOTING ── */
+  {
+    id: 'helpful-vote', label: 'Review Helpful Voting', icon: Star,
+    platform: ['web'], color: '#d97706',
+    cases: [
+      {
+        id: 'hv-1', title: 'Vote a review as helpful', severity: 'high',
+        steps: [
+          'Go to any product page with approved reviews',
+          'Log in, then click the 👍 button on a review',
+        ],
+        expected: 'Count increments by 1. Button turns filled/highlighted to indicate your vote.',
+        where: 'Web: product page → reviews section.',
+      },
+      {
+        id: 'hv-2', title: 'Toggle helpful vote off', severity: 'medium',
+        steps: [
+          'Click 👍 on a review you already voted helpful',
+        ],
+        expected: 'Vote removed. Count decrements. Button returns to unfilled state.',
+        where: 'Web: product page → reviews section.',
+      },
+      {
+        id: 'hv-3', title: 'Sort by Most Helpful', severity: 'high',
+        steps: [
+          'Product page → reviews section → change sort dropdown to "Most Helpful"',
+        ],
+        expected: 'Reviews reorder: highest helpful_count first. Previously this sort was broken — verify it now works correctly.',
+        where: 'Web: product page → reviews sort.',
+      },
+    ],
+  },
+
+  /* ── PUBLIC ORDER TRACKING ── */
+  {
+    id: 'public-tracking', label: 'Public Order Tracking', icon: Truck,
+    platform: ['web'], color: '#0891b2',
+    cases: [
+      {
+        id: 'pt-1', title: 'Share tracking link generated', severity: 'critical',
+        steps: [
+          'Log in → My Account → Orders → open an order',
+          'Click the "Share Tracking" button',
+        ],
+        expected: 'On mobile/share-enabled browser: native share sheet opens. On desktop: URL copied to clipboard. Toast confirms copy.',
+        where: 'Web: /account or /orders/:id.',
+      },
+      {
+        id: 'pt-2', title: 'Public tracking page accessible without login', severity: 'critical',
+        steps: [
+          'Copy the tracking URL (/track/[uuid])',
+          'Open it in an incognito window (not logged in)',
+        ],
+        expected: 'Page loads with order status, items, courier info, progress steps. No login prompt.',
+        where: 'Web: /track/[token].',
+      },
+      {
+        id: 'pt-3', title: 'Invalid tracking token shows error', severity: 'medium',
+        steps: [
+          'Navigate to /track/not-a-valid-uuid',
+        ],
+        expected: '"Order not found" state shown. No server error.',
+        where: 'Web: /track/[token].',
+      },
+    ],
+  },
+
+  /* ── WISHLIST SHARING ── */
+  {
+    id: 'wishlist-share', label: 'Wishlist Sharing', icon: Heart,
+    platform: ['web'], color: '#ec4899',
+    cases: [
+      {
+        id: 'ws-1', title: 'Generate wishlist share link', severity: 'high',
+        steps: [
+          'Log in → add 2+ items to wishlist',
+          'Go to /wishlist → click "Share Wishlist"',
+        ],
+        expected: 'Share link generated. On share-enabled browser: share sheet opens. On desktop: URL copied to clipboard.',
+        where: 'Web: /wishlist.',
+      },
+      {
+        id: 'ws-2', title: 'Shared wishlist page accessible without login', severity: 'critical',
+        steps: [
+          'Paste the /wishlist/share/[token] URL in incognito',
+        ],
+        expected: 'Page loads with the owner\'s name and all their in-stock wishlisted products. "Add to Cart" button works for logged-in users.',
+        where: 'Web: /wishlist/share/[token].',
+      },
+      {
+        id: 'ws-3', title: 'Invalid wishlist token shows error', severity: 'medium',
+        steps: [
+          'Navigate to /wishlist/share/invalid-token',
+        ],
+        expected: '"Wishlist not found or link expired" message shown.',
+        where: 'Web: /wishlist/share/[token].',
+      },
+    ],
+  },
+
+  /* ── ADMIN SALES REPORTS ── */
+  {
+    id: 'sales-reports', label: 'Admin Sales Reports', icon: BarChart3,
+    platform: ['admin'], color: '#2563eb',
+    cases: [
+      {
+        id: 'sr-1', title: 'Sales Reports page loads', severity: 'high',
+        steps: [
+          'Admin → Sales Reports (left sidebar)',
+        ],
+        expected: 'Page loads with date filter, monthly trend chart, top products table, category revenue, state revenue, profit margins, and coupon usage.',
+        where: 'Admin: /admin/reports.',
+      },
+      {
+        id: 'sr-2', title: 'Date range filter works', severity: 'medium',
+        steps: [
+          'Admin → Sales Reports → set "From" and "To" dates → click Apply',
+        ],
+        expected: 'All tables and the chart update to reflect only orders in that date range.',
+        where: 'Admin: /admin/reports.',
+      },
+      {
+        id: 'sr-3', title: 'Monthly trend chart renders', severity: 'medium',
+        steps: [
+          'Admin → Sales Reports → scroll to Monthly Revenue Trend',
+        ],
+        expected: 'SVG bar chart visible with correct month labels and revenue bars.',
+        where: 'Admin: /admin/reports.',
+      },
+    ],
+  },
+
 ]
 
 /* ═══════════════════════════════════════════════

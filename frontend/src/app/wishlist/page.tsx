@@ -24,6 +24,7 @@ import {
   X,
   Sparkles,
   TrendingDown,
+  Share2,
 } from "lucide-react"
 
 import { motion, AnimatePresence } from "framer-motion"
@@ -85,6 +86,8 @@ export default function WishlistPage() {
   const [processingId, setProcessingId] = useState<number | null>(null)
   const [addingAll, setAddingAll] = useState(false)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [shareLink, setShareLink] = useState<string | null>(null)
+  const [generatingLink, setGeneratingLink] = useState(false)
 
   /* ── Fetch ── */
   useEffect(() => {
@@ -130,6 +133,26 @@ export default function WishlistPage() {
       toast.error("Some items could not be added")
     } finally {
       setAddingAll(false)
+    }
+  }
+
+  /* ── Share wishlist ── */
+  const generateShareLink = async () => {
+    setGeneratingLink(true)
+    try {
+      const r = await axios.post('/shop/wishlist/share')
+      const url = `${window.location.origin}/wishlist/share/${r.data.token}`
+      setShareLink(url)
+      if (navigator.share) {
+        navigator.share({ title: 'My Wishlist', url }).catch(() => {})
+      } else {
+        navigator.clipboard.writeText(url)
+        toast.success('Share link copied to clipboard!')
+      }
+    } catch {
+      toast.error('Failed to generate share link')
+    } finally {
+      setGeneratingLink(false)
     }
   }
 
@@ -197,6 +220,18 @@ export default function WishlistPage() {
 
           {/* Controls */}
           <div style={s.controls}>
+            {/* Share wishlist */}
+            {items.length > 0 && (
+              <button
+                style={{ ...s.addAllBtn, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: '#4f46e5' }}
+                className="wl-addAllBtn"
+                onClick={generateShareLink}
+                disabled={generatingLink}
+              >
+                <Share2 style={{ width: 14, height: 14 }} />
+                <span>{generatingLink ? 'Generating…' : 'Share Wishlist'}</span>
+              </button>
+            )}
             {/* Add all to cart */}
             {items.length > 0 && (
               <button

@@ -1502,3 +1502,61 @@ exports.getUserHelpfulVotes = async (req, res) => {
     res.json({ success: true, voted_review_ids: [] })
   }
 }
+
+/* ================= WISHLIST SHARING ================= */
+
+exports.generateWishlistShareLink = async (req, res) => {
+  const userId = req.user?.id
+  if (!userId) return res.status(401).json({ success: false, message: 'Login required' })
+  try {
+    const result = await pool.query(
+      `INSERT INTO shared_wishlists (user_id) VALUES ($1)
+       ON CONFLICT (user_id) DO UPDATE SET is_active=TRUE, created_at=NOW()
+       RETURNING token`,
+      [userId]
+    )
+    const token = result.rows[0].token
+    res.json({ success: true, token, url: `/wishlist/share/${token}` })
+  } catch (err) {
+    console.error('[generateWishlistShareLink]', err)
+    res.status(500).json({ success: false, message: 'Failed to generate share link' })
+  }
+}
+
+exports.getSharedWishlist = async (req, res) => {
+  const { token } = req.params
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidPattern.test(token)) return res.status(400).json({ success: false, message: 'Invalid link' })
+  try {
+    const sw = await pool.query(
+      `SELECT sw.user_id, u.name AS owner_name
+       FROM shared_wishlists sw JOIN users u ON u.id = sw.user_id
+       WHERE sw.token = $1 AND sw.is_active = TRUE`,
+      [token]
+    )
+    if (!sw.rows.length) return res.status(404).json({ success: false, message: 'Wishlist not found or link expired' })
+    const { user_id, owner_name } = sw.rows[0]
+    const items = await pool.query(
+      `SELECT p.id, p.name, p.slug, p.images, p.price, p.mrp, p.inventory
+       FROM wishlist w JOIN products p ON p.id = w.product_id
+       WHERE w.user_id = $1 AND p.is_active = TRUE
+       ORDER BY w.created_at DESC`,
+      [user_id]
+    )
+    res.json({ success: true, owner_name, products: items.rows })
+  } catch (err) {
+    console.error('[getSharedWishlist]', err)
+    res.status(500).json({ success: false, message: 'Failed to load wishlist' })
+  }
+}
+
+exports.revokeWishlistShareLink = async (req, res) => {
+  const userId = req.user?.id
+  if (!userId) return res.status(401).json({ success: false, message: 'Login required' })
+  try {
+    await pool.query(`UPDATE shared_wishlists SET is_active=FALSE WHERE user_id=$1`, [userId])
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to revoke' })
+  }
+}

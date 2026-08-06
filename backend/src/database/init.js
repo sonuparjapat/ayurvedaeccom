@@ -1474,6 +1474,171 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
     await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_ifsc VARCHAR(20)`);
     await client.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS bank_branch VARCHAR(100)`);
 
+    /* ================= SHARED WISHLISTS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shared_wishlists (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token UUID NOT NULL DEFAULT gen_random_uuid(),
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
+      )
+    `);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_wishlists_token ON shared_wishlists(token)`);
+
+    /* ================= DYNAMIC QUIZZES ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS quizzes (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        type VARCHAR(30) NOT NULL DEFAULT 'scored',
+        starts_at TIMESTAMP,
+        expires_at TIMESTAMP,
+        max_attempts_per_user INTEGER NOT NULL DEFAULT 1,
+        pass_score INTEGER NOT NULL DEFAULT 0,
+        reward_type VARCHAR(20) DEFAULT 'none',
+        reward_value NUMERIC(10,2) DEFAULT 0,
+        reward_is_percent BOOLEAN DEFAULT FALSE,
+        reward_max_claims INTEGER DEFAULT 0,
+        reward_claims_count INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS quiz_questions (
+        id SERIAL PRIMARY KEY,
+        quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+        question_text TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS quiz_options (
+        id SERIAL PRIMARY KEY,
+        question_id INTEGER NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
+        option_text TEXT NOT NULL,
+        is_correct BOOLEAN DEFAULT FALSE,
+        points INTEGER DEFAULT 1,
+        sort_order INTEGER DEFAULT 0
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_quiz_attempts (
+        id SERIAL PRIMARY KEY,
+        quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        session_id VARCHAR(120),
+        score INTEGER DEFAULT 0,
+        total_possible INTEGER DEFAULT 0,
+        answers JSONB DEFAULT '[]',
+        passed BOOLEAN DEFAULT FALSE,
+        reward_type VARCHAR(20),
+        reward_value NUMERIC(10,2),
+        reward_given BOOLEAN DEFAULT FALSE,
+        reward_ref VARCHAR(100),
+        completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_user_quiz_attempts_quiz ON user_quiz_attempts(quiz_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_user_quiz_attempts_user ON user_quiz_attempts(user_id)`);
+
+    /* ================= SCRATCH CARDS ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS scratch_cards (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        reward_type VARCHAR(20) NOT NULL DEFAULT 'wallet',
+        reward_value NUMERIC(10,2) NOT NULL DEFAULT 0,
+        reward_is_percent BOOLEAN DEFAULT FALSE,
+        max_claims INTEGER DEFAULT 0,
+        claims_count INTEGER DEFAULT 0,
+        max_claims_per_user INTEGER DEFAULT 1,
+        starts_at TIMESTAMP,
+        expires_at TIMESTAMP,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS scratch_card_claims (
+        id SERIAL PRIMARY KEY,
+        scratch_card_id INTEGER NOT NULL REFERENCES scratch_cards(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reward_type VARCHAR(20),
+        reward_value NUMERIC(10,2),
+        reward_ref VARCHAR(100),
+        claimed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_scratch_card_claims_card ON scratch_card_claims(scratch_card_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_scratch_card_claims_user ON scratch_card_claims(user_id, scratch_card_id)`);
+
+    /* ================= SPIN THE WHEEL ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS spin_wheels (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(200) NOT NULL,
+        spins_per_user_per_day INTEGER NOT NULL DEFAULT 1,
+        is_active BOOLEAN DEFAULT TRUE,
+        expires_at TIMESTAMP,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS spin_wheel_segments (
+        id SERIAL PRIMARY KEY,
+        wheel_id INTEGER NOT NULL REFERENCES spin_wheels(id) ON DELETE CASCADE,
+        label VARCHAR(100) NOT NULL,
+        reward_type VARCHAR(20) NOT NULL DEFAULT 'none',
+        reward_value NUMERIC(10,2) DEFAULT 0,
+        probability_weight INTEGER DEFAULT 10,
+        color VARCHAR(20) DEFAULT '#3d7a5a',
+        sort_order INTEGER DEFAULT 0
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS spin_wheel_plays (
+        id SERIAL PRIMARY KEY,
+        wheel_id INTEGER NOT NULL REFERENCES spin_wheels(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        segment_id INTEGER REFERENCES spin_wheel_segments(id) ON DELETE SET NULL,
+        segment_label VARCHAR(100),
+        reward_type VARCHAR(20),
+        reward_value NUMERIC(10,2),
+        reward_given BOOLEAN DEFAULT FALSE,
+        reward_ref VARCHAR(100),
+        played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_spin_wheel_plays_wheel ON spin_wheel_plays(wheel_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_spin_wheel_plays_user ON spin_wheel_plays(user_id, wheel_id)`);
+
+    /* ================= REWARD AUDIT LOG ================= */
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS reward_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source_type VARCHAR(50) NOT NULL,
+        source_id INTEGER,
+        reward_type VARCHAR(20) NOT NULL,
+        reward_value NUMERIC(10,2) NOT NULL,
+        reward_ref VARCHAR(100),
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_reward_logs_user ON reward_logs(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_reward_logs_source ON reward_logs(source_type, source_id)`);
+
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
 

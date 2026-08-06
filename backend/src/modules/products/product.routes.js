@@ -37,8 +37,12 @@ router.get("/recently-viewed", auth, controller.getRecentlyViewed)
 /* =================wishlist ROUTES ================= */
 
 router.post("/wishlist", auth, controller.toggleWishlist);
-
 router.get("/", auth, controller.getWishlist);
+
+// Wishlist sharing
+router.post("/wishlist/share", auth, controller.generateWishlistShareLink);
+router.delete("/wishlist/share", auth, controller.revokeWishlistShareLink);
+router.get("/wishlist/share/:token", controller.getSharedWishlist);
 // ''''''''''''''''''''''''=====cart routes=======================
 
 router.post('/cart',auth,controller.addToCart)

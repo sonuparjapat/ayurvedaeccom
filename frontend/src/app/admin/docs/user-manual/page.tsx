@@ -261,7 +261,7 @@ export default function UserManualPage() {
             rows={[
               ['Profile', 'View and edit name, email, phone number. Upload or change profile picture (web: click Change Photo in edit form; mobile: tap the avatar in the header). See your unique referral code.'],
               ['Orders', 'View all past and current orders. Click any order for detailed tracking and invoice download.'],
-              ['Wishlist', 'All saved products. Add directly to cart from here.'],
+              ['Wishlist', 'All saved products. Add directly to cart from here. Click Share Wishlist to generate a public link you can send to anyone — they can view your saved items and add to their own cart without logging in.'],
               ['Addresses', 'Save multiple delivery addresses (Home, Work, Other). Set one as default.'],
               ['Wallet', 'View wallet balance, transaction history, and loyalty points balance with earning/redemption log. Also accessible at /wallet from the header.'],
               ['Notifications', 'View a history of all order status updates as an in-app notification inbox. The bell icon in the header shows an unread count badge.'],
@@ -323,9 +323,9 @@ export default function UserManualPage() {
                 {[
                   { step: '1', label: 'Choose Address', desc: 'Select a saved address or enter a new one. The system checks if your pincode is serviceable.' },
                   { step: '2', label: 'Apply Coupon', desc: 'Enter a coupon code for flat (₹) or percentage (%) discounts. The system validates and shows the discount instantly.' },
-                  { step: '3', label: 'Use Wallet / Loyalty', desc: 'Apply available wallet balance or convert loyalty points to discount (1 point = ₹0.10). Both can be used together.' },
-                  { step: '4', label: 'Review Order Summary', desc: 'See subtotal, GST, delivery charge, all discounts, and the final amount payable.' },
-                  { step: '5', label: 'Choose Payment', desc: 'Select from two full-width premium payment cards: Cash on Delivery (pay on arrival, no extra charges) or Online via Razorpay (UPI, debit/credit cards, net banking, wallets — instant confirmation).' },
+                  { step: '3', label: 'Use Wallet / Loyalty / Gift Card', desc: 'Apply available wallet balance, convert loyalty points to discount (1 point = ₹0.10), or enter a gift card code. All can be stacked with a coupon.' },
+                  { step: '4', label: 'Review Order Summary', desc: 'See subtotal, GST, delivery charge, all discounts (coupon + wallet + gift card), and the final amount payable.' },
+                  { step: '5', label: 'Choose Payment', desc: 'Select from Cash on Delivery (COD — available only for orders up to ₹5,000) or Online via Razorpay (UPI, debit/credit cards, net banking — no value cap).' },
                   { step: '6', label: 'Confirm & Pay', desc: 'Complete payment. For COD, the order is placed immediately. For online, complete the Razorpay payment screen.' },
                 ].map(s => (
                   <div key={s.step} className="flex gap-3 items-start bg-white rounded-xl p-3 border border-gray-100">
@@ -369,6 +369,10 @@ export default function UserManualPage() {
             </div>
           </div>
           <InfoBox type="tip">For COD orders: payment status shows "Pay on Delivery" until the order is physically delivered. Once the admin marks the order as Delivered, the payment status automatically updates to "Paid". The delivery agent will ask for a 4-digit OTP to confirm delivery.</InfoBox>
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mt-2">
+            <p className="font-semibold text-sm text-blue-800 mb-1">📤 Public Order Tracking (Share with Anyone)</p>
+            <p className="text-xs text-blue-700 leading-relaxed">Each order has a unique shareable tracking link. Open any order in My Account → Orders and click <strong>Share Tracking</strong>. The link opens a public page (no login needed) showing the order status, items, and courier information. Safe to share with family members who need to know the delivery status.</p>
+          </div>
         </Section>
 
         {/* ═══ 7. REVIEWS ═══ */}
@@ -392,6 +396,10 @@ export default function UserManualPage() {
                 ['Rejected', 'Hidden. Admin may reject spam or inappropriate reviews.'],
               ]}
             />
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+              <p className="font-semibold text-sm text-amber-800 mb-1">👍 Helpful Voting</p>
+              <p className="text-xs text-amber-700 leading-relaxed">On each review, logged-in users can click the thumbs-up button to mark it as helpful. The helpful count is shown on each review card. You can toggle your vote on and off. Sort reviews by <strong>Most Helpful</strong> to see the most useful reviews first.</p>
+            </div>
           </div>
         </Section>
 
@@ -699,6 +707,22 @@ export default function UserManualPage() {
               <p className="font-semibold text-sm text-gray-800 mb-2">Abandoned Cart Recovery</p>
               <p className="text-sm text-gray-600 leading-relaxed">The system automatically tracks users who added items to cart but didn't checkout. Admins can view this list and trigger reminder emails to bring them back.</p>
             </div>
+            <div>
+              <p className="font-semibold text-sm text-gray-800 mb-2">Gift Cards</p>
+              <p className="text-sm text-gray-600 leading-relaxed mb-2">Go to <strong>Admin → Gift Cards</strong> to create digital gift cards that customers can redeem at checkout.</p>
+              <Table
+                headers={['Field', 'Description']}
+                rows={[
+                  ['Amount (₹)', 'Face value of the gift card. The initial balance equals this amount.'],
+                  ['Recipient Email', 'Optional — associate the card with a specific customer email for tracking.'],
+                  ['Expires At', 'Optional expiry date. Leave blank for a card that never expires.'],
+                  ['Balance', 'Remaining balance. Decreases as the card is used across orders.'],
+                  ['Code', 'Auto-generated unique code (e.g., A1B2C3-D4E5F6). Share this with the customer.'],
+                  ['Deactivate', 'Mark a card as inactive so it can no longer be redeemed.'],
+                ]}
+              />
+              <p className="text-sm text-gray-500 mt-2">Customers enter the gift card code during checkout under the Gift Card section. The discount is applied automatically and the card balance is reduced by the amount used.</p>
+            </div>
           </div>
         </Section>
 
@@ -713,6 +737,7 @@ export default function UserManualPage() {
               ['Product Performance', 'Best-selling products by order volume and revenue.'],
               ['User Growth', 'New registrations over time.'],
               ['Export CSV', 'Download raw data for orders, users, or revenue for external analysis in Excel/Google Sheets.'],
+              ['Sales Reports', 'Detailed breakdown by top products, category revenue, state-wise revenue, profit margins, monthly trend, and coupon usage. Accessible at Admin → Sales Reports with a custom date range filter.'],
             ]}
           />
         </Section>

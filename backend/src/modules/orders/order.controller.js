@@ -141,7 +141,7 @@ exports.createOrder = async (req, res) => {
 
     /* ================= INPUT ================= */
 
-    const { shipping, paymentMethod, addressId, couponCode, walletDiscount: requestedWalletDiscount, loyaltyDiscount: requestedLoyaltyDiscount, loyaltyPointsUsed } = req.body;
+    const { shipping, paymentMethod, addressId, couponCode, walletDiscount: requestedWalletDiscount, loyaltyDiscount: requestedLoyaltyDiscount, loyaltyPointsUsed, giftCardCode, giftCardDiscount: requestedGiftCardDiscount } = req.body;
 if (!addressId) {
   return res.status(400).json({
     success: false,
@@ -415,6 +415,7 @@ if (addr.pincode) {
       loyaltyPointsDeducted = Math.ceil(loyaltyDiscountApplied / redeemRate);
     }
 
+    let giftCardDiscountApplied = 0;
     const finalTotal = Math.max(0, total - walletDiscountApplied - loyaltyDiscountApplied);
 
     /* ================= COD ORDER VALUE CAP ================= */
@@ -475,6 +476,7 @@ if (addr.pincode) {
       platform_fee: PLATFORM,
       discount: discountAmount,
       wallet_discount: walletDiscountApplied,
+      gift_card_discount: 0,
       coupon_code: appliedCouponCode,
       grand_total: finalTotal
     }
@@ -494,6 +496,22 @@ if (addr.pincode) {
 ]);
 
     const orderId = orderRes.rows[0].id;
+
+    /* ================= APPLY GIFT CARD ================= */
+    if (giftCardCode && requestedGiftCardDiscount && Number(requestedGiftCardDiscount) > 0) {
+      try {
+        const { applyGiftCardToOrder } = require('../giftcards/giftcard.controller')
+        giftCardDiscountApplied = await applyGiftCardToOrder(client, giftCardCode, Math.min(Number(requestedGiftCardDiscount), finalTotal), orderId, userId)
+        if (giftCardDiscountApplied > 0) {
+          await client.query(
+            `UPDATE orders SET gift_card_code=$1, gift_card_discount=$2, total_amount=GREATEST(0,total_amount-$2) WHERE id=$3`,
+            [giftCardCode.toUpperCase(), giftCardDiscountApplied, orderId]
+          )
+        }
+      } catch (gcErr) {
+        console.error('[createOrder] gift card apply failed:', gcErr.message)
+      }
+    }
 
     /* ================= DEDUCT WALLET BALANCE ================= */
     if (walletDiscountApplied > 0) {

@@ -390,7 +390,7 @@ function CheckoutInner() {
   // Gift card state
   const [giftCardInput, setGiftCardInput] = useState('')
   const [giftCardApplying, setGiftCardApplying] = useState(false)
-  const [appliedGiftCard, setAppliedGiftCard] = useState<{ code: string; discount: number } | null>(null)
+  const [appliedGiftCard, setAppliedGiftCard] = useState<{ code: string; discount: number; balance: number } | null>(null)
   const [giftCardError, setGiftCardError] = useState('')
   const {fetchCart, loginuserdata, cartdata,cartloading,settings, loading: authLoading}=useAuth()
   const searchParams = useSearchParams()
@@ -1543,6 +1543,71 @@ if (checkingAddress) {
                           </div>
                         </div>
                       )}
+
+                      {/* ── GIFT CARD SECTION ── */}
+                      <div style={{ marginBottom: 24, padding: '16px 20px', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1px solid #86efac', borderRadius: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🎁</div>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#14532d' }}>Gift Card</p>
+                        </div>
+                        {appliedGiftCard ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#dcfce7', padding: '10px 14px', borderRadius: 10 }}>
+                            <div>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: '#15803d', letterSpacing: '0.08em' }}>🎁 {appliedGiftCard.code}</p>
+                              <p style={{ fontSize: 11, color: '#166534', marginTop: 2 }}>₹{appliedGiftCard.discount.toFixed(2)} discount applied (balance: ₹{appliedGiftCard.balance.toFixed(2)})</p>
+                            </div>
+                            <button onClick={() => { setAppliedGiftCard(null); setGiftCardInput(''); setGiftCardError('') }}
+                              style={{ padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <input
+                                className="gold-input"
+                                value={giftCardInput}
+                                onChange={e => { setGiftCardInput(e.target.value.toUpperCase()); setGiftCardError('') }}
+                                placeholder="Enter gift card code"
+                                style={{ flex: 1, letterSpacing: '0.08em' }}
+                                onKeyDown={async e => {
+                                  if (e.key === 'Enter') {
+                                    if (!giftCardInput.trim()) return
+                                    setGiftCardApplying(true)
+                                    try {
+                                      const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gift-cards/validate/${giftCardInput.trim()}`)
+                                      const data = await r.json()
+                                      if (!data.success) { setGiftCardError(data.message || 'Invalid gift card'); return }
+                                      const discount = Math.min(Number(data.data.balance), total)
+                                      setAppliedGiftCard({ code: data.data.code, balance: Number(data.data.balance), discount })
+                                    } catch { setGiftCardError('Failed to validate gift card') }
+                                    finally { setGiftCardApplying(false) }
+                                  }
+                                }}
+                              />
+                              <button
+                                onClick={async () => {
+                                  if (!giftCardInput.trim()) return
+                                  setGiftCardApplying(true)
+                                  try {
+                                    const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gift-cards/validate/${giftCardInput.trim()}`)
+                                    const data = await r.json()
+                                    if (!data.success) { setGiftCardError(data.message || 'Invalid gift card'); return }
+                                    const discount = Math.min(Number(data.data.balance), total)
+                                    setAppliedGiftCard({ code: data.data.code, balance: Number(data.data.balance), discount })
+                                  } catch { setGiftCardError('Failed to validate gift card') }
+                                  finally { setGiftCardApplying(false) }
+                                }}
+                                disabled={giftCardApplying || !giftCardInput.trim()}
+                                style={{ padding: '12px 20px', background: '#16a34a', color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, fontSize: 13, cursor: 'pointer', opacity: !giftCardInput.trim() ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                              >
+                                {giftCardApplying ? '…' : 'Apply'}
+                              </button>
+                            </div>
+                            {giftCardError && <p style={{ fontSize: 11, color: '#dc2626' }}>⚠ {giftCardError}</p>}
+                          </div>
+                        )}
+                      </div>
 
                       <div style={{ height: 1, background: 'var(--border)', marginBottom: 24 }} />
 
