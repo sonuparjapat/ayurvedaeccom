@@ -619,6 +619,19 @@ const SECTIONS: TestSection[] = [
     platform: ['web', 'mobile'], color: '#dc2626',
     cases: [
       {
+        id: 'ord-0', title: 'Checkout UI — Full Width & Payment Cards', severity: 'medium',
+        steps: [
+          'Open /checkout on a wide desktop (1400px+)',
+          'Verify layout stretches to full width (no narrow 960px constraint)',
+          'Step 2 (Payment): verify COD and Online cards appear as tall horizontal rows (icon left, text center, check right) — not small vertical squares',
+          'Click COD card: confirm gold selection ring animates and gold check appears',
+          'Click Online card: confirm smooth card switch',
+          'Resize to < 1100px: verify layout collapses to single column',
+        ],
+        expected: 'Full-width 2-column grid (max 1440px). Horizontal payment cards with animated selection. Responsive collapse below 1100px.',
+        where: 'Web: /checkout (Step 2 — Payment Method).',
+      },
+      {
         id: 'ord-1', title: 'Place COD Order', severity: 'critical',
         steps: [
           'Add product to cart → Proceed to Checkout',

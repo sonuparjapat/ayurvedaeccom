@@ -357,7 +357,7 @@ export function HeroSection() {
       <section className="hero-root">
 
         <div className="hero-video-wrap">
-          <video className="hero-video" src="/videos/hero-bg.mp4" autoPlay muted loop playsInline preload="auto" poster="/videos/hero-bg-poster.jpg" />
+          <video className="hero-video" src="/videos/hero-bg.mp4" autoPlay muted loop playsInline preload="auto" />
           <div className="hero-video-overlay" />
         </div>
 

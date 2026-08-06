@@ -2045,12 +2045,20 @@ exports.reorder = async (req, res) => {
       const maxQty = Number(item.max_order_qty) || 100;
       const safeQty = Math.min(item.quantity, maxQty, item.eff_inv);
       if (safeQty <= 0) continue;
-      await pool.query(`
-        INSERT INTO cart (user_id, product_id, variant_id, quantity)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (user_id, product_id, COALESCE(variant_id, -1))
-        DO UPDATE SET quantity = LEAST(cart.quantity + EXCLUDED.quantity, $4), updated_at = NOW()
-      `, [userId, item.product_id, item.variant_id || null, safeQty]);
+      const variantId = item.variant_id || null;
+      const existing = await pool.query(
+        `SELECT id, quantity FROM cart WHERE user_id=$1 AND product_id=$2 AND (variant_id=$3 OR (variant_id IS NULL AND $3 IS NULL))`,
+        [userId, item.product_id, variantId]
+      );
+      if (existing.rows.length) {
+        const newQty = Math.min(existing.rows[0].quantity + safeQty, maxQty);
+        await pool.query(`UPDATE cart SET quantity=$1, updated_at=NOW() WHERE id=$2`, [newQty, existing.rows[0].id]);
+      } else {
+        await pool.query(
+          `INSERT INTO cart (user_id, product_id, variant_id, quantity) VALUES ($1,$2,$3,$4)`,
+          [userId, item.product_id, variantId, safeQty]
+        );
+      }
       added++;
     }
 

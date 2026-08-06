@@ -79,7 +79,14 @@ app.use(globalLimiter);
 
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL, /^http:\/\/localhost/, /^exp:\/\//, /^oroganix:/].filter(Boolean),
+    origin: [
+      process.env.FRONTEND_URL,
+      'https://oroganix.com',
+      'https://www.oroganix.com',
+      /^http:\/\/localhost/,
+      /^exp:\/\//,
+      /^oroganix:/,
+    ].filter(Boolean),
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

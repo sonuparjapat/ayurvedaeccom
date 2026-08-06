@@ -883,6 +883,10 @@ const handleSaveAddress = async (data: any) => {
     } catch { } finally { setSubLoading(false) }
   }
 
+  useEffect(() => {
+    if (activeTab === 'subscriptions' && !subLoading) loadSubscriptions()
+  }, [activeTab])
+
   const pauseSubscription = async (id: number, currentStatus: string) => {
     try {
       const newStatus = currentStatus === 'paused' ? 'active' : 'paused'
@@ -1566,7 +1570,6 @@ const handleSaveAddress = async (data: any) => {
                 {/* ===================== SUBSCRIPTIONS TAB ===================== */}
                 <TabsContent value="subscriptions">
                   {(() => {
-                    if (subscriptions.length === 0 && !subLoading) loadSubscriptions()
                     const getImage = (imgs: any) => { try { const a = typeof imgs === 'string' ? JSON.parse(imgs) : imgs; return Array.isArray(a) ? a[0] : '' } catch { return '' } }
                     const freqLabel: Record<number, string> = { 7: 'Weekly', 14: 'Every 2 weeks', 30: 'Monthly', 60: 'Every 2 months', 90: 'Every 3 months' }
                     return (
