@@ -44,6 +44,54 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 }
 
-export default function BlogPostLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+export default async function BlogPostLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ slug: string }>
+}) {
+  let articleSchema: object | null = null
+
+  try {
+    const { slug } = await params
+    const res = await fetch(`${API}/blog/public/${slug}`, { next: { revalidate: 3600 } })
+    if (res.ok) {
+      const json = await res.json()
+      const post = json?.data || json?.post || json
+      if (post?.title) {
+        articleSchema = {
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: post.meta_title || post.title,
+          description: post.meta_description || post.excerpt || '',
+          image: post.cover_image ? [post.cover_image] : [],
+          datePublished: post.published_at,
+          dateModified: post.updated_at || post.published_at,
+          author: { '@type': 'Person', name: post.author_name || 'Oroganix' },
+          publisher: {
+            '@type': 'Organization',
+            name: 'Oroganix',
+            logo: {
+              '@type': 'ImageObject',
+              url: 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png',
+            },
+          },
+          mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE_URL}/blog/${slug}` },
+        }
+      }
+    }
+  } catch {}
+
+  return (
+    <>
+      {articleSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+        />
+      )}
+      {children}
+    </>
+  )
 }

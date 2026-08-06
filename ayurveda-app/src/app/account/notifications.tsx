@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import api from '../../api/axios'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
+import { appEvents } from '../../utils/appEvents'
 import { LeafLoader } from '../../components/ui/LeafLoader'
 import { useStore } from '../../store'
 
@@ -211,6 +212,13 @@ export default function NotificationsScreen() {
     setPage(1)
     loadData(1, false)
   }, [tab, typeFilter, readFilter])
+
+  // Live: reload page 1 when a new notification or broadcast arrives while screen is open
+  useEffect(() => {
+    const offN = appEvents.on('new_notification', () => loadData(1, false))
+    const offB = appEvents.on('new_broadcast', () => loadData(1, false))
+    return () => { offN(); offB() }
+  }, [loadData])
 
   const loadMore = () => {
     if (!pagination.has_next || loadingMore) return

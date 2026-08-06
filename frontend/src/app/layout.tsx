@@ -67,8 +67,8 @@ export const metadata: Metadata = {
     url: SITE_URL,
     images: [{
       url: "https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png",
-      width: 1536,
-      height: 1024,
+      width: 1200,
+      height: 630,
       alt: "Oroganix - Premium Ayurvedic & Organic Products",
     }],
   },

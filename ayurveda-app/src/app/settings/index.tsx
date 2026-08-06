@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View,
 } from 'react-native'
@@ -11,6 +11,7 @@ import { useStore } from '../../store'
 import api from '../../api/axios'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
 import { toast } from '../../components/ui/Toast'
+import { registerPushToken, savePushTokenToServer, deletePushToken } from '../../utils/pushNotifications'
 
 const APP_VERSION = '1.0.0'
 
@@ -56,6 +57,22 @@ export default function SettingsScreen() {
   const [orderUpdates, setOrderUpdates] = useState(true)
   const [promoEmails, setPromoEmails] = useState(false)
   const [clearing, setClearing] = useState(false)
+
+  useEffect(() => {
+    AsyncStorage.getItem('push_disabled').then(v => { if (v === 'true') setPushEnabled(false) })
+  }, [])
+
+  const handlePushToggle = async (val: boolean) => {
+    setPushEnabled(val)
+    if (!val) {
+      await AsyncStorage.setItem('push_disabled', 'true')
+      await deletePushToken()
+    } else {
+      await AsyncStorage.setItem('push_disabled', 'false')
+      const token = await registerPushToken()
+      if (token) await savePushTokenToServer(token)
+    }
+  }
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -176,7 +193,7 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={pushEnabled}
-                onValueChange={setPushEnabled}
+                onValueChange={handlePushToggle}
                 trackColor={{ false: '#e5e7eb', true: Colors.sage }}
                 thumbColor="#fff"
               />

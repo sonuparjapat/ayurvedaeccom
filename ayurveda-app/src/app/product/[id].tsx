@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import * as ImagePicker from 'expo-image-picker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ReviewImageViewer } from '../../components/ui/ReviewImageViewer'
@@ -18,10 +18,11 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import api from '../../api/axios'
 import { useStore } from '../../store'
 import { Colors, Fonts, Shadows, Radius } from '../../constants/theme'
+import { appEvents } from '../../utils/appEvents'
 import { impact, notify as hapticNotify } from '../../utils/haptics'
 import { Haptics } from '../../utils/haptics'
 
@@ -419,6 +420,16 @@ export default function ProductDetailScreen() {
     opacity: interpolate(scrollY.value, [W * 0.4, W * 0.7], [0, 1], Extrapolation.CLAMP),
   }))
   const wishStyle = useAnimatedStyle(() => ({ transform: [{ scale: wishScale.value }] }))
+
+  // Refresh stock when screen regains focus (e.g. back from cart)
+  useFocusEffect(useCallback(() => { if (id) fetchProduct() }, [id]))
+
+  // Refresh stock immediately if admin updates it while user is viewing this product
+  useEffect(() => {
+    return appEvents.on('product_stock_update', (data) => {
+      if (product && String(data.product_id) === String(product.id)) fetchProduct()
+    })
+  }, [product?.id])
 
   useEffect(() => {
     if (!id) return

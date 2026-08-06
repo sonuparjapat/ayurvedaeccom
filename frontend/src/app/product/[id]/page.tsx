@@ -564,67 +564,7 @@ const addToCart = async () => {
       <Header />
 
 
-      {/* ================= JSON-LD Structured Data ================= */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org/',
-            '@type': 'Product',
-            name: product.name,
-            image: product.images,
-            description: product.meta_description || product.shortdescription,
-            sku: product.sku,
-            brand: { '@type': 'Brand', name: product.brand_display_name || product.brand || 'Oroganix' },
-            ...(product.barcode ? { gtin: product.barcode } : {}),
-            ...(product.weight_grams ? { weight: { '@type': 'QuantitativeValue', value: product.weight_grams, unitCode: 'GRM' } } : {}),
-            offers: {
-              '@type': 'Offer',
-              priceCurrency: 'INR',
-              price: product.sale_price || product.price,
-              availability: product.inventory > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-              seller: { '@type': 'Organization', name: 'Oroganix' }
-            },
-            aggregateRating: Number(product.averagerating) > 0 ? {
-              '@type': 'AggregateRating',
-              ratingValue: Number(product.averagerating).toFixed(1),
-              reviewCount: product.reviewcount || 1,
-              bestRating: '5',
-              worstRating: '1'
-            } : undefined
-          })
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'BreadcrumbList',
-            itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'Home', item: process.env.NEXT_PUBLIC_SITE_URL || '' },
-              { '@type': 'ListItem', position: 2, name: 'Products', item: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/products` },
-              { '@type': 'ListItem', position: 3, name: product.name }
-            ]
-          })
-        }}
-      />
-      {product.faqs && Array.isArray(product.faqs) && product.faqs.length > 0 && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'FAQPage',
-              mainEntity: product.faqs.map((faq: any) => ({
-                '@type': 'Question',
-                name: faq.question,
-                acceptedAnswer: { '@type': 'Answer', text: faq.answer },
-              })),
-            })
-          }}
-        />
-      )}
+      {/* JSON-LD is emitted server-side by layout.tsx — no duplicate needed here */}
 
 
 

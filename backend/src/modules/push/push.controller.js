@@ -17,6 +17,16 @@ exports.saveToken = async (req, res) => {
   }
 }
 
+/* Delete all push tokens for the current user (called when user disables push in settings) */
+exports.deleteToken = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM push_tokens WHERE user_id=$1', [req.user.id])
+    res.json({ success: true })
+  } catch {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
 /* Admin: broadcast to all users */
 exports.adminBroadcast = async (req, res) => {
   try {

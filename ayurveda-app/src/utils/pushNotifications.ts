@@ -5,17 +5,13 @@ import api from '../api/axios'
 
 const PROJECT_ID = 'dcbef284-0025-4bac-a63e-27fcc1e7c0f0'
 
-// expo-notifications remote push was removed from Expo Go at SDK 53.
-// Detect Expo Go via appOwnership and skip entirely — no crash, no warning.
 const isExpoGo = Constants.appOwnership === 'expo'
 
-export async function registerPushToken(): Promise<string | null> {
+// Call once on app boot (before login) so foreground alerts work immediately.
+export async function setupNotificationHandler() {
   try {
-    if (isExpoGo) return null
-    if (!Device.isDevice) return null
-
+    if (isExpoGo) return
     const Notifications = await import('expo-notifications')
-
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
@@ -23,6 +19,15 @@ export async function registerPushToken(): Promise<string | null> {
         shouldSetBadge: false,
       }),
     })
+  } catch {}
+}
+
+export async function registerPushToken(): Promise<string | null> {
+  try {
+    if (isExpoGo) return null
+    if (!Device.isDevice) return null
+
+    const Notifications = await import('expo-notifications')
 
     const { status: existing } = await Notifications.getPermissionsAsync()
     let finalStatus = existing
@@ -56,4 +61,10 @@ export async function savePushTokenToServer(token: string) {
   } catch (e) {
     console.warn('[Push] Token save failed', e)
   }
+}
+
+export async function deletePushToken() {
+  try {
+    await api.delete('/push/token')
+  } catch {}
 }

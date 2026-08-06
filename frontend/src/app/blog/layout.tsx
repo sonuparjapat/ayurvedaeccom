@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com'
+const OG_IMAGE = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
 
 export const metadata: Metadata = {
   title: 'Oroganix Wellness Blog',
@@ -12,11 +13,13 @@ export const metadata: Metadata = {
     type: 'website',
     url: `${SITE_URL}/blog`,
     siteName: 'Oroganix',
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: 'Oroganix Wellness Blog' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Oroganix Wellness Blog',
     description: 'Health tips, herb guides, and wellness articles from Oroganix experts.',
+    images: [OG_IMAGE],
   },
 }
 

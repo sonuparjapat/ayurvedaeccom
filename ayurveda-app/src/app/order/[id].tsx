@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from '../../components/ui/Toast'
 import {
   KeyboardAvoidingView, Modal, Pressable, ScrollView,
@@ -11,13 +11,14 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import * as Linking from 'expo-linking'
 import api from '../../api/axios'
 import { Image as ExpoImage } from 'expo-image'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
 import { useStore } from '../../store'
+import { appEvents } from '../../utils/appEvents'
 
 const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
 
@@ -749,6 +750,16 @@ export default function OrderDetailScreen() {
 
   useEffect(() => { if (!user) { router.replace('/auth'); return } }, [user])
   useEffect(() => { if (id) fetchOrder() }, [id])
+
+  // Re-fetch when screen comes back into focus (e.g. returning from another screen)
+  useFocusEffect(useCallback(() => { if (id) fetchOrder() }, [id]))
+
+  // Live order status updates from the global socket via the event bus
+  useEffect(() => {
+    return appEvents.on('order_status_updated', (data) => {
+      if (String(data.order_id) === String(id)) fetchOrder()
+    })
+  }, [id])
 
   const fetchOrder = async () => {
     setLoading(true)

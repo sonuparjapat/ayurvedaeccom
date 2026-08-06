@@ -14,6 +14,7 @@ import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-googl
 import { useBootstrap } from '../hooks/useBootstrap'
 import { useOrderSocket } from '../hooks/useOrderSocket'
 import { useStore } from '../store'
+import { setupNotificationHandler } from '../utils/pushNotifications'
 import { Colors } from '../constants/theme'
 import { ToastContainer, ToastRef, setToastRef } from '../components/ui/Toast'
 
@@ -61,6 +62,7 @@ function Inner() {
   const bootstrapped = useStore((s) => s.bootstrapped)
   useOrderSocket()
   usePushDeepLink()
+  useEffect(() => { setupNotificationHandler() }, [])
   const authOpen = useStore((s) => s.authOpen)
   const setAuthOpen = useStore((s) => s.setAuthOpen)
 

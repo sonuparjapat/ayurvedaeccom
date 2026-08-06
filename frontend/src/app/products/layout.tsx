@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com'
+const OG_IMAGE = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
 
 export const metadata: Metadata = {
   title: 'Shop Ayurvedic & Organic Products',
@@ -12,11 +13,13 @@ export const metadata: Metadata = {
     type: 'website',
     url: `${SITE_URL}/products`,
     siteName: 'Oroganix',
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: 'Shop All Products | Oroganix' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Shop All Products | Oroganix',
     description: 'Premium Ayurvedic herbs, organic supplements, and natural wellness products.',
+    images: [OG_IMAGE],
   },
 }
 
