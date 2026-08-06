@@ -17,6 +17,7 @@ import * as Linking from 'expo-linking'
 import api from '../../api/axios'
 import { Image as ExpoImage } from 'expo-image'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
+import { useStore } from '../../store'
 
 const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
 
@@ -730,6 +731,7 @@ interface TimelineLog {
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams()
   const insets = useSafeAreaInsets()
+  const user = useStore(s => s.user)
   const [order, setOrder] = useState<OrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [showCancel, setShowCancel] = useState(false)
@@ -745,6 +747,7 @@ export default function OrderDetailScreen() {
   const [returnEligibility, setReturnEligibility] = useState<any>(null)
   const [returnEligibilityLoading, setReturnEligibilityLoading] = useState(false)
 
+  useEffect(() => { if (!user) { router.replace('/auth'); return } }, [user])
   useEffect(() => { if (id) fetchOrder() }, [id])
 
   const fetchOrder = async () => {

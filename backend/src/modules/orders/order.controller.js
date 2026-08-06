@@ -2394,7 +2394,7 @@ exports.updateOrderAddress = async (req, res) => {
     await client.query('BEGIN');
 
     const orderRes = await client.query(
-      `SELECT id, status, user_id, payment_method FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE`,
+      `SELECT id, status, user_id, payment_method, shipping_address FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE`,
       [id, userId]
     );
     if (!orderRes.rows.length) {
@@ -2409,7 +2409,7 @@ exports.updateOrderAddress = async (req, res) => {
     }
 
     const addrRes = await client.query(
-      `SELECT id, name, phone, street, city, state, pincode, type FROM user_addresses WHERE id=$1 AND user_id=$2`,
+      `SELECT id, street, city, state, pincode, type FROM user_addresses WHERE id=$1 AND user_id=$2`,
       [address_id, userId]
     );
     if (!addrRes.rows.length) {
@@ -2418,6 +2418,9 @@ exports.updateOrderAddress = async (req, res) => {
     }
 
     const addr = addrRes.rows[0];
+    // user_addresses stores street/city/state/pincode only — preserve name/phone from existing order
+    let existingShipping = {};
+    try { existingShipping = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {}); } catch {}
 
     // Validate new pincode serviceability
     if (addr.pincode) {
@@ -2436,8 +2439,8 @@ exports.updateOrderAddress = async (req, res) => {
     }
 
     const newShipping = {
-      name: addr.name,
-      phone: addr.phone,
+      name: existingShipping.name || '',
+      phone: existingShipping.phone || '',
       address: `${addr.street}, ${addr.city}, ${addr.state} - ${addr.pincode}`,
       address_id: addr.id,
       type: addr.type,

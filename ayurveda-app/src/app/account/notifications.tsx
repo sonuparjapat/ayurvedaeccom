@@ -144,7 +144,10 @@ const fm = StyleSheet.create({
 /* ─── Main Screen ─── */
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets()
+  const user = useStore(s => s.user)
   const setUnreadNotificationCount = useStore(s => s.setUnreadNotificationCount)
+
+  useEffect(() => { if (!user) { router.replace('/auth'); return } }, [user])
 
   // Clear global badge when this screen is opened
   useEffect(() => { setUnreadNotificationCount(0) }, [])

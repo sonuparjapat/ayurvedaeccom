@@ -158,8 +158,8 @@ function CartItem({ item, onUpdate, onRemove, updating }: {
     setTimeout(() => onRemove(item.product_id), 100)
   }
 
-  const disc = item.compare_price
-    ? Math.round(((item.compare_price - item.price) / item.compare_price) * 100)
+  const disc = item.compareprice
+    ? Math.round(((item.compareprice - item.price) / item.compareprice) * 100)
     : null
 
   return (

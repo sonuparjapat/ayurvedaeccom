@@ -1525,10 +1525,13 @@ exports.googleLogin = async (req, res) => {
     }
 
     // ── Step 2: Confirm the token belongs to OUR app (audience check) ──
-    // Accept both web and Android client IDs — Expo on Android sends the Android aud.
+    // Accept web, Android, and mobile web client IDs.
+    // GOOGLE_MOBILE_CLIENT_ID is the webClientId configured in @react-native-google-signin —
+    // this becomes the `aud` of the id_token returned by the mobile app.
     const allowedAudiences = [
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_ANDROID_CLIENT_ID,
+      process.env.GOOGLE_MOBILE_CLIENT_ID,
     ].filter(Boolean)
     if (allowedAudiences.length && !allowedAudiences.includes(tokenInfo.aud)) {
       console.warn('[Google Login] aud mismatch:', tokenInfo.aud, 'not in', allowedAudiences)

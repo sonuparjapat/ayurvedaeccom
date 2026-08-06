@@ -11,6 +11,7 @@ import { router } from 'expo-router'
 import api from '../../api/axios'
 import { toast } from '../../components/ui/Toast'
 import { Colors, Fonts } from '../../constants/theme'
+import { useStore } from '../../store'
 
 interface Subscription {
   id: number
@@ -45,10 +46,12 @@ const getImage = (images: any): string => {
 
 export default function SubscriptionsScreen() {
   const insets = useSafeAreaInsets()
+  const user = useStore(s => s.user)
   const [subs, setSubs] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!user) { router.replace('/auth'); return }
     api.get('/subscriptions/my')
       .then(r => setSubs(r.data?.data || []))
       .catch(() => toast.error('Failed to load subscriptions'))

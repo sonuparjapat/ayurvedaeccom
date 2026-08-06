@@ -619,6 +619,19 @@ const SECTIONS: TestSection[] = [
     platform: ['web', 'mobile'], color: '#dc2626',
     cases: [
       {
+        id: 'ord-0a', title: 'Reorder — Must Add Items to Cart (not 500)', severity: 'critical',
+        steps: [
+          'Login as customer who has past orders',
+          'Go to My Account → Orders',
+          'Click "Reorder" on any completed/cancelled order',
+          'Check toast: should say "X item(s) added to cart"',
+          'Open cart: verify items appear with correct quantities (capped at max_order_qty)',
+          'If item already in cart: verify quantity MERGES (adds) up to max_order_qty, does not reset',
+        ],
+        expected: 'No 500 error. Items added. Existing cart items not wiped. Quantities respect max_order_qty.',
+        where: 'Web: My Account → Orders → Reorder button.',
+      },
+      {
         id: 'ord-0', title: 'Checkout UI — Full Width & Payment Cards', severity: 'medium',
         steps: [
           'Open /checkout on a wide desktop (1400px+)',
@@ -1987,7 +2000,7 @@ export default function TestingGuidePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-rose-600 via-pink-600 to-purple-700 rounded-2xl p-6 text-white shadow-lg mb-6">
+      <div className="bg-linear-to-r from-rose-600 via-pink-600 to-purple-700 rounded-2xl p-6 text-white shadow-lg mb-6">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
             <FlaskConical size={24} />

@@ -18,6 +18,7 @@ export interface CartItem {
   variant_id?: number  // optional variant foreign key
   name: string
   price: number
+  compareprice?: number // original/MRP price for discount badge (no underscore — matches backend column)
   quantity: number
   images: string[]     // array of URLs
   inventory: number

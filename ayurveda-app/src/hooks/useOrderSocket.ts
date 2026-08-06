@@ -27,10 +27,6 @@ export function useOrderSocket() {
         })
 
         socket.on('order_status_updated', (data: { order_id: number; status: number; status_label: string }) => {
-          const store = useStore.getState()
-          if ((store as any).updateOrderStatus) {
-            (store as any).updateOrderStatus(data.order_id, data.status)
-          }
           Alert.alert(
             '📦 Order Update',
             `Order #${data.order_id} is now ${data.status_label}`,
@@ -96,10 +92,7 @@ export function useOrderSocket() {
         })
 
         socket.on('product_stock_update', (data: { product_id: number; stock: number }) => {
-          const store = useStore.getState()
-          if ((store as any).updateProductStock) {
-            (store as any).updateProductStock(data.product_id, data.stock)
-          }
+          // Stock update noted — individual product screens re-fetch on focus
         })
 
         socket.on('tracking_updated', (data: { order_id: number; courier_name: string; tracking_number: string }) => {

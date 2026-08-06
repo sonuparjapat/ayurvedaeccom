@@ -181,7 +181,7 @@ export default function UserManualPage() {
       <main className="flex-1 overflow-y-auto p-8 max-w-4xl">
 
         {/* Cover */}
-        <div className="bg-gradient-to-br from-green-700 to-green-900 rounded-2xl p-8 mb-10 text-white">
+        <div className="bg-linear-to-br from-green-700 to-green-900 rounded-2xl p-8 mb-10 text-white">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
               <BookOpen size={24} />

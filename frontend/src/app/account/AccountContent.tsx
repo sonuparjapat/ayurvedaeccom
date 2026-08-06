@@ -755,6 +755,22 @@ const handleSaveAddress = async (data: any) => {
     }
   }
 
+  const getStatusAccentGradient = (status: string) => {
+    switch (status) {
+      case 'delivered':  return 'from-emerald-400 to-teal-500'
+      case 'shipped':    return 'from-blue-400 to-cyan-500'
+      case 'processing': return 'from-amber-400 to-orange-500'
+      case 'confirmed':  return 'from-purple-400 to-violet-500'
+      case 'cancelled':  return 'from-red-400 to-rose-500'
+      default:           return 'from-gray-300 to-gray-400'
+    }
+  }
+
+  const getStatusStep = (status: string) => {
+    const steps: Record<string, number> = { pending: 1, confirmed: 2, processing: 3, shipped: 4, delivered: 5, cancelled: 0 }
+    return steps[status] ?? 1
+  }
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'delivered': return <CheckCircle size={14} />
@@ -929,7 +945,7 @@ const handleSaveAddress = async (data: any) => {
 
       <main className="flex-1">
         {/* ===== HERO BANNER ===== */}
-        <div className="bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-500 relative overflow-hidden">
+        <div className="bg-linear-to-r from-emerald-700 via-emerald-600 to-teal-500 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full bg-white -translate-y-1/2" />
             <div className="absolute bottom-0 right-1/4 w-72 h-72 rounded-full bg-white translate-y-1/2" />
@@ -1214,42 +1230,71 @@ const handleSaveAddress = async (data: any) => {
                       </div>
                     ) : (
                       pagedOrders.map((order: Order, orderIndex?: any) => (
-                        <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:border-emerald-100 transition-all">
+                        <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-gray-200 transition-all duration-300 group">
+                          {/* Status accent stripe */}
+                          <div className={`h-1 w-full bg-linear-to-r ${getStatusAccentGradient(order.status)}`} />
+
                           {/* Order Header */}
-                          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 bg-gray-50 border-b border-gray-100">
-                            <div className="flex flex-wrap items-center gap-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 bg-linear-to-r from-gray-50 to-white border-b border-gray-100">
+                            <div className="flex flex-wrap items-center gap-5">
                               <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order ID</p>
-                                <p className="font-bold text-gray-800 text-sm">#{order.orderNumber}</p>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Order ID</p>
+                                <p className="font-bold text-gray-900 text-sm tracking-wide">#{order.orderNumber}</p>
                               </div>
+                              <div className="w-px h-8 bg-gray-200 hidden sm:block" />
                               <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Placed On</p>
-                                <p className="font-semibold text-gray-700 text-sm">{new Date(order.createdAt).toDateString()}</p>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Placed On</p>
+                                <p className="font-semibold text-gray-700 text-sm">{new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                               </div>
+                              <div className="w-px h-8 bg-gray-200 hidden sm:block" />
                               <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</p>
-                                <p className="font-bold text-gray-800 text-sm">{formatPrice(order.totalAmount)}</p>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Total</p>
+                                <p className="font-bold text-gray-900 text-sm">{formatPrice(order.totalAmount)}</p>
                               </div>
                             </div>
-                            <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
+                            <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${getStatusColor(order.status)}`}>
                               {getStatusIcon(order.status)}
                               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                             </span>
                           </div>
 
+                          {/* Mini progress bar for active orders */}
+                          {!['cancelled', 'delivered'].includes(order.status) && (
+                            <div className="px-5 py-3 border-b border-gray-50 bg-gray-50/50">
+                              <div className="flex items-center gap-0">
+                                {['Placed', 'Confirmed', 'Processing', 'Shipped', 'Delivered'].map((s, idx) => {
+                                  const step = getStatusStep(order.status)
+                                  const done = idx < step
+                                  const active = idx === step - 1
+                                  return (
+                                    <div key={s} className="flex items-center flex-1 last:flex-none">
+                                      <div className="flex flex-col items-center gap-1">
+                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all ${done || active ? `bg-gradient-to-br ${getStatusAccentGradient(order.status)} text-white shadow-sm` : 'bg-gray-200 text-gray-400'}`}>
+                                          {done && !active ? '✓' : idx + 1}
+                                        </div>
+                                        <p className={`text-[8px] font-semibold hidden sm:block ${done || active ? 'text-gray-700' : 'text-gray-300'}`}>{s}</p>
+                                      </div>
+                                      {idx < 4 && <div className={`flex-1 h-0.5 mx-1 mb-3 rounded-full ${done ? `bg-linear-to-r ${getStatusAccentGradient(order.status)}` : 'bg-gray-200'}`} />}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Items */}
-                          <div className="divide-y divide-gray-50">
+                          <div className="divide-y divide-gray-50/80">
                             {order.items.map((item, i) => (
-                              <div key={i} className="flex gap-4 items-center px-5 py-4">
-                                <div className="w-14 h-14 rounded-xl border border-gray-100 overflow-hidden shrink-0">
-                                  <img src={item.image || '/placeholder.png'} className="w-full h-full object-cover" alt={item.name} />
+                              <div key={i} className="flex gap-4 items-center px-5 py-4 hover:bg-gray-50/50 transition-colors">
+                                <div className="w-16 h-16 rounded-xl border border-gray-100 overflow-hidden shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                                  <img src={item.image || '/placeholder.png'} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" alt={item.name} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="font-semibold text-gray-800 text-sm truncate">{item.name}</p>
                                   {item.variant_label && <p className="text-xs text-emerald-600 font-medium mt-0.5">{item.variant_label}</p>}
-                                  <p className="text-xs text-gray-400 mt-0.5">Qty: {item.quantity}</p>
+                                  <p className="text-xs text-gray-400 mt-1">Qty: <span className="font-semibold text-gray-600">{item.quantity}</span></p>
                                 </div>
-                                <p className="font-bold text-gray-800 text-sm">{formatPrice(item.price * item.quantity)}</p>
+                                <p className="font-bold text-gray-800 text-sm tabular-nums">{formatPrice(item.price * item.quantity)}</p>
                               </div>
                             ))}
                           </div>
@@ -1284,21 +1329,17 @@ const handleSaveAddress = async (data: any) => {
                             })()}
                             {!['shipped', 'delivered'].includes(order.status) && <div />}
 
-                            <div className="flex items-center gap-2 ml-auto">
+                            <div className="flex items-center gap-1.5 ml-auto flex-wrap">
                               {['pending', 'confirmed'].includes(order.status) && (
                                 <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-amber-200 text-amber-700 hover:bg-amber-50 rounded-xl gap-1.5 text-xs"
+                                  <button
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all duration-200 hover:shadow-sm"
                                     onClick={() => window.location.href = `/orders/${order.id}?action=change-address`}
                                   >
-                                    <MapPin size={13} /> Change Address
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-red-200 text-red-600 hover:bg-red-50 rounded-xl gap-1.5 text-xs"
+                                    <MapPin size={12} /> Change Address
+                                  </button>
+                                  <button
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-all duration-200 hover:shadow-sm"
                                     onClick={() => {
                                       setCancellingOrderId(order.id)
                                       setCancelReason('')
@@ -1306,23 +1347,19 @@ const handleSaveAddress = async (data: any) => {
                                       setShowCancelModal(true)
                                     }}
                                   >
-                                    <AlertCircle size={13} /> Cancel
-                                  </Button>
+                                    <AlertCircle size={12} /> Cancel
+                                  </button>
                                 </>
                               )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl gap-1.5 text-xs"
+                              <button
+                                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all duration-200 hover:shadow-sm ${trackingOpenId === order.id ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300'}`}
                                 onClick={() => toggleTracking(order.id)}
                               >
-                                <Truck size={13} />
-                                {trackingOpenId === order.id ? 'Hide Tracking' : 'Track Order'}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl gap-1.5 text-xs"
+                                <Truck size={12} />
+                                {trackingOpenId === order.id ? 'Hide' : 'Track Order'}
+                              </button>
+                              <button
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 hover:shadow-sm"
                                 onClick={async () => {
                                   try {
                                     await axios.post(`/orders/${order.id}/reorder`)
@@ -1332,11 +1369,10 @@ const handleSaveAddress = async (data: any) => {
                                   }
                                 }}
                               >
-                                <RotateCcw size={13} /> Reorder
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-1.5 text-xs"
+                                <RotateCcw size={12} /> Reorder
+                              </button>
+                              <button
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-linear-to-r from-emerald-500 to-teal-500 text-white border border-transparent hover:from-emerald-600 hover:to-teal-600 shadow-sm hover:shadow-md transition-all duration-200"
                                 onClick={async () => {
                                   const reviewResults = await Promise.all(
                                     order.items.map((item: any) =>
@@ -1359,8 +1395,8 @@ const handleSaveAddress = async (data: any) => {
                                   openOrderModal(order)
                                 }}
                               >
-                                <Eye size={13} /> Review
-                              </Button>
+                                <Star size={12} /> Review
+                              </button>
                             </div>
                           </div>
 
@@ -1647,7 +1683,7 @@ const handleSaveAddress = async (data: any) => {
                     <h2 className="font-bold text-gray-900 text-lg">Payment Methods</h2>
 
                     {/* Wallet / Credits Placeholder */}
-                    <div className="bg-gradient-to-r from-violet-600 to-purple-500 rounded-2xl p-5 text-white relative overflow-hidden">
+                    <div className="bg-linear-to-r from-violet-600 to-purple-500 rounded-2xl p-5 text-white relative overflow-hidden">
                       <div className="absolute -right-8 -top-8 w-36 h-36 bg-white/10 rounded-full" />
                       <div className="absolute -right-2 -bottom-10 w-28 h-28 bg-white/10 rounded-full" />
                       <div className="relative z-10">
