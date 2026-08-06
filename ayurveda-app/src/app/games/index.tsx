@@ -14,11 +14,11 @@ const { width: W } = Dimensions.get('window')
 type ScratchCard = {
   id: number; title: string; description: string
   reward_type: string; reward_value: number
-  per_user_limit: number; user_claims: number
+  max_claims_per_user: number; user_claims: number
   expires_at: string | null
 }
 type Segment = { id: number; label: string; reward_type: string; reward_value: number; color: string; probability_weight: number }
-type SpinWheel = { id: number; title: string; daily_spin_limit: number; spins_today: number; segments: Segment[] }
+type SpinWheel = { id: number; title: string; spins_per_user_per_day: number; spins_today: number; segments: Segment[] }
 type HistoryItem = { type: string; description: string; reward_type: string; reward_value: number; reward_ref: string | null; date: string }
 
 const REWARD_COLOR: Record<string, string> = { wallet: '#10b981', points: '#f59e0b', coupon: '#8b5cf6', none: '#6b7280' }
@@ -45,7 +45,7 @@ export default function GamesScreen() {
       if (h.status === 'fulfilled') {
         const hist: HistoryItem[] = []
         ;(h.value.data?.scratch || []).forEach((s: any) => hist.push({ type: 'scratch', description: s.card_title, reward_type: s.reward_type, reward_value: s.reward_value, reward_ref: s.reward_ref, date: s.claimed_at }))
-        ;(h.value.data?.spin || []).forEach((s: any) => hist.push({ type: 'spin', description: `${s.wheel_title} → ${s.segment_label}`, reward_type: s.reward_type, reward_value: s.reward_value, reward_ref: s.reward_ref, date: s.played_at }))
+        ;(h.value.data?.spins || []).forEach((s: any) => hist.push({ type: 'spin', description: `${s.wheel_title} → ${s.segment_label}`, reward_type: s.reward_type, reward_value: s.reward_value, reward_ref: s.reward_ref, date: s.played_at }))
         hist.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         setHistory(hist)
       }
@@ -110,7 +110,7 @@ function ScratchTab({ cards, onClaim }: { cards: ScratchCard[]; onClaim: () => v
 function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => void }) {
   const [claiming, setClaiming] = useState(false)
   const [result, setResult] = useState<any>(null)
-  const alreadyClaimed = card.per_user_limit > 0 && card.user_claims >= card.per_user_limit
+  const alreadyClaimed = card.max_claims_per_user > 0 && card.user_claims >= card.max_claims_per_user
   const scaleAnim = useRef(new Animated.Value(1)).current
 
   const claim = async () => {
@@ -124,11 +124,11 @@ function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => 
       const r = await api.post(`/games/scratch/${card.id}/claim`)
       setResult(r.data)
       onClaim()
-      if (r.data?.reward_type && r.data.reward_type !== 'none') {
+      if (r.data?.reward?.type && r.data.reward.type !== 'none') {
         Alert.alert('🎉 You Won!',
-          r.data.reward_type === 'wallet' ? `₹${r.data.reward_value} added to your wallet!` :
-          r.data.reward_type === 'points' ? `${r.data.reward_value} loyalty points added!` :
-          `Coupon code: ${r.data.reward_ref}`, [{ text: 'Awesome!' }])
+          r.data.reward.type === 'wallet' ? `₹${r.data.reward.value} added to your wallet!` :
+          r.data.reward.type === 'points' ? `${r.data.reward.value} loyalty points added!` :
+          `Coupon code: ${r.data.reward.ref}`, [{ text: 'Awesome!' }])
       } else {
         Alert.alert('😔 Better Luck Next Time!', 'Try again with another scratch card.', [{ text: 'OK' }])
       }
@@ -146,13 +146,13 @@ function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => 
         </View>
         <LinearGradient colors={['#34d399', '#059669']} style={{ padding: 20, alignItems: 'center' }}>
           {result ? (
-            result.reward_type !== 'none' ? (
+            result.reward?.type && result.reward.type !== 'none' ? (
               <>
                 <Text style={{ fontSize: 32 }}>🎉</Text>
                 <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18, marginTop: 6 }}>
-                  {result.reward_type === 'wallet' && `₹${result.reward_value} Won!`}
-                  {result.reward_type === 'points' && `${result.reward_value} Points!`}
-                  {result.reward_type === 'coupon' && `Code: ${result.reward_ref}`}
+                  {result.reward.type === 'wallet' && `₹${result.reward.value} Won!`}
+                  {result.reward.type === 'points' && `${result.reward.value} Points!`}
+                  {result.reward.type === 'coupon' && `Code: ${result.reward.ref}`}
                 </Text>
               </>
             ) : (
@@ -177,7 +177,7 @@ function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => 
         </LinearGradient>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 }}>
           <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>
-            {card.per_user_limit > 0 ? `${card.user_claims}/${card.per_user_limit} used` : 'Unlimited'}
+            {card.max_claims_per_user > 0 ? `${card.user_claims}/${card.max_claims_per_user} used` : 'Unlimited'}
           </Text>
           {card.expires_at && <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>Expires {new Date(card.expires_at).toLocaleDateString('en-IN')}</Text>}
         </View>
@@ -206,7 +206,7 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
   const [result, setResult] = useState<any>(null)
   const spinAnim = useRef(new Animated.Value(0)).current
   const currentRotation = useRef(0)
-  const canSpin = wheel.spins_today < wheel.daily_spin_limit
+  const canSpin = wheel.spins_today < wheel.spins_per_user_per_day
   const segs = wheel.segments || []
   const SIZE = W - 80
 
@@ -223,11 +223,11 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
         const r = await api.post(`/games/spin/${wheel.id}/play`)
         setResult(r.data)
         onSpin()
-        if (r.data?.reward_type && r.data.reward_type !== 'none') {
+        if (r.data?.reward?.type && r.data.reward.type !== 'none') {
           Alert.alert('🎉 You Won!',
-            r.data.reward_type === 'wallet' ? `₹${r.data.reward_value} added to wallet!` :
-            r.data.reward_type === 'points' ? `${r.data.reward_value} points added!` :
-            `Coupon: ${r.data.reward_ref}`, [{ text: 'Amazing!' }])
+            r.data.reward.type === 'wallet' ? `₹${r.data.reward.value} added to wallet!` :
+            r.data.reward.type === 'points' ? `${r.data.reward.value} points added!` :
+            `Coupon: ${r.data.reward.ref}`, [{ text: 'Amazing!' }])
         } else {
           Alert.alert('😔 Better Luck!', 'Try again tomorrow!', [{ text: 'OK' }])
         }
@@ -244,7 +244,7 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
       <View style={{ padding: 16, paddingBottom: 8 }}>
         <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{wheel.title}</Text>
         <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 2 }}>
-          {wheel.spins_today}/{wheel.daily_spin_limit} spins used today
+          {wheel.spins_today}/{wheel.spins_per_user_per_day} spins used today
         </Text>
       </View>
 
@@ -276,21 +276,21 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
         <TouchableOpacity onPress={spin} disabled={spinning || !canSpin}
           style={{ marginTop: 20, paddingVertical: 14, paddingHorizontal: 48, borderRadius: 50, backgroundColor: canSpin && !spinning ? '#34d399' : 'rgba(255,255,255,0.1)' }}>
           <Text style={{ fontWeight: '800', fontSize: 16, color: canSpin && !spinning ? '#0f1e14' : 'rgba(255,255,255,0.4)' }}>
-            {spinning ? 'Spinning…' : !canSpin ? `Limit: ${wheel.daily_spin_limit}/day` : '🎡 Spin!'}
+            {spinning ? 'Spinning…' : !canSpin ? `Limit: ${wheel.spins_per_user_per_day}/day` : '🎡 Spin!'}
           </Text>
         </TouchableOpacity>
       </View>
 
       {result && (
-        <View style={{ margin: 16, marginTop: 0, padding: 16, borderRadius: 16, backgroundColor: result.reward_type !== 'none' ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)', alignItems: 'center' }}>
+        <View style={{ margin: 16, marginTop: 0, padding: 16, borderRadius: 16, backgroundColor: result.reward ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)', alignItems: 'center' }}>
           <Text style={{ color: '#34d399', fontWeight: '800', fontSize: 18 }}>
-            {result.reward_type === 'none' ? '😔 Better luck next time!' : `🎉 ${result.segment_label}`}
+            {!result.reward ? '😔 Better luck next time!' : `🎉 ${result.segment?.label}`}
           </Text>
-          {result.reward_type !== 'none' && (
+          {result.reward && (
             <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 }}>
-              {result.reward_type === 'wallet' && `₹${result.reward_value} added to your wallet`}
-              {result.reward_type === 'points' && `${result.reward_value} points added`}
-              {result.reward_type === 'coupon' && `Code: ${result.reward_ref}`}
+              {result.reward.type === 'wallet' && `₹${result.reward.value} added to your wallet`}
+              {result.reward.type === 'points' && `${result.reward.value} points added`}
+              {result.reward.type === 'coupon' && `Code: ${result.reward.ref}`}
             </Text>
           )}
         </View>

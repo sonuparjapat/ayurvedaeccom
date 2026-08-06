@@ -1213,6 +1213,90 @@ export default function UserManualPage() {
           </InfoBox>
         </Section>
 
+        {/* ═══ QUIZ MANAGER ═══ */}
+        <Section id="admin-quiz" title="Admin: Quiz Manager" icon={Zap} color="#7c3aed">
+          <p className="text-sm text-gray-600 leading-relaxed">Create knowledge quizzes that reward users for correct answers. Each quiz can have an expiry date, pass score, attempt limits, and automatic reward distribution.</p>
+          <Table
+            headers={['Field', 'Description']}
+            rows={[
+              ['Title / Description', 'Shown to users on the quiz listing page'],
+              ['Starts At / Expires At', 'Quiz is only playable within this date window'],
+              ['Max Attempts / User', 'Set to 0 for unlimited. Enforced per logged-in user.'],
+              ['Pass Score (pts)', 'Minimum points required to earn the reward'],
+              ['Reward Type', 'Wallet credit, Loyalty Points, or Coupon Code'],
+              ['Reward Value', 'Amount in ₹ for wallet/points, or coupon percent/fixed'],
+              ['Max Claims (0=∞)', 'Global cap on how many users can earn the reward'],
+              ['Active toggle', 'Only active quizzes appear to users'],
+            ]}
+          />
+          <InfoBox type="tip">
+            <strong>Adding questions:</strong> Expand a quiz card → type a question → press Enter or click Add. Then add options, mark the correct one, and each correct option awards its configured point value automatically.
+          </InfoBox>
+          <InfoBox type="info">
+            <strong>Analytics:</strong> Click the bar chart icon on any quiz to see total attempts, pass rate, average score, and a per-user attempt table with reward status.
+          </InfoBox>
+        </Section>
+
+        {/* ═══ GAMES & REWARDS ═══ */}
+        <Section id="admin-games" title="Admin: Games & Rewards" icon={Star} color="#f97316">
+          <p className="text-sm text-gray-600 leading-relaxed">Manage Scratch Card campaigns and Spin-the-Wheel games. Both integrate with the shared reward engine for automatic wallet/points/coupon distribution.</p>
+          <p className="text-sm font-semibold text-gray-800 mt-3">Scratch Cards</p>
+          <Table
+            headers={['Field', 'Description']}
+            rows={[
+              ['Title / Description', 'Campaign name shown on the user games hub'],
+              ['Reward Type + Value', 'What the user wins after scratching'],
+              ['Max Claims (0=∞)', 'Global cap on total claims for this card'],
+              ['Per User Limit (0=∞)', 'How many times a single user can claim'],
+              ['Starts / Expires At', 'Optional date window for the campaign'],
+            ]}
+          />
+          <p className="text-sm font-semibold text-gray-800 mt-4">Spin Wheel</p>
+          <Table
+            headers={['Field', 'Description']}
+            rows={[
+              ['Daily Spin Limit', 'Max spins per user per calendar day'],
+              ['Segments', 'Each segment has: label, reward type/value, probability weight, and color'],
+              ['Probability Weight', 'Integer weight — must total 100 across all segments. Higher = more likely to land.'],
+            ]}
+          />
+          <InfoBox type="warning">
+            Segment probability weights <strong>must sum to exactly 100</strong> or the wheel cannot be saved. The form shows the running total in real time.
+          </InfoBox>
+        </Section>
+
+        {/* ═══ REWARD LOGS ═══ */}
+        <Section id="admin-reward-logs" title="Admin: Reward Audit Logs" icon={BarChart3} color="#10b981">
+          <p className="text-sm text-gray-600 leading-relaxed">Every reward given through the platform — quiz passes, scratch card claims, spin wheel wins, and gift cards — is logged here with full details for audit and dispute resolution.</p>
+          <Table
+            headers={['Column', 'Description']}
+            rows={[
+              ['User', 'Name and email of the recipient'],
+              ['Source', 'Which game or system triggered the reward (Quiz / Scratch Card / Spin Wheel / Gift Card / Manual)'],
+              ['Reward', 'Type: wallet credit, loyalty points, or coupon'],
+              ['Value', 'Monetary value in ₹ or point amount'],
+              ['Ref / Code', 'Auto-generated coupon code if reward_type = coupon'],
+              ['Date', 'Exact timestamp of reward distribution'],
+            ]}
+          />
+          <InfoBox type="tip">Filter by source type using the dropdown to focus on a specific game or system. Use the search box to look up by user name or email.</InfoBox>
+        </Section>
+
+        {/* ═══ USER GAMES HUB ═══ */}
+        <Section id="user-games" title="Customer: Games Hub" icon={Heart} color="#ec4899">
+          <p className="text-sm text-gray-600 leading-relaxed">Customers access the Games Hub at <code>/games</code> (web) or from the app menu (mobile). It shows all active scratch cards, spin wheels, and their personal reward history.</p>
+          <Table
+            headers={['Feature', 'How It Works']}
+            rows={[
+              ['Scratch Card', 'Customer scratches the card by dragging their finger/cursor. After 50% coverage is cleared, the prize is automatically revealed and credited.'],
+              ['Spin Wheel', 'Customer taps Spin. The wheel animates for ~4 seconds. Result is determined server-side (weighted random) to prevent cheating.'],
+              ['My History tab', 'Shows the last 20 scratch claims and 20 spin plays with reward details'],
+              ['Daily limits', 'Spin wheels enforce a per-day limit set by admin. Scratch cards enforce a per-user total limit.'],
+              ['Reward credits', 'Wallet and point rewards are credited instantly. Coupon codes are displayed and also visible in My Coupons.'],
+            ]}
+          />
+        </Section>
+
         {/* ═══ 17. MOBILE APP ═══ */}
         <Section id="mobile-app" title="Mobile App" icon={Bell} color="#7c3aed">
           <p className="text-sm text-gray-600 leading-relaxed">The Oroganix mobile app (React Native / Expo) provides the full shopping experience on Android and iOS.</p>

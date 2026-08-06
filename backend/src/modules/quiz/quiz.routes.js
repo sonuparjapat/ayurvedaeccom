@@ -16,10 +16,8 @@ router.post('/play/:id/submit', ctrl.submitDynamicQuiz)
 
 /* ── Dynamic Quizzes — Admin CRUD ── */
 router.get('/admin/list', auth, admin, ctrl.adminListQuizzes)
-router.get('/admin/:id', auth, admin, ctrl.adminGetQuiz)
 router.post('/admin/create', auth, admin, ctrl.adminCreateQuiz)
-router.put('/admin/:id', auth, admin, ctrl.adminUpdateQuiz)
-router.delete('/admin/:id', auth, admin, ctrl.adminDeleteQuiz)
+router.get('/admin/reward-logs/all', auth, admin, ctrl.adminGetRewardLogs)
 
 /* ── Questions ── */
 router.post('/admin/questions', auth, admin, ctrl.adminAddQuestion)
@@ -31,8 +29,10 @@ router.post('/admin/options', auth, admin, ctrl.adminAddOption)
 router.put('/admin/options/:id', auth, admin, ctrl.adminUpdateOption)
 router.delete('/admin/options/:id', auth, admin, ctrl.adminDeleteOption)
 
-/* ── Analytics ── */
+/* ── Parameterized (must come AFTER all static /admin/* routes) ── */
+router.get('/admin/:id', auth, admin, ctrl.adminGetQuiz)
+router.put('/admin/:id', auth, admin, ctrl.adminUpdateQuiz)
+router.delete('/admin/:id', auth, admin, ctrl.adminDeleteQuiz)
 router.get('/admin/:id/attempts', auth, admin, ctrl.adminGetAttempts)
-router.get('/admin/reward-logs/all', auth, admin, ctrl.adminGetRewardLogs)
 
 module.exports = router

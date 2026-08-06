@@ -1213,6 +1213,9 @@ const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_deli
                   <Link href="/support" className="nav-link">Support</Link>
                 )}
                 <Link href="/offers" className="nav-link special">✦ Offers</Link>
+                {loginuserdata?.id && (
+                  <Link href="/games" className="nav-link special">🎮 Play & Win</Link>
+                )}
               </div>
             </nav>
  
@@ -1293,6 +1296,11 @@ const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_deli
                     <Link href="/offers" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link special">
                       <span>✦ Offers & Deals</span>
                     </Link>
+                    {loginuserdata?.id && (
+                      <Link href="/games" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link special">
+                        <span>🎮 Play & Win</span>
+                      </Link>
+                    )}
                   </div>
 
                   <div className="mobile-divider" />

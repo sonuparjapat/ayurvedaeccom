@@ -9,7 +9,7 @@ type ScratchCard = {
   id: number; title: string; description: string
   reward_type: string; reward_value: number; reward_is_percent: boolean
   starts_at: string | null; expires_at: string | null
-  max_claims: number; claims_count: number; per_user_limit: number
+  max_claims: number; claims_count: number; max_claims_per_user: number
   is_active: boolean; created_by_name: string
 }
 
@@ -19,21 +19,33 @@ type Segment = {
 }
 
 type SpinWheel = {
-  id: number; title: string; daily_spin_limit: number; is_active: boolean
-  starts_at: string | null; expires_at: string | null
-  segments: Segment[]; spins_today?: number
+  id: number; title: string; spins_per_user_per_day: number; is_active: boolean
+  expires_at: string | null
+  segments: Segment[]
 }
 
 const REWARD_LABELS: Record<string, string> = { wallet: 'Wallet Credit', points: 'Loyalty Points', coupon: 'Coupon Code', none: 'No Reward' }
+
+/* Defined at module level — NOT inside the page component — so React never unmounts it on re-render and focus is preserved */
+function FieldInput({ label, value, onChange, type = 'text', min, step }: { label: string; value: any; onChange: (v: any) => void; type?: string; min?: number; step?: number }) {
+  return (
+    <div>
+      <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">{label}</label>
+      <input type={type} min={min} step={step} value={value ?? ''}
+        onChange={e => onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+    </div>
+  )
+}
 const SEGMENT_COLORS = ['#f97316', '#8b5cf6', '#10b981', '#ef4444', '#3b82f6', '#f59e0b', '#ec4899', '#14b8a6']
 
 const emptyCard = (): Partial<ScratchCard> => ({
   title: '', description: '', reward_type: 'wallet', reward_value: 50,
-  starts_at: '', expires_at: '', max_claims: 100, per_user_limit: 1, is_active: true
+  starts_at: '', expires_at: '', max_claims: 100, max_claims_per_user: 1, is_active: true
 })
 
 const emptyWheel = () => ({
-  title: '', daily_spin_limit: 1, is_active: true, starts_at: '', expires_at: '',
+  title: '', spins_per_user_per_day: 1, is_active: true, starts_at: '', expires_at: '',
   segments: [
     { label: 'Better luck!', reward_type: 'none', reward_value: 0, probability_weight: 40, color: '#6b7280', sort_order: 0 },
     { label: '₹20 Wallet', reward_type: 'wallet', reward_value: 20, probability_weight: 30, color: '#10b981', sort_order: 1 },
@@ -130,15 +142,6 @@ export default function AdminGamesPage() {
     setEditWheel((p: any) => ({ ...p, segments: (p.segments || []).filter((_: any, i: number) => i !== idx) }))
   }
 
-  const FieldInput = ({ label, value, onChange, type = 'text', min, step }: any) => (
-    <div>
-      <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">{label}</label>
-      <input type={type} min={min} step={step} value={value ?? ''}
-        onChange={e => onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
-    </div>
-  )
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
@@ -195,7 +198,7 @@ export default function AdminGamesPage() {
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { label: 'Claims', value: `${card.claims_count}/${card.max_claims || '∞'}` },
-                      { label: 'Per User', value: card.per_user_limit || '∞' },
+                      { label: 'Per User', value: card.max_claims_per_user || '∞' },
                       { label: 'Expires', value: card.expires_at ? new Date(card.expires_at).toLocaleDateString('en-IN') : 'No limit' },
                     ].map(s => (
                       <div key={s.label} className="bg-gray-50 rounded-xl p-2 text-center">
@@ -232,7 +235,7 @@ export default function AdminGamesPage() {
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${wheel.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
                           {wheel.is_active ? 'Active' : 'Inactive'}
                         </span>
-                        <span className="text-xs text-gray-400">{wheel.daily_spin_limit} spin/day · {wheel.segments?.length || 0} segments</span>
+                        <span className="text-xs text-gray-400">{wheel.spins_per_user_per_day} spin/day · {wheel.segments?.length || 0} segments</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -289,7 +292,7 @@ export default function AdminGamesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <FieldInput label="Max Claims (0=∞)" type="number" min={0} value={editCard.max_claims} onChange={(v: number) => setEditCard(p => ({ ...p!, max_claims: v }))} />
-                <FieldInput label="Per User Limit (0=∞)" type="number" min={0} value={editCard.per_user_limit} onChange={(v: number) => setEditCard(p => ({ ...p!, per_user_limit: v }))} />
+                <FieldInput label="Per User Limit (0=∞)" type="number" min={0} value={editCard.max_claims_per_user} onChange={(v: number) => setEditCard(p => ({ ...p!, max_claims_per_user: v }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -328,7 +331,7 @@ export default function AdminGamesPage() {
             <div className="space-y-3 mb-5">
               <FieldInput label="Title *" value={editWheel.title} onChange={(v: string) => setEditWheel((p: any) => ({ ...p, title: v }))} />
               <div className="grid grid-cols-2 gap-3">
-                <FieldInput label="Daily Spin Limit" type="number" min={1} value={editWheel.daily_spin_limit} onChange={(v: number) => setEditWheel((p: any) => ({ ...p, daily_spin_limit: v }))} />
+                <FieldInput label="Daily Spin Limit" type="number" min={1} value={editWheel.spins_per_user_per_day} onChange={(v: number) => setEditWheel((p: any) => ({ ...p, spins_per_user_per_day: v }))} />
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Status</label>
                   <select value={editWheel.is_active ? 'true' : 'false'} onChange={e => setEditWheel((p: any) => ({ ...p, is_active: e.target.value === 'true' }))}

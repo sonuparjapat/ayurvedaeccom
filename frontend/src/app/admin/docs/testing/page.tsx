@@ -2360,6 +2360,181 @@ const SECTIONS: TestSection[] = [
     ],
   },
 
+  /* ── GAMIFICATION: QUIZ ── */
+  {
+    id: 'quiz-dynamic', label: 'Dynamic Quiz System', icon: Zap,
+    platform: ['admin', 'web', 'mobile'], color: '#7c3aed',
+    cases: [
+      {
+        id: 'qd-1', title: 'Admin creates quiz with reward', severity: 'critical',
+        steps: [
+          'Admin → Quiz Manager → Create Quiz',
+          'Set title, pass score = 5, reward = Wallet ₹50, max_attempts = 1, expires_at = tomorrow',
+          'Add 3 questions, each with 2 options; mark 1 correct (1 point each)',
+          'Set active = true → Save',
+        ],
+        expected: 'Quiz appears in list. questions_count = 3, attempts_count = 0.',
+        where: 'Admin: /admin/quiz',
+      },
+      {
+        id: 'qd-2', title: 'User plays and earns reward on pass', severity: 'critical',
+        steps: [
+          'Log in as customer',
+          'Navigate to /games or quiz play page',
+          'Select all correct answers → Submit',
+          'Check wallet balance in account page',
+        ],
+        expected: 'Score ≥ pass_score → reward_given = true. Wallet balance increased by ₹50. Reward log created.',
+        where: 'Web: /games | Admin: Reward Logs',
+      },
+      {
+        id: 'qd-3', title: 'Attempt limit enforced', severity: 'high',
+        steps: [
+          'Complete quiz (max_attempts = 1)',
+          'Try to submit quiz again',
+        ],
+        expected: 'Error: "You have used all allowed attempts for this quiz."',
+        where: 'Web quiz play endpoint.',
+      },
+      {
+        id: 'qd-4', title: 'Quiz expiry respected', severity: 'high',
+        steps: [
+          'Set expires_at = yesterday on an existing quiz',
+          'Try to submit answers via POST /api/quiz/play/:id/submit',
+        ],
+        expected: '403 error: "This quiz has expired."',
+        where: 'Backend: quiz.controller.js submitDynamicQuiz.',
+      },
+    ],
+  },
+
+  /* ── GAMIFICATION: SCRATCH CARDS ── */
+  {
+    id: 'scratch', label: 'Scratch Card Games', icon: Tag,
+    platform: ['admin', 'web', 'mobile'], color: '#f97316',
+    cases: [
+      {
+        id: 'sc-1', title: 'Admin creates scratch card campaign', severity: 'critical',
+        steps: [
+          'Admin → Games & Rewards → Scratch Cards → New Campaign',
+          'Set title, reward_type = wallet, reward_value = 30, max_claims = 10, per_user_limit = 1',
+          'Set is_active = true → Save',
+        ],
+        expected: 'Card appears in admin list with claims_count = 0.',
+        where: 'Admin: /admin/games',
+      },
+      {
+        id: 'sc-2', title: 'User scratches and claims reward', severity: 'critical',
+        steps: [
+          'Go to /games → Scratch Cards tab',
+          'Drag/scratch over the card until 50% revealed',
+          'Check wallet balance',
+        ],
+        expected: 'Prize revealed. Wallet balance +₹30. claims_count incremented to 1.',
+        where: 'Web: /games | DB: scratch_card_claims',
+      },
+      {
+        id: 'sc-3', title: 'Per-user limit prevents double claim', severity: 'critical',
+        steps: [
+          'Same user tries to claim same card twice',
+        ],
+        expected: '403: "You have already claimed this scratch card."',
+        where: 'Backend: games.controller.js claimScratchCard.',
+      },
+      {
+        id: 'sc-4', title: 'Mobile scratch card tap-to-reveal works', severity: 'high',
+        steps: [
+          'Open mobile app → Games → Scratch Cards',
+          'Tap the scratch area button',
+          'Confirm alert appears with prize or "better luck" message',
+        ],
+        expected: 'Alert shown with correct reward text. Reward credited.',
+        where: 'Mobile: /games screen',
+      },
+    ],
+  },
+
+  /* ── GAMIFICATION: SPIN WHEEL ── */
+  {
+    id: 'spin', label: 'Spin Wheel Games', icon: RotateCcw,
+    platform: ['admin', 'web', 'mobile'], color: '#10b981',
+    cases: [
+      {
+        id: 'sw-1', title: 'Admin creates spin wheel with segments', severity: 'critical',
+        steps: [
+          'Admin → Games & Rewards → Spin Wheel tab → New Wheel',
+          'Add 4 segments totalling weight = 100 (e.g., 40/30/20/10)',
+          'Set daily_spin_limit = 2, is_active = true → Save Wheel',
+        ],
+        expected: 'Wheel created. Segment probability weights sum = 100 check passes.',
+        where: 'Admin: /admin/games',
+      },
+      {
+        id: 'sw-2', title: 'Invalid weights rejected', severity: 'high',
+        steps: [
+          'Create wheel with segments totalling 80 (not 100)',
+          'Click Save Wheel',
+        ],
+        expected: 'Toast error: "Weights must total 100 (currently 80)"',
+        where: 'Admin: /admin/games frontend validation.',
+      },
+      {
+        id: 'sw-3', title: 'User spins and receives reward', severity: 'critical',
+        steps: [
+          'Go to /games → Spin Wheel tab',
+          'Click Spin Now',
+          'Wait for animation to complete',
+          'Check wallet/points balance',
+        ],
+        expected: 'Spin result displayed. If reward_type ≠ none, balance updated. spin_wheel_plays row inserted.',
+        where: 'Web: /games | DB: spin_wheel_plays',
+      },
+      {
+        id: 'sw-4', title: 'Daily spin limit enforced', severity: 'critical',
+        steps: [
+          'Spin until daily_spin_limit reached',
+          'Try to spin again',
+        ],
+        expected: 'Button disabled. API returns 429: "Daily spin limit reached."',
+        where: 'Web: /games | Backend: games.controller.js spinWheel.',
+      },
+    ],
+  },
+
+  /* ── REWARD LOGS ── */
+  {
+    id: 'reward-logs', label: 'Reward Audit Logs', icon: BarChart3,
+    platform: ['admin'], color: '#6366f1',
+    cases: [
+      {
+        id: 'rl-1', title: 'Every reward creates a log entry', severity: 'critical',
+        steps: [
+          'Complete a quiz, scratch a card, spin a wheel (3 separate actions)',
+          'Admin → Reward Logs',
+        ],
+        expected: '3 new rows visible, each with correct source_type, reward_type, value, user, and timestamp.',
+        where: 'Admin: /admin/reward-logs | DB: reward_logs',
+      },
+      {
+        id: 'rl-2', title: 'Source type filter works', severity: 'high',
+        steps: [
+          'Admin → Reward Logs → filter by source_type = spin_wheel',
+        ],
+        expected: 'Only spin wheel rewards shown.',
+        where: 'Admin: /admin/reward-logs',
+      },
+      {
+        id: 'rl-3', title: 'Coupon code logged in reward_ref', severity: 'high',
+        steps: [
+          'Set a quiz reward_type = coupon. User passes quiz.',
+          'Check reward_logs → reward_ref column',
+        ],
+        expected: 'reward_ref = generated coupon code (RWD-xxxxxxxx format). Coupon also exists in coupons table.',
+        where: 'DB: reward_logs.reward_ref | DB: coupons',
+      },
+    ],
+  },
+
 ]
 
 /* ═══════════════════════════════════════════════

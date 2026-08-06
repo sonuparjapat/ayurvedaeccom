@@ -9,7 +9,7 @@ type ScratchCard = {
   id: number; title: string; description: string
   reward_type: string; reward_value: number
   starts_at: string | null; expires_at: string | null
-  per_user_limit: number; user_claims: number
+  max_claims_per_user: number; user_claims: number
 }
 
 type Segment = {
@@ -18,7 +18,7 @@ type Segment = {
 }
 
 type SpinWheel = {
-  id: number; title: string; daily_spin_limit: number
+  id: number; title: string; spins_per_user_per_day: number
   spins_today: number; segments: Segment[]
 }
 
@@ -46,7 +46,7 @@ export default function GamesPage() {
       if (h.status === 'fulfilled') {
         const hist: HistoryItem[] = []
         ;(h.value.data?.scratch || []).forEach((s: any) => hist.push({ type: 'scratch', description: s.card_title, reward_type: s.reward_type, reward_value: s.reward_value, reward_ref: s.reward_ref, date: s.claimed_at }))
-        ;(h.value.data?.spin || []).forEach((s: any) => hist.push({ type: 'spin', description: s.wheel_title + ' → ' + s.segment_label, reward_type: s.reward_type, reward_value: s.reward_value, reward_ref: s.reward_ref, date: s.played_at }))
+        ;(h.value.data?.spins || []).forEach((s: any) => hist.push({ type: 'spin', description: s.wheel_title + ' → ' + s.segment_label, reward_type: s.reward_type, reward_value: s.reward_value, reward_ref: s.reward_ref, date: s.played_at }))
         hist.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         setHistory(hist)
       }
@@ -113,7 +113,7 @@ function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawing = useRef(false)
   const coverageRef = useRef(0)
-  const alreadyClaimed = card.per_user_limit > 0 && card.user_claims >= card.per_user_limit
+  const alreadyClaimed = card.max_claims_per_user > 0 && card.user_claims >= card.max_claims_per_user
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -164,8 +164,8 @@ function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => 
     try {
       const r = await axios.post(`/games/scratch/${card.id}/claim`)
       setResult(r.data)
-      if (r.data?.reward_type && r.data.reward_type !== 'none') {
-        toast.success(`You won: ${REWARD_LABELS[r.data.reward_type]}!`)
+      if (r.data?.reward?.type && r.data.reward.type !== 'none') {
+        toast.success(`You won: ${REWARD_LABELS[r.data.reward.type]}!`)
       } else {
         toast('Better luck next time!', { icon: '🎟' })
       }
@@ -188,13 +188,13 @@ function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => 
         {/* Prize underneath */}
         <div style={{ textAlign: 'center', zIndex: 0 }}>
           {result ? (
-            result.reward_type !== 'none' ? (
+            result.reward?.type && result.reward.type !== 'none' ? (
               <>
                 <p style={{ fontSize: 32, margin: 0 }}>🎉</p>
                 <p style={{ color: '#fff', fontWeight: 800, fontSize: 18, margin: '4px 0 0' }}>
-                  {result.reward_type === 'wallet' && `₹${result.reward_value} Wallet Credit!`}
-                  {result.reward_type === 'points' && `${result.reward_value} Loyalty Points!`}
-                  {result.reward_type === 'coupon' && `Coupon: ${result.reward_ref}`}
+                  {result.reward.type === 'wallet' && `₹${result.reward.value} Wallet Credit!`}
+                  {result.reward.type === 'points' && `${result.reward.value} Loyalty Points!`}
+                  {result.reward.type === 'coupon' && `Coupon: ${result.reward.ref}`}
                 </p>
               </>
             ) : (
@@ -234,7 +234,7 @@ function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => 
 
       <div style={{ padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
-          {card.per_user_limit > 0 ? `${card.user_claims}/${card.per_user_limit} used` : 'Unlimited claims'}
+          {card.max_claims_per_user > 0 ? `${card.user_claims}/${card.max_claims_per_user} used` : 'Unlimited claims'}
         </span>
         {alreadyClaimed && <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>✓ Claimed</span>}
       </div>
@@ -263,7 +263,7 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
   const [result, setResult] = useState<any>(null)
   const currentAngleRef = useRef(0)
   const SIZE = 300
-  const canSpin = wheel.spins_today < wheel.daily_spin_limit
+  const canSpin = wheel.spins_today < wheel.spins_per_user_per_day
 
   const drawWheel = (angle: number) => {
     const canvas = canvasRef.current
@@ -339,7 +339,7 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
       setResult(r.data)
       // Snap to winning segment
       const segs = wheel.segments || []
-      const winSeg = segs.find(s => s.id === r.data?.segment_id)
+      const winSeg = segs.find(s => s.id === r.data?.segment?.id)
       if (winSeg) {
         const idx = segs.indexOf(winSeg)
         const sliceAngle = (Math.PI * 2) / segs.length
@@ -349,8 +349,8 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
         currentAngleRef.current = snapAngle + fullRotations
         drawWheel(currentAngleRef.current)
       }
-      if (r.data?.reward_type && r.data.reward_type !== 'none') {
-        toast.success(`You won: ${REWARD_LABELS[r.data.reward_type]}!`, { duration: 4000 })
+      if (r.data?.reward?.type && r.data.reward.type !== 'none') {
+        toast.success(`You won: ${REWARD_LABELS[r.data.reward.type]}!`, { duration: 4000 })
       } else {
         toast('Better luck next time! 🎡')
       }
@@ -365,7 +365,7 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
       <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <p style={{ color: '#fff', fontWeight: 700, fontSize: 16, margin: 0 }}>{wheel.title}</p>
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>
-          {wheel.spins_today}/{wheel.daily_spin_limit} spins used today
+          {wheel.spins_today}/{wheel.spins_per_user_per_day} spins used today
         </p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 20px' }}>
@@ -379,18 +379,18 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
             color: canSpin && !spinning ? '#0f1e14' : 'rgba(255,255,255,0.4)',
             fontWeight: 800, fontSize: 15, transition: 'all 0.2s'
           }}>
-          {spinning ? '🎡 Spinning…' : !canSpin ? `Daily limit reached (${wheel.daily_spin_limit}/day)` : '🎡 Spin Now!'}
+          {spinning ? '🎡 Spinning…' : !canSpin ? `Daily limit reached (${wheel.spins_per_user_per_day}/day)` : '🎡 Spin Now!'}
         </button>
         {result && (
-          <div style={{ marginTop: 16, background: result.reward_type !== 'none' ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)', borderRadius: 16, padding: '12px 24px', textAlign: 'center', border: `1px solid ${result.reward_type !== 'none' ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
+          <div style={{ marginTop: 16, background: result.reward ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)', borderRadius: 16, padding: '12px 24px', textAlign: 'center', border: `1px solid ${result.reward ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
             <p style={{ color: '#34d399', fontWeight: 800, fontSize: 18, margin: 0 }}>
-              {result.reward_type === 'none' ? '😔 Better luck next time!' : `🎉 ${result.segment_label}`}
+              {!result.reward ? '😔 Better luck next time!' : `🎉 ${result.segment?.label}`}
             </p>
-            {result.reward_type !== 'none' && (
+            {result.reward && (
               <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, marginTop: 4 }}>
-                {result.reward_type === 'wallet' && `₹${result.reward_value} added to your wallet`}
-                {result.reward_type === 'points' && `${result.reward_value} points added`}
-                {result.reward_type === 'coupon' && `Coupon code: ${result.reward_ref}`}
+                {result.reward.type === 'wallet' && `₹${result.reward.value} added to your wallet`}
+                {result.reward.type === 'points' && `${result.reward.value} points added`}
+                {result.reward.type === 'coupon' && `Coupon code: ${result.reward.ref}`}
               </p>
             )}
           </div>

@@ -26,8 +26,9 @@ const SECTIONS = [
   { id: 'frontend',   label: 'Frontend Structure',     icon: Server },
   { id: 'mobile',     label: 'Mobile App',             icon: Code2 },
   { id: 'tracking',   label: 'Shipment Tracking',      icon: Truck },
-  { id: 'gst',        label: 'GST Module',             icon: FileText },
-  { id: 'deploy',     label: 'Deployment Notes',       icon: Terminal },
+  { id: 'gst',           label: 'GST Module',             icon: FileText },
+  { id: 'gamification', label: 'Gamification Module',   icon: Zap },
+  { id: 'deploy',       label: 'Deployment Notes',       icon: Terminal },
 ]
 
 /* ═══════════════════════════════════════════════════
@@ -1674,6 +1675,80 @@ SGST Rate, SGST Amount, IGST Rate, IGST Amount, Total Tax`}</Code>
 backend/src/modules/gst/gst.routes.js        — /api/admin/gst/* routes
 frontend/src/app/admin/gst/page.tsx          — GST dashboard + GSTR-1 + export UI
 frontend/src/app/admin/invoices/page.tsx     — Void button + void modal added`}</Code>
+        </Section>
+
+        {/* ═══ GAMIFICATION ═══ */}
+        <Section id="gamification" title="Gamification Module" icon={Zap}>
+          <H3>Architecture</H3>
+          <p className="text-sm text-gray-600 leading-relaxed">All games share a single reward engine via a <code>distributeReward()</code> helper exported from the quiz controller. This ensures every reward — regardless of source — is atomic, consistent, and logged.</p>
+          <Code>{`// backend/src/modules/quiz/quiz.controller.js
+async function distributeReward(client, userId, rewardType, rewardValue, sourceType, sourceId, description) {
+  // sourceType: 'quiz' | 'scratch_card' | 'spin_wheel' | 'manual'
+  // Handles: wallet (add to wallet_balance), points (add to loyalty_points), coupon (generate RWD-xxx code)
+  // Always writes to reward_logs table for audit trail
+  // Returns: rewardRef (coupon code) or null
+}`}</Code>
+
+          <H3>Database Tables</H3>
+          <Table
+            headers={['Table', 'Purpose']}
+            rows={[
+              ['quizzes', 'Dynamic admin-created quizzes with reward config and expiry'],
+              ['quiz_questions / quiz_options', 'Question bank with per-option points and correct flag'],
+              ['user_quiz_attempts', 'Per-user attempt record with score, pass status, and reward_ref'],
+              ['scratch_cards', 'Scratch card campaigns with claim limits and reward config'],
+              ['scratch_card_claims', 'Per-user claim records; UNIQUE(user_id, scratch_card_id) index prevents double-claim'],
+              ['spin_wheels / spin_wheel_segments', 'Wheel config with weighted segments (probability_weight)'],
+              ['spin_wheel_plays', 'Per-spin record with the winning segment and reward'],
+              ['reward_logs', 'Audit trail for ALL rewards across all sources'],
+            ]}
+          />
+
+          <H3>Concurrency Protection</H3>
+          <Code>{`-- Both scratch card claim and spin wheel play use FOR UPDATE row locking:
+BEGIN;
+SELECT * FROM scratch_cards WHERE id = $1 FOR UPDATE;
+-- check max_claims, per_user_limit, dates
+-- call distributeReward()
+UPDATE scratch_cards SET claims_count = claims_count + 1 WHERE id = $1;
+COMMIT;
+-- Race condition impossible: second concurrent request blocks until first commits`}</Code>
+
+          <H3>Spin Wheel — Weighted Random</H3>
+          <Code>{`// Weighted random: segments with higher probability_weight land more often
+const totalWeight = segments.reduce((s, seg) => s + Number(seg.probability_weight), 0)
+let rand = Math.random() * totalWeight
+for (const seg of segments) {
+  rand -= Number(seg.probability_weight)
+  if (rand <= 0) { winner = seg; break }
+}
+// Weights DO NOT need to sum to 100 on backend, but the admin UI enforces it for clarity`}</Code>
+
+          <H3>API Routes</H3>
+          <Table
+            headers={['Method', 'Path', 'Auth', 'Description']}
+            rows={[
+              ['GET', '/api/quiz/admin/list', 'admin', 'List all dynamic quizzes with counts'],
+              ['POST', '/api/quiz/admin/create', 'admin', 'Create quiz'],
+              ['GET', '/api/quiz/active', 'user', 'List active quizzes for play'],
+              ['POST', '/api/quiz/play/:id/submit', 'user', 'Submit answers, get score + reward'],
+              ['GET', '/api/quiz/admin/reward-logs/all', 'admin', 'Paginated reward audit log'],
+              ['GET', '/api/games/scratch/active', 'user', 'Active scratch cards with user claim count'],
+              ['POST', '/api/games/scratch/:id/claim', 'user', 'Claim a scratch card (atomic)'],
+              ['GET', '/api/games/spin/active', 'user', 'Active spin wheels with spins_today'],
+              ['POST', '/api/games/spin/:id/play', 'user', 'Spin a wheel (atomic, daily limit enforced)'],
+              ['GET', '/api/games/my-history', 'user', 'Last 20 scratch + last 20 spin plays'],
+            ]}
+          />
+          <H3>File Locations</H3>
+          <Code>{`backend/src/modules/quiz/quiz.controller.js     — distributeReward helper + quiz CRUD + dosha quiz
+backend/src/modules/games/games.controller.js   — scratch card + spin wheel CRUD + claim/spin handlers
+backend/src/modules/games/games.routes.js       — /api/games/* routes
+frontend/src/app/admin/quiz/page.tsx            — Admin quiz management UI
+frontend/src/app/admin/games/page.tsx           — Admin scratch card + spin wheel UI
+frontend/src/app/admin/reward-logs/page.tsx     — Reward audit log viewer
+frontend/src/app/games/page.tsx                 — User-facing games hub (web)
+ayurveda-app/src/app/games/index.tsx            — Mobile games hub`}</Code>
         </Section>
 
         {/* ═══ DEPLOY ═══ */}
