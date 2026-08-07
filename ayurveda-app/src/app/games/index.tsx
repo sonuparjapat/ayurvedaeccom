@@ -1,11 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Animated, Dimensions, ScrollView, StatusBar, StyleSheet,
   Text, TouchableOpacity, View, ActivityIndicator, Alert,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import api from '../../api/axios'
 
@@ -21,8 +20,6 @@ type Segment = { id: number; label: string; reward_type: string; reward_value: n
 type SpinWheel = { id: number; title: string; spins_per_user_per_day: number; spins_today: number; segments: Segment[] }
 type HistoryItem = { type: string; description: string; reward_type: string; reward_value: number; reward_ref: string | null; date: string }
 
-const REWARD_COLOR: Record<string, string> = { wallet: '#10b981', points: '#f59e0b', coupon: '#8b5cf6', none: '#6b7280' }
-const REWARD_LABEL: Record<string, string> = { wallet: 'Wallet', points: 'Points', coupon: 'Coupon', none: 'No Reward' }
 
 export default function GamesScreen() {
   const insets = useSafeAreaInsets()
@@ -61,7 +58,7 @@ export default function GamesScreen() {
         {/* Header */}
         <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 8 }}>
           <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 12 }}>
-            <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.7)" />
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 22 }}>←</Text>
           </TouchableOpacity>
           <Text style={{ color: '#fff', fontSize: 24, fontWeight: '800' }}>Games Hub 🎮</Text>
           <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginTop: 4 }}>Play & win real rewards!</Text>

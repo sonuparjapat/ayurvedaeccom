@@ -122,14 +122,14 @@ exports.claimScratchCard = async (req, res) => {
       [cardId]
     )
     if (!cardRes.rows.length) {
-      await client.query('ROLLBACK'); client.release()
+      await client.query('ROLLBACK')
       return res.status(404).json({ success: false, message: 'Scratch card not found or expired' })
     }
     const card = cardRes.rows[0]
 
     // Check total claims cap
     if (card.max_claims > 0 && card.claims_count >= card.max_claims) {
-      await client.query('ROLLBACK'); client.release()
+      await client.query('ROLLBACK')
       return res.status(400).json({ success: false, message: 'This scratch card campaign has ended' })
     }
 
@@ -139,7 +139,7 @@ exports.claimScratchCard = async (req, res) => {
       [cardId, userId]
     )
     if (Number(userClaims.rows[0].count) >= card.max_claims_per_user) {
-      await client.query('ROLLBACK'); client.release()
+      await client.query('ROLLBACK')
       return res.status(400).json({ success: false, message: 'You have already claimed this scratch card' })
     }
 
@@ -325,7 +325,7 @@ exports.spinWheel = async (req, res) => {
       [wheelId]
     )
     if (!wheelRes.rows.length) {
-      await client.query('ROLLBACK'); client.release()
+      await client.query('ROLLBACK')
       return res.status(404).json({ success: false, message: 'Wheel not found or expired' })
     }
     const wheel = wheelRes.rows[0]
@@ -337,7 +337,7 @@ exports.spinWheel = async (req, res) => {
         [wheelId, userId]
       )
       if (Number(todayPlays.rows[0].count) >= wheel.spins_per_user_per_day) {
-        await client.query('ROLLBACK'); client.release()
+        await client.query('ROLLBACK')
         return res.status(400).json({ success: false, message: `You can spin ${wheel.spins_per_user_per_day} time(s) per day. Come back tomorrow!` })
       }
     }
@@ -348,7 +348,7 @@ exports.spinWheel = async (req, res) => {
     )
     const segments = segsRes.rows
     if (!segments.length) {
-      await client.query('ROLLBACK'); client.release()
+      await client.query('ROLLBACK')
       return res.status(400).json({ success: false, message: 'Wheel has no segments configured' })
     }
 

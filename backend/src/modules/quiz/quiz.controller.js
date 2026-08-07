@@ -418,7 +418,7 @@ exports.submitDynamicQuiz = async (req, res) => {
       [quizId]
     )
     if (!quizRes.rows.length) {
-      await client.query('ROLLBACK'); client.release()
+      await client.query('ROLLBACK')
       return res.status(404).json({ success: false, message: 'Quiz not found or expired' })
     }
     const quiz = quizRes.rows[0]
@@ -430,7 +430,7 @@ exports.submitDynamicQuiz = async (req, res) => {
         [quizId, userId]
       )
       if (Number(ac.rows[0].count) >= quiz.max_attempts_per_user) {
-        await client.query('ROLLBACK'); client.release()
+        await client.query('ROLLBACK')
         return res.status(400).json({ success: false, message: 'You have used all your attempts for this quiz' })
       }
     }
@@ -505,16 +505,17 @@ exports.adminGetRewardLogs = async (req, res) => {
     const limit = Math.min(100, parseInt(req.query.limit) || 30)
     const offset = (page - 1) * limit
     const source = req.query.source_type || null
-    const whereClause = source ? `WHERE r.source_type=$3` : ''
+    const mainWhere = source ? `WHERE r.source_type=$3` : ''
+    const countWhere = source ? `WHERE source_type=$1` : ''
     const params = source ? [limit, offset, source] : [limit, offset]
     const [rows, count] = await Promise.all([
       pool.query(
         `SELECT r.*, u.name AS user_name, u.email AS user_email
          FROM reward_logs r LEFT JOIN users u ON u.id=r.user_id
-         ${whereClause} ORDER BY r.created_at DESC LIMIT $1 OFFSET $2`,
+         ${mainWhere} ORDER BY r.created_at DESC LIMIT $1 OFFSET $2`,
         params
       ),
-      pool.query(`SELECT COUNT(*) FROM reward_logs ${whereClause}`, source ? [source] : []),
+      pool.query(`SELECT COUNT(*) FROM reward_logs ${countWhere}`, source ? [source] : []),
     ])
     res.json({ success: true, data: rows.rows, total: Number(count.rows[0].count), page, limit })
   } catch (err) {
