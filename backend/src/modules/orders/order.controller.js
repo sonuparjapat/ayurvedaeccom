@@ -415,7 +415,30 @@ if (addr.pincode) {
     }
 
     let giftCardDiscountApplied = 0;
-    const finalTotal = Math.max(0, total - walletDiscountApplied - loyaltyDiscountApplied);
+    let tentativeGiftCardDiscount = 0;
+    const preTaxTotal = Math.max(0, total - walletDiscountApplied - loyaltyDiscountApplied);
+
+    // Pre-validate gift card so Razorpay is charged the correct post-discount amount
+    if (giftCardCode && requestedGiftCardDiscount && Number(requestedGiftCardDiscount) > 0) {
+      try {
+        const gcPreRes = await client.query(
+          `SELECT id, is_active, balance, expires_at FROM gift_cards WHERE UPPER(code) = UPPER($1) FOR UPDATE`,
+          [giftCardCode]
+        )
+        if (gcPreRes.rows.length) {
+          const gc = gcPreRes.rows[0]
+          const isValid = gc.is_active && Number(gc.balance) > 0 &&
+            (!gc.expires_at || new Date() <= new Date(gc.expires_at))
+          if (isValid) {
+            tentativeGiftCardDiscount = Math.min(Number(requestedGiftCardDiscount), Number(gc.balance), preTaxTotal)
+          }
+        }
+      } catch (gcPreErr) {
+        console.error('[createOrder] gift card pre-validation failed:', gcPreErr.message)
+      }
+    }
+
+    const finalTotal = Math.max(0, preTaxTotal - tentativeGiftCardDiscount);
 
     /* ================= COD ORDER VALUE CAP ================= */
     if (paymentMethod === 'cod') {
@@ -474,7 +497,7 @@ if (addr.pincode) {
       platform_fee: PLATFORM,
       discount: discountAmount,
       wallet_discount: walletDiscountApplied,
-      gift_card_discount: 0,
+      gift_card_discount: tentativeGiftCardDiscount,
       coupon_code: appliedCouponCode,
       grand_total: finalTotal
     }
@@ -499,10 +522,13 @@ if (addr.pincode) {
     if (giftCardCode && requestedGiftCardDiscount && Number(requestedGiftCardDiscount) > 0) {
       try {
         const { applyGiftCardToOrder } = require('../giftcards/giftcard.controller')
-        giftCardDiscountApplied = await applyGiftCardToOrder(client, giftCardCode, Math.min(Number(requestedGiftCardDiscount), finalTotal), orderId, userId)
+        // Pass preTaxTotal (not finalTotal) as the cap — finalTotal already has the gift card deducted
+        giftCardDiscountApplied = await applyGiftCardToOrder(client, giftCardCode, Math.min(Number(requestedGiftCardDiscount), preTaxTotal), orderId, userId)
         if (giftCardDiscountApplied > 0) {
+          // total_amount already reflects the gift card discount (set before INSERT),
+          // so only update the metadata columns
           await client.query(
-            `UPDATE orders SET gift_card_code=$1, gift_card_discount=$2, total_amount=GREATEST(0,total_amount-$2) WHERE id=$3`,
+            `UPDATE orders SET gift_card_code=$1, gift_card_discount=$2 WHERE id=$3`,
             [giftCardCode.toUpperCase(), giftCardDiscountApplied, orderId]
           )
         }
@@ -687,10 +713,18 @@ if (addr.pincode) {
     )
     for (const saleId of flashSaleIdsUsed) {
       const updSale = await client.query(
-        `UPDATE flash_sales SET uses_count = uses_count + 1 WHERE id = $1
+        `UPDATE flash_sales SET uses_count = uses_count + 1
+         WHERE id = $1 AND (max_uses IS NULL OR uses_count < max_uses)
          RETURNING uses_count, max_uses, title`,
         [saleId]
       )
+      if (!updSale.rows.length) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({
+          success: false,
+          message: 'This flash sale has reached its maximum usage limit. Please place a regular order.'
+        })
+      }
       const sr = updSale.rows[0]
       if (sr && sr.max_uses && sr.uses_count >= sr.max_uses) {
         pendingSocketEvents.push(['flash_sale_exhausted', { saleId, title: sr.title }])
@@ -2380,9 +2414,18 @@ exports.buyNow = async (req, res) => {
         pendingSocketEvents.push(['flash_product_sold_out', { saleId: flashSaleId, productId }]);
 
       const us = await client.query(
-        `UPDATE flash_sales SET uses_count = uses_count + 1 WHERE id = $1 RETURNING uses_count, max_uses, title`,
+        `UPDATE flash_sales SET uses_count = uses_count + 1
+         WHERE id = $1 AND (max_uses IS NULL OR uses_count < max_uses)
+         RETURNING uses_count, max_uses, title`,
         [flashSaleId]
       );
+      if (!us.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          success: false,
+          message: 'This flash sale has reached its maximum usage limit. Please place a regular order.'
+        });
+      }
       const sr = us.rows[0];
       if (sr && sr.max_uses && sr.uses_count >= sr.max_uses)
         pendingSocketEvents.push(['flash_sale_exhausted', { saleId: flashSaleId, title: sr.title }]);
