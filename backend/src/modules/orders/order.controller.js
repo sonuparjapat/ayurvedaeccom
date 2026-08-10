@@ -197,7 +197,6 @@ if (addr.pincode) {
   }
   deliveryDays = pincodeCheck.rows[0].delivery_days || 5
   if (paymentMethod === 'cod' && pincodeCheck.rows[0].cod_available === false) {
-    client.release()
     return res.status(400).json({ success: false, message: 'Cash on Delivery is not available for your pincode. Please choose online payment.' })
   }
 }
@@ -423,7 +422,6 @@ if (addr.pincode) {
       const MAX_COD = Number(process.env.MAX_COD_AMOUNT || settings.max_cod_amount || 5000)
       if (MAX_COD > 0 && finalTotal > MAX_COD) {
         await client.query('ROLLBACK')
-        client.release()
         return res.status(400).json({
           success: false,
           message: `Cash on Delivery is available only for orders up to ₹${MAX_COD.toLocaleString('en-IN')}. Please use online payment for this order.`
@@ -1970,7 +1968,6 @@ exports.razorpayWebhook = async (req, res) => {
     // Order was cancelled (e.g. cleanup ran before webhook arrived) — auto-refund captured payment
     if (order.status === 6 || order.payment_status === 'cancelled') {
       await client.query('ROLLBACK');
-      client.release();
       try {
         const refund = await razorpay.payments.refund(razorpay_payment_id, {
           speed: 'normal',
@@ -2185,7 +2182,6 @@ exports.buyNow = async (req, res) => {
         return res.status(400).json({ success: false, message: `Sorry, we don't deliver to pincode ${addr.pincode} yet.` });
       deliveryDays = pc.rows[0].delivery_days || 5;
       if (paymentMethod === 'cod' && pc.rows[0].cod_available === false) {
-        client.release();
         return res.status(400).json({ success: false, message: 'Cash on Delivery is not available for your pincode. Please choose online payment.' });
       }
     }
