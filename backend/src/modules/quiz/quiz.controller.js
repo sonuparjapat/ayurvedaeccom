@@ -411,10 +411,11 @@ exports.submitDynamicQuiz = async (req, res) => {
     if (!Array.isArray(answers) || !answers.length)
       return res.status(400).json({ success: false, message: 'Answers required' })
 
-    // Load quiz
+    // Load quiz — FOR UPDATE prevents concurrent submissions from both passing attempt limit
     const quizRes = await client.query(
       `SELECT * FROM quizzes WHERE id=$1 AND is_active=TRUE
-         AND (starts_at IS NULL OR starts_at<=NOW()) AND (expires_at IS NULL OR expires_at>NOW())`,
+         AND (starts_at IS NULL OR starts_at<=NOW()) AND (expires_at IS NULL OR expires_at>NOW())
+         FOR UPDATE`,
       [quizId]
     )
     if (!quizRes.rows.length) {
