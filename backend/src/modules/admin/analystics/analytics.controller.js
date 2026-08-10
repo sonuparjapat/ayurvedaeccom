@@ -1,8 +1,6 @@
 const pool = require('../../../config/db');
 
 exports.getOverviewAnalytics = async (req, res) => {
-  const client = await pool.connect();
-
   try {
     const { from, to } = req.query;
 
@@ -11,12 +9,10 @@ exports.getOverviewAnalytics = async (req, res) => {
       ? `AND created_at BETWEEN $1 AND $2`
       : '';
 
-    await client.query("BEGIN");
-
     /* ================= REVENUE ================= */
 
     const revenueQuery = `
-      SELECT 
+      SELECT
         COALESCE(SUM(grand_total),0) AS total_revenue,
         COUNT(*) FILTER (WHERE payment_status='paid') AS paid_orders,
         COUNT(*) FILTER (WHERE payment_status!='paid') AS unpaid_orders,
@@ -28,20 +24,20 @@ exports.getOverviewAnalytics = async (req, res) => {
     `;
 
     const revenueResult = from && to
-      ? await client.query(revenueQuery, [from, to])
-      : await client.query(revenueQuery);
+      ? await pool.query(revenueQuery, [from, to])
+      : await pool.query(revenueQuery);
 
     /* ================= TOTAL ORDERS ================= */
 
-    const ordersResult = await client.query(`
+    const ordersResult = await pool.query(`
       SELECT COUNT(*) AS total_orders
       FROM orders
     `);
 
     /* ================= USERS ================= */
 
-    const usersResult = await client.query(`
-      SELECT 
+    const usersResult = await pool.query(`
+      SELECT
         COUNT(*) AS total_users,
         COUNT(*) FILTER (WHERE is_verified=true) AS verified_users,
         COUNT(*) FILTER (WHERE is_active=true) AS active_users,
@@ -54,8 +50,8 @@ exports.getOverviewAnalytics = async (req, res) => {
 
     /* ================= PRODUCTS ================= */
 
-    const productsResult = await client.query(`
-      SELECT 
+    const productsResult = await pool.query(`
+      SELECT
         COUNT(*) AS total_products,
         COUNT(*) FILTER (WHERE status='active') AS active_products,
         COUNT(*) FILTER (WHERE inventory < 5) AS low_stock_products
@@ -64,7 +60,7 @@ exports.getOverviewAnalytics = async (req, res) => {
 
     /* ================= TODAY REVENUE ================= */
 
-    const todayRevenue = await client.query(`
+    const todayRevenue = await pool.query(`
       SELECT COALESCE(SUM(grand_total),0) AS today_revenue
       FROM orders
       WHERE payment_status='paid'
@@ -74,7 +70,7 @@ exports.getOverviewAnalytics = async (req, res) => {
 
     /* ================= MONTH REVENUE ================= */
 
-    const monthRevenue = await client.query(`
+    const monthRevenue = await pool.query(`
       SELECT COALESCE(SUM(grand_total),0) AS month_revenue
       FROM orders
       WHERE payment_status='paid'
@@ -85,7 +81,7 @@ exports.getOverviewAnalytics = async (req, res) => {
 
     /* ================= LAST MONTH REVENUE (Growth) ================= */
 
-    const lastMonthRevenue = await client.query(`
+    const lastMonthRevenue = await pool.query(`
       SELECT COALESCE(SUM(grand_total),0) AS last_month_revenue
       FROM orders
       WHERE payment_status='paid'
@@ -102,8 +98,6 @@ exports.getOverviewAnalytics = async (req, res) => {
         ? 100
         : ((currentMonth - previousMonth) / previousMonth) * 100;
 
-    await client.query("COMMIT");
-
     res.json({
       success: true,
       data: {
@@ -119,14 +113,11 @@ exports.getOverviewAnalytics = async (req, res) => {
     });
 
   } catch (error) {
-    await client.query("ROLLBACK");
     console.error(error);
     res.status(500).json({
       success: false,
       message: "Analytics fetch failed"
     });
-  } finally {
-    client.release();
   }
 };
 

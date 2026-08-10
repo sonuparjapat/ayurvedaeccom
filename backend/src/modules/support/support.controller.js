@@ -46,20 +46,23 @@ exports.myTickets = async (req, res) => {
 
 /* ── USER: create ticket ── */
 exports.createTicket = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { subject, category = 'general', priority = 'medium', message, order_id } = req.body;
     if (!subject || !message) return res.status(400).json({ success: false, message: 'subject and message required' });
     const user = (await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id])).rows[0];
-    const ticket = await pool.query(
+    await client.query('BEGIN');
+    const ticket = await client.query(
       `INSERT INTO support_tickets (user_id, user_name, user_email, subject, category, priority, order_id, status)
        VALUES ($1,$2,$3,$4,$5,$6,$7,'open') RETURNING *`,
       [req.user.id, user.name, user.email, subject, category, priority, order_id || null]
     );
     const t = ticket.rows[0];
-    await pool.query(
+    await client.query(
       `INSERT INTO support_messages (ticket_id, sender_id, sender_type, message) VALUES ($1,$2,'user',$3)`,
       [t.id, req.user.id, message]
     );
+    await client.query('COMMIT');
     emitToAdmin('new_ticket', { ticket_id: t.id, subject: t.subject, user_name: user.name });
     sendSupportEmail({
       email: user.email,
@@ -78,8 +81,11 @@ exports.createTicket = async (req, res) => {
     });
     res.status(201).json({ success: true, ticket: t });
   } catch (e) {
+    await client.query('ROLLBACK');
     console.error(e);
     res.status(500).json({ success: false, message: 'Server error' });
+  } finally {
+    client.release();
   }
 };
 
@@ -109,6 +115,7 @@ exports.getTicket = async (req, res) => {
 
 /* ── USER: reply to own ticket ── */
 exports.replyTicket = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { id } = req.params;
     const { message } = req.body;
@@ -116,18 +123,23 @@ exports.replyTicket = async (req, res) => {
     const ticket = (await pool.query('SELECT * FROM support_tickets WHERE id=$1 AND user_id=$2', [id, req.user.id])).rows[0];
     if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
     if (ticket.status === 'closed') return res.status(400).json({ success: false, message: 'Ticket is closed' });
-    const msg = (await pool.query(
+    await client.query('BEGIN');
+    const msg = (await client.query(
       `INSERT INTO support_messages (ticket_id, sender_id, sender_type, message) VALUES ($1,$2,'user',$3) RETURNING *`,
       [id, req.user.id, message.trim()]
     )).rows[0];
-    await pool.query(`UPDATE support_tickets SET updated_at=NOW(), status=CASE WHEN status='resolved' THEN 'open' ELSE status END WHERE id=$1`, [id]);
+    await client.query(`UPDATE support_tickets SET updated_at=NOW(), status=CASE WHEN status='resolved' THEN 'open' ELSE status END WHERE id=$1`, [id]);
+    await client.query('COMMIT');
     const user = (await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id])).rows[0];
     emitToTicket(id, 'new_message', { ...msg, sender_name: user?.name });
     emitToAdmin('ticket_reply', { ticket_id: parseInt(id), sender: user?.name });
     res.json({ success: true, message: msg });
   } catch (e) {
+    await client.query('ROLLBACK');
     console.error(e);
     res.status(500).json({ success: false, message: 'Server error' });
+  } finally {
+    client.release();
   }
 };
 
@@ -204,20 +216,23 @@ exports.adminUpdateTicket = async (req, res) => {
 
 /* ── ADMIN: reply to ticket ── */
 exports.adminReply = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { id } = req.params;
     const { message } = req.body;
     if (!message?.trim()) return res.status(400).json({ success: false, message: 'Message required' });
     const ticket = (await pool.query('SELECT * FROM support_tickets WHERE id=$1', [id])).rows[0];
     if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
-    const msg = (await pool.query(
+    await client.query('BEGIN');
+    const msg = (await client.query(
       `INSERT INTO support_messages (ticket_id, sender_id, sender_type, message) VALUES ($1,$2,'admin',$3) RETURNING *`,
       [id, req.user.id, message.trim()]
     )).rows[0];
-    await pool.query(
+    await client.query(
       `UPDATE support_tickets SET updated_at=NOW(), status=CASE WHEN status='open' THEN 'in_progress' ELSE status END WHERE id=$1`,
       [id]
     );
+    await client.query('COMMIT');
     const admin = (await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id])).rows[0];
     const fullMsg = { ...msg, sender_name: admin?.name || 'Support Team' };
     emitToTicket(id, 'new_message', fullMsg);
@@ -251,30 +266,39 @@ exports.adminReply = async (req, res) => {
     }
     res.json({ success: true, message: fullMsg });
   } catch (e) {
+    await client.query('ROLLBACK');
     console.error(e);
     res.status(500).json({ success: false, message: 'Server error' });
+  } finally {
+    client.release();
   }
 };
 
 /* ── PUBLIC: contact form → creates guest ticket ── */
 exports.contactForm = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { name, email, subject, message, category = 'general' } = req.body;
     if (!name || !email || !subject || !message) return res.status(400).json({ success: false, message: 'All fields required' });
     const userId = req.user?.id || null;
-    const ticket = (await pool.query(
+    await client.query('BEGIN');
+    const ticket = (await client.query(
       `INSERT INTO support_tickets (user_id, user_name, user_email, subject, category, status, priority)
        VALUES ($1,$2,$3,$4,$5,'open','medium') RETURNING *`,
       [userId, name, email, subject, category]
     )).rows[0];
-    await pool.query(
+    await client.query(
       `INSERT INTO support_messages (ticket_id, sender_id, sender_type, message) VALUES ($1,$2,'user',$3)`,
       [ticket.id, userId, message]
     );
+    await client.query('COMMIT');
     emitToAdmin('new_ticket', { ticket_id: ticket.id, subject: ticket.subject, user_name: name });
     res.status(201).json({ success: true, ticket_id: ticket.id, message: 'Your enquiry has been submitted. We will get back to you soon.' });
   } catch (e) {
+    await client.query('ROLLBACK');
     console.error(e);
     res.status(500).json({ success: false, message: 'Server error' });
+  } finally {
+    client.release();
   }
 };

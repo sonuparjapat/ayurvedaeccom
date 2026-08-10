@@ -58,9 +58,14 @@ exports.adminListWallets = async (req, res) => {
     const [usersRes, statsRes] = await Promise.all([
       pool.query(
         `SELECT u.id, u.name, u.email, u.phone, u.wallet_balance, u.loyalty_points_balance,
-                (SELECT COUNT(*) FROM wallet_transactions wt WHERE wt.user_id=u.id) AS tx_count,
-                (SELECT MAX(wt.created_at) FROM wallet_transactions wt WHERE wt.user_id=u.id) AS last_tx
-         FROM users u ${where}
+                COALESCE(wt.tx_count, 0) AS tx_count,
+                wt.last_tx
+         FROM users u
+         LEFT JOIN (
+           SELECT user_id, COUNT(*) AS tx_count, MAX(created_at) AS last_tx
+           FROM wallet_transactions GROUP BY user_id
+         ) wt ON wt.user_id = u.id
+         ${where}
          ORDER BY u.wallet_balance DESC
          LIMIT ${Number(limit)} OFFSET ${offset}`,
         vals
@@ -182,8 +187,10 @@ exports.adminDebitLoyalty = async (req, res) => {
     await client.query('BEGIN')
     const balRes = await client.query('SELECT loyalty_points_balance FROM users WHERE id=$1 FOR UPDATE', [user_id])
     const bal = Number(balRes.rows[0]?.loyalty_points_balance || 0)
-    if (bal < Number(points))
+    if (bal < Number(points)) {
+      await client.query('ROLLBACK')
       return res.status(400).json({ message: `Insufficient points. User has ${bal} pts` })
+    }
 
     await client.query(
       `INSERT INTO loyalty_points (user_id, points, type, source, description) VALUES ($1,$2,'redeem','admin',$3)`,
@@ -246,13 +253,15 @@ exports.adminSaveLoyaltySettings = async (req, res) => {
     if (!Array.isArray(updates) || !updates.length)
       return res.status(400).json({ message: 'settings array required' })
 
-    for (const { key, value } of updates) {
-      if (!ALLOWED_KEYS.includes(key)) continue
-      await pool.query(
-        `UPDATE app_settings SET value=$1, updated_at=NOW() WHERE key=$2`,
-        [String(value), key]
+    const filteredUpdates = updates.filter(({ key }) => ALLOWED_KEYS.includes(key))
+    await Promise.all(
+      filteredUpdates.map(({ key, value }) =>
+        pool.query(
+          `UPDATE app_settings SET value=$1, updated_at=NOW() WHERE key=$2`,
+          [String(value), key]
+        )
       )
-    }
+    )
     invalidateCache() // force re-read on next order
     res.json({ success: true })
   } catch (err) {

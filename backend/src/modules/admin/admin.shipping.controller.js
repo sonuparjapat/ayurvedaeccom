@@ -89,25 +89,33 @@ exports.updateShipment = async (req, res) => {
     const tracking_url = getCarrierTrackingUrl(courier_name, tracking_number)
     const isFirstShipment = !order.old_awb
 
-    await pool.query(
-      `UPDATE orders SET
-         courier_name=$1, tracking_number=$2, tracking_url=$3,
-         expected_delivery_date=$4, shipped_at=COALESCE(shipped_at, NOW()),
-         status=GREATEST(status::int, 3)::smallint
-       WHERE id=$5`,
-      [courier_name, tracking_number, tracking_url, expected_delivery_date || null, id]
-    )
-
-    // Auto-add shipment event
-    const eventLabel = isFirstShipment ? 'Shipment Created' : 'Tracking Updated'
-    const eventDesc = isFirstShipment
-      ? `Order dispatched via ${courier_name}. AWB: ${tracking_number}`
-      : `Tracking details updated. Courier: ${courier_name}, AWB: ${tracking_number}`
-    await pool.query(
-      `INSERT INTO shipment_events (order_id, status_code, status_label, description, source)
-       VALUES ($1,'SHIPPED',$2,$3,'system')`,
-      [id, eventLabel, eventDesc]
-    )
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query(
+        `UPDATE orders SET
+           courier_name=$1, tracking_number=$2, tracking_url=$3,
+           expected_delivery_date=$4, shipped_at=COALESCE(shipped_at, NOW()),
+           status=GREATEST(status::int, 3)::smallint
+         WHERE id=$5`,
+        [courier_name, tracking_number, tracking_url, expected_delivery_date || null, id]
+      )
+      const eventLabel = isFirstShipment ? 'Shipment Created' : 'Tracking Updated'
+      const eventDesc = isFirstShipment
+        ? `Order dispatched via ${courier_name}. AWB: ${tracking_number}`
+        : `Tracking details updated. Courier: ${courier_name}, AWB: ${tracking_number}`
+      await client.query(
+        `INSERT INTO shipment_events (order_id, status_code, status_label, description, source)
+         VALUES ($1,'SHIPPED',$2,$3,'system')`,
+        [id, eventLabel, eventDesc]
+      )
+      await client.query('COMMIT')
+    } catch (txErr) {
+      await client.query('ROLLBACK')
+      throw txErr
+    } finally {
+      client.release()
+    }
 
     // Socket + push notification
     emitToUser(order.user_id, 'tracking_updated', {
@@ -147,16 +155,33 @@ exports.addTrackingEvent = async (req, res) => {
     }
 
     const evTime = event_time ? new Date(event_time) : new Date()
-    const result = await pool.query(
-      `INSERT INTO shipment_events
-         (order_id, status_code, status_label, description, location, event_time, source)
-       VALUES ($1,$2,$3,$4,$5,$6,'manual') RETURNING *`,
-      [id, status_code || 'MANUAL', status_label, description || null, location || null, evTime]
-    )
+    let insertedEvent
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      const result = await client.query(
+        `INSERT INTO shipment_events
+           (order_id, status_code, status_label, description, location, event_time, source)
+         VALUES ($1,$2,$3,$4,$5,$6,'manual') RETURNING *`,
+        [id, status_code || 'MANUAL', status_label, description || null, location || null, evTime]
+      )
+      insertedEvent = result.rows[0]
+      if (status_code === 'OUT_FOR_DELIVERY') {
+        await client.query(`UPDATE orders SET out_for_delivery_at=NOW() WHERE id=$1`, [id])
+      } else if (status_code === 'DELIVERY_ATTEMPTED') {
+        await client.query(`UPDATE orders SET delivery_attempts=COALESCE(delivery_attempts,0)+1 WHERE id=$1`, [id])
+      } else if (status_code === 'RTO') {
+        await client.query(`UPDATE orders SET rto_initiated_at=NOW() WHERE id=$1`, [id])
+      }
+      await client.query('COMMIT')
+    } catch (txErr) {
+      await client.query('ROLLBACK')
+      throw txErr
+    } finally {
+      client.release()
+    }
 
-    // Handle special statuses that update order columns
     if (status_code === 'OUT_FOR_DELIVERY') {
-      await pool.query(`UPDATE orders SET out_for_delivery_at=NOW() WHERE id=$1`, [id])
       await sendPushToUser(
         orderRes.rows[0].user_id,
         'Out for Delivery! 📦',
@@ -164,22 +189,19 @@ exports.addTrackingEvent = async (req, res) => {
         { type: 'OUT_FOR_DELIVERY', order_id: Number(id) }
       )
     } else if (status_code === 'DELIVERY_ATTEMPTED') {
-      await pool.query(`UPDATE orders SET delivery_attempts=COALESCE(delivery_attempts,0)+1 WHERE id=$1`, [id])
       await sendPushToUser(
         orderRes.rows[0].user_id,
         'Delivery Attempted',
         `Delivery of Order #${id} was attempted but unsuccessful. ${description || ''}`.trim(),
         { type: 'DELIVERY_ATTEMPTED', order_id: Number(id) }
       )
-    } else if (status_code === 'RTO') {
-      await pool.query(`UPDATE orders SET rto_initiated_at=NOW() WHERE id=$1`, [id])
     }
 
     emitToUser(orderRes.rows[0].user_id, 'shipment_event', {
-      order_id: Number(id), event: result.rows[0],
+      order_id: Number(id), event: insertedEvent,
     })
 
-    res.json({ success: true, event: result.rows[0] })
+    res.json({ success: true, event: insertedEvent })
   } catch (err) {
     console.error(err)
     res.status(500).json({ success: false, message: 'Failed to add event' })
@@ -241,9 +263,14 @@ exports.getInTransitOrders = async (req, res) => {
               o.expected_delivery_date, o.shipped_at, o.delivery_attempts,
               o.out_for_delivery_at, o.rto_initiated_at,
               u.name AS customer_name, u.phone AS customer_phone,
-              (SELECT status_label FROM shipment_events WHERE order_id=o.id ORDER BY event_time DESC LIMIT 1) AS latest_status
+              latest_event.status_label AS latest_status
        FROM orders o
        JOIN users u ON u.id=o.user_id
+       LEFT JOIN LATERAL (
+         SELECT status_label FROM shipment_events
+         WHERE order_id = o.id
+         ORDER BY event_time DESC LIMIT 1
+       ) latest_event ON TRUE
        ${where}
        ORDER BY o.shipped_at DESC NULLS LAST
        LIMIT $${idx} OFFSET $${idx+1}`,
@@ -307,29 +334,37 @@ exports.webhookReceiver = async (req, res) => {
     const order  = orderRes.rows[0]
     const mapped = SHIPROCKET_STATUS_MAP[statusId] || { code: 'UPDATE', label: statusLabel, order_status: null }
 
-    await pool.query(
-      `INSERT INTO shipment_events
-         (order_id, status_code, status_label, location, event_time, source, raw_payload)
-       VALUES ($1,$2,$3,$4,$5,'webhook',$6)`,
-      [order.id, mapped.code, mapped.label || statusLabel, location, eventTime, JSON.stringify(payload)]
-    )
-
-    // Update order fields based on status
-    const updates = []
-    if (mapped.code === 'OUT_FOR_DELIVERY') updates.push(`out_for_delivery_at=NOW()`)
-    if (mapped.code === 'DELIVERY_ATTEMPTED') updates.push(`delivery_attempts=COALESCE(delivery_attempts,0)+1`)
-    if (mapped.code === 'RTO') updates.push(`rto_initiated_at=NOW()`)
-    if (mapped.code === 'DELIVERED') {
-      updates.push(`delivered_at='${(deliveredAt || new Date()).toISOString()}'`)
-      updates.push(`status=5`)
-    }
-    if (mapped.order_status && mapped.order_status !== Number(order.status)) {
-      if (!updates.find(u => u.startsWith('status='))) {
-        updates.push(`status=${mapped.order_status}`)
+    const whClient = await pool.connect()
+    try {
+      await whClient.query('BEGIN')
+      await whClient.query(
+        `INSERT INTO shipment_events
+           (order_id, status_code, status_label, location, event_time, source, raw_payload)
+         VALUES ($1,$2,$3,$4,$5,'webhook',$6)`,
+        [order.id, mapped.code, mapped.label || statusLabel, location, eventTime, JSON.stringify(payload)]
+      )
+      const updates = []
+      if (mapped.code === 'OUT_FOR_DELIVERY') updates.push(`out_for_delivery_at=NOW()`)
+      if (mapped.code === 'DELIVERY_ATTEMPTED') updates.push(`delivery_attempts=COALESCE(delivery_attempts,0)+1`)
+      if (mapped.code === 'RTO') updates.push(`rto_initiated_at=NOW()`)
+      if (mapped.code === 'DELIVERED') {
+        updates.push(`delivered_at='${(deliveredAt || new Date()).toISOString()}'`)
+        updates.push(`status=5`)
       }
-    }
-    if (updates.length) {
-      await pool.query(`UPDATE orders SET ${updates.join(',')} WHERE id=$1`, [order.id])
+      if (mapped.order_status && mapped.order_status !== Number(order.status)) {
+        if (!updates.find(u => u.startsWith('status='))) {
+          updates.push(`status=${mapped.order_status}`)
+        }
+      }
+      if (updates.length) {
+        await whClient.query(`UPDATE orders SET ${updates.join(',')} WHERE id=$1`, [order.id])
+      }
+      await whClient.query('COMMIT')
+    } catch (txErr) {
+      await whClient.query('ROLLBACK')
+      throw txErr
+    } finally {
+      whClient.release()
     }
 
     // Push + socket

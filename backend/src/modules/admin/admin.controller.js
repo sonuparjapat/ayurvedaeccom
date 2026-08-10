@@ -383,23 +383,14 @@ exports.logout = (req, res) => {
 
 exports.stats = async (req, res) => {
   try {
-    const revenue = await pool.query(`
-      SELECT COALESCE(SUM(amount),0) FROM payments
-      WHERE status='success'
-    `)
-
-    const orders = await pool.query(`SELECT COUNT(*) FROM orders`)
-    const users = await pool.query(`SELECT COUNT(*) FROM users`)
-    const products = await pool.query(`SELECT COUNT(*) FROM products`)
-
-    const pending = await pool.query(`
-      SELECT COUNT(*) FROM orders WHERE status='0'
-    `)
-
-    const lowStock = await pool.query(`
-      SELECT COUNT(*) FROM products WHERE inventory < 10
-    `)
-
+    const [revenue, orders, users, products, pending, lowStock] = await Promise.all([
+      pool.query(`SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='success'`),
+      pool.query(`SELECT COUNT(*) FROM orders`),
+      pool.query(`SELECT COUNT(*) FROM users`),
+      pool.query(`SELECT COUNT(*) FROM products`),
+      pool.query(`SELECT COUNT(*) FROM orders WHERE status='0'`),
+      pool.query(`SELECT COUNT(*) FROM products WHERE inventory < 10`),
+    ])
     res.json({
       totalRevenue: Number(revenue.rows[0].coalesce),
       totalOrders: Number(orders.rows[0].count),
@@ -1565,6 +1556,7 @@ status = Number(status);
 
 
     if (!orderRes.rowCount) {
+      await client.query('ROLLBACK')
       return res.status(404).json({
         success: false,
         message: 'Order not found'
@@ -1590,7 +1582,7 @@ status = Number(status);
 
       // Check shipment created or not
       if (order.tracking_number || order.shipped_at) {
-
+        await client.query('ROLLBACK')
         return res.status(400).json({
           success: false,
           message: 'Cannot rollback. Shipment already created.'
@@ -1608,7 +1600,7 @@ status = Number(status);
 
 
       if (timeCheck.rows[0].seconds > 300) {
-
+        await client.query('ROLLBACK')
         return res.status(400).json({
           success: false,
           message: 'Rollback time expired'
@@ -1638,7 +1630,7 @@ status = Number(status);
 
 
     if (!allowed.includes(status)) {
-
+      await client.query('ROLLBACK')
       return res.status(400).json({
         success: false,
         message: `Invalid transition: ${orderstatus[currentStatus]} → ${orderstatus[status]}`
@@ -1646,6 +1638,7 @@ status = Number(status);
 
     }
 if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
+    await client.query('ROLLBACK')
     return res.status(400).json({
       success: false,
       message: 'Add courier & tracking number before marking Out for Delivery'
@@ -1703,18 +1696,23 @@ if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
         `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id=$1`,
         [id]
       );
-      for (const item of items.rows) {
-        if (item.variant_id) {
-          await client.query(
-            `UPDATE product_variants SET inventory=inventory+$1, updated_at=NOW() WHERE id=$2`,
-            [item.quantity, item.variant_id]
-          );
-        } else {
-          await client.query(
-            `UPDATE products SET inventory=inventory+$1, updated_at=NOW() WHERE id=$2`,
-            [item.quantity, item.product_id]
-          );
-        }
+      const variantItems = items.rows.filter(r => r.variant_id)
+      const productItems = items.rows.filter(r => !r.variant_id)
+      if (variantItems.length) {
+        await client.query(
+          `UPDATE product_variants SET inventory=inventory+delta.qty, updated_at=NOW()
+           FROM (SELECT unnest($1::int[]) AS id, unnest($2::int[]) AS qty) AS delta
+           WHERE product_variants.id=delta.id`,
+          [variantItems.map(r => r.variant_id), variantItems.map(r => r.quantity)]
+        )
+      }
+      if (productItems.length) {
+        await client.query(
+          `UPDATE products SET inventory=inventory+delta.qty, updated_at=NOW()
+           FROM (SELECT unnest($1::int[]) AS id, unnest($2::int[]) AS qty) AS delta
+           WHERE products.id=delta.id`,
+          [productItems.map(r => r.product_id), productItems.map(r => r.quantity)]
+        )
       }
       await client.query(
         `UPDATE orders SET return_approved_at=NOW() WHERE id=$1`,
@@ -2262,20 +2260,17 @@ exports.adminBulkUploadPincodes = async (req, res) => {
         continue
       }
 
-      const existing = await client.query('SELECT id FROM serviceable_pincodes WHERE pincode=$1', [pincode])
-      if (existing.rows.length) {
-        await client.query(
-          `UPDATE serviceable_pincodes SET city=$1, state=$2, delivery_days=$3, is_active=$4 WHERE pincode=$5`,
-          [city, state || null, days, isActive, pincode]
-        )
-        results.updated++
-      } else {
-        await client.query(
-          `INSERT INTO serviceable_pincodes (pincode, city, state, delivery_days, is_active) VALUES ($1,$2,$3,$4,$5)`,
-          [pincode, city, state || null, days, isActive]
-        )
-        results.inserted++
-      }
+      const upsert = await client.query(
+        `INSERT INTO serviceable_pincodes (pincode, city, state, delivery_days, is_active)
+         VALUES ($1,$2,$3,$4,$5)
+         ON CONFLICT (pincode) DO UPDATE
+           SET city=EXCLUDED.city, state=EXCLUDED.state,
+               delivery_days=EXCLUDED.delivery_days, is_active=EXCLUDED.is_active
+         RETURNING (xmax = 0) AS inserted`,
+        [pincode, city, state || null, days, isActive]
+      )
+      if (upsert.rows[0]?.inserted) results.inserted++
+      else results.updated++
     }
 
     await client.query('COMMIT')
@@ -2376,7 +2371,8 @@ exports.exportOrdersCSV = async (req, res) => {
        LEFT JOIN invoices inv ON inv.order_id = o.id
        ${where}
        GROUP BY o.id, u.name, u.email, u.phone, inv.tax
-       ORDER BY o.created_at DESC`, params
+       ORDER BY o.created_at DESC
+       LIMIT 10000`, params
     )
 
     const parseAddr = (raw) => {
@@ -2504,15 +2500,17 @@ exports.adminListReviews = async (req, res) => {
 }
 
 exports.adminUpdateReview = async (req, res) => {
+  const client = await pool.connect()
   try {
     const { id } = req.params
     const { status } = req.body
     const allowed = ['pending', 'approved', 'rejected']
     if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid status' })
-    const rev = await pool.query(`UPDATE reviews SET status=$1 WHERE id=$2 RETURNING product_id`, [status, id])
+    await client.query('BEGIN')
+    const rev = await client.query(`UPDATE reviews SET status=$1 WHERE id=$2 RETURNING product_id`, [status, id])
     if (rev.rows.length) {
       const pid = rev.rows[0].product_id
-      await pool.query(
+      await client.query(
         `UPDATE products SET
            averagerating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM reviews WHERE product_id=$1 AND status='approved'), 0),
            reviewcount   = (SELECT COUNT(*) FROM reviews WHERE product_id=$1 AND status='approved')
@@ -2520,18 +2518,24 @@ exports.adminUpdateReview = async (req, res) => {
         [pid]
       )
     }
+    await client.query('COMMIT')
     res.json({ success: true })
   } catch (err) {
+    await client.query('ROLLBACK')
     res.status(500).json({ message: 'Update failed' })
+  } finally {
+    client.release()
   }
 }
 
 exports.adminDeleteReview = async (req, res) => {
+  const client = await pool.connect()
   try {
-    const rev = await pool.query(`DELETE FROM reviews WHERE id=$1 RETURNING product_id`, [req.params.id])
+    await client.query('BEGIN')
+    const rev = await client.query(`DELETE FROM reviews WHERE id=$1 RETURNING product_id`, [req.params.id])
     if (rev.rows.length) {
       const pid = rev.rows[0].product_id
-      await pool.query(
+      await client.query(
         `UPDATE products SET
            averagerating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM reviews WHERE product_id=$1 AND status='approved'), 0),
            reviewcount   = (SELECT COUNT(*) FROM reviews WHERE product_id=$1 AND status='approved')
@@ -2539,9 +2543,13 @@ exports.adminDeleteReview = async (req, res) => {
         [pid]
       )
     }
+    await client.query('COMMIT')
     res.json({ success: true })
   } catch (err) {
+    await client.query('ROLLBACK')
     res.status(500).json({ message: 'Delete failed' })
+  } finally {
+    client.release()
   }
 }
 

@@ -133,19 +133,24 @@ exports.updateDepartment = async (req, res) => {
 
 /* ─── DELETE /admin/departments/:id ──────────────────────────────────────── */
 exports.deleteDepartment = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { id } = req.params;
-
-    // Unlink users from this department first (set to null)
-    await pool.query(`UPDATE users SET department_id = NULL WHERE department_id = $1`, [id]);
-
-    const result = await pool.query(`DELETE FROM departments WHERE id = $1 RETURNING id`, [id]);
-    if (!result.rows.length) return res.status(404).json({ success: false, message: 'Department not found' });
-
+    await client.query('BEGIN');
+    await client.query(`UPDATE users SET department_id = NULL WHERE department_id = $1`, [id]);
+    const result = await client.query(`DELETE FROM departments WHERE id = $1 RETURNING id`, [id]);
+    if (!result.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+    await client.query('COMMIT');
     res.json({ success: true, message: 'Department deleted' });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('[deleteDepartment]', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
+  } finally {
+    client.release();
   }
 };
 

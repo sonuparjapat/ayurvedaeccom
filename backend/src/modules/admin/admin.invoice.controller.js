@@ -713,19 +713,30 @@ exports.bulkStockUpdate = async (req, res) => {
     readable.pipe(csv()).on('data', row => rows.push(row)).on('end', async () => {
       let updated = 0
       const failed = []
-      for (let i = 0; i < rows.length; i++) {
-        const r = rows[i]
-        try {
-          const sku = (r.sku || '').trim()
-          const inventory = Number(r.inventory)
-          if (!sku) throw new Error('SKU missing')
-          if (inventory < 0 || Number.isNaN(inventory)) throw new Error('Invalid inventory')
-          const result = await pool.query(`UPDATE products SET inventory=$1 WHERE LOWER(sku)=LOWER($2) RETURNING id`, [inventory, sku])
-          if (!result.rowCount) throw new Error('SKU not found')
-          updated++
-        } catch (err) {
-          failed.push({ row: i + 2, sku: r.sku || '', error: err.message || 'Failed' })
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i]
+          try {
+            const sku = (r.sku || '').trim()
+            const inventory = Number(r.inventory)
+            if (!sku) throw new Error('SKU missing')
+            if (inventory < 0 || Number.isNaN(inventory)) throw new Error('Invalid inventory')
+            const result = await client.query(`UPDATE products SET inventory=$1 WHERE LOWER(sku)=LOWER($2) RETURNING id`, [inventory, sku])
+            if (!result.rowCount) throw new Error('SKU not found')
+            updated++
+          } catch (err) {
+            failed.push({ row: i + 2, sku: r.sku || '', error: err.message || 'Failed' })
+          }
         }
+        await client.query('COMMIT')
+      } catch (err) {
+        await client.query('ROLLBACK')
+        console.error(err)
+        return res.status(500).json({ success: false, message: 'Stock update failed' })
+      } finally {
+        client.release()
       }
       return res.json({ success: true, message: 'Stock update completed', summary: { updated, failed: failed.length, total: rows.length }, failed })
     })

@@ -109,19 +109,20 @@ exports.adminList = async (req, res) => {
     let where = ''
     if (status === 'active') where = 'WHERE is_active = TRUE'
     else if (status === 'inactive') where = 'WHERE is_active = FALSE'
-    const countRes = await pool.query(`SELECT COUNT(*) FROM newsletter_subscribers ${where}`)
-    const result = await pool.query(
-      `SELECT * FROM newsletter_subscribers ${where} ORDER BY subscribed_at DESC LIMIT $1 OFFSET $2`,
-      [lim, offset]
-    )
-    const activeCount = await pool.query(
-      'SELECT COUNT(*) FROM newsletter_subscribers WHERE is_active = TRUE'
-    )
+    const [countRes, result] = await Promise.all([
+      pool.query(
+        `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE is_active=TRUE) AS active_count FROM newsletter_subscribers`
+      ),
+      pool.query(
+        `SELECT * FROM newsletter_subscribers ${where} ORDER BY subscribed_at DESC LIMIT $1 OFFSET $2`,
+        [lim, offset]
+      ),
+    ])
     res.json({
       success: true,
       data: result.rows,
-      total: Number(countRes.rows[0].count),
-      activeCount: Number(activeCount.rows[0].count),
+      total: Number(countRes.rows[0].total),
+      activeCount: Number(countRes.rows[0].active_count),
     })
   } catch (err) {
     console.error(err)

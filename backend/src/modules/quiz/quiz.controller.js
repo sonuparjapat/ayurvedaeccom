@@ -450,17 +450,20 @@ exports.submitDynamicQuiz = async (req, res) => {
 
     // Score
     let score = 0, totalPossible = 0
+    const questionIds = [...new Set(answers.map(a => a.question_id))]
+    const optionsRes = await client.query(
+      `SELECT qo.id, qo.question_id, qo.is_correct, qo.points,
+              MAX(qo.points) OVER (PARTITION BY qo.question_id) AS max_points
+       FROM quiz_options qo
+       WHERE qo.question_id = ANY($1::int[])`,
+      [questionIds]
+    )
+    const optionMap = new Map(optionsRes.rows.map(r => [Number(r.id), r]))
     for (const { question_id, option_id } of answers) {
-      const opts = await client.query(
-        `SELECT is_correct, points FROM quiz_options WHERE id=$1 AND question_id=$2`,
-        [option_id, question_id]
-      )
-      if (opts.rows.length) {
-        const maxPts = await client.query(
-          `SELECT MAX(points) AS mp FROM quiz_options WHERE question_id=$1`, [question_id]
-        )
-        totalPossible += Number(maxPts.rows[0]?.mp || 1)
-        if (opts.rows[0].is_correct) score += Number(opts.rows[0].points)
+      const opt = optionMap.get(Number(option_id))
+      if (opt && Number(opt.question_id) === Number(question_id)) {
+        totalPossible += Number(opt.max_points || 1)
+        if (opt.is_correct) score += Number(opt.points)
       }
     }
 

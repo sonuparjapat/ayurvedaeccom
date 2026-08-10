@@ -654,6 +654,7 @@ exports.forgotPassword = async (req, res) => {
 
 // send login otp
 exports.sendLoginOtp = async (req, res) => {
+  const client = await pool.connect();
   try {
 
     const { identifier } = req.body;
@@ -669,17 +670,21 @@ exports.sendLoginOtp = async (req, res) => {
     const clean =
       identifier.trim().toLowerCase();
 
-    const result = await pool.query(
+    await client.query('BEGIN');
+
+    const result = await client.query(
       `
      SELECT id,name,email,is_verified,role,otp_attempts,updated_at
       FROM users
       WHERE email = $1
       LIMIT 1
+      FOR UPDATE
       `,
       [clean]
     );
 
     if (!result.rowCount) {
+      await client.query('ROLLBACK');
       return res.status(404).json({
         success: false,
         message:
@@ -690,6 +695,7 @@ exports.sendLoginOtp = async (req, res) => {
     const user = result.rows[0];
 
     if (Number(user.role) !== 3) {
+      await client.query('ROLLBACK');
       return res.status(403).json({
         success: false,
         message:
@@ -698,6 +704,7 @@ exports.sendLoginOtp = async (req, res) => {
     }
 
     if (!user.is_verified) {
+      await client.query('ROLLBACK');
       return res.status(403).json({
         success: false,
         message:
@@ -723,6 +730,7 @@ if (diffMinutes > 15) {
 }
 
 if (attempts >= 3) {
+  await client.query('ROLLBACK');
   return res.status(429).json({
     success: false,
     message:
@@ -733,7 +741,7 @@ if (attempts >= 3) {
       100000 + Math.random() * 900000
     ).toString();
 
-  await pool.query(
+  await client.query(
   `
   UPDATE users
   SET
@@ -750,6 +758,8 @@ if (attempts >= 3) {
     user.id
   ]
 );
+
+    await client.query('COMMIT');
 
     await mailer.sendTransacEmail({
       sender: {
@@ -790,6 +800,8 @@ if (attempts >= 3) {
 
   } catch (err) {
 
+    await client.query('ROLLBACK');
+
     console.error(
       "SEND OTP ERROR:",
       err
@@ -800,6 +812,8 @@ if (attempts >= 3) {
       message:
         "Unable to send OTP right now."
     });
+  } finally {
+    client.release();
   }
 };
 
@@ -979,6 +993,7 @@ exports.verifyLoginOtp = async (req, res) => {
 
 // viamobilenumber
 exports.sendMobileOtp = async (req, res) => {
+  const client = await pool.connect();
   try {
 
     const { phone } = req.body;
@@ -1002,7 +1017,9 @@ exports.sendMobileOtp = async (req, res) => {
       });
     }
 
-    const result = await pool.query(
+    await client.query('BEGIN');
+
+    const result = await client.query(
       `
      SELECT
   id,
@@ -1015,11 +1032,13 @@ exports.sendMobileOtp = async (req, res) => {
 FROM users
 WHERE phone = $1
 LIMIT 1
+FOR UPDATE
       `,
       [cleanPhone]
     );
 
     if (!result.rowCount) {
+      await client.query('ROLLBACK');
       return res.status(404).json({
         success: false,
         message:
@@ -1047,6 +1066,7 @@ if (diffMinutes > 15) {
 }
 
 if (attempts >= 3) {
+  await client.query('ROLLBACK');
   return res.status(429).json({
     success: false,
     message:
@@ -1054,6 +1074,7 @@ if (attempts >= 3) {
   });
 }
     if (Number(user.role) !== 3) {
+      await client.query('ROLLBACK');
       return res.status(403).json({
         success: false,
         message:
@@ -1062,6 +1083,7 @@ if (attempts >= 3) {
     }
 
     if (!user.is_active) {
+      await client.query('ROLLBACK');
       return res.status(403).json({
         success: false,
         message:
@@ -1073,7 +1095,7 @@ if (attempts >= 3) {
       100000 + Math.random() * 900000
     ).toString();
 
-   await pool.query(
+   await client.query(
   `
   UPDATE users
   SET
@@ -1091,6 +1113,8 @@ if (attempts >= 3) {
   ]
 );
 
+    await client.query('COMMIT');
+
     /* Send via SMS (fire-and-forget) */
     sendOTPSms(cleanPhone, otp).catch(() => {})
 
@@ -1107,6 +1131,8 @@ if (attempts >= 3) {
 
   } catch (err) {
 
+    await client.query('ROLLBACK');
+
     console.error(
       "SEND MOBILE OTP ERROR:",
       err
@@ -1117,6 +1143,8 @@ if (attempts >= 3) {
       message:
         "Unable to send OTP."
     });
+  } finally {
+    client.release();
   }
 };
 

@@ -15,32 +15,39 @@ exports.getActiveFlashSales = async (req, res) => {
     )
     if (!salesRes.rows.length) return res.json({ sales: [] })
 
-    const salesWithProducts = await Promise.all(salesRes.rows.map(async (sale) => {
-      const prodRes = await pool.query(
-        `SELECT fsp.*, p.name, p.images, p.price, p.compareprice, p.inventory,
-                p.slug, p.gst_percent,
-                COALESCE(fsp.special_price,
-                  CASE WHEN $2 = 'percent'
-                    THEN p.price * (1 - $3::numeric/100)
-                    ELSE p.price - $3::numeric
+    const saleIds = salesRes.rows.map(s => s.id)
+    const allProdsRes = await pool.query(
+      `SELECT fsp.*, p.name, p.images, p.price, p.compareprice, p.inventory,
+              p.slug, p.gst_percent,
+              fsp.flash_sale_id,
+              fs.discount_type, fs.discount_value,
+              COALESCE(fsp.special_price,
+                CASE WHEN fs.discount_type = 'percent'
+                  THEN p.price * (1 - fs.discount_value::numeric/100)
+                  ELSE p.price - fs.discount_value::numeric
+                END
+              ) AS flash_price,
+              ROUND((
+                p.price - COALESCE(fsp.special_price,
+                  CASE WHEN fs.discount_type = 'percent'
+                    THEN p.price * (1 - fs.discount_value::numeric/100)
+                    ELSE p.price - fs.discount_value::numeric
                   END
-                ) AS flash_price,
-                ROUND((
-                  p.price - COALESCE(fsp.special_price,
-                    CASE WHEN $2 = 'percent'
-                      THEN p.price * (1 - $3::numeric/100)
-                      ELSE p.price - $3::numeric
-                    END
-                  )
-                ) / NULLIF(p.price, 0) * 100) AS discount_percent
-         FROM flash_sale_products fsp
-         JOIN products p ON p.id = fsp.product_id
-         WHERE fsp.flash_sale_id = $1 AND p.status = 'active'
-         AND (fsp.stock_limit IS NULL OR fsp.sold_count < fsp.stock_limit)`,
-        [sale.id, sale.discount_type, sale.discount_value]
-      )
+                )
+              ) / NULLIF(p.price, 0) * 100) AS discount_percent
+       FROM flash_sale_products fsp
+       JOIN products p ON p.id = fsp.product_id
+       JOIN flash_sales fs ON fs.id = fsp.flash_sale_id
+       WHERE fsp.flash_sale_id = ANY($1::int[]) AND p.status = 'active'
+       AND (fsp.stock_limit IS NULL OR fsp.sold_count < fsp.stock_limit)`,
+      [saleIds]
+    )
 
-      const products = prodRes.rows.map(p => ({
+    const productsBySaleId = {}
+    for (const p of allProdsRes.rows) {
+      const sid = p.flash_sale_id
+      if (!productsBySaleId[sid]) productsBySaleId[sid] = []
+      productsBySaleId[sid].push({
         product_id: p.product_id,
         product_name: p.name,
         image: p.images?.[0] || null,
@@ -50,9 +57,12 @@ exports.getActiveFlashSales = async (req, res) => {
         stock_limit: p.stock_limit,
         sold_count: p.sold_count || 0,
         slug: p.slug,
-      }))
+      })
+    }
 
-      return { ...sale, products }
+    const salesWithProducts = salesRes.rows.map(sale => ({
+      ...sale,
+      products: productsBySaleId[sale.id] || [],
     }))
 
     res.json({ sales: salesWithProducts })

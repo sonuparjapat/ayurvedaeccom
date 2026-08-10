@@ -484,6 +484,7 @@ exports.removeWishlist = async (req, res) => {
 
 exports.addReview = async (req, res) => {
   let uploaded = []
+  let client
   try {
     const userId = req.user.id
     const { productId: rawProductId, rating, comment, oldImages = '[]' } = req.body
@@ -534,25 +535,33 @@ exports.addReview = async (req, res) => {
 
     const finalImages = [...oldImgs, ...newImages].slice(0, 5)
 
-    await pool.query(`
+    client = await pool.connect()
+    await client.query('BEGIN')
+
+    await client.query(`
       INSERT INTO reviews (user_id, product_id, rating, comment, images)
       VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (user_id, product_id)
       DO UPDATE SET rating = $3, comment = $4, images = $5
     `, [userId, productId, Number(rating), comment || '', JSON.stringify(finalImages)])
 
-    await pool.query(`
+    await client.query(`
       UPDATE products SET
         averagerating = (SELECT AVG(rating) FROM reviews WHERE product_id = $1),
         reviewcount   = (SELECT COUNT(*)    FROM reviews WHERE product_id = $1)
       WHERE id = $1
     `, [productId])
 
+    await client.query('COMMIT')
+
     res.json({ success: true })
   } catch (err) {
+    if (client) await client.query('ROLLBACK').catch(() => {})
     for (const url of uploaded) await deleteFromAWS(url).catch(() => {})
     console.error('[addReview]', err.message)
     res.status(500).json({ success: false, message: 'Failed to submit review' })
+  } finally {
+    if (client) client.release()
   }
 }
 exports.addOrUpdateReview = async (req, res) => {
@@ -1051,9 +1060,13 @@ exports.getProductReviews = async (req, res) => {
 exports.deleteReview = async (req, res) => {
   const userId = req.user.id;
   const id = req.params.id;
+  let client;
 
   try {
-    const review = await pool.query(
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    const review = await client.query(
       `
       DELETE FROM reviews
       WHERE id=$1 AND user_id=$2
@@ -1063,6 +1076,7 @@ exports.deleteReview = async (req, res) => {
     );
 
     if (!review.rowCount) {
+      await client.query('ROLLBACK');
       return res.status(404).json({
         message: "Not found",
       });
@@ -1074,7 +1088,7 @@ exports.deleteReview = async (req, res) => {
     }
 
     /* update rating */
-    await pool.query(
+    await client.query(
       `
       UPDATE products SET
 
@@ -1095,14 +1109,19 @@ exports.deleteReview = async (req, res) => {
       [review.rows[0].product_id]
     );
 
+    await client.query('COMMIT');
+
     res.json({ success: true });
 
   } catch (err) {
+    if (client) await client.query('ROLLBACK').catch(() => {});
     console.error(err);
 
     res.status(500).json({
       message: "Delete failed",
     });
+  } finally {
+    if (client) client.release();
   }
 };
 
@@ -1375,19 +1394,23 @@ exports.getRatingBreakdown = async (req, res) => {
    RECENTLY VIEWED (log + get for logged-in users)
 ───────────────────────────────────────────────────────── */
 exports.logRecentlyViewed = async (req, res) => {
+  let client
   try {
     const userId = req.user?.id
     const { productId } = req.body
     if (!userId || !productId) return res.json({ success: true })
 
-    await pool.query(`
+    client = await pool.connect()
+    await client.query('BEGIN')
+
+    await client.query(`
       INSERT INTO recently_viewed (user_id, product_id, viewed_at)
       VALUES ($1, $2, NOW())
       ON CONFLICT (user_id, product_id) DO UPDATE SET viewed_at = NOW()
     `, [userId, productId])
 
     // Keep only last 20
-    await pool.query(`
+    await client.query(`
       DELETE FROM recently_viewed
       WHERE user_id = $1
         AND product_id NOT IN (
@@ -1398,9 +1421,14 @@ exports.logRecentlyViewed = async (req, res) => {
         )
     `, [userId])
 
+    await client.query('COMMIT')
+
     res.json({ success: true })
   } catch (err) {
+    if (client) await client.query('ROLLBACK').catch(() => {})
     res.json({ success: true })
+  } finally {
+    if (client) client.release()
   }
 }
 
@@ -1457,9 +1485,14 @@ exports.voteReviewHelpful = async (req, res) => {
   if (!reviewId) return res.status(400).json({ success: false, message: 'Invalid review' })
   const client = await pool.connect()
   try {
+    await client.query('BEGIN')
+
     // Check review exists and is approved
     const rev = await client.query(`SELECT id FROM reviews WHERE id=$1 AND status='approved'`, [reviewId])
-    if (!rev.rows.length) return res.status(404).json({ success: false, message: 'Review not found' })
+    if (!rev.rows.length) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ success: false, message: 'Review not found' })
+    }
 
     // Check if already voted
     const existing = await client.query(
@@ -1470,14 +1503,17 @@ exports.voteReviewHelpful = async (req, res) => {
       await client.query(`DELETE FROM review_helpful_votes WHERE review_id=$1 AND user_id=$2`, [reviewId, userId])
       await client.query(`UPDATE reviews SET helpful_count = GREATEST(0, helpful_count - 1) WHERE id=$1`, [reviewId])
       const r = await client.query(`SELECT helpful_count FROM reviews WHERE id=$1`, [reviewId])
+      await client.query('COMMIT')
       return res.json({ success: true, voted: false, helpful_count: r.rows[0].helpful_count })
     }
 
     await client.query(`INSERT INTO review_helpful_votes (review_id, user_id) VALUES ($1, $2)`, [reviewId, userId])
     await client.query(`UPDATE reviews SET helpful_count = helpful_count + 1 WHERE id=$1`, [reviewId])
     const r = await client.query(`SELECT helpful_count FROM reviews WHERE id=$1`, [reviewId])
+    await client.query('COMMIT')
     res.json({ success: true, voted: true, helpful_count: r.rows[0].helpful_count })
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error('[voteReviewHelpful]', err.message)
     res.status(500).json({ success: false, message: 'Failed to vote' })
   } finally {

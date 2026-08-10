@@ -2120,6 +2120,7 @@ exports.razorpayWebhook = async (req, res) => {
 /* ================= REORDER — copy items from existing order into cart ================= */
 
 exports.reorder = async (req, res) => {
+  const client = await pool.connect();
   try {
     const userId = req.user.id;
     const { id } = req.params;
@@ -2143,6 +2144,7 @@ exports.reorder = async (req, res) => {
       [id]
     );
 
+    await client.query('BEGIN');
     let added = 0;
     for (const item of itemsRes.rows) {
       if (item.status !== 'active' || item.eff_inv <= 0) continue;
@@ -2150,26 +2152,30 @@ exports.reorder = async (req, res) => {
       const safeQty = Math.min(item.quantity, maxQty, item.eff_inv);
       if (safeQty <= 0) continue;
       const variantId = item.variant_id || null;
-      const existing = await pool.query(
+      const existing = await client.query(
         `SELECT id, quantity FROM cart WHERE user_id=$1 AND product_id=$2 AND (variant_id=$3 OR (variant_id IS NULL AND $3 IS NULL))`,
         [userId, item.product_id, variantId]
       );
       if (existing.rows.length) {
         const newQty = Math.min(existing.rows[0].quantity + safeQty, maxQty);
-        await pool.query(`UPDATE cart SET quantity=$1, updated_at=NOW() WHERE id=$2`, [newQty, existing.rows[0].id]);
+        await client.query(`UPDATE cart SET quantity=$1, updated_at=NOW() WHERE id=$2`, [newQty, existing.rows[0].id]);
       } else {
-        await pool.query(
+        await client.query(
           `INSERT INTO cart (user_id, product_id, variant_id, quantity) VALUES ($1,$2,$3,$4)`,
           [userId, item.product_id, variantId, safeQty]
         );
       }
       added++;
     }
+    await client.query('COMMIT');
 
     res.json({ success: true, message: `${added} item(s) added to cart`, added });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('[Reorder]', err.message);
     res.status(500).json({ success: false, message: 'Reorder failed' });
+  } finally {
+    client.release();
   }
 };
 
