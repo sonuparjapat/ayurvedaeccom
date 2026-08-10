@@ -1,5 +1,5 @@
 const pool = require('../../config/db')
-const { emitToUser, emitToAdmins } = require('../../socket')
+const { emitToUser, emitToAdmin } = require('../../socket')
 
 /* ── carrier tracking URL generator ─────────────────────────────── */
 function getCarrierTrackingUrl(courierName, trackingNumber) {
@@ -348,7 +348,7 @@ exports.webhookReceiver = async (req, res) => {
       })
     }
 
-    emitToAdmins('shipment_webhook', { order_id: order.id, status: mapped.label || statusLabel, provider })
+    emitToAdmin('shipment_webhook', { order_id: order.id, status: mapped.label || statusLabel, provider })
 
   } catch (e) {
     console.error('[webhook]', e.message)

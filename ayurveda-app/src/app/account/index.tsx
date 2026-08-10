@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import {
-  ActivityIndicator, Alert, Clipboard, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, StatusBar,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, StatusBar,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import * as Location from 'expo-location'
@@ -646,7 +646,7 @@ export default function AccountScreen() {
                     <Text style={{ fontFamily: Fonts.bold, fontSize: 16, color: Colors.gold, letterSpacing: 2, textAlign: 'center' }}>{(user as any).referral_code}</Text>
                   </View>
                   <TouchableOpacity
-                    onPress={() => { Clipboard.setString((user as any).referral_code); toast.success('Referral code copied!') }}
+                    onPress={() => Share.share({ message: (user as any).referral_code }).then(() => toast.success('Referral code shared!')).catch(() => {}) }
                     style={{ backgroundColor: Colors.forest, borderRadius: 10, padding: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
                   >
                     <Text style={{ color: '#fff', fontSize: 11, fontFamily: Fonts.bold }}>Copy</Text>

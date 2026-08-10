@@ -170,14 +170,6 @@ export default function ProductDetailPage() {
   const [helpfulVotes, setHelpfulVotes] = useState<Record<number, { count: number; voted: boolean }>>({})
   const [helpfulLoading, setHelpfulLoading] = useState<number | null>(null)
 
-  // Seed helpful votes from main reviews context data
-  useEffect(() => {
-    if (!reviewsData?.data) return
-    const map: Record<number, { count: number; voted: boolean }> = {}
-    reviewsData.data.forEach((rev: any) => { map[rev.id] = { count: rev.helpful_count || 0, voted: !!rev.user_found_helpful } })
-    setHelpfulVotes(prev => ({ ...prev, ...map }))
-  }, [reviewsData])
-
   // Write review
   const [wRating, setWRating] = useState(0)
   const [wComment, setWComment] = useState('')
@@ -194,6 +186,18 @@ export default function ProductDetailPage() {
   // Sticky ATC bar
   const atcBtnRef = useRef<HTMLDivElement>(null)
   const [stickyAtc, setStickyAtc] = useState(false)
+
+  const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
+  } = useAuth()
+
+  // Seed helpful votes from main reviews context data
+  useEffect(() => {
+    if (!reviewsData?.data) return
+    const map: Record<number, { count: number; voted: boolean }> = {}
+    reviewsData.data.forEach((rev: any) => { map[rev.id] = { count: rev.helpful_count || 0, voted: !!rev.user_found_helpful } })
+    setHelpfulVotes(prev => ({ ...prev, ...map }))
+  }, [reviewsData])
+
   useEffect(() => {
     const el = atcBtnRef.current
     if (!el) return
@@ -201,8 +205,6 @@ export default function ProductDetailPage() {
     obs.observe(el)
     return () => obs.disconnect()
   }, [product])
- const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
-  } = useAuth()
   const { toggle: compareToggle, has: compareHas } = useCompare()
 const handlepagechage=(page:number)=>{
   setPage(page)

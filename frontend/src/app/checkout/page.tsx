@@ -537,7 +537,7 @@ const {
     total: +finalTotal.toFixed(2)
   };
 
-}, [effectiveItems, chargesMap, appliedCoupon, walletDiscount, loyaltyDiscount]);
+}, [effectiveItems, chargesMap, appliedCoupon, walletDiscount, loyaltyDiscount, appliedGiftCard]);
 
 // Fetch available coupons and wallet balance
 useEffect(() => {
@@ -564,7 +564,7 @@ const applyCoupon = async () => {
     setCouponApplying(true)
     setCouponError('')
     const res = await axios.post('/coupons/apply', { code: couponInput.trim(), cartTotal: subtotal })
-    setAppliedCoupon({ code: res.data.coupon.code, discount: res.data.discount })
+    setAppliedCoupon({ code: res.data.coupon?.code || couponInput.trim(), discount: res.data.discount })
     toast.success(`Coupon applied! You save ₹${res.data.discount.toFixed(2)}`)
   } catch (err: any) {
     setCouponError(err?.response?.data?.message || 'Invalid coupon code')
@@ -1043,7 +1043,7 @@ if (checkingAddress) {
               cursor: "pointer",
             }}
           >
-            {addr.isDefault && "⭐ "}
+            {addr.is_default && "⭐ "}
             {full}
           </button>
         );

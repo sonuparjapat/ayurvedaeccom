@@ -33,11 +33,10 @@ export default function SharedWishlistPage() {
   useEffect(() => {
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (!uuidPattern.test(token)) { setError('Invalid share link'); setLoading(false); return }
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/shop/wishlist/share/${token}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) setData(d)
-        else setError(d.message || 'Wishlist not found')
+    axios.get(`/shop/wishlist/share/${token}`)
+      .then(r => {
+        if (r.data.success) setData(r.data)
+        else setError(r.data.message || 'Wishlist not found')
       })
       .catch(() => setError('Failed to load wishlist'))
       .finally(() => setLoading(false))
@@ -128,8 +127,8 @@ export default function SharedWishlistPage() {
                         </Link>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                           <span style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>{formatPrice(Number(p.price))}</span>
-                          {p.mrp && Number(p.mrp) > Number(p.price) && (
-                            <span style={{ fontSize: 12, color: '#9ca3af', textDecoration: 'line-through' }}>{formatPrice(Number(p.mrp))}</span>
+                          {p.compareprice && Number(p.compareprice) > Number(p.price) && (
+                            <span style={{ fontSize: 12, color: '#9ca3af', textDecoration: 'line-through' }}>{formatPrice(Number(p.compareprice))}</span>
                           )}
                         </div>
                         <button

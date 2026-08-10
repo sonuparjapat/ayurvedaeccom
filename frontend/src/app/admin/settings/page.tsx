@@ -43,7 +43,7 @@ export default function AdminSettingsPage() {
 
       const res = await axios.get('/admin/settings')
 
-      setList(res.data.data)
+      setList(res.data.data || [])
 
     } catch {
 

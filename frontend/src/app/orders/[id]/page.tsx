@@ -128,7 +128,7 @@ export default function OrderDetailPage() {
         }
         if (searchParams?.get('action') === 'change-address') {
           axios.get('/users/address').then(r => {
-            setAddresses(r.data?.addresses || r.data || [])
+            setAddresses(r.data?.data || [])
             setSelectedAddressId(null)
             setShowAddressModal(true)
           }).catch(() => {})
@@ -161,7 +161,7 @@ export default function OrderDetailPage() {
   const openAddressModal = async () => {
     try {
       const res = await axios.get('/users/address')
-      setAddresses(res.data?.addresses || res.data || [])
+      setAddresses(res.data?.data || [])
       setSelectedAddressId(null)
       setShowAddressModal(true)
     } catch { toast.error('Could not load addresses') }

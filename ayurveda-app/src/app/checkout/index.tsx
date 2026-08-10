@@ -439,7 +439,7 @@ export default function CheckoutScreen() {
             <Text style={ss.headerSub}>🔒 Secure · SSL Encrypted</Text>
           </View>
           <View style={ss.stepPill}>
-            <Text style={ss.stepPillText}>Step {step} of 2</Text>
+            <Text style={ss.stepPillText}>Step {step} of 3</Text>
           </View>
           <StepIndicator step={step} />
         </LinearGradient>

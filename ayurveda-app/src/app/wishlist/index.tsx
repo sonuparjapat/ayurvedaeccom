@@ -69,7 +69,7 @@ function WishlistCard({ p, index, removingId, addingId, inCart, onRemove, onAddT
   const triggerCart = () => { impact(Haptics.ImpactFeedbackStyle.Medium); onAddToCart(p.id); translateX.value = withSpring(0, { damping: 18 }) }
 
   const pan = Gesture.Pan()
-    .activeOffsetX([10, 10])
+    .activeOffsetX([-10, 10])
     .failOffsetY([-15, 15])
     .onUpdate(e => {
       if (e.translationX > 0) translateX.value = Math.min(e.translationX, W * 0.4)

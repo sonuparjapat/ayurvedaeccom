@@ -41,6 +41,7 @@ export default function FlashSalesPage() {
 
   const openCreate = () => { setEditing(null); setForm(empty); setBannerFile(null); setBannerPreview(null); setShowForm(true) }
   const openEdit = async (sale: any) => {
+    try {
     const r = await axios.get(`/flash-sales/admin/${sale.id}`)
     const s = r.data.sale
     setEditing(s)
@@ -53,6 +54,7 @@ export default function FlashSalesPage() {
     setBannerPreview(s.banner_image || null)
     setBannerFile(null)
     setShowForm(true)
+    } catch { notify.error('Failed to load sale details') }
   }
 
   const save = async () => {

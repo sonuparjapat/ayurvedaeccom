@@ -8,7 +8,7 @@ import { toast } from '../../components/ui/Toast'
 import { Image as ExpoImage } from 'expo-image'
 import Animated, {
   FadeIn, FadeInDown, FadeOutLeft, Layout, interpolate, Extrapolation, runOnJS,
-  useAnimatedStyle, useSharedValue, withSpring, withTiming,
+  useAnimatedStyle, useSharedValue, withSpring, withTiming, withRepeat, withSequence,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -24,7 +24,7 @@ const { width: W } = Dimensions.get('window')
 // ─── SKELETON ─────────────────────────────────────────────────────────────────
 function Skel({ w, h, r = 8 }: { w: number | string; h: number; r?: number }) {
   const op = useSharedValue(0.45)
-  useEffect(() => { op.value = withTiming(1, { duration: 700 }); op.value = withTiming(0.45, { duration: 700 }) }, [])
+  useEffect(() => { op.value = withRepeat(withSequence(withTiming(1, { duration: 700 }), withTiming(0.45, { duration: 700 })), -1, true) }, [])
   const style = useAnimatedStyle(() => ({ opacity: op.value }))
   return <Animated.View style={[{ width: w as any, height: h, borderRadius: r, backgroundColor: '#d1e8dc' }, style]} />
 }

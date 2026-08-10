@@ -172,7 +172,7 @@ export default function SupportScreen() {
     return (
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: Colors.cream }}
-        behavior="padding"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <StatusBar barStyle="light-content" />
         <LinearGradient colors={[Colors.forest, Colors.moss]} style={[s.chatHeader, { paddingTop: insets.top + 8 }]}>

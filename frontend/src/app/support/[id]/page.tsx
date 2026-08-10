@@ -54,7 +54,7 @@ export default function TicketDetailPage() {
       const r = await api.get(`/support/tickets/${id}`)
       setTicket(r.data.ticket)
       setMessages(r.data.messages)
-    } catch { } finally { setLoading(false) }
+    } catch { alert('Failed to load ticket. Please refresh.') } finally { setLoading(false) }
   }
 
   useEffect(() => {
@@ -91,7 +91,7 @@ export default function TicketDetailPage() {
     try {
       await api.post(`/support/tickets/${id}/reply`, { message: reply.trim() })
       setReply('')
-    } catch { } finally { setSending(false) }
+    } catch { alert('Failed to send reply. Please try again.') } finally { setSending(false) }
   }
 
   const closeTicket = async () => {

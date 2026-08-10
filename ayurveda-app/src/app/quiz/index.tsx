@@ -265,7 +265,7 @@ const s = StyleSheet.create({
   },
   optionBadge: {
     width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.mint,
-    alignItems: 'center', justifyContent: 'center', shrink: 0,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   optionBadgeText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest },
   optionText: { flex: 1, fontFamily: Fonts.medium, fontSize: 14, color: Colors.forest, lineHeight: 20 },

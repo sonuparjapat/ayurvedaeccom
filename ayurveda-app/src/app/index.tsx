@@ -932,7 +932,7 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    impact('light')
+    impact(Haptics.ImpactFeedbackStyle.Light)
     try {
       await Promise.all([
         api.get('/banners/public').then(r => setBanners(r.data?.banners || [])),

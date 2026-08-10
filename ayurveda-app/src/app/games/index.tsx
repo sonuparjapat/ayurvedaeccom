@@ -234,7 +234,7 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
     })
   }
 
-  const spin_interpolate = spinAnim.interpolate({ inputRange: [currentRotation.current - 360 * 10, currentRotation.current + 360 * 10], outputRange: ['-3600deg', '3600deg'], extrapolate: 'clamp' })
+  const spin_interpolate = spinAnim.interpolate({ inputRange: [currentRotation.current - 360 * 10, currentRotation.current + 360 * 10], outputRange: ['-3600deg', '3600deg'], extrapolate: 'extend' })
 
   return (
     <View style={styles.cardWrapper}>

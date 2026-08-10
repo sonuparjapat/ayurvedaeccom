@@ -86,7 +86,10 @@ export default function SupportPage() {
       setShowForm(false)
       setForm({ subject: '', category: 'general', priority: 'medium', message: '' })
       router.push(`/support/${r.data.ticket.id}`)
-    } catch { } finally { setSubmitting(false) }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to create ticket. Please try again.'
+      alert(msg)
+    } finally { setSubmitting(false) }
   }
 
   return (
