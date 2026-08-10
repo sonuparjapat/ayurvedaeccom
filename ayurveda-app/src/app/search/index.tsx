@@ -21,6 +21,7 @@ import { Colors, Fonts } from '../../constants/theme'
 interface Suggestion {
   id: number
   name: string
+  slug?: string
   price?: string
   image?: string
   _type: 'product' | 'category'
