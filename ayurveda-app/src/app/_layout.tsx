@@ -113,6 +113,7 @@ function Inner() {
       <Stack.Screen name="blog/[slug]" options={{ presentation: 'card' }} />
       <Stack.Screen name="account/subscriptions" options={{ presentation: 'card' }} />
       <Stack.Screen name="quiz/index" options={{ presentation: 'card', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="games/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />
       <Stack.Screen name="onboarding/index" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
       <Stack.Screen name="permissions/index" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
       <Stack.Screen name="settings/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />

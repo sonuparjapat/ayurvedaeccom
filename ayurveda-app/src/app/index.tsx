@@ -1064,7 +1064,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Dosha Quiz CTA */}
-        <TouchableOpacity onPress={() => router.push('/quiz')} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 20, overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => router.push('/quiz')} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
           <LinearGradient colors={['#0a1f14', '#1a4228']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Text style={{ fontSize: 36 }}>🌿</Text>
             <View style={{ flex: 1 }}>
@@ -1074,6 +1074,20 @@ export default function HomeScreen() {
             <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
           </LinearGradient>
         </TouchableOpacity>
+
+        {/* Play & Win — only for logged-in users */}
+        {!!user?.id && (
+          <TouchableOpacity onPress={() => router.push('/games' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 20, overflow: 'hidden' }}>
+            <LinearGradient colors={['#1a0a2e', '#3b1f6e']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Text style={{ fontSize: 36 }}>🎮</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Play & Win Rewards</Text>
+                <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 18 }}>Scratch cards, spin wheel & more. Win wallet credits & coupons!</Text>
+              </View>
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
 
         {/* Trust strip */}
         <View style={{ paddingTop: 8, paddingBottom: 4 }}>
