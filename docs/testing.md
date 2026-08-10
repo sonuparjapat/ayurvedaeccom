@@ -1484,3 +1484,99 @@ For a Return Requested / Returned order: amber banner.
 - Cart: same non-returnable warning.
 - Account orders: same countdown chip.
 - Order detail: Return modal shows Refund/Replacement choice; eligibility enforced.
+
+---
+
+## Backend Audit — August 2026
+
+### Gift card Razorpay overcharge fix
+
+1. Create a gift card in admin with balance ₹200, apply it during checkout on a ₹500 order.
+2. Complete online payment.
+3. **Expected**: Razorpay charges ₹300 (not ₹500). Order `price_breakup` shows `gift_card_discount: 200`.
+4. **Bug was**: Razorpay charged ₹500 (full pre-discount amount); gift card discount was applied server-side only.
+
+### Flash sale uses_count race condition fix
+
+```bash
+# Simulate two concurrent orders when max_uses=1
+# Both should hit POST /orders/create simultaneously with a flash-sale product
+# Expected: one order succeeds (200), the other gets 400 {"message":"Flash sale is sold out..."}
+# Bug was: both could succeed, pushing uses_count to 2
+```
+
+### Daily scratch card limits
+
+1. Admin → Games → Scratch Cards → edit a card → set "Daily Limit / User" to 2.
+2. Log in as a user and claim the scratch card twice.
+3. **Expected**: Both claims succeed.
+4. Claim a third time today.
+5. **Expected**: HTTP 400 — "You can claim this scratch card 2 time(s) per day. Come back tomorrow!"
+6. Set "Daily Limit / User" to 0 — verify unlimited claiming is restored.
+
+### Daily quiz attempt limits
+
+1. Admin → Quizzes → edit a quiz → set "Daily Limit / User" to 1.
+2. Log in as a user and complete the quiz.
+3. **Expected**: First attempt succeeds.
+4. Try again immediately.
+5. **Expected**: HTTP 400 — "You can attempt this quiz 1 time(s) per day. Come back tomorrow!"
+6. Set "Daily Limit / User" to 0 — verify unlimited attempts are restored.
+
+### Transaction safety — no partial writes
+
+These scenarios should result in either full success or full rollback (no partial data):
+
+| Scenario | What to test |
+|---|---|
+| `createTicket` DB error mid-way | Kill DB mid-request; verify no orphaned ticket row without a message |
+| `deleteDepartment` — department not found | `DELETE /admin/departments/99999` → 404, no NULL `department_id` updates applied |
+| `reorder` — DB error on 2nd cart item | Should rollback all items (none added to cart) or succeed all |
+| `sendLoginOtp` with unverified user | Returns 403; transaction rolled back; `otp_attempts` NOT incremented |
+| `sendLoginOtp` with 3+ attempts in 15 min | Returns 429; transaction rolled back; `otp_code` NOT updated |
+
+### OTP race condition fix
+
+```bash
+# Send two concurrent OTP requests for the same email
+curl -s -X POST http://localhost:5000/api/users/send-otp \
+  -H "Content-Type: application/json" \
+  -d '{"identifier":"user@example.com"}' &
+curl -s -X POST http://localhost:5000/api/users/send-otp \
+  -H "Content-Type: application/json" \
+  -d '{"identifier":"user@example.com"}' &
+wait
+# Expected: both respond (200 or 429), otp_attempts counter is consistent (1 or 2, never 0)
+# Bug was: without FOR UPDATE, both reads saw the same attempt count simultaneously
+```
+
+### N+1 elimination — performance
+
+```bash
+# Flash sales with many products: single SQL call instead of one per sale
+curl http://localhost:5000/api/flash-sales/active
+# Check DB logs: should see exactly 2 queries (sales list + products batch), not 1 + N
+
+# Quiz submit with many answers: single options query instead of 2 per answer
+# Check that POST /quiz/submit/:id completes faster with many answers
+
+# Admin wallets list: no correlated subqueries
+curl http://localhost:5000/api/admin/wallet?page=1&limit=20 \
+  -H "Cookie: token=<admin_token>"
+# Should complete without N+1 per user (check DB logs)
+```
+
+### Analytics read-only queries (no unnecessary transaction)
+
+```bash
+curl http://localhost:5000/api/admin/analytics/overview \
+  -H "Cookie: token=<admin_token>"
+# Expected: 200 OK — no transaction opened (reads never needed BEGIN/COMMIT)
+```
+
+### Bulk stock update — full transaction
+
+1. Create a CSV with 5 rows: 3 valid SKUs and 2 invalid/missing.
+2. Upload via Admin → Invoice → Bulk Stock Update.
+3. **Expected**: All 3 valid rows update in a single atomic transaction; 2 failures collected in `failed[]`; response shows `{ updated: 3, failed: 2, total: 5 }`.
+4. A DB error mid-upload should rollback all updates (atomicity).

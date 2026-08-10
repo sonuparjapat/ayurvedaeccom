@@ -1506,3 +1506,72 @@ Six new columns added via `ALTER TABLE IF NOT EXISTS`:
 - Return by date = delivered_at + window days.
 - Non-returnable product in order → entire order not returnable.
 - Replacement button only shown when `can_replace=true` (all items have replacement_available=true and is_returnable=true).
+
+---
+
+## Backend Audit — August 2026
+
+### Critical calculation/payment fixes (commits 8679b5b, dce2478)
+
+#### Gift card Razorpay overcharge — `order.controller.js`
+**Root cause**: `finalTotal` (passed to Razorpay as the charge amount) was computed before the gift card discount was known. Razorpay was charged the pre-gift-card amount; the discount was only applied server-side after the order was saved.
+
+**Fix**: Gift card is now pre-validated inside the same `pool.connect()` transaction, before the order INSERT and before `Razorpay.orders.create()`. The deduction is included in `finalTotal` so Razorpay sees the correct post-discount amount. The `price_breakup` snapshot also records the real `gift_card_discount` (was hardcoded to `0`).
+
+#### Flash sale `uses_count` race condition — `order.controller.js`
+**Root cause**: Two concurrent requests could both pass the `uses_count < max_uses` read check and both increment the counter, letting more orders through than `max_uses` allows.
+
+**Fix**: The increment now uses an atomic `WHERE uses_count < max_uses` guard on the UPDATE itself. If no rows are returned (limit already reached), the transaction is rolled back and the caller receives HTTP 400. Applied to both `createOrder` and `buyNow`.
+
+#### Daily limits for scratch cards — `games.controller.js`, `database/init.js`, `admin/games/page.tsx`
+- New column: `scratch_cards.max_claims_per_day INTEGER DEFAULT 0` (0 = no daily cap); added via `ADD COLUMN IF NOT EXISTS`.
+- `claimScratchCard` checks `COUNT(*) FROM scratch_card_claims WHERE DATE(claimed_at) = CURRENT_DATE` when `max_claims_per_day > 0`.
+- Admin UI: "Daily Limit / User" field added to scratch card form; "Per Day" stat added to campaign card.
+
+#### Daily limits for quizzes — `quiz.controller.js`, `database/init.js`, `admin/quiz/page.tsx`
+- New column: `quizzes.max_attempts_per_day INTEGER DEFAULT 0`.
+- `submitDynamicQuiz` checks `COUNT(*) FROM user_quiz_attempts WHERE DATE(completed_at) = CURRENT_DATE` when `max_attempts_per_day > 0`.
+- Admin UI: "Daily Limit / User" field added between Max Attempts and Pass Score.
+
+---
+
+### Transaction safety audit (commit b2d835d)
+
+All multi-step writes that previously ran outside a transaction were wrapped in `pool.connect()` + `BEGIN`/`COMMIT`/`ROLLBACK`/`finally client.release()`.
+
+| File | Functions fixed |
+|---|---|
+| `admin.controller.js` | `adminUpdateReview`, `adminDeleteReview`; ROLLBACK added to 5 early returns in `updateOrderStatus` after BEGIN |
+| `admin.shipping.controller.js` | `updateShipment`, `addTrackingEvent`, `webhookReceiver` |
+| `admin.invoice.controller.js` | `bulkStockUpdate` (CSV loop now inside BEGIN/COMMIT) |
+| `department.controller.js` | `deleteDepartment` (unlink users + delete in one transaction) |
+| `support.controller.js` | `createTicket`, `replyTicket`, `adminReply`, `contactForm` |
+| `product.controller.js` | `addReview`, `deleteReview`, `voteReviewHelpful`, `logRecentlyViewed` |
+| `order.controller.js` | `reorder` (cart updates) |
+| `userAuthController.js` | `sendLoginOtp`, `sendMobileOtp` — `FOR UPDATE` on user row prevents OTP race condition; ROLLBACK on all early returns |
+
+---
+
+### N+1 query elimination (commit b2d835d)
+
+| File | Before | After |
+|---|---|---|
+| `admin.controller.js` — `adminBulkUploadPincodes` | SELECT then INSERT or UPDATE per row | `ON CONFLICT (pincode) DO UPDATE` — single query per row, no SELECT |
+| `admin.controller.js` — `updateOrderStatus` inventory restore | Per-item UPDATE in a loop | Single `UPDATE … FROM (SELECT unnest($1::int[]) …)` for variants, another for products |
+| `admin.shipping.controller.js` — `getInTransitOrders` | Correlated subquery (N+1 per order) for latest shipment event | `LEFT JOIN LATERAL (SELECT … ORDER BY event_time DESC LIMIT 1) ON TRUE` |
+| `flash.controller.js` — `getActiveFlashSales` | Separate product query per flash sale | Single `WHERE fsp.flash_sale_id = ANY($1::int[])` + JOIN, grouped in JS |
+| `quiz.controller.js` — `submitDynamicQuiz` scoring | 2 queries per answer (option lookup + MAX points) | Single pre-loop query with `MAX(points) OVER (PARTITION BY question_id)` window function |
+| `wallet.controller.js` — `adminListWallets` | 2 correlated subqueries per user row | `LEFT JOIN (SELECT user_id, COUNT(*), MAX(created_at) … GROUP BY user_id)` |
+| `newsletter.controller.js` — `adminList` | 3 sequential queries | 2 parallel queries via `Promise.all`; COUNT + active_count merged into one |
+
+---
+
+### Additional fixes (commit b2d835d)
+
+| File | Fix |
+|---|---|
+| `admin.controller.js` — `stats` | 5 sequential `await pool.query` → `Promise.all([...])` |
+| `admin.controller.js` — `exportOrdersCSV` | Added `LIMIT 10000` to prevent OOM on large date ranges |
+| `analytics.controller.js` | Removed unnecessary `pool.connect()` + `BEGIN`/`COMMIT` from read-only `getOverviewAnalytics` |
+| `wallet.controller.js` — `adminDebitLoyalty` | Added `ROLLBACK` before the early 400 return on insufficient balance |
+| `wallet.controller.js` — `adminSaveLoyaltySettings` | Sequential loop → `Promise.all` over filtered updates |
