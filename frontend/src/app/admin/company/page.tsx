@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import {
   Building2, Save, Upload, X, Globe, Instagram, Facebook,
   Twitter, Youtube, Image as ImageIcon, Loader2, Plus, Trash2,
@@ -127,7 +127,7 @@ export default function CompanyPage() {
           banners: saved.banners || [],
         })
       }
-    } catch { notify.error('Failed to load company settings') }
+    } catch { toast.error('Failed to load company settings') }
     finally { setLoading(false) }
   }
 
@@ -178,7 +178,7 @@ export default function CompanyPage() {
     })
 
   const handleSave = async () => {
-    if (!form.company_name.trim()) return notify.error('Company name is required')
+    if (!form.company_name.trim()) return toast.error('Company name is required')
     setSaving(true)
     try {
       const fd = new FormData()
@@ -191,14 +191,14 @@ export default function CompanyPage() {
 
       if (record) {
         await axios.put(`/company/${record.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-        notify.success('Settings saved')
+        toast.success('Settings saved')
       } else {
         await axios.post('/company', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-        notify.success('Company settings created')
+        toast.success('Company settings created')
       }
       setLogoFile(null)
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Save failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Save failed') }
     finally { setSaving(false) }
   }
 

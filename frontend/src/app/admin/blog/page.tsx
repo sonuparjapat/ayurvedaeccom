@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import {
   BookOpen, Plus, Pencil, Trash2, Search, Eye, Clock, RefreshCw,
 } from 'lucide-react'
@@ -75,7 +75,7 @@ export default function AdminBlogPage() {
       const pub = data.filter(p => p.status === 'published').length
       const dra = data.filter(p => p.status === 'draft').length
       setStats({ total: res.data.total || 0, published: pub, draft: dra })
-    } catch { notify.error('Failed to load posts') }
+    } catch { toast.error('Failed to load posts') }
     finally { setLoading(false) }
   }
 
@@ -111,8 +111,8 @@ export default function AdminBlogPage() {
   }
 
   const handleSave = async () => {
-    if (!form.title.trim()) return notify.error('Title is required')
-    if (!form.content.trim()) return notify.error('Content is required')
+    if (!form.title.trim()) return toast.error('Title is required')
+    if (!form.content.trim()) return toast.error('Content is required')
     setSaving(true)
     try {
       const fd = new FormData()
@@ -131,14 +131,14 @@ export default function AdminBlogPage() {
 
       if (editing) {
         await axios.put(`/blog/admin/${editing.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-        notify.success('Post updated')
+        toast.success('Post updated')
       } else {
         await axios.post('/blog/admin', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-        notify.success('Post created')
+        toast.success('Post created')
       }
       setModalOpen(false)
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Save failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Save failed') }
     finally { setSaving(false) }
   }
 
@@ -146,9 +146,9 @@ export default function AdminBlogPage() {
     if (!confirm(`Delete post "${title}"?`)) return
     try {
       await axios.delete(`/blog/admin/${id}`)
-      notify.success('Post deleted')
+      toast.success('Post deleted')
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Delete failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Delete failed') }
   }
 
   const statusBadge = (s: string) => {

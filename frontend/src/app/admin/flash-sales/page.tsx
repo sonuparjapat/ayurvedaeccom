@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import { Plus, Edit, Trash2, Zap, Clock, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -33,7 +33,7 @@ export default function FlashSalesPage() {
       ])
       setSales(salesRes.data.sales || [])
       setAllProducts(prodRes.data.products || prodRes.data.data || [])
-    } catch { notify.error('Load failed') }
+    } catch { toast.error('Load failed') }
     finally { setLoading(false) }
   }
 
@@ -54,7 +54,7 @@ export default function FlashSalesPage() {
     setBannerPreview(s.banner_image || null)
     setBannerFile(null)
     setShowForm(true)
-    } catch { notify.error('Failed to load sale details') }
+    } catch { toast.error('Failed to load sale details') }
   }
 
   const save = async () => {
@@ -80,10 +80,10 @@ export default function FlashSalesPage() {
         if (editing) await axios.put(`/flash-sales/admin/${editing.id}`, payload)
         else await axios.post('/flash-sales/admin', payload)
       }
-      notify.success(editing ? 'Updated' : 'Created')
+      toast.success(editing ? 'Updated' : 'Created')
       setShowForm(false)
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Save failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Save failed') }
     finally { setSaving(false) }
   }
 
@@ -91,9 +91,9 @@ export default function FlashSalesPage() {
     if (!confirm('Delete this flash sale?')) return
     try {
       await axios.delete(`/flash-sales/admin/${id}`)
-      notify.success('Deleted')
+      toast.success('Deleted')
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Delete failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Delete failed') }
   }
 
   const toggleProduct = (pid: number) => {

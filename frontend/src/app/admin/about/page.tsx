@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import {
   BookOpen, Plus, Trash2, Save, Loader2, Eye,
 } from 'lucide-react'
@@ -82,7 +82,7 @@ export default function AdminAboutPage() {
         }
       }
     } catch {
-      notify.error('Failed to load company data')
+      toast.error('Failed to load company data')
     } finally {
       setLoading(false)
     }
@@ -94,7 +94,7 @@ export default function AdminAboutPage() {
 
   const handleSave = async () => {
     if (!company) {
-      notify.error('No company found. Please create a company first in Company Settings.')
+      toast.error('No company found. Please create a company first in Company Settings.')
       return
     }
 
@@ -105,11 +105,11 @@ export default function AdminAboutPage() {
       await axios.put(`/company/${company.id}`, {
         extra_data: JSON.stringify(updatedExtraData),
       })
-      notify.success('About page saved successfully!')
+      toast.success('About page saved successfully!')
       // Update local company state so next save merges correctly
       setCompany({ ...company, extra_data: updatedExtraData })
     } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Failed to save')
+      toast.error(err?.response?.data?.message || 'Failed to save')
     } finally {
       setSaving(false)
     }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import {
   RotateCcw, CheckCircle, XCircle, DollarSign, Package,
   User, Search, RefreshCw, Eye, Truck,
@@ -43,7 +43,7 @@ export default function AdminReturnsPage() {
       setList(filtered.data.data || [])
       setMeta(filtered.data.meta || {})
       setAllStats(allRes.data.data || [])
-    } catch { notify.error('Load failed') }
+    } catch { toast.error('Load failed') }
     finally { setLoading(false) }
   }
 
@@ -59,24 +59,24 @@ export default function AdminReturnsPage() {
     setProcessing(true)
     try {
       const res = await axios.put(`/admin/returns/${id}/approve`, { refund_method: refundMethod })
-      notify.success(res.data?.message || 'Return approved')
+      toast.success(res.data?.message || 'Return approved')
       setViewOpen(false)
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
     finally { setProcessing(false) }
   }
 
   const reject = async (id: number) => {
-    if (!rejectReason.trim()) return notify.error('Please enter rejection reason')
+    if (!rejectReason.trim()) return toast.error('Please enter rejection reason')
     setProcessing(true)
     try {
       await axios.put(`/admin/returns/${id}/reject`, { reason: rejectReason })
-      notify.success('Return rejected')
+      toast.success('Return rejected')
       setRejectOpen(false)
       setViewOpen(false)
       setRejectReason('')
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
     finally { setProcessing(false) }
   }
 
@@ -84,10 +84,10 @@ export default function AdminReturnsPage() {
     setProcessing(true)
     try {
       await axios.put(`/admin/returns/${id}/complete-refund`)
-      notify.success('Refund marked complete')
+      toast.success('Refund marked complete')
       setViewOpen(false)
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
     finally { setProcessing(false) }
   }
 
@@ -95,12 +95,12 @@ export default function AdminReturnsPage() {
     setProcessing(true)
     try {
       await axios.put(`/admin/returns/${id}/dispatch-replacement`, { tracking_number: dispatchTracking || null })
-      notify.success('Replacement dispatched — customer notified')
+      toast.success('Replacement dispatched — customer notified')
       setDispatchOpen(false)
       setViewOpen(false)
       setDispatchTracking('')
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
     finally { setProcessing(false) }
   }
 

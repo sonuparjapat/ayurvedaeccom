@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import { ShoppingCart, RefreshCw, Mail, IndianRupee, Users, Clock, AlertCircle } from 'lucide-react'
 
 export default function AbandonedCartsPage() {
@@ -14,7 +14,7 @@ export default function AbandonedCartsPage() {
     try {
       const r = await axios.get('/admin/abandoned-carts')
       setCarts(r.data.carts || [])
-    } catch { notify.error('Load failed') } finally { setLoading(false) }
+    } catch { toast.error('Load failed') } finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])

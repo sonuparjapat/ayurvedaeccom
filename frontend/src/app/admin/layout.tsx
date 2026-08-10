@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Toaster, toast } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { Command } from 'cmdk'
@@ -183,8 +183,6 @@ export default function AdminLayout({
   return (
 
     <div className="h-screen w-full flex bg-gray-100 overflow-hidden">
-
-      <Toaster position="top-right" />
 
       {/* ================= COMMAND PALETTE ================= */}
       {cmdOpen && (

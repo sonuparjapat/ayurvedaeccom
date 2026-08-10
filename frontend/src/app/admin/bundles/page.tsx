@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import { Plus, Edit, Trash2, Package, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -35,7 +35,7 @@ export default function BundlesPage() {
       setBundles(bundlesRes.data.bundles || [])
       setAllProducts(prodRes.data.products || [])
     } catch {
-      notify.error('Load failed')
+      toast.error('Load failed')
     } finally {
       setLoading(false)
     }
@@ -67,13 +67,13 @@ export default function BundlesPage() {
       })
       setShowForm(true)
     } catch {
-      notify.error('Failed to load bundle details')
+      toast.error('Failed to load bundle details')
     }
   }
 
   const save = async () => {
     if (!form.name?.trim()) {
-      notify.error('Bundle name is required')
+      toast.error('Bundle name is required')
       return
     }
 
@@ -97,11 +97,11 @@ export default function BundlesPage() {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
       }
-      notify.success(editing ? 'Bundle updated' : 'Bundle created')
+      toast.success(editing ? 'Bundle updated' : 'Bundle created')
       setShowForm(false)
       load()
     } catch (e: any) {
-      notify.error(e?.response?.data?.message || 'Save failed')
+      toast.error(e?.response?.data?.message || 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -111,10 +111,10 @@ export default function BundlesPage() {
     if (!confirm('Delete this bundle?')) return
     try {
       await axios.delete(`/bundles/admin/${id}`)
-      notify.success('Bundle deleted')
+      toast.success('Bundle deleted')
       load()
     } catch {
-      notify.error('Delete failed')
+      toast.error('Delete failed')
     }
   }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import {
   Mail, Users, Trash2, Download, RefreshCw, CheckCircle, XCircle,
   Search, Send, Tag, Megaphone, ChevronDown, ChevronUp, Eye, X,
@@ -47,7 +47,7 @@ export default function AdminNewsletterPage() {
       setSubs(res.data.data || [])
       setTotal(res.data.total || 0)
       setActiveCount(res.data.activeCount || 0)
-    } catch { notify.error('Failed to load') }
+    } catch { toast.error('Failed to load') }
     finally { setLoading(false) }
   }
 
@@ -57,9 +57,9 @@ export default function AdminNewsletterPage() {
     if (!confirm('Delete this subscriber?')) return
     try {
       await axios.delete(`/newsletter/admin/${id}`)
-      notify.success('Deleted')
+      toast.success('Deleted')
       load()
-    } catch { notify.error('Delete failed') }
+    } catch { toast.error('Delete failed') }
   }
 
   const handleExport = () => {
@@ -69,14 +69,14 @@ export default function AdminNewsletterPage() {
   const setCamp = (k: string, v: any) => setCampaign(p => ({ ...p, [k]: v }))
 
   const handleSendCampaign = async () => {
-    if (!activeCount) return notify.error('No active subscribers to send to')
+    if (!activeCount) return toast.error('No active subscribers to send to')
     if (!confirm(`Send this campaign to all ${activeCount} active subscribers?`)) return
     setSending(true)
     try {
       const payload: any = { type: campaign.type }
       if (campaign.type === 'custom') {
         if (!campaign.subject.trim() || !campaign.body.trim()) {
-          notify.error('Subject and body are required')
+          toast.error('Subject and body are required')
           setSending(false)
           return
         }
@@ -87,7 +87,7 @@ export default function AdminNewsletterPage() {
         payload.ctaUrl = campaign.ctaUrl
       } else {
         if (!campaign.couponCode.trim()) {
-          notify.error('Coupon code is required')
+          toast.error('Coupon code is required')
           setSending(false)
           return
         }
@@ -100,11 +100,11 @@ export default function AdminNewsletterPage() {
         payload.description = campaign.description
       }
       const res = await axios.post('/newsletter/admin/send-campaign', payload)
-      notify.success(res.data.message || 'Campaign sent!')
+      toast.success(res.data.message || 'Campaign sent!')
       setCampaign({ ...BLANK_CAMPAIGN })
       setShowCampaign(false)
     } catch (e: any) {
-      notify.error(e?.response?.data?.message || 'Failed to send campaign')
+      toast.error(e?.response?.data?.message || 'Failed to send campaign')
     } finally { setSending(false) }
   }
 

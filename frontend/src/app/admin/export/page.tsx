@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import { Download, FileText, Users, ShoppingCart } from 'lucide-react'
 
 export default function ExportPage() {
@@ -22,8 +22,8 @@ export default function ExportPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url; a.download = `orders_${Date.now()}.csv`; a.click()
-      notify.success('Orders exported!')
-    } catch { notify.error('Export failed') }
+      toast.success('Orders exported!')
+    } catch { toast.error('Export failed') }
     finally { setExporting(null) }
   }
 
@@ -35,8 +35,8 @@ export default function ExportPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url; a.download = `users_${Date.now()}.csv`; a.click()
-      notify.success('Users exported!')
-    } catch { notify.error('Export failed') }
+      toast.success('Users exported!')
+    } catch { toast.error('Export failed') }
     finally { setExporting(null) }
   }
 

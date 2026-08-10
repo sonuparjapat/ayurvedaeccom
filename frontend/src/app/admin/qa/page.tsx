@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import { MessageSquare, Check, X, Trash2, Send, HelpCircle, Clock, Package, MessageCircle } from 'lucide-react'
 
 export default function AdminQAPage() {
@@ -20,7 +20,7 @@ export default function AdminQAPage() {
       const r = await axios.get('/qa/admin/questions', { params: { status, page, limit } })
       setQuestions(r.data.questions || [])
       setTotal(r.data.total || 0)
-    } catch { notify.error('Load failed') }
+    } catch { toast.error('Load failed') }
     finally { setLoading(false) }
   }
 
@@ -28,22 +28,22 @@ export default function AdminQAPage() {
 
   const updateStatus = async (id: number, s: string) => {
     await axios.put(`/qa/admin/questions/${id}`, { status: s })
-    notify.success(`Question ${s}`)
+    toast.success(`Question ${s}`)
     load()
   }
 
   const deleteQ = async (id: number) => {
     if (!confirm('Delete?')) return
     await axios.delete(`/qa/admin/questions/${id}`)
-    notify.success('Deleted')
+    toast.success('Deleted')
     load()
   }
 
   const answerQ = async (qId: number) => {
     const ans = answerMap[qId]
-    if (!ans?.trim()) return notify.error('Write an answer first')
+    if (!ans?.trim()) return toast.error('Write an answer first')
     await axios.post(`/qa/question/${qId}/answer`, { answer: ans })
-    notify.success('Answer posted!')
+    toast.success('Answer posted!')
     setAnswerMap(m => ({ ...m, [qId]: '' }))
     load()
   }

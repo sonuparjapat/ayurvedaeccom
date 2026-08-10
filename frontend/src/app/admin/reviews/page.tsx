@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import { Star, Check, X, Trash2, Filter, MessageSquare, Send, ChevronDown, ChevronUp } from 'lucide-react'
 
 export default function AdminReviewsPage() {
@@ -23,7 +23,7 @@ export default function AdminReviewsPage() {
       const r = await axios.get('/admin/reviews', { params: { status, page, limit } })
       setReviews(r.data.reviews || [])
       setTotal(r.data.total || 0)
-    } catch { notify.error('Load failed') }
+    } catch { toast.error('Load failed') }
     finally { setLoading(false) }
   }
 
@@ -32,18 +32,18 @@ export default function AdminReviewsPage() {
   const updateStatus = async (id: number, newStatus: string) => {
     try {
       await axios.put(`/admin/reviews/${id}`, { status: newStatus })
-      notify.success(`Review ${newStatus}`)
+      toast.success(`Review ${newStatus}`)
       load()
-    } catch { notify.error('Update failed') }
+    } catch { toast.error('Update failed') }
   }
 
   const deleteReview = async (id: number) => {
     if (!confirm('Delete this review?')) return
     try {
       await axios.delete(`/admin/reviews/${id}`)
-      notify.success('Deleted')
+      toast.success('Deleted')
       load()
-    } catch { notify.error('Delete failed') }
+    } catch { toast.error('Delete failed') }
   }
 
   const openReply = (id: number, existing: string | null) => {
@@ -52,15 +52,15 @@ export default function AdminReviewsPage() {
   }
 
   const submitReply = async (id: number) => {
-    if (!replyText.trim()) return notify.error('Reply cannot be empty')
+    if (!replyText.trim()) return toast.error('Reply cannot be empty')
     setReplySaving(true)
     try {
       await axios.put(`/admin/reviews/${id}/reply`, { reply: replyText.trim() })
-      notify.success('Reply saved')
+      toast.success('Reply saved')
       setReplyingId(null)
       setReplyText('')
       load()
-    } catch { notify.error('Failed to save reply') }
+    } catch { toast.error('Failed to save reply') }
     finally { setReplySaving(false) }
   }
 

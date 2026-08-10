@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import { Bell, Send, Users, Wifi, WifiOff, Clock, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -48,14 +48,14 @@ export default function PushNotificationsPage() {
   }, [])
 
   const send = async () => {
-    if (!form.title || !form.body) return notify.error('Title and body required')
+    if (!form.title || !form.body) return toast.error('Title and body required')
     try {
       setSending(true)
       const r = await axios.post('/push/admin/broadcast', form)
-      notify.success(`Sent to ${r.data.sent || 0} devices!`)
+      toast.success(`Sent to ${r.data.sent || 0} devices!`)
       setForm({ title: '', body: '' })
       // History and stats update via WebSocket event automatically
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Send failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Send failed') }
     finally { setSending(false) }
   }
 

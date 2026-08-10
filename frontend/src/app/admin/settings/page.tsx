@@ -5,7 +5,7 @@ import axios from '@/lib/axios'
 
 import { Plus, Eye, Edit, Trash2, Loader2, Truck, IndianRupee, Package } from 'lucide-react'
 
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 
 import DynamicTable from '@/components/table/table'
 import AppModal from '@/components/modal/AppModal'

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import {
   Tag, Plus, Pencil, Trash2, Search, RefreshCw, ArrowUpDown,
   CheckCircle, XCircle, Image as ImageIcon,
@@ -41,7 +41,7 @@ export default function AdminBrandsPage() {
       const res = await axios.get('/admin/brands', { params: { page, limit: 20, search } })
       setBrands(res.data.data || [])
       setTotal(res.data.total || 0)
-    } catch { notify.error('Failed to load brands') }
+    } catch { toast.error('Failed to load brands') }
     finally { setLoading(false) }
   }
 
@@ -66,7 +66,7 @@ export default function AdminBrandsPage() {
   }
 
   const handleSave = async () => {
-    if (!form.name.trim()) return notify.error('Brand name is required')
+    if (!form.name.trim()) return toast.error('Brand name is required')
     setSaving(true)
     try {
       const fd = new FormData()
@@ -79,14 +79,14 @@ export default function AdminBrandsPage() {
 
       if (editing) {
         await axios.put(`/admin/brands/${editing.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-        notify.success('Brand updated')
+        toast.success('Brand updated')
       } else {
         await axios.post('/admin/brands', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-        notify.success('Brand created')
+        toast.success('Brand created')
       }
       setModalOpen(false)
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Save failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Save failed') }
     finally { setSaving(false) }
   }
 
@@ -94,9 +94,9 @@ export default function AdminBrandsPage() {
     if (!confirm(`Delete brand "${name}"?`)) return
     try {
       await axios.delete(`/admin/brands/${id}`)
-      notify.success('Brand deleted')
+      toast.success('Brand deleted')
       load()
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Delete failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Delete failed') }
   }
 
   return (
