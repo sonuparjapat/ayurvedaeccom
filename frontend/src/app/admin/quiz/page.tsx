@@ -8,7 +8,7 @@ import { Brain, Plus, Trash2, Edit3, ChevronDown, ChevronUp, CheckCircle, XCircl
 type Quiz = {
   id: number; title: string; description: string; type: string
   starts_at: string | null; expires_at: string | null
-  max_attempts_per_user: number; pass_score: number
+  max_attempts_per_user: number; max_attempts_per_day: number; pass_score: number
   reward_type: string; reward_value: number; reward_is_percent: boolean; reward_max_claims: number
   reward_claims_count: number; is_active: boolean
   questions_count: number; attempts_count: number; created_by_name: string
@@ -30,7 +30,7 @@ export default function AdminQuizPage() {
   const [attemptsQuizId, setAttemptsQuizId] = useState<number | null>(null)
   const [form, setForm] = useState({
     title: '', description: '', type: 'scored',
-    starts_at: '', expires_at: '', max_attempts_per_user: 1, pass_score: 0,
+    starts_at: '', expires_at: '', max_attempts_per_user: 1, max_attempts_per_day: 0, pass_score: 0,
     reward_type: 'none', reward_value: 0, reward_max_claims: 0, is_active: true,
   })
 
@@ -60,7 +60,7 @@ export default function AdminQuizPage() {
       await axios.post('/quiz/admin/create', form)
       toast.success('Quiz created!')
       setShowCreate(false)
-      setForm({ title: '', description: '', type: 'scored', starts_at: '', expires_at: '', max_attempts_per_user: 1, pass_score: 0, reward_type: 'none', reward_value: 0, reward_max_claims: 0, is_active: true })
+      setForm({ title: '', description: '', type: 'scored', starts_at: '', expires_at: '', max_attempts_per_user: 1, max_attempts_per_day: 0, pass_score: 0, reward_type: 'none', reward_value: 0, reward_max_claims: 0, is_active: true })
       load()
     } catch (e: any) { toast.error(e.response?.data?.message || 'Failed to create quiz') }
   }
@@ -171,11 +171,17 @@ export default function AdminQuizPage() {
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Max Attempts / User</label>
                   <input type="number" min={0} value={editQuiz ? editQuiz.max_attempts_per_user : form.max_attempts_per_user}
                     onChange={e => editQuiz ? setEditQuiz(p => p ? { ...p, max_attempts_per_user: Number(e.target.value) } : p) : setForm(p => ({ ...p, max_attempts_per_user: Number(e.target.value) }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Daily Limit / User (0=∞)</label>
+                  <input type="number" min={0} value={editQuiz ? (editQuiz.max_attempts_per_day ?? 0) : form.max_attempts_per_day}
+                    onChange={e => editQuiz ? setEditQuiz(p => p ? { ...p, max_attempts_per_day: Number(e.target.value) } : p) : setForm(p => ({ ...p, max_attempts_per_day: Number(e.target.value) }))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500" />
                 </div>
                 <div>

@@ -9,7 +9,7 @@ type ScratchCard = {
   id: number; title: string; description: string
   reward_type: string; reward_value: number; reward_is_percent: boolean
   starts_at: string | null; expires_at: string | null
-  max_claims: number; claims_count: number; max_claims_per_user: number
+  max_claims: number; claims_count: number; max_claims_per_user: number; max_claims_per_day: number
   is_active: boolean; created_by_name: string
 }
 
@@ -41,7 +41,7 @@ const SEGMENT_COLORS = ['#f97316', '#8b5cf6', '#10b981', '#ef4444', '#3b82f6', '
 
 const emptyCard = (): Partial<ScratchCard> => ({
   title: '', description: '', reward_type: 'wallet', reward_value: 50,
-  starts_at: '', expires_at: '', max_claims: 100, max_claims_per_user: 1, is_active: true
+  starts_at: '', expires_at: '', max_claims: 100, max_claims_per_user: 1, max_claims_per_day: 0, is_active: true
 })
 
 const emptyWheel = () => ({
@@ -195,10 +195,11 @@ export default function AdminGamesPage() {
                       {REWARD_LABELS[card.reward_type]}: {card.reward_type === 'none' ? '—' : `₹${card.reward_value}`}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {[
                       { label: 'Claims', value: `${card.claims_count}/${card.max_claims || '∞'}` },
                       { label: 'Per User', value: card.max_claims_per_user || '∞' },
+                      { label: 'Per Day', value: card.max_claims_per_day || '∞' },
                       { label: 'Expires', value: card.expires_at ? new Date(card.expires_at).toLocaleDateString('en-IN') : 'No limit' },
                     ].map(s => (
                       <div key={s.label} className="bg-gray-50 rounded-xl p-2 text-center">
@@ -290,9 +291,10 @@ export default function AdminGamesPage() {
                 </div>
                 <FieldInput label="Reward Value (₹)" type="number" min={0} value={editCard.reward_value} onChange={(v: number) => setEditCard(p => ({ ...p!, reward_value: v }))} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <FieldInput label="Max Claims (0=∞)" type="number" min={0} value={editCard.max_claims} onChange={(v: number) => setEditCard(p => ({ ...p!, max_claims: v }))} />
                 <FieldInput label="Per User Limit (0=∞)" type="number" min={0} value={editCard.max_claims_per_user} onChange={(v: number) => setEditCard(p => ({ ...p!, max_claims_per_user: v }))} />
+                <FieldInput label="Daily Limit / User (0=∞)" type="number" min={0} value={(editCard as any).max_claims_per_day ?? 0} onChange={(v: number) => setEditCard(p => ({ ...p!, max_claims_per_day: v } as any))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

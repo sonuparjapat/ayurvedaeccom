@@ -424,7 +424,7 @@ exports.submitDynamicQuiz = async (req, res) => {
     }
     const quiz = quizRes.rows[0]
 
-    // Enforce attempt limit for logged-in users
+    // Enforce lifetime attempt limit for logged-in users
     if (userId && quiz.max_attempts_per_user > 0) {
       const ac = await client.query(
         `SELECT COUNT(*) FROM user_quiz_attempts WHERE quiz_id=$1 AND user_id=$2`,
@@ -433,6 +433,18 @@ exports.submitDynamicQuiz = async (req, res) => {
       if (Number(ac.rows[0].count) >= quiz.max_attempts_per_user) {
         await client.query('ROLLBACK')
         return res.status(400).json({ success: false, message: 'You have used all your attempts for this quiz' })
+      }
+    }
+
+    // Enforce daily attempt limit (0 = no daily limit)
+    if (userId && quiz.max_attempts_per_day > 0) {
+      const dc = await client.query(
+        `SELECT COUNT(*) FROM user_quiz_attempts WHERE quiz_id=$1 AND user_id=$2 AND DATE(completed_at) = CURRENT_DATE`,
+        [quizId, userId]
+      )
+      if (Number(dc.rows[0].count) >= quiz.max_attempts_per_day) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ success: false, message: `You can attempt this quiz ${quiz.max_attempts_per_day} time(s) per day. Come back tomorrow!` })
       }
     }
 

@@ -1643,6 +1643,9 @@ async function runSafeColumnMigrations() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_reward_logs_user ON reward_logs(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_reward_logs_source ON reward_logs(source_type, source_id)`,
+    // daily limit columns for gamification
+    `ALTER TABLE scratch_cards ADD COLUMN IF NOT EXISTS max_claims_per_day INTEGER DEFAULT 0`,
+    `ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS max_attempts_per_day INTEGER DEFAULT 0`,
   ]
   for (const sql of migrations) {
     const c = await pool.connect()
