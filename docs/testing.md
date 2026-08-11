@@ -1621,3 +1621,57 @@ curl http://localhost:5000/api/admin/analytics/overview \
 2. Download the invoice from Admin → Invoices.
 3. **Expected**: Invoice "Discount" line = ₹50 + ₹30 + ₹20 + ₹25 = ₹125 (all discounts summed).
 4. For older orders that used the old `discount` field name, verify the invoice still shows the correct amount (backward-compatible fallback).
+
+---
+
+## Mobile App Audit — August 2026 Verification
+
+### Toast: duration + onPress
+1. Trigger an order status update via socket (or dev: call `appEvents.emit('order_status_updated', {order_id:1, status_label:'Shipped'})`).
+2. **Expected**: Toast appears at top, stays 6 seconds, has a `›` chevron, tapping navigates to `/order/1`.
+
+### Session expiry redirect
+1. Clear the auth token from AsyncStorage while the app is on the home screen.
+2. Make any API call that returns 401.
+3. **Expected**: App navigates to `/auth` automatically.
+
+### Coupon pre-fill from home banner
+1. On the home screen, if an active coupon banner is shown, tap "Apply".
+2. **Expected**: Checkout screen opens with the coupon code pre-filled in the coupon input field.
+
+### Settings notification preferences persist
+1. Toggle "Order Updates" to OFF in Settings.
+2. Close and reopen the app.
+3. Go back to Settings → **Expected**: "Order Updates" toggle is still OFF.
+
+### Blog pagination no duplicate request
+1. Scroll to the bottom of the Blog list (force slow network if needed).
+2. **Expected**: Only one page-2 request fires, not two, even if the FlatList fires `onEndReached` twice.
+
+### Product detail — no double fetch
+1. Open a product page and watch network requests (dev tools or Flipper).
+2. **Expected**: `GET /shop/public/:id` fires exactly once on initial load. On returning to the screen, it fires once again (focus refresh).
+
+### Order detail — no double fetch
+1. Open an order detail screen. Check network.
+2. **Expected**: `GET /orders/:id` fires once on mount.
+
+### Invoice download — always accessible
+1. Open any completed order (status Delivered or any paid status).
+2. **Expected**: "📄 Invoice" button is visible in the header.
+3. Tap it → **Expected**: Browser/viewer opens the PDF invoice (or toast "Invoice not yet generated" if not ready).
+
+### Return eligibility error state
+1. Open a delivered order while offline or block the `/return-eligibility` endpoint.
+2. **Expected**: A warning banner appears: "Could not check return eligibility. Please try again later or contact support."
+
+### Cart tab in bottom nav
+1. From any screen that shows the bottom nav, check the tab bar.
+2. **Expected**: 5 tabs visible — Home / Browse / Cart / Wishlist / Account.
+3. Cart tab shows a badge with count when items are in cart.
+4. Tapping Cart tab navigates to `/cart`.
+
+### Support ticket deep-link
+1. Trigger an `admin_replied` socket event with `{ ticket_id: 5, subject: 'Test' }`.
+2. Tap the toast notification.
+3. **Expected**: Support screen opens with the chat for ticket #5 already visible (not the list view).

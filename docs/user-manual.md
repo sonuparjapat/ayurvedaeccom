@@ -788,3 +788,36 @@ When a customer requests a replacement:
 
 ### Gift Cards
 - **Gift card security fix** — in rare cases where a gift card was used at exactly the same time by two devices, only one order would actually get the discount. Previously the other order could accidentally go through with the discount applied but the gift card balance not deducted. This is now fixed — the unsuccessful order will receive an error message instead.
+
+---
+
+## What's Fixed — Mobile App Audit (August 2026)
+
+### Navigation & Session
+- **Automatic logout redirect** — if your session expires while using the app, you are now automatically taken to the login screen. Previously the app silently logged you out but kept you on the current screen, causing confusing errors.
+- **Support ticket deep-link** — tapping a "Support reply" notification now opens the correct ticket conversation directly, instead of just going to the Support list screen.
+
+### Notifications (in-app)
+- **Order status updates**, **support replies**, **refund notifications**, and **tracking updates** now appear as non-blocking toast banners at the top of the screen. Previously they used system alert dialogs that blocked the entire UI until dismissed. Tapping a banner navigates directly to the relevant order or support ticket.
+
+### Home Screen
+- **Offer banner "Apply" button** now pre-fills the coupon code when it takes you to checkout. Previously you had to type the code manually.
+
+### Products
+- **Add to Cart error feedback** — if adding a product to the cart fails (e.g. out of stock, server error), an error message now appears. Previously it failed silently.
+
+### Account
+- **Wishlist count** in the Account stats row now shows the correct number of wishlisted items. Previously it always showed "—".
+
+### Settings
+- **Notification preferences** (Order Updates, Promotional Emails toggles) are now saved and remembered across app restarts. Previously toggling them had no lasting effect.
+
+### Blog
+- **Infinite scroll** now correctly stops loading once all articles have been fetched, preventing unnecessary extra API requests.
+
+### Order Detail
+- **Invoice download** — the Invoice button is now visible for all completed orders. Tapping it fetches the latest invoice and opens it. Previously the button only appeared if the invoice PDF URL was already stored in the order.
+- **Return eligibility error** — if the app can't check whether your order is eligible for return (e.g. network issue), a clear error message is shown instead of silent failure.
+
+### Bottom Navigation
+- **Cart tab added** — the cart is now directly accessible from the bottom navigation bar on every screen. The tab shows a live badge with the number of items in your cart.

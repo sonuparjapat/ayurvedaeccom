@@ -1617,3 +1617,65 @@ Eleven financial/calculation bugs found and fixed across order creation, invoici
 ### Bug 12 — Per-item GST float accumulation (`order.controller.js`)
 **Root cause**: `itemTax = (itemSubtotal * gst) / 100` was accumulated into `totalTax` without per-item rounding. Floating-point drift across many items could produce a total that differs from expected by a few paise.
 **Fix**: Each `itemTax` is rounded to 2 decimal places before accumulation: `Math.round(itemTax * 100) / 100`.
+
+---
+
+## Mobile App Bug Audit — August 2026
+
+### Toast component upgrade (`components/ui/Toast.tsx`)
+- **Previous**: `toast.show(type, message)` — no duration or onPress support.
+- **Fix**: Added `ToastOptions { duration?: number; onPress?: () => void }`. Duration defaults to 3500 ms. When `onPress` is provided, a chevron indicator appears and tapping navigates before dismissing. Added `toast.show(message, type, opts?)` overload so socket hook can call it naturally.
+
+### useOrderSocket — non-blocking notifications (`hooks/useOrderSocket.ts`)
+- **Previous**: All 8 socket event handlers used `Alert.alert()` — these block the UI and require user dismissal.
+- **Fix**: Replaced with `toast.show()` with per-event duration and `onPress` navigation callbacks (order detail, support ticket chat). API_BASE fallback corrected; empty `catch {}` replaced with `console.warn`.
+
+### axios.ts — session expiry redirect (`api/axios.ts`)
+- **Previous**: 401 interceptor cleared the user from the store but never navigated to `/auth`. Users stayed on the current screen silently logged out.
+- **Fix**: Emits `appEvents.session_expired` after clearing the user. `_layout.tsx` subscribes and calls `router.replace('/auth')`.
+
+### _layout.tsx — base URL placeholder (`api/axios.ts`)
+- **Previous**: `baseURL` was `'https://your-api.com/api'` — every API call failed in dev.
+- **Fix**: Falls back to `process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api'`.
+
+### account/index.tsx — wishlist count stat
+- **Previous**: Wishlist count stat always showed `'—'`.
+- **Fix**: Reads `wishlistData.totalItems ?? wishlistData.items.length` from the Zustand store.
+
+### products/index.tsx — multiple fixes
+- Missing `toast` import caused compile error; added import.
+- `Product` interface missing `slug` field; added `slug?: string`.
+- Subcategory endpoint was `/categories` — changed to `/shop/categories`.
+- `addToCart` catch block was empty; now shows `toast.error` with the server message.
+
+### index.tsx (home) — coupon deep-link
+- **Previous**: OfferBanner "Apply" button navigated to `/checkout` without passing the coupon code.
+- **Fix**: Uses `router.push({ pathname: '/checkout', params: { couponCode: coupon.code } })`.
+
+### checkout/index.tsx — coupon pre-fill
+- **Fix**: Added `couponCode` to `useLocalSearchParams` type; initialises `couponInput` state with `params.couponCode || ''` so the code is pre-filled when arriving from the home banner.
+
+### settings/index.tsx — notification preferences not saved
+- **Previous**: `orderUpdates` and `promoEmails` toggles had no persistence — state reset on every app launch.
+- **Fix**: Loads from `AsyncStorage` key `notification_prefs_v1` on mount; saves on every toggle.
+
+### blog/index.tsx — pagination guard
+- **Previous**: `loadMore` guard was `!hasMore || loading` — `loading` is only true during initial fetch, so rapid scrolling could fire duplicate page requests.
+- **Fix**: Added `fetchingMore` state; guard is now `!hasMore || loading || fetchingMore`. Also sets loading per-phase (initial vs incremental).
+
+### product/[id].tsx — double fetch on mount
+- **Previous**: `useFocusEffect` and a `useEffect([id])` both called `fetchProduct()` on initial mount — two API calls fired back-to-back.
+- **Fix**: Removed `fetchProduct()` from `useEffect`; `useFocusEffect` fires on mount and on every re-focus, so a single call path handles both cases.
+
+### order/[id].tsx — multiple fixes
+1. **Double fetch**: Same pattern as product detail — `useEffect` and `useFocusEffect` both called `fetchOrder()`. Fixed by removing `useEffect`.
+2. **Invoice download**: `handleDownloadInvoice` previously required `order.pdf_url` to be populated. Now calls `GET /orders/:id/invoice` to get the fresh PDF URL; falls back to `order.pdf_url` if the endpoint fails. Invoice button is now visible for all orders.
+3. **Return eligibility silent failure**: `.catch(() => {})` meant API failures were invisible. Added `returnEligibilityError` state with a user-facing error message.
+
+### BottomNav.tsx — Cart tab
+- **Previous**: 4 tabs (Home / Browse / Wishlist / Account) — no cart access from bottom nav.
+- **Fix**: Added Cart tab (position 3) with live cart count badge. Tab width auto-adjusts to 5 tabs.
+
+### support/index.tsx — ticket deep-link
+- **Previous**: Navigating to `/support?ticket=123` from an `admin_replied` socket notification landed on the ticket list with no auto-selection.
+- **Fix**: Reads `ticket` from `useLocalSearchParams`; after `loadTickets()` resolves, finds the matching ticket and calls `loadChat()` automatically.
