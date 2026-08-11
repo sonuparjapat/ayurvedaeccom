@@ -19,12 +19,13 @@ import api from '../../api/axios'
 import { useStore } from '../../store'
 import { getGuestSession } from '../../utils/guestSession'
 import { Colors, Fonts, Shadows, Radius } from '../../constants/theme'
+import { toast } from '../../components/ui/Toast'
 
 const { width: W } = Dimensions.get('window')
 const CARD_W = (W - 44) / 2
 
 interface Product {
-  id: number; name: string; shortdescription: string
+  id: number; name: string; shortdescription: string; slug?: string
   price: number; compareprice?: number; images: string[]
   inventory: number; category_name: string
   averagerating: number; reviewcount: number
@@ -162,7 +163,7 @@ export default function ProductsScreen() {
   const categorySlug = params.slug as string | undefined
   const initialSearch = params.q as string || ''
 
-  const { cartData, cartCount, setCartData, user, setAuthOpen, wishlistData } = useStore()
+  const { cartData, cartCount, setCartData, user, setAuthOpen, wishlistData, categories } = useStore()
 
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -199,7 +200,7 @@ export default function ProductsScreen() {
   // Fetch subcategories when a category is selected
   useEffect(() => {
     if (categoryId) {
-      api.get('/categories', { params: { parent_id: categoryId } })
+      api.get('/shop/categories', { params: { parent_id: categoryId } })
         .then(r => setSubcategories(r.data?.categories || r.data || []))
         .catch(() => setSubcategories([]))
     } else {
@@ -251,7 +252,9 @@ export default function ProductsScreen() {
       const items = res.data?.items || []
       setCartData({ items, subtotal: res.data?.subtotal || 0, totalItems: items.length })
       notify(Haptics.NotificationFeedbackType.Success)
-    } catch { } finally { setAddingId(null) }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Could not add to cart. Please try again.')
+    } finally { setAddingId(null) }
   }
 
   const { setWishlistData } = useStore()
@@ -295,7 +298,11 @@ export default function ProductsScreen() {
           <Text style={{ color: '#fff', fontSize: 18 }}>←</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={ss.headerTitle}>{categoryId ? 'Category' : 'All Products'}</Text>
+          <Text style={ss.headerTitle}>
+            {categoryId
+              ? (categories.find((c: any) => String(c.id) === String(categoryId))?.name || 'Category')
+              : 'All Products'}
+          </Text>
           {!loading && <Text style={ss.headerSub}>{total} products</Text>}
         </View>
         <TouchableOpacity onPress={() => router.push('/cart')} style={[ss.headerBtn, { position: 'relative' }]}>

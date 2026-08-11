@@ -16,6 +16,7 @@ const { width: W } = Dimensions.get('window')
 const NAV_ITEMS = [
   { label: 'Home',    icon: '⌂',   activeIcon: '⌂',  route: '/'        },
   { label: 'Browse',  icon: '◎',   activeIcon: '◎',   route: '/products' },
+  { label: 'Cart',    icon: '🛒',  activeIcon: '🛒',  route: '/cart'    },
   { label: 'Wishlist',icon: '♡',   activeIcon: '♥',  route: '/wishlist' },
   { label: 'Account', icon: null,  activeIcon: null,  route: '/account'  },
 ]
@@ -34,6 +35,7 @@ function NavTab({
 }) {
   const isActive = activeIndex === index
   const isAccount = item.route === '/account'
+  const isCart = item.route === '/cart'
 
   const scale = useSharedValue(1)
   const labelOpacity = useSharedValue(isActive ? 1 : 0)
@@ -100,6 +102,17 @@ function NavTab({
                 )}
               </View>
             )
+          ) : isCart ? (
+            <View style={{ position: 'relative' }}>
+              <Text style={[s.tabIcon, { color: isActive ? Colors.forest : '#9ca3af', opacity: isActive ? 1 : 0.55 }]}>
+                {item.icon}
+              </Text>
+              {cartCount > 0 && (
+                <View style={s.notifBadge}>
+                  <Text style={s.notifBadgeText}>{cartCount > 9 ? '9+' : cartCount}</Text>
+                </View>
+              )}
+            </View>
           ) : (
             <Text style={[
               s.tabIcon,

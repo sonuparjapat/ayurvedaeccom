@@ -15,6 +15,7 @@ import { useBootstrap } from '../hooks/useBootstrap'
 import { useOrderSocket } from '../hooks/useOrderSocket'
 import { useStore } from '../store'
 import { setupNotificationHandler } from '../utils/pushNotifications'
+import { appEvents } from '../utils/appEvents'
 import { Colors } from '../constants/theme'
 import { ToastContainer, ToastRef, setToastRef } from '../components/ui/Toast'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -75,6 +76,13 @@ function Inner() {
       router.push('/auth')
     }
   }, [authOpen, bootstrapped])
+
+  // Redirect to /auth when a 401 clears the session from the axios interceptor
+  useEffect(() => {
+    return appEvents.on('session_expired', () => {
+      router.replace('/auth' as any)
+    })
+  }, [])
 
   // First-launch permission priming: show once, never again
   useEffect(() => {

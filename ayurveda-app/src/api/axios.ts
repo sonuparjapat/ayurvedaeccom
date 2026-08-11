@@ -1,8 +1,9 @@
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { appEvents } from '../utils/appEvents'
 
 const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || 'https://your-api.com/api',
+  baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -31,12 +32,13 @@ api.interceptors.response.use(
       const token = await AsyncStorage.getItem('auth_token')
       if (token) {
         await AsyncStorage.removeItem('auth_token')
-        // Dynamically import store to avoid circular dependency
         try {
           const { useStore } = require('../store')
           useStore.getState().setUser(null)
           useStore.getState().setCartData({ items: [], subtotal: 0, totalItems: 0 })
         } catch { }
+        // Notify root layout to redirect to /auth
+        appEvents.emit('session_expired', {})
       }
     }
     return Promise.reject(error)

@@ -194,6 +194,7 @@ export default function AccountScreen() {
   const insets = useSafeAreaInsets()
   const user = useStore(s => s.user)
   const cartCount = useStore(s => s.cartCount)
+  const wishlistTotal = useStore(s => s.wishlistData.totalItems ?? s.wishlistData.items.length)
   const { setUser, setCartData } = useStore()
   const params = useLocalSearchParams<{ tab?: string }>()
 
@@ -545,7 +546,7 @@ export default function AccountScreen() {
           {[
             { label: 'Orders', val: String(ordersMeta?.total ?? orders.length), emoji: '📦' },
             { label: 'Addresses', val: String(addresses.length || 0), emoji: '📍' },
-            { label: 'Wishlist', val: '—', emoji: '❤️' },
+            { label: 'Wishlist', val: String(wishlistTotal), emoji: '❤️' },
           ].map((s, i) => (
             <View key={i} style={ss.statPill}>
               <Text style={ss.statEmoji}>{s.emoji}</Text>

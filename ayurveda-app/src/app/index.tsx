@@ -603,7 +603,7 @@ function OfferBanner({ coupon }: { coupon: ActiveCoupon | null }) {
           <Text style={ss.offerTitle}>🎁 {label} — Use code: {coupon.code}</Text>
           <Text style={ss.offerSub}>{sub}</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push('/checkout')} style={ss.offerBtn}>
+        <TouchableOpacity onPress={() => router.push({ pathname: '/checkout', params: { couponCode: coupon.code } } as any)} style={ss.offerBtn}>
           <Text style={ss.offerBtnText}>Apply</Text>
         </TouchableOpacity>
       </LinearGradient>

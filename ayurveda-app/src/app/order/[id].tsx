@@ -754,13 +754,13 @@ export default function OrderDetailScreen() {
   const [addressLoading, setAddressLoading] = useState(false)
   const [returnEligibility, setReturnEligibility] = useState<any>(null)
   const [returnEligibilityLoading, setReturnEligibilityLoading] = useState(false)
+  const [returnEligibilityError, setReturnEligibilityError] = useState(false)
   const [shipmentEvents, setShipmentEvents] = useState<ShipmentEvent[]>([])
   const [shipmentInfo, setShipmentInfo] = useState<any>(null)
 
   useEffect(() => { if (!user) { router.replace('/auth'); return } }, [user])
-  useEffect(() => { if (id) fetchOrder() }, [id])
 
-  // Re-fetch when screen comes back into focus (e.g. returning from another screen)
+  // useFocusEffect fires on mount AND on every focus — single fetch point, no duplicate
   useFocusEffect(useCallback(() => { if (id) fetchOrder() }, [id]))
 
   // Live order status updates from the global socket via the event bus
@@ -782,9 +782,10 @@ export default function OrderDetailScreen() {
         setOrder(ord)
         if (ord?.status === 5) {
           setReturnEligibilityLoading(true)
+          setReturnEligibilityError(false)
           api.get(`/orders/${id}/return-eligibility`)
             .then(r => setReturnEligibility(r.data))
-            .catch(() => {})
+            .catch(() => { setReturnEligibilityError(true) })
             .finally(() => setReturnEligibilityLoading(false))
         }
       } else {
@@ -875,11 +876,21 @@ export default function OrderDetailScreen() {
   }
 
   const handleDownloadInvoice = async () => {
-    if (!order?.pdf_url) return
+    if (!order?.id) return
     try {
-      await Linking.openURL(order.pdf_url)
+      const res = await api.get(`/orders/${order.id}/invoice`)
+      const pdfUrl = res.data?.pdf_url || res.data?.url || order.pdf_url
+      if (pdfUrl) {
+        await Linking.openURL(pdfUrl)
+      } else {
+        toast.error('Invoice not yet generated')
+      }
     } catch {
-      toast.error('Could not open invoice')
+      if (order.pdf_url) {
+        try { await Linking.openURL(order.pdf_url) } catch { toast.error('Could not open invoice') }
+      } else {
+        toast.error('Could not open invoice')
+      }
     }
   }
 
@@ -934,7 +945,7 @@ export default function OrderDetailScreen() {
             <Text style={ss.headerTitle}>Order Details</Text>
             {order && <Text style={ss.headerSub}>#{order.invoice_no || `ORD-${order.id}`}</Text>}
           </View>
-          {order?.pdf_url && (
+          {order && (
             <TouchableOpacity onPress={handleDownloadInvoice} style={ss.invoiceBtn}>
               <Text style={{ color: Colors.gold, fontSize: 13 }}>📄</Text>
               <Text style={ss.invoiceBtnText}>Invoice</Text>
@@ -1197,6 +1208,16 @@ export default function OrderDetailScreen() {
                 <View style={{ backgroundColor: 'rgba(249,115,22,0.06)', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <ActivityIndicator size="small" color="#fb923c" />
                   <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Checking return eligibility…</Text>
+                </View>
+              </Animated.View>
+            )}
+            {order.status === 5 && returnEligibilityError && !returnEligibilityLoading && (
+              <Animated.View entering={FadeInDown.delay(260)} style={{ paddingHorizontal: 16, marginTop: 4 }}>
+                <View style={{ backgroundColor: '#fef2f2', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text style={{ fontSize: 14 }}>⚠️</Text>
+                  <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: '#dc2626', flex: 1 }}>
+                    Could not check return eligibility. Please try again later or contact support.
+                  </Text>
                 </View>
               </Animated.View>
             )}

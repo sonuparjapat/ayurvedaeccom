@@ -433,9 +433,8 @@ export default function ProductDetailScreen() {
 
   useEffect(() => {
     if (!id) return
-    fetchProduct()
     fetchReviews(1)
-    // wishlist check moved to after product loads (id may be slug)
+    // fetchProduct is called by useFocusEffect (which also fires on mount) — no duplicate call here
     api.get(`/shop/variants/${id}`).then(r => setVariants(r.data?.variants || [])).catch(() => {})
     api.get(`/shop/related/${id}`).then(r => setRelatedProducts(r.data?.products || [])).catch(() => {})
     api.get(`/bundles/by-product/${id}`).then(r => setBundles(r.data?.bundles || [])).catch(() => {})

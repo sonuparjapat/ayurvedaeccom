@@ -98,7 +98,7 @@ const sr = StyleSheet.create({
 })
 
 // ─── SUCCESS SCREEN ───────────────────────────────────────────────────────────
-function SuccessScreen({ orderNo, amount, insets }: { orderNo: string; amount: number; insets: any }) {
+function SuccessScreen({ orderNo, amount, orderId, insets }: { orderNo: string; amount: number; orderId: number; insets: any }) {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
       <LinearGradient colors={['#0a1f14', Colors.forest]} style={{ paddingTop: insets.top + 14, paddingHorizontal: 20, paddingBottom: 24 }}>
@@ -137,7 +137,7 @@ function SuccessScreen({ orderNo, amount, insets }: { orderNo: string; amount: n
               <Text style={suc.primaryBtnText}>✨  Continue Shopping</Text>
             </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/account')} style={suc.secondaryBtn}>
+          <TouchableOpacity onPress={() => router.push(`/order/${orderId}` as any)} style={suc.secondaryBtn}>
             <Text style={suc.secondaryBtnText}>📦  Track My Order</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -168,6 +168,7 @@ export default function CheckoutScreen() {
   const params = useLocalSearchParams<{
     mode?: string; productId?: string; quantity?: string; variantId?: string;
     productName?: string; price?: string; image?: string; gst_percent?: string; variantLabel?: string;
+    couponCode?: string;
   }>()
 
   const isBuyNow = params.mode === 'buynow'
@@ -191,8 +192,9 @@ export default function CheckoutScreen() {
   const [loadingInit, setLoadingInit] = useState(true)
   const [orderNo, setOrderNo] = useState('')
   const [paidAmount, setPaidAmount] = useState(0)
-  // Coupon state
-  const [couponInput, setCouponInput] = useState('')
+  const [successOrderId, setSuccessOrderId] = useState(0)
+  // Coupon state — pre-filled from home OfferBanner "Apply" button
+  const [couponInput, setCouponInput] = useState(params.couponCode || '')
   const [couponApplying, setCouponApplying] = useState(false)
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
   const [couponError, setCouponError] = useState('')
@@ -357,6 +359,7 @@ export default function CheckoutScreen() {
         hapticNotify(Haptics.NotificationFeedbackType.Success)
         setPaidAmount(total)
         setOrderNo(res.data.invoice_no || `ORD-${orderId}`)
+        setSuccessOrderId(orderId)
         setStep(3)
         setCartData({ items: [], subtotal: 0, totalItems: 0 })
         return
@@ -393,7 +396,8 @@ export default function CheckoutScreen() {
         hapticNotify(Haptics.NotificationFeedbackType.Success)
         setCartData({ items: [], subtotal: 0, totalItems: 0 })
         setPaidAmount(total)
-        setOrderNo(`ORD-${orderId}`)
+        setOrderNo(res.data.invoice_no || `ORD-${orderId}`)
+        setSuccessOrderId(orderId)
         setStep(3)
       } catch (e: any) {
         console.error('[Razorpay]', JSON.stringify(e))
@@ -419,7 +423,7 @@ export default function CheckoutScreen() {
     </View>
   )
 
-  if (step === 3) return <SuccessScreen orderNo={orderNo} amount={paidAmount} insets={insets} />
+  if (step === 3) return <SuccessScreen orderNo={orderNo} amount={paidAmount} orderId={successOrderId} insets={insets} />
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>

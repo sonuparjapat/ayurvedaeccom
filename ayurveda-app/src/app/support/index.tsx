@@ -17,7 +17,7 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import api from '../../api/axios'
 import { useStore } from '../../store'
 import { Colors, Fonts, Radius, Shadows } from '../../constants/theme'
@@ -58,6 +58,7 @@ const PRIORITY_COLOR: Record<string, { bg: string; text: string }> = {
 export default function SupportScreen() {
   const insets = useSafeAreaInsets()
   const { user } = useStore() as any
+  const { ticket: ticketParam } = useLocalSearchParams<{ ticket?: string }>()
   const [view, setView] = useState<'list' | 'create' | 'chat'>('list')
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
@@ -75,7 +76,8 @@ export default function SupportScreen() {
     try {
       const r = await api.get('/support/tickets')
       setTickets(r.data.tickets || [])
-    } catch { } finally { setLoading(false) }
+      return r.data.tickets as Ticket[] || []
+    } catch { return [] } finally { setLoading(false) }
   }
 
   const loadChat = async (ticket: Ticket) => {
@@ -89,7 +91,12 @@ export default function SupportScreen() {
 
   useEffect(() => {
     if (!user) { router.replace('/auth'); return }
-    loadTickets()
+    loadTickets().then(loaded => {
+      if (ticketParam) {
+        const target = loaded.find((t: Ticket) => String(t.id) === String(ticketParam))
+        if (target) loadChat(target)
+      }
+    })
   }, [user])
 
   // Real-time: connect socket when in chat view and disconnect when leaving

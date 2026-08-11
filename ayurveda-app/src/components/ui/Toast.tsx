@@ -9,10 +9,17 @@ import { Colors, Fonts, Radius, Shadows } from '../../constants/theme'
 
 type ToastType = 'success' | 'error' | 'warning' | 'info'
 
+interface ToastOptions {
+  duration?: number
+  onPress?: () => void
+}
+
 interface ToastItem {
   id: string
   type: ToastType
   message: string
+  duration: number
+  onPress?: () => void
 }
 
 /* ─── Per-toast config ───────────────────────────────────────────────────── */
@@ -33,14 +40,13 @@ function ToastRow({ item, onDone }: { item: ToastItem; onDone: (id: string) => v
   const cfg        = CONFIG[item.type]
 
   useEffect(() => {
-    // Slide in
     Animated.parallel([
       Animated.spring(translateY, { toValue: 0,    useNativeDriver: true, damping: 16, stiffness: 240 }),
       Animated.spring(scale,      { toValue: 1,    useNativeDriver: true, damping: 16, stiffness: 240 }),
       Animated.timing(opacity,    { toValue: 1,    duration: 180, useNativeDriver: true }),
     ]).start()
 
-    const timer = setTimeout(dismiss, 3500)
+    const timer = setTimeout(dismiss, item.duration)
     return () => clearTimeout(timer)
   }, [])
 
@@ -51,9 +57,16 @@ function ToastRow({ item, onDone }: { item: ToastItem; onDone: (id: string) => v
     ]).start(() => onDone(item.id))
   }, [item.id, onDone])
 
+  const handlePress = useCallback(() => {
+    if (item.onPress) {
+      item.onPress()
+    }
+    dismiss()
+  }, [item.onPress, dismiss])
+
   return (
     <Animated.View style={[ss.row, { opacity, transform: [{ translateY }, { scale }] }]}>
-      <TouchableOpacity onPress={dismiss} activeOpacity={0.85}>
+      <TouchableOpacity onPress={handlePress} activeOpacity={0.85}>
         <View style={[ss.card, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
           {/* Left accent bar */}
           <View style={[ss.bar, { backgroundColor: cfg.border }]} />
@@ -65,6 +78,11 @@ function ToastRow({ item, onDone }: { item: ToastItem; onDone: (id: string) => v
 
           {/* Message */}
           <Text style={ss.msg} numberOfLines={3}>{item.message}</Text>
+
+          {/* Chevron when tappable */}
+          {item.onPress && (
+            <Text style={[ss.chevron, { color: cfg.label }]}>›</Text>
+          )}
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -74,17 +92,24 @@ function ToastRow({ item, onDone }: { item: ToastItem; onDone: (id: string) => v
 /* ─── Container rendered in layout ──────────────────────────────────────── */
 
 export interface ToastRef {
-  show: (type: ToastType, message: string) => void
+  show: (type: ToastType, message: string, opts?: ToastOptions) => void
 }
 
 export const ToastContainer = React.forwardRef<ToastRef>((_, ref) => {
   const insets = useSafeAreaInsets()
   const [items, setItems] = useState<ToastItem[]>([])
 
-  const show = useCallback((type: ToastType, message: string) => {
+  const show = useCallback((type: ToastType, message: string, opts?: ToastOptions) => {
     const id = String(Date.now() + Math.random())
+    const item: ToastItem = {
+      id,
+      type,
+      message,
+      duration: opts?.duration ?? 3500,
+      onPress: opts?.onPress,
+    }
     setItems(prev => {
-      const next = [...prev, { id, type, message }]
+      const next = [...prev, item]
       return next.slice(-3) // max 3 toasts at once
     })
   }, [])
@@ -117,10 +142,12 @@ export function setToastRef(r: ToastRef | null) {
 }
 
 export const toast = {
-  success: (msg: string) => _ref?.show('success', msg),
-  error:   (msg: string) => _ref?.show('error',   msg),
-  warning: (msg: string) => _ref?.show('warning', msg),
-  info:    (msg: string) => _ref?.show('info',    msg),
+  success: (msg: string, opts?: ToastOptions) => _ref?.show('success', msg, opts),
+  error:   (msg: string, opts?: ToastOptions) => _ref?.show('error',   msg, opts),
+  warning: (msg: string, opts?: ToastOptions) => _ref?.show('warning', msg, opts),
+  info:    (msg: string, opts?: ToastOptions) => _ref?.show('info',    msg, opts),
+  /** toast.show(message, type, opts?) — matches useOrderSocket call pattern */
+  show:    (msg: string, type: ToastType = 'info', opts?: ToastOptions) => _ref?.show(type, msg, opts),
 }
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
@@ -174,5 +201,10 @@ const ss = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     letterSpacing: 0.1,
+  },
+  chevron: {
+    fontSize: 22,
+    marginLeft: 8,
+    lineHeight: 24,
   },
 })

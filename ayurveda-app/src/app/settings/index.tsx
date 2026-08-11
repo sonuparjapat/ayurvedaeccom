@@ -60,7 +60,29 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     AsyncStorage.getItem('push_disabled').then(v => { if (v === 'true') setPushEnabled(false) })
+    AsyncStorage.getItem('notification_prefs_v1').then(raw => {
+      if (!raw) return
+      try {
+        const prefs = JSON.parse(raw)
+        if (typeof prefs.orderUpdates === 'boolean') setOrderUpdates(prefs.orderUpdates)
+        if (typeof prefs.promoEmails === 'boolean') setPromoEmails(prefs.promoEmails)
+      } catch { }
+    })
   }, [])
+
+  const saveNotifPrefs = (prefs: { orderUpdates: boolean; promoEmails: boolean }) => {
+    AsyncStorage.setItem('notification_prefs_v1', JSON.stringify(prefs)).catch(() => {})
+  }
+
+  const handleOrderUpdatesToggle = (val: boolean) => {
+    setOrderUpdates(val)
+    saveNotifPrefs({ orderUpdates: val, promoEmails })
+  }
+
+  const handlePromoEmailsToggle = (val: boolean) => {
+    setPromoEmails(val)
+    saveNotifPrefs({ orderUpdates, promoEmails: val })
+  }
 
   const handlePushToggle = async (val: boolean) => {
     setPushEnabled(val)
@@ -208,7 +230,7 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={orderUpdates}
-                onValueChange={setOrderUpdates}
+                onValueChange={handleOrderUpdatesToggle}
                 trackColor={{ false: '#e5e7eb', true: Colors.sage }}
                 thumbColor="#fff"
               />
@@ -223,7 +245,7 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={promoEmails}
-                onValueChange={setPromoEmails}
+                onValueChange={handlePromoEmailsToggle}
                 trackColor={{ false: '#e5e7eb', true: Colors.sage }}
                 thumbColor="#fff"
               />

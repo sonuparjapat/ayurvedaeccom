@@ -24,24 +24,30 @@ export default function BlogListScreen() {
   const insets = useSafeAreaInsets()
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchingMore, setFetchingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
 
   const fetchPosts = async (pg: number) => {
+    if (pg === 1) setLoading(true)
+    else setFetchingMore(true)
     try {
       const res = await api.get('/blog/public', { params: { page: pg, limit: 10 } })
       const data = res.data?.posts || res.data?.data || []
       if (pg === 1) setPosts(data)
       else setPosts(p => [...p, ...data])
-      setHasMore(data.length >= 10)
+      setHasMore(data.length === 10)
     } catch {}
-    finally { setLoading(false) }
+    finally {
+      setLoading(false)
+      setFetchingMore(false)
+    }
   }
 
   useEffect(() => { fetchPosts(1) }, [])
 
   const loadMore = () => {
-    if (!hasMore || loading) return
+    if (!hasMore || loading || fetchingMore) return
     const next = page + 1
     setPage(next)
     fetchPosts(next)
