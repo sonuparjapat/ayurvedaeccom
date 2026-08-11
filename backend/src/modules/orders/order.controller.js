@@ -296,7 +296,7 @@ if (addr.pincode) {
       const gst = Number(item.gst_percent || 0);
 
       const itemSubtotal = price * qty;
-      const itemTax = (itemSubtotal * gst) / 100;
+      const itemTax = Math.round((itemSubtotal * gst) / 100 * 100) / 100;
 
       subtotal += itemSubtotal;
       totalTax += itemTax;
@@ -404,14 +404,16 @@ if (addr.pincode) {
     if (loyaltyConfig.loyalty_enabled && requestedLoyaltyDiscount && Number(requestedLoyaltyDiscount) > 0) {
       const loyaltyRes = await client.query(`SELECT loyalty_points_balance FROM users WHERE id=$1 FOR UPDATE`, [userId]);
       const pts = Number(loyaltyRes.rows[0]?.loyalty_points_balance || 0);
-      // redeemRate = ₹ per point; maxRedeemPercent limits how much of the order can be covered
-      const redeemRate = loyaltyConfig.loyalty_redeem_rate;
-      const maxByPercent = +(total * loyaltyConfig.loyalty_max_redeem_percent / 100).toFixed(2);
-      const maxByPoints = +(pts * redeemRate).toFixed(2);
-      const maxDiscount = Math.min(maxByPoints, maxByPercent);
-      loyaltyDiscountApplied = Math.min(Number(requestedLoyaltyDiscount), maxDiscount, total - walletDiscountApplied);
-      // points to deduct = discount / redeemRate (rounded up)
-      loyaltyPointsDeducted = Math.ceil(loyaltyDiscountApplied / redeemRate);
+      if (pts >= loyaltyConfig.loyalty_min_redeem_points) {
+        // redeemRate = ₹ per point; maxRedeemPercent limits how much of the order can be covered
+        const redeemRate = loyaltyConfig.loyalty_redeem_rate;
+        const maxByPercent = +(total * loyaltyConfig.loyalty_max_redeem_percent / 100).toFixed(2);
+        const maxByPoints = +(pts * redeemRate).toFixed(2);
+        const maxDiscount = Math.min(maxByPoints, maxByPercent);
+        loyaltyDiscountApplied = Math.min(Number(requestedLoyaltyDiscount), maxDiscount, total - walletDiscountApplied);
+        // points to deduct = discount / redeemRate (rounded up)
+        loyaltyPointsDeducted = Math.ceil(loyaltyDiscountApplied / redeemRate);
+      }
     }
 
     let giftCardDiscountApplied = 0;
@@ -495,8 +497,9 @@ if (addr.pincode) {
       gst: totalTax,
       delivery,
       platform_fee: PLATFORM,
-      discount: discountAmount,
+      coupon_discount: discountAmount,
       wallet_discount: walletDiscountApplied,
+      loyalty_discount: loyaltyDiscountApplied,
       gift_card_discount: tentativeGiftCardDiscount,
       coupon_code: appliedCouponCode,
       grand_total: finalTotal
@@ -534,6 +537,8 @@ if (addr.pincode) {
         }
       } catch (gcErr) {
         console.error('[createOrder] gift card apply failed:', gcErr.message)
+        // Order total already reflects this discount — must roll back to avoid giving a free discount
+        throw new Error('Gift card could not be applied. Please try again or use a different payment method.')
       }
     }
 
@@ -771,26 +776,31 @@ if (addr.pincode) {
     let razorpayOrder = null;
 
     if (paymentMethod === "online") {
+      const paise = Math.round(finalTotal * 100);
 
-      razorpayOrder = await razorpay.orders.create({
+      if (paise < 100) {
+        // Order fully covered by wallet/loyalty/gift card — no payment needed
+        await client.query(
+          `UPDATE orders SET payment_status='paid', updated_at=NOW() WHERE id=$1`,
+          [orderId]
+        );
+      } else {
+        razorpayOrder = await razorpay.orders.create({
+          amount: paise,
+          currency: "INR",
+          receipt: `ORD_${orderId}`,
+          payment_capture: 1
+        });
 
-        amount: Math.round(finalTotal * 100),
-
-        currency: "INR",
-
-        receipt: `ORD_${orderId}`,
-
-        payment_capture: 1
-      });
-
-      await client.query(`
-        UPDATE orders
-        SET razorpay_order_id=$1
-        WHERE id=$2
-      `, [
-        razorpayOrder.id,
-        orderId
-      ]);
+        await client.query(`
+          UPDATE orders
+          SET razorpay_order_id=$1
+          WHERE id=$2
+        `, [
+          razorpayOrder.id,
+          orderId
+        ]);
+      }
     }
 
     /* ================= REFERRAL REWARD (COD — payment committed immediately) ================= */
@@ -836,7 +846,7 @@ if (addr.pincode) {
             orderId,
             invoiceNo: invRow.invoice_no,
             items: cart.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.effective_price, variant_label: i.variant_label || null })),
-            total,
+            total: finalTotal,
             paymentMethod: 'cod',
             address: invRow.shipping_address?.address || '',
           })
@@ -1859,6 +1869,14 @@ exports.retryPayment = async (req, res) => {
 
     // Extend expiry by 15 more minutes and create a fresh Razorpay order
     const amount = Math.round(Number(order.total_amount) * 100);
+    if (amount < 100) {
+      // Should not happen for retry (order was already pending), but guard anyway
+      await pool.query(
+        `UPDATE orders SET payment_status='paid', updated_at=NOW() WHERE id=$1`,
+        [id]
+      );
+      return res.json({ success: true, alreadyFree: true, orderId: order.id });
+    }
     const rzpOrder = await razorpay.orders.create({
       amount,
       currency: "INR",
@@ -2339,10 +2357,12 @@ exports.buyNow = async (req, res) => {
     if (loyaltyConfig.loyalty_enabled && Number(requestedLoyaltyDiscount) > 0) {
       const lr = await client.query(`SELECT loyalty_points_balance FROM users WHERE id=$1 FOR UPDATE`, [userId]);
       const pts = Number(lr.rows[0]?.loyalty_points_balance || 0);
-      const redeemRate = loyaltyConfig.loyalty_redeem_rate;
-      const maxDiscount = Math.min(+(pts * redeemRate).toFixed(2), +(total * loyaltyConfig.loyalty_max_redeem_percent / 100).toFixed(2));
-      loyaltyDiscountApplied = Math.min(Number(requestedLoyaltyDiscount), maxDiscount, total - walletDiscountApplied);
-      loyaltyPointsDeducted = Math.ceil(loyaltyDiscountApplied / redeemRate);
+      if (pts >= loyaltyConfig.loyalty_min_redeem_points) {
+        const redeemRate = loyaltyConfig.loyalty_redeem_rate;
+        const maxDiscount = Math.min(+(pts * redeemRate).toFixed(2), +(total * loyaltyConfig.loyalty_max_redeem_percent / 100).toFixed(2));
+        loyaltyDiscountApplied = Math.min(Number(requestedLoyaltyDiscount), maxDiscount, total - walletDiscountApplied);
+        loyaltyPointsDeducted = Math.ceil(loyaltyDiscountApplied / redeemRate);
+      }
     }
 
     const finalTotal = Math.max(0, total - walletDiscountApplied - loyaltyDiscountApplied);
@@ -2365,7 +2385,8 @@ exports.buyNow = async (req, res) => {
         address_id: addr.id, type: addr.type,
         is_buy_now: true,
         price_breakup: { subtotal, gst: totalTax, delivery, platform_fee: PLATFORM,
-          discount: discountAmount, wallet_discount: walletDiscountApplied,
+          coupon_discount: discountAmount, wallet_discount: walletDiscountApplied,
+          loyalty_discount: loyaltyDiscountApplied,
           coupon_code: appliedCouponCode, grand_total: finalTotal }
       }),
       addr.id, STATUS_PENDING,
@@ -2452,11 +2473,16 @@ exports.buyNow = async (req, res) => {
     // Online: create Razorpay order
     let razorpayOrder = null;
     if (paymentMethod === 'online') {
-      razorpayOrder = await razorpay.orders.create({
-        amount: Math.round(finalTotal * 100), currency: 'INR',
-        receipt: `ORD_${orderId}`, payment_capture: 1,
-      });
-      await client.query(`UPDATE orders SET razorpay_order_id=$1 WHERE id=$2`, [razorpayOrder.id, orderId]);
+      const paise = Math.round(finalTotal * 100);
+      if (paise < 100) {
+        await client.query(`UPDATE orders SET payment_status='paid', updated_at=NOW() WHERE id=$1`, [orderId]);
+      } else {
+        razorpayOrder = await razorpay.orders.create({
+          amount: paise, currency: 'INR',
+          receipt: `ORD_${orderId}`, payment_capture: 1,
+        });
+        await client.query(`UPDATE orders SET razorpay_order_id=$1 WHERE id=$2`, [razorpayOrder.id, orderId]);
+      }
     }
 
     await client.query('COMMIT');

@@ -451,9 +451,10 @@ exports.generateInvoice = async (req, res) => {
     let platformFee = fmt2(breakup.platform_fee || order.platform_fee || 0)
     let total = fmt2(breakup.grand_total || order.grand_total || 0)
     const discountAmount = fmt2(
-      (Number(breakup.coupon_discount || 0)) +
+      (Number(breakup.coupon_discount || breakup.discount || 0)) +
       (Number(breakup.wallet_discount || 0)) +
-      (Number(breakup.loyalty_discount || 0))
+      (Number(breakup.loyalty_discount || 0)) +
+      (Number(breakup.gift_card_discount || 0))
     )
 
     if (total <= 0) throw new Error("Invalid invoice total")

@@ -13,7 +13,7 @@ async function distributeReward(client, userId, rewardType, rewardValue, sourceT
   } else if (rewardType === 'points' && rewardValue > 0) {
     await client.query(`UPDATE users SET loyalty_points_balance = loyalty_points_balance + $1 WHERE id = $2`, [rewardValue, userId])
     await client.query(
-      `INSERT INTO loyalty_transactions (user_id, type, points, description) VALUES ($1,'earn',$2,$3)`,
+      `INSERT INTO loyalty_points (user_id, points, type, source, description) VALUES ($1,$2,'earn','quiz',$3)`,
       [userId, rewardValue, description]
     )
   } else if (rewardType === 'coupon' && rewardValue > 0) {

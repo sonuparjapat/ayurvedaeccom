@@ -1735,9 +1735,10 @@ if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
             speed: 'normal',
             notes: { order_id: id },
           });
+          const rzStatus = refund.status === 'processed' ? 'processed' : 'pending';
           await client.query(
-            `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status='processed', payment_status='refunded', updated_at=NOW() WHERE id=$3`,
-            [refund.id, Number(o.total_amount), id]
+            `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status=$3, payment_status='refunded', updated_at=NOW() WHERE id=$4`,
+            [refund.id, Number(o.total_amount), rzStatus, id]
           );
         } else {
           await client.query(
@@ -2766,9 +2767,10 @@ exports.adminApproveReturn = async (req, res) => {
           speed: 'normal',
           notes: { order_id: id, type: 'return_refund' }
         })
+        const rzStatus2 = refund.status === 'processed' ? 'processed' : 'pending';
         await client.query(
-          `UPDATE orders SET status=9, refund_id=$1, refund_amount=$2, refund_status='processed', payment_status='refunded', updated_at=NOW() WHERE id=$3`,
-          [refund.id, Number(order.total_amount), id]
+          `UPDATE orders SET status=9, refund_id=$1, refund_amount=$2, refund_status=$3, payment_status='refunded', updated_at=NOW() WHERE id=$4`,
+          [refund.id, Number(order.total_amount), rzStatus2, id]
         )
         await client.query('COMMIT')
         try {
@@ -2852,9 +2854,10 @@ exports.adminCompleteRefund = async (req, res) => {
           speed: 'normal',
           notes: { order_id: id, type: 'return_refund' }
         })
+        const rzStatus3 = refund.status === 'processed' ? 'processed' : 'pending';
         await client.query(
-          `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status='processed', payment_status='refunded', updated_at=NOW() WHERE id=$3`,
-          [refund.id, Number(order.total_amount), id]
+          `UPDATE orders SET refund_id=$1, refund_amount=$2, refund_status=$3, payment_status='refunded', updated_at=NOW() WHERE id=$4`,
+          [refund.id, Number(order.total_amount), rzStatus3, id]
         )
       } catch (refundErr) {
         console.error('[COMPLETE REFUND RAZORPAY ERROR]', refundErr.message)
