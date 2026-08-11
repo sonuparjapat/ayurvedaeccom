@@ -821,3 +821,27 @@ When a customer requests a replacement:
 
 ### Bottom Navigation
 - **Cart tab added** — the cart is now directly accessible from the bottom navigation bar on every screen. The tab shows a live badge with the number of items in your cart.
+
+---
+
+## UI/UX Improvements (2026-08-11)
+
+### Products Listing
+- **Floating cart pill** — when you have items in your cart, a pill-shaped bar appears at the bottom of the products screen showing the item count and subtotal. Tap it to go directly to your cart.
+
+### Account
+- **Wallet & Loyalty mini-card** — your current wallet balance and loyalty point total are now shown at a glance in the Profile tab, just above the Quick Access links. Tap the card to open your full wallet.
+- **Pull-to-refresh on Orders** — swipe down on the Orders tab to refresh your order list.
+- **Courier info on orders** — when an order is Shipped or Out for Delivery, the courier name and AWB tracking number are shown directly on the order card. Tap the row to open the carrier's tracking page (if available).
+
+### Search
+- **Trending searches** — when you open the search screen and haven't typed anything yet, a row of popular Ayurvedic ingredient chips (Ashwagandha, Tulsi, Triphala, etc.) lets you explore common searches with one tap.
+
+### Wishlist
+- **Grid / List toggle** — a toggle button in the Wishlist header lets you switch between the card grid and a compact list view. The list view is faster to scan when you have many saved items.
+
+### Blog
+- **Category filter tabs** — a horizontal strip of category chips appears below the Blog header. Tap any category to filter articles, and tap "All" to see everything again.
+
+### Home
+- **Sticky search bar on scroll** — when you scroll past the main search bar on the home screen, a compact search bar appears inside the floating header so you can search without scrolling back to the top.

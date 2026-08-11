@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
-  Dimensions, FlatList, StatusBar, StyleSheet, Text,
+  Dimensions, FlatList, ScrollView, StatusBar, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native'
 import { LeafLoader } from '../../components/ui/LeafLoader'
@@ -23,10 +23,22 @@ interface BlogPost {
 export default function BlogListScreen() {
   const insets = useSafeAreaInsets()
   const [posts, setPosts] = useState<BlogPost[]>([])
+  const [allPosts, setAllPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchingMore, setFetchingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+
+  const categories = useMemo(() => {
+    const cats = allPosts.map(p => p.category).filter(Boolean) as string[]
+    return [...new Set(cats)]
+  }, [allPosts])
+
+  const filteredPosts = useMemo(() =>
+    selectedCategory ? allPosts.filter(p => p.category === selectedCategory) : posts,
+    [selectedCategory, allPosts, posts]
+  )
 
   const fetchPosts = async (pg: number) => {
     if (pg === 1) setLoading(true)
@@ -34,8 +46,13 @@ export default function BlogListScreen() {
     try {
       const res = await api.get('/blog/public', { params: { page: pg, limit: 10 } })
       const data = res.data?.posts || res.data?.data || []
-      if (pg === 1) setPosts(data)
-      else setPosts(p => [...p, ...data])
+      if (pg === 1) {
+        setPosts(data)
+        setAllPosts(data)
+      } else {
+        setPosts(p => [...p, ...data])
+        setAllPosts(p => [...p, ...data])
+      }
       setHasMore(data.length === 10)
     } catch {}
     finally {
@@ -104,23 +121,46 @@ export default function BlogListScreen() {
         <Text style={ss.headerSub}>Ayurvedic tips, recipes & wellness insights</Text>
       </LinearGradient>
 
+      {/* Category filter tabs */}
+      {categories.length > 0 && (
+        <View style={ss.catRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 10 }}>
+            <TouchableOpacity
+              onPress={() => setSelectedCategory(null)}
+              style={[ss.catTab, selectedCategory === null && ss.catTabActive]}
+            >
+              <Text style={[ss.catTabText, selectedCategory === null && ss.catTabTextActive]}>All</Text>
+            </TouchableOpacity>
+            {categories.map(cat => (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+                style={[ss.catTab, selectedCategory === cat && ss.catTabActive]}
+              >
+                <Text style={[ss.catTabText, selectedCategory === cat && ss.catTabTextActive]}>{cat}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {loading && page === 1 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <LeafLoader size="lg" text="Loading articles…" />
         </View>
-      ) : posts.length === 0 ? (
+      ) : filteredPosts.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
           <Text style={{ fontSize: 48, marginBottom: 12 }}>📝</Text>
-          <Text style={{ fontFamily: Fonts.bold, fontSize: 18, color: Colors.forest, marginBottom: 6 }}>No Posts Yet</Text>
-          <Text style={{ fontFamily: Fonts.regular, fontSize: 13, color: Colors.textDim, textAlign: 'center' }}>Blog posts will appear here. Check back soon!</Text>
+          <Text style={{ fontFamily: Fonts.bold, fontSize: 18, color: Colors.forest, marginBottom: 6 }}>{selectedCategory ? 'No posts in this category' : 'No Posts Yet'}</Text>
+          <Text style={{ fontFamily: Fonts.regular, fontSize: 13, color: Colors.textDim, textAlign: 'center' }}>{selectedCategory ? 'Try selecting a different category' : 'Blog posts will appear here. Check back soon!'}</Text>
         </View>
       ) : (
         <FlatList
-          data={posts}
+          data={filteredPosts}
           keyExtractor={item => String(item.id)}
           renderItem={renderPost}
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-          onEndReached={loadMore}
+          onEndReached={selectedCategory ? undefined : loadMore}
           onEndReachedThreshold={0.3}
           ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
         />
@@ -144,4 +184,10 @@ const ss = StyleSheet.create({
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textDim },
   metaDot: { color: Colors.textDim, fontSize: 11 },
+
+  catRow: { backgroundColor: Colors.cream, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  catTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, backgroundColor: '#fff', borderWidth: 0.5, borderColor: Colors.border },
+  catTabActive: { backgroundColor: Colors.forest, borderColor: Colors.forest },
+  catTabText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.textDim },
+  catTabTextActive: { color: '#fff', fontFamily: Fonts.bold },
 })

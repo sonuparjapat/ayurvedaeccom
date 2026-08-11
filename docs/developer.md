@@ -1679,3 +1679,42 @@ Eleven financial/calculation bugs found and fixed across order creation, invoici
 ### support/index.tsx — ticket deep-link
 - **Previous**: Navigating to `/support?ticket=123` from an `admin_replied` socket notification landed on the ticket list with no auto-selection.
 - **Fix**: Reads `ticket` from `useLocalSearchParams`; after `loadTickets()` resolves, finds the matching ticket and calls `loadChat()` automatically.
+
+---
+
+## UI/UX Improvements (2026-08-11)
+
+### products/index.tsx — Floating cart pill
+- Added `FloatingCartPill` component (defined inline at bottom of file).
+- Uses `useSharedValue` + `withSpring` to slide in from below when `cartCount > 0`.
+- Shows item count and cart subtotal; taps to `/cart`.
+- Positioned `bottom: insets.bottom + 72` (above the BottomNav).
+- `key` on animation: sliding up when cart non-empty, sliding out when empty.
+
+### account/index.tsx — Wallet mini-card + pull-to-refresh + courier info
+- **Wallet mini-card**: fetches `GET /wallet` on `useFocusEffect` and stores `{ balance, points }` in `walletData` state. Displayed as a `LinearGradient` card in the Profile tab above Quick Access. Tappable → navigates to `/account/wallet`.
+- **Pull-to-refresh**: added `RefreshControl` to the main `ScrollView`; active only when `activeTab === 'Orders'`. Uses `ordersRefreshing` state.
+- **Courier info**: `Order` interface extended with `tracking_number`, `courier_name`, `tracking_url`. `OrderCard` shows a teal banner for status 3 (Shipped) and 4 (Out for Delivery). If `tracking_url` is set, tapping opens it in the browser via `Linking.openURL`.
+
+### search/index.tsx — Trending chips
+- Added `TRENDING_TERMS` constant (10 Ayurvedic search terms with emoji labels).
+- Rendered as a horizontal `ScrollView` of chips when `query.length === 0`, below recent searches.
+- Tapping a chip populates `query` and fires `fetchSuggestions`.
+
+### wishlist/index.tsx — Grid/List toggle
+- Added `viewMode: 'grid' | 'list'` state.
+- Header now has a toggle button (`☰` / `⊞`) to switch modes.
+- Added `WishlistListRow` component: horizontal card layout (80×80 image, name/price/stars, add-to-cart + delete buttons on the right).
+- `FlatList` uses `key={viewMode}` to force remount on mode change, and switches `numColumns` between 2 and 1.
+
+### blog/index.tsx — Category filter tabs
+- `allPosts` state accumulates every loaded post (for client-side category extraction).
+- `categories` derived with `useMemo` — unique non-empty `category` values from `allPosts`.
+- `selectedCategory` state; `filteredPosts` = `allPosts.filter(p => p.category === selected)` or `posts` when null.
+- Category tabs rendered as a horizontal `ScrollView` below the header when `categories.length > 0`.
+- `onEndReached` disabled when a category is selected (filtered data is already fully loaded).
+
+### index.tsx (Home) — Sticky search in floating header
+- Floating header changed from `pointerEvents="none"` to `pointerEvents="box-none"` so the search area is tappable.
+- Added `floatSearch` touchable alongside the logo — taps navigate to `/search`.
+- Logo resized to make room for the search field (110px wide container).

@@ -950,16 +950,24 @@ export default function HomeScreen() {
       <StatusBar barStyle="light-content" backgroundColor={Colors.forest} />
 
       {/* Floating header */}
-      <Animated.View style={[ss.floatHeader, { paddingTop: insets.top }, headerStyle]} pointerEvents="none">
+      <Animated.View style={[ss.floatHeader, { paddingTop: insets.top }, headerStyle]} pointerEvents="box-none">
         <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
-        <View style={{ paddingHorizontal: 20, paddingVertical: 10 }}>
-          <View style={{ width: 140, height: 38, overflow: 'hidden' }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 110, height: 30, overflow: 'hidden' }}>
             <ExpoImage
               source={LOGO_LOCAL}
-              style={{ width: 170, height: 38, marginLeft: -15 }}
+              style={{ width: 140, height: 30, marginLeft: -10 }}
               contentFit="cover"
             />
           </View>
+          <TouchableOpacity
+            onPress={() => router.push('/search')}
+            style={ss.floatSearch}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: 13 }}>🔍</Text>
+            <Text style={ss.floatSearchText}>Search herbs, spices...</Text>
+          </TouchableOpacity>
         </View>
       </Animated.View>
 
@@ -1276,6 +1284,8 @@ const ss = StyleSheet.create({
 
   // Floating header
   floatHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 99, overflow: 'hidden' },
+  floatSearch: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
+  floatSearchText: { color: 'rgba(255,255,255,0.5)', fontFamily: Fonts.regular, fontSize: 13, flex: 1 },
   floatLogo: { color: '#fff', fontFamily: Fonts.displayBold, fontSize: 18 },
 
   // Bottom nav

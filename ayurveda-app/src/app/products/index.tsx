@@ -504,8 +504,48 @@ export default function ProductsScreen() {
           </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
+      {/* Floating cart pill — visible when cart has items */}
+      <FloatingCartPill cartCount={cartCount} subtotal={cartData.subtotal} insets={insets} />
+
       <BottomNav active="/products" />
     </View>
+  )
+}
+
+function FloatingCartPill({ cartCount, subtotal, insets }: { cartCount: number; subtotal: number; insets: any }) {
+  const translateY = useSharedValue(cartCount > 0 ? 0 : 80)
+  const opacity = useSharedValue(cartCount > 0 ? 1 : 0)
+
+  useEffect(() => {
+    translateY.value = withSpring(cartCount > 0 ? 0 : 80, { damping: 18, stiffness: 200 })
+    opacity.value = withTiming(cartCount > 0 ? 1 : 0, { duration: 220 })
+  }, [cartCount])
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: opacity.value,
+  }))
+
+  if (cartCount === 0) return null
+
+  return (
+    <Animated.View style={[ss.floatingPill, { bottom: insets.bottom + 72 }, style]} pointerEvents={cartCount > 0 ? 'auto' : 'none'}>
+      <TouchableOpacity onPress={() => router.push('/cart')} activeOpacity={0.88}>
+        <LinearGradient
+          colors={[Colors.forest, Colors.moss]}
+          style={ss.floatingPillGradient}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        >
+          <Text style={ss.floatingPillIcon}>🛍️</Text>
+          <Text style={ss.floatingPillText}>
+            {cartCount} {cartCount === 1 ? 'item' : 'items'} · ₹{Number(subtotal).toFixed(0)}
+          </Text>
+          <View style={ss.floatingPillChevron}>
+            <Text style={{ color: '#fff', fontSize: 12, fontFamily: Fonts.bold }}>→</Text>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
   )
 }
 
@@ -577,4 +617,11 @@ const ss = StyleSheet.create({
   toggleThumbActive: { alignSelf: 'flex-end' },
   applyBtn: { paddingVertical: 15, borderRadius: 14, alignItems: 'center' },
   applyBtnText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 15 },
+
+  // Floating cart pill
+  floatingPill: { position: 'absolute', left: 20, right: 20, zIndex: 50, borderRadius: 20, overflow: 'hidden', ...Shadows.xl },
+  floatingPillGradient: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 18, gap: 10 },
+  floatingPillIcon: { fontSize: 18 },
+  floatingPillText: { flex: 1, color: '#fff', fontFamily: Fonts.bold, fontSize: 14 },
+  floatingPillChevron: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 99, width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
 })

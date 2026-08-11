@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import {
-  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, StatusBar,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, Share, StatusBar,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import * as Location from 'expo-location'
@@ -19,6 +19,7 @@ import { Colors, Fonts, Shadows } from '../../constants/theme'
 interface Order {
   id: number; invoice_no?: string; status: number; total_amount: string
   created_at: string; delivered_at?: string; return_window_days?: number; is_returnable?: boolean
+  tracking_number?: string; courier_name?: string; tracking_url?: string
   items: { name: string; quantity: number; price: string; image?: string }[]
 }
 interface Address {
@@ -116,6 +117,28 @@ function OrderCard({ order, index }: { order: Order; index: number }) {
           </View>
         </View>
 
+        {/* Courier info — shown for shipped/out-for-delivery */}
+        {(order.status === 3 || order.status === 4) && (order.courier_name || order.tracking_number) && (
+          <TouchableOpacity
+            onPress={() => { if (order.tracking_url) { const { Linking } = require('react-native'); Linking.openURL(order.tracking_url) } }}
+            activeOpacity={order.tracking_url ? 0.7 : 1}
+            style={{ backgroundColor: '#ecfeff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, borderWidth: 0.5, borderColor: '#a5f3fc' }}
+          >
+            <Text style={{ fontSize: 14 }}>🚚</Text>
+            <View style={{ flex: 1 }}>
+              {order.courier_name ? (
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 11, color: '#0e7490' }}>{order.courier_name}</Text>
+              ) : null}
+              {order.tracking_number ? (
+                <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: '#0891b2' }}>AWB: {order.tracking_number}</Text>
+              ) : null}
+            </View>
+            {order.tracking_url ? (
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: '#0e7490' }}>Track →</Text>
+            ) : null}
+          </TouchableOpacity>
+        )}
+
         {order.status === 5 && order.delivered_at && order.is_returnable !== false && (() => {
           const returnBy = new Date(new Date(order.delivered_at).getTime() + (order.return_window_days ?? 7) * 86400000)
           const daysLeft = Math.ceil((returnBy.getTime() - Date.now()) / 86400000)
@@ -206,6 +229,7 @@ export default function AccountScreen() {
   const [ordersPage, setOrdersPage] = useState(1)
   const [ordersMeta, setOrdersMeta] = useState<{ total: number; pages: number } | null>(null)
   const [ordersLoading, setOrdersLoading] = useState(false)
+  const [ordersRefreshing, setOrdersRefreshing] = useState(false)
   const [addresses, setAddresses] = useState<Address[]>([])
   const [loading, setLoading] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -268,6 +292,7 @@ export default function AccountScreen() {
     total: number; rewarded: number; earned: number;
     referrals: { referred_name: string; status: string; created_at: string; reward_amount: number }[]
   } | null>(null)
+  const [walletData, setWalletData] = useState<{ balance: number; points: number } | null>(null)
 
   useFocusEffect(useCallback(() => {
     if (!user) return
@@ -282,6 +307,9 @@ export default function AccountScreen() {
     }).catch(() => {})
     api.get('/users/referral').then(res => {
       if (res.data?.success) setReferralStats(res.data)
+    }).catch(() => {})
+    api.get('/wallet').then(res => {
+      setWalletData({ balance: Number(res.data?.wallet_balance ?? 0), points: Number(res.data?.loyalty_points ?? 0) })
     }).catch(() => {})
   }, [user?.id]))
 
@@ -566,7 +594,19 @@ export default function AccountScreen() {
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
+        refreshControl={
+          activeTab === 'Orders'
+            ? <RefreshControl
+                refreshing={ordersRefreshing}
+                onRefresh={async () => { setOrdersRefreshing(true); await fetchOrders(1); setOrdersRefreshing(false) }}
+                tintColor={Colors.forest} colors={[Colors.forest]}
+              />
+            : undefined
+        }
+      >
 
         {/* ── PROFILE ── */}
         {activeTab === 'Profile' && (
@@ -607,6 +647,31 @@ export default function AccountScreen() {
                 <Text style={ss.halfBtnOutlineText}>🔒  Change Password</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Wallet & Loyalty mini-card */}
+            {walletData !== null && (
+              <TouchableOpacity onPress={() => router.push('/account/wallet' as any)} activeOpacity={0.87} style={{ marginBottom: 16 }}>
+                <LinearGradient colors={['#065f46', '#0f766e']} style={ss.walletCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={ss.walletIconWrap}>
+                      <Text style={{ fontSize: 22 }}>💳</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={ss.walletLabel}>Wallet Balance</Text>
+                      <Text style={ss.walletBalance}>₹{walletData.balance.toFixed(2)}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                      <View style={ss.pointsBadge}>
+                        <Text style={{ fontSize: 10 }}>⭐</Text>
+                        <Text style={ss.pointsText}>{walletData.points} pts</Text>
+                      </View>
+                      <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, fontFamily: Fonts.medium }}>Loyalty Points</Text>
+                    </View>
+                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 18, marginLeft: 4 }}>›</Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
 
             <Text style={ss.sectionTitle}>Quick Access</Text>
             <View style={ss.section}>
@@ -1115,6 +1180,14 @@ const ss = StyleSheet.create({
   addrStreet: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, lineHeight: 19, marginTop: 4 },
   addrLine: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, lineHeight: 18 },
   addrActionBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#f0f4f0', alignItems: 'center', justifyContent: 'center' },
+
+  // Wallet mini-card
+  walletCard: { borderRadius: 18, padding: 16, ...Shadows.md },
+  walletIconWrap: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  walletLabel: { color: 'rgba(255,255,255,0.55)', fontFamily: Fonts.medium, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  walletBalance: { color: '#fff', fontFamily: Fonts.displayBold, fontSize: 26 },
+  pointsBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 },
+  pointsText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 12 },
 })
 
 const ms = StyleSheet.create({

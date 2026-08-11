@@ -181,6 +181,67 @@ const getImage = (images: any): string => {
   } catch { return '' }
 }
 
+function WishlistListRow({ p, index, removingId, addingId, inCart, onRemove, onAddToCart }: WishlistCardProps) {
+  const img = getImage(p.images)
+  const outOfStock = p.inventory === 0
+  const cartAlready = inCart(p.id)
+  const isAdding = addingId === p.id
+  const disc = p.compareprice ? Math.round(((p.compareprice - p.price) / p.compareprice) * 100) : null
+
+  return (
+    <Animated.View entering={FadeInDown.delay(index * 50).duration(350)} layout={Layout.springify()} style={ss.listRow}>
+      <TouchableOpacity onPress={() => router.push(`/product/${(p as any).slug || p.id}`)} activeOpacity={0.9} style={{ flexDirection: 'row', flex: 1, gap: 12, alignItems: 'center' }}>
+        <View style={ss.listImgWrap}>
+          {img
+            ? <ExpoImage source={{ uri: img }} style={ss.listImg} contentFit="cover" transition={200} />
+            : <View style={[ss.listImg, { backgroundColor: Colors.mint, alignItems: 'center', justifyContent: 'center' }]}><Text style={{ fontSize: 26 }}>🌿</Text></View>
+          }
+          {disc && !outOfStock && (
+            <View style={[ss.discBadge, { top: 4, left: 4, paddingHorizontal: 5, paddingVertical: 2 }]}>
+              <Text style={[ss.discText, { fontSize: 8 }]}>{disc}%</Text>
+            </View>
+          )}
+          {outOfStock && (
+            <View style={[ss.oosOverlay, { borderRadius: 10 }]}><Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 8 }}>OOS</Text></View>
+          )}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={ss.cardName} numberOfLines={2}>{p.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+            <Text style={[ss.price, { fontSize: 15 }]}>₹{p.price}</Text>
+            {p.compareprice && <Text style={ss.mrp}>₹{p.compareprice}</Text>}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 2, marginTop: 3 }}>
+            {[1,2,3,4,5].map(s => (
+              <Text key={s} style={{ fontSize: 9, color: s <= Math.round(p.averagerating) ? '#f59e0b' : '#d1d5db' }}>★</Text>
+            ))}
+          </View>
+        </View>
+      </TouchableOpacity>
+      <View style={{ gap: 8, alignItems: 'center' }}>
+        <TouchableOpacity
+          onPress={() => outOfStock ? null : cartAlready ? router.push('/cart') : onAddToCart(p.id)}
+          disabled={outOfStock || isAdding}
+          style={{ borderRadius: 10, overflow: 'hidden' }}
+        >
+          <LinearGradient
+            colors={outOfStock ? ['#9ca3af', '#6b7280'] : cartAlready ? ['#059669', '#0d9488'] : [Colors.forest, Colors.moss]}
+            style={{ paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center' }}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          >
+            <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 11 }}>
+              {isAdding ? '...' : outOfStock ? 'OOS' : cartAlready ? '✓ Cart' : '+ Cart'}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => onRemove(p.id)} disabled={!!removingId} hitSlop={8}>
+          <Text style={{ fontSize: 16 }}>🗑️</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  )
+}
+
 export default function WishlistScreen() {
   const insets = useSafeAreaInsets()
   const { user, setAuthOpen, cartData, setCartData } = useStore()
@@ -196,6 +257,7 @@ export default function WishlistScreen() {
   const [addingAll, setAddingAll] = useState(false)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const searchTimer = React.useRef<any>(null)
 
   useEffect(() => {
@@ -273,17 +335,18 @@ export default function WishlistScreen() {
     } finally { setAddingAll(false) }
   }
 
-  const renderItem = ({ item: p, index }: { item: WishlistItem; index: number }) => (
-    <WishlistCard
-      p={p}
-      index={index}
-      removingId={removingId}
-      addingId={addingId}
-      inCart={inCart}
-      onRemove={removeItem}
-      onAddToCart={addToCart}
-    />
-  )
+  const renderItem = ({ item: p, index }: { item: WishlistItem; index: number }) =>
+    viewMode === 'grid' ? (
+      <WishlistCard
+        p={p} index={index} removingId={removingId} addingId={addingId}
+        inCart={inCart} onRemove={removeItem} onAddToCart={addToCart}
+      />
+    ) : (
+      <WishlistListRow
+        p={p} index={index} removingId={removingId} addingId={addingId}
+        inCart={inCart} onRemove={removeItem} onAddToCart={addToCart}
+      />
+    )
 
   if (!user) return (
     <View style={{ flex: 1, backgroundColor: Colors.cream, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
@@ -311,6 +374,12 @@ export default function WishlistScreen() {
           <Text style={ss.headerTitle}>My Wishlist</Text>
           <Text style={ss.headerSub}>{items.length} item{items.length !== 1 ? 's' : ''} saved</Text>
         </View>
+        <TouchableOpacity
+          onPress={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
+          style={[ss.backBtn, { marginRight: 6 }]}
+        >
+          <Text style={{ fontSize: 16, color: '#fff' }}>{viewMode === 'grid' ? '☰' : '⊞'}</Text>
+        </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push('/cart')} style={ss.backBtn}>
           <Text style={{ fontSize: 18 }}>🛍️</Text>
         </TouchableOpacity>
@@ -373,11 +442,12 @@ export default function WishlistScreen() {
         </View>
       ) : (
         <FlatList
+          key={viewMode}
           data={items}
           keyExtractor={i => String(i.wishlist_id)}
           renderItem={renderItem}
-          numColumns={2}
-          columnWrapperStyle={{ gap: 12 }}
+          numColumns={viewMode === 'grid' ? 2 : 1}
+          columnWrapperStyle={viewMode === 'grid' ? { gap: 12 } : undefined}
           contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: insets.bottom + 90 }}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await fetchWishlist(1); setRefreshing(false) }} tintColor={Colors.forest} colors={[Colors.forest]} />}
@@ -424,4 +494,9 @@ const ss = StyleSheet.create({
   addAllWrap: { paddingHorizontal: 16, paddingBottom: 10, backgroundColor: Colors.cream, flexDirection: 'row' },
   addAllBtn: { paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
   addAllText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 14 },
+
+  // List view
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 12, borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.06)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  listImgWrap: { width: 80, height: 80, borderRadius: 12, backgroundColor: Colors.mint, position: 'relative', overflow: 'hidden' },
+  listImg: { width: 80, height: 80 },
 })

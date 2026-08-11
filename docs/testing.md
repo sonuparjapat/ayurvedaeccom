@@ -1675,3 +1675,65 @@ curl http://localhost:5000/api/admin/analytics/overview \
 1. Trigger an `admin_replied` socket event with `{ ticket_id: 5, subject: 'Test' }`.
 2. Tap the toast notification.
 3. **Expected**: Support screen opens with the chat for ticket #5 already visible (not the list view).
+
+---
+
+## UI/UX Improvements Test Cases (2026-08-11)
+
+### Floating cart pill — Products screen
+1. Open `/products` with an empty cart.
+2. **Expected**: No pill visible.
+3. Add a product to the cart.
+4. **Expected**: A green pill animates up from the bottom showing "{n} items · ₹{subtotal}".
+5. Tap the pill.
+6. **Expected**: Navigates to `/cart`.
+
+### Wallet mini-card — Account screen
+1. Log in and open the Account screen → Profile tab.
+2. **Expected**: A dark green card appears above "Quick Access" showing Wallet Balance (₹) and Loyalty Points.
+3. Tap the card.
+4. **Expected**: Navigates to the Wallet screen.
+5. Check with zero balance.
+6. **Expected**: Card shows ₹0.00 and 0 pts; still tappable.
+
+### Pull-to-refresh — Orders tab
+1. Open Account → Orders tab.
+2. Swipe down on the list.
+3. **Expected**: RefreshControl spinner appears; order list reloads.
+
+### Courier info — Order cards
+1. Find or create an order with status Shipped (3) or Out for Delivery (4) that has `courier_name` + `tracking_number` set.
+2. Open Account → Orders.
+3. **Expected**: A teal banner "🚚 {courier_name} — AWB: {tracking_number}" appears on the card.
+4. If `tracking_url` is set, tap the banner.
+5. **Expected**: Opens tracking URL in the browser.
+
+### Trending searches — Search screen
+1. Open the Search screen (`/search`).
+2. Don't type anything.
+3. **Expected**: A "Trending Now" section with horizontal chips (Ashwagandha, Tulsi, etc.) appears below recent searches.
+4. Tap a chip (e.g. "Ashwagandha").
+5. **Expected**: Query field fills with "Ashwagandha" and suggestions load.
+
+### Wishlist grid/list toggle
+1. Open Wishlist with at least 3 items.
+2. **Expected**: Grid view (2 columns) is default.
+3. Tap the toggle icon (☰) in the header.
+4. **Expected**: Switches to compact list view (1 column, image left + details right).
+5. Tap again (⊞).
+6. **Expected**: Returns to grid view.
+
+### Blog category filter tabs
+1. Open the Blog screen.
+2. **Expected**: Category chips appear below the header (only if posts with different categories exist).
+3. Tap a category.
+4. **Expected**: Only posts in that category are shown.
+5. Tap "All".
+6. **Expected**: All posts shown again.
+
+### Home sticky search
+1. Open the home screen.
+2. Scroll down past the main search bar (approximately 140px of scroll).
+3. **Expected**: Floating header appears with a compact search bar alongside the logo.
+4. Tap the search bar in the floating header.
+5. **Expected**: Navigates to `/search`.

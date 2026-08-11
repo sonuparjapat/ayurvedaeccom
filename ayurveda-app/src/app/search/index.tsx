@@ -6,6 +6,7 @@ import {
   Image,
   Keyboard,
   Pressable,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -17,6 +18,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import api from '../../api/axios'
 import { Colors, Fonts } from '../../constants/theme'
+
+const TRENDING_TERMS = [
+  { label: 'Ashwagandha', emoji: '🌿' },
+  { label: 'Triphala', emoji: '🍵' },
+  { label: 'Brahmi', emoji: '🧠' },
+  { label: 'Tulsi', emoji: '🌱' },
+  { label: 'Turmeric', emoji: '💛' },
+  { label: 'Neem', emoji: '🍃' },
+  { label: 'Chyawanprash', emoji: '🫙' },
+  { label: 'Giloy', emoji: '🪴' },
+  { label: 'Shilajit', emoji: '⛰️' },
+  { label: 'Moringa', emoji: '🌿' },
+]
 
 interface Suggestion {
   id: number
@@ -217,6 +231,26 @@ export default function SearchScreen() {
         </View>
       )}
 
+      {/* TRENDING SEARCHES (shown when no query) */}
+      {!loading && query.length === 0 && (
+        <View style={s.trendingWrap}>
+          <Text style={s.recentTitle}>Trending Now</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 10 }}>
+            {TRENDING_TERMS.map((term, i) => (
+              <TouchableOpacity
+                key={i}
+                onPress={() => { setQuery(term.label); fetchSuggestions(term.label) }}
+                style={s.trendingChip}
+                activeOpacity={0.75}
+              >
+                <Text style={{ fontSize: 13 }}>{term.emoji}</Text>
+                <Text style={s.trendingChipText}>{term.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* EMPTY STATE when query typed but no results */}
       {!loading && query.length > 0 && suggestions.length === 0 && (
         <View style={s.empty}>
@@ -304,4 +338,8 @@ const s = StyleSheet.create({
   emptyEmoji: { fontSize: 48, marginBottom: 16 },
   emptyTitle: { fontFamily: Fonts.bold, fontSize: 16, color: Colors.forest, marginBottom: 6 },
   emptySubtitle: { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textDim, textAlign: 'center', paddingHorizontal: 32 },
+
+  trendingWrap: { paddingTop: 20, paddingHorizontal: 16 },
+  trendingChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 99, backgroundColor: Colors.mint, borderWidth: 0.5, borderColor: '#bbf7d0' },
+  trendingChipText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.sage },
 })
