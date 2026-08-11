@@ -133,7 +133,7 @@ export default function SearchScreen() {
     if (!query.trim()) return
     saveRecent(query.trim())
     Keyboard.dismiss()
-    router.push(`/products?search=${encodeURIComponent(query.trim())}`)
+    router.push(`/products?q=${encodeURIComponent(query.trim())}` as any)
   }
 
   return (

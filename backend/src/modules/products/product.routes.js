@@ -84,4 +84,7 @@ router.delete("/:productId", auth, controller.removeWishlist);
 router.post("/reviews/:id/helpful", auth, controller.voteReviewHelpful);
 router.get("/reviews/helpful-votes/:productId", auth, controller.getUserHelpfulVotes);
 
+// Review flag/report
+router.post("/reviews/:id/flag", auth, controller.flagReview);
+
 module.exports = router;

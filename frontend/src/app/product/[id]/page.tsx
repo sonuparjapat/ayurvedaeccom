@@ -33,7 +33,6 @@ import {
 
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
-import toast from 'react-hot-toast'
 import { useAuth } from '@/context/auth-context'
 import StarRating from '@/components/StartRatings'
 import Pagination from '@/components/Paginationcom'
@@ -608,6 +607,15 @@ const addToCart = async () => {
             <Link href="/products" className="hover:text-emerald-600">
               Products
             </Link>
+
+            {product.category_name && (
+              <>
+                <ChevronRight size={14} />
+                <Link href={`/products?category=${encodeURIComponent(product.category_name)}`} className="hover:text-emerald-600">
+                  {product.category_name}
+                </Link>
+              </>
+            )}
 
             <ChevronRight size={14} />
 

@@ -40,7 +40,6 @@ import {
 
 import { motion, AnimatePresence } from 'framer-motion'
 
-import toast from 'react-hot-toast'
 import { useAuth } from '@/context/auth-context'
 import { useRouter } from 'next/navigation'
 

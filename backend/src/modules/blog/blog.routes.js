@@ -5,6 +5,8 @@ const { admin } = require('../../middlewares/admin')
 const upload = require('../../config/multer')
 
 router.get('/public', controller.getPublicPosts)
+router.get('/public/categories', controller.getPublicCategories)
+router.get('/public/tags', controller.getPublicTags)
 router.get('/public/:slug', controller.getPostBySlug)
 router.get('/admin', auth, admin, controller.adminListPosts)
 router.post('/admin', auth, admin, upload.single('cover_image'), controller.adminCreatePost)

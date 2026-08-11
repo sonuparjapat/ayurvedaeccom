@@ -3,48 +3,37 @@
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts'
 
-/* ── SVG Bar Chart ── */
+/* ── Recharts Area Chart ── */
 function RevenueChart({ data: chartData, loading }: { data: any[]; loading: boolean }) {
   if (loading) return <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Loading chart…</div>
   if (!chartData.length) return <div className="h-48 flex items-center justify-center text-gray-400 text-sm">No data for selected period</div>
 
-  const maxRevenue = Math.max(...chartData.map(d => d.revenue), 1)
-  const W = 600, H = 180, PAD = 40, BAR_GAP = 4
-
-  const barW = Math.max(8, (W - PAD * 2 - BAR_GAP * (chartData.length - 1)) / chartData.length)
-  const step = W / chartData.length
+  const fmt = (v: number) =>
+    v >= 1000 ? `₹${(v / 1000).toFixed(1)}k` : `₹${v}`
 
   return (
-    <svg viewBox={`0 0 ${W} ${H + 30}`} className="w-full" style={{ overflow: 'visible' }}>
-      <defs>
-        <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#10b981" />
-          <stop offset="100%" stopColor="#059669" stopOpacity="0.6" />
-        </linearGradient>
-      </defs>
-      {/* Grid lines */}
-      {[0, 0.25, 0.5, 0.75, 1].map((f, i) => (
-        <line key={i} x1={PAD} y1={PAD + (1 - f) * (H - PAD)} x2={W - PAD} y2={PAD + (1 - f) * (H - PAD)}
-          stroke="#e5e7eb" strokeWidth="1" />
-      ))}
-      {/* Bars */}
-      {chartData.map((d, i) => {
-        const barH = Math.max(2, ((d.revenue / maxRevenue) * (H - PAD)))
-        const x = PAD + i * step + (step - barW) / 2
-        const y = H - barH
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={barW} height={barH} rx="4" fill="url(#barGrad)" opacity="0.9" />
-            <text x={x + barW / 2} y={H + 16} textAnchor="middle" fontSize="9" fill="#6b7280">{d.label}</text>
-          </g>
-        )
-      })}
-      {/* Y-axis label */}
-      <text x={PAD - 4} y={PAD} textAnchor="end" fontSize="9" fill="#9ca3af">
-        ₹{(maxRevenue / 1000).toFixed(0)}k
-      </text>
-    </svg>
+    <ResponsiveContainer width="100%" height={220}>
+      <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id="analyticsGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+        <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+        <YAxis tickFormatter={fmt} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={52} />
+        <Tooltip
+          formatter={(v: number) => [`₹${Number(v).toLocaleString('en-IN')}`, 'Revenue']}
+          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+        />
+        <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#analyticsGrad)" dot={{ r: 3, fill: '#10b981' }} activeDot={{ r: 5 }} />
+      </AreaChart>
+    </ResponsiveContainer>
   )
 }
 

@@ -6,6 +6,8 @@ import Link from 'next/link'
 import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
 import toast from 'react-hot-toast'
+import { Header } from '@/components/layout/header'
+import { Footer } from '@/components/layout/footer'
 import {
   Search, X, SlidersHorizontal, Star, ShoppingCart, Heart,
   ChevronLeft, ChevronRight, ChevronDown, Package
@@ -510,12 +512,16 @@ function SearchContent() {
 /* ─────────────────────────── export ────────────────────────── */
 export default function SearchPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
-      </div>
-    }>
-      <SearchContent />
-    </Suspense>
+    <>
+      <Header />
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+        </div>
+      }>
+        <SearchContent />
+      </Suspense>
+      <Footer />
+    </>
   )
 }

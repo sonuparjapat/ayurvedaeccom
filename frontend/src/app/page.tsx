@@ -9,6 +9,7 @@ import { TestimonialsSection } from '@/components/sections/testimonials-section'
 import { FlashSaleBanner } from '@/components/sections/flash-sale-banner'
 import { FeaturedProductsSection } from '@/components/sections/featured-products-section'
 import { RecentlyViewedSection } from '@/components/sections/recently-viewed-section'
+import { BlogPreviewSection } from '@/components/sections/blog-preview-section'
 import Link from 'next/link'
 
 export default function Home() {
@@ -96,6 +97,7 @@ export default function Home() {
         <CategoriesSection />
         <FeaturedProductsSection />
         <RecentlyViewedSection />
+        <BlogPreviewSection />
 
         {/* DOSHA QUIZ ENTRY */}
         <section className="py-12 px-4 bg-linear-to-r from-emerald-800 to-teal-700">

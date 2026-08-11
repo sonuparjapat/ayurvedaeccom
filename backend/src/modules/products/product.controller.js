@@ -1539,6 +1539,45 @@ exports.getUserHelpfulVotes = async (req, res) => {
   }
 }
 
+/* ================= REVIEW FLAG / REPORT ================= */
+exports.flagReview = async (req, res) => {
+  const userId = req.user?.id
+  const reviewId = parseInt(req.params.id)
+  const { reason } = req.body
+  if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' })
+  if (!reviewId) return res.status(400).json({ success: false, message: 'Invalid review' })
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS review_flags (
+        id SERIAL PRIMARY KEY,
+        review_id INTEGER NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL,
+        reason TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(review_id, user_id)
+      )
+    `)
+
+    const existing = await pool.query(
+      'SELECT id FROM review_flags WHERE review_id=$1 AND user_id=$2',
+      [reviewId, userId]
+    )
+    if (existing.rows.length > 0) {
+      return res.json({ success: true, already_flagged: true, message: 'Already reported' })
+    }
+
+    await pool.query(
+      'INSERT INTO review_flags (review_id, user_id, reason) VALUES ($1, $2, $3)',
+      [reviewId, userId, reason || null]
+    )
+    res.json({ success: true, message: 'Review reported. Our team will review it.' })
+  } catch (err) {
+    console.error('[flagReview]', err.message)
+    res.status(500).json({ success: false, message: 'Failed to report review' })
+  }
+}
+
 /* ================= WISHLIST SHARING ================= */
 
 exports.generateWishlistShareLink = async (req, res) => {

@@ -799,6 +799,7 @@ export default function HomeScreen() {
   const [activeCatId, setActiveCatId] = useState<number | null>(null)
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([])
   const [flashSale, setFlashSale] = useState<any>(null)
+  const [blogPosts, setBlogPosts] = useState<{ id: number; title: string; slug: string; cover_image?: string; category?: string; published_at?: string }[]>([])
   const [refreshing, setRefreshing] = useState(false)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -822,6 +823,9 @@ export default function HomeScreen() {
       const sales = r.data?.sales || []
       if (sales.length) setFlashSale(sales[0])
     }).catch(() => {})
+    api.get('/blog/public', { params: { page: 1, limit: 3 } })
+      .then(r => setBlogPosts(r.data?.posts || r.data?.data || []))
+      .catch(() => {})
   }, [])
 
   // Real-time flash sale socket updates
@@ -939,6 +943,7 @@ export default function HomeScreen() {
         api.get('/coupons/public').then(r => { const l = r.data?.coupons || []; if (l.length) setActiveCoupon(l[0]) }),
         api.get('/shop/reviews', { params: { rating: 5, limit: 6, page: 1 } }).then(r => setReviews(r.data?.data || [])),
         api.get('/flash-sales/active').then(r => { const s = r.data?.sales || []; if (s.length) setFlashSale(s[0]) }),
+        api.get('/blog/public', { params: { page: 1, limit: 3 } }).then(r => setBlogPosts(r.data?.posts || r.data?.data || [])),
         new Promise(res => { fetchFeatured(activeCatId); setTimeout(res, 800) }),
       ])
     } catch { }
@@ -1059,6 +1064,43 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Wellness Blog */}
+        {blogPosts.length > 0 && (
+          <View style={{ paddingVertical: 20 }}>
+            <SectionHeader title="Wellness Blog" onSeeAll={() => router.push('/blog' as any)} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}>
+              {blogPosts.map((post, i) => (
+                <Animated.View key={post.id} entering={FadeInDown.delay(i * 80).duration(400)}>
+                  <TouchableOpacity
+                    onPress={() => router.push(`/blog/${post.slug}` as any)}
+                    activeOpacity={0.9}
+                    style={ss.blogCard}
+                  >
+                    {post.cover_image ? (
+                      <ExpoImage source={{ uri: post.cover_image }} style={ss.blogCardImg} contentFit="cover" transition={200} />
+                    ) : (
+                      <LinearGradient colors={[Colors.forest, Colors.moss]} style={[ss.blogCardImg, { alignItems: 'center', justifyContent: 'center' }]}>
+                        <Text style={{ fontSize: 32 }}>📝</Text>
+                      </LinearGradient>
+                    )}
+                    {post.category && (
+                      <View style={ss.blogCatBadge}>
+                        <Text style={ss.blogCatText}>{post.category}</Text>
+                      </View>
+                    )}
+                    <View style={{ padding: 12 }}>
+                      <Text style={ss.blogTitle} numberOfLines={2}>{post.title}</Text>
+                      {post.published_at ? (
+                        <Text style={ss.blogMeta}>{new Date(post.published_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</Text>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Deals CTA */}
         <TouchableOpacity onPress={() => router.push('/deals' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
           <LinearGradient colors={['#7c1d1d', '#dc2626']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
@@ -1072,7 +1114,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Dosha Quiz CTA */}
-        <TouchableOpacity onPress={() => router.push('/quiz')} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => router.push('/quiz' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
           <LinearGradient colors={['#0a1f14', '#1a4228']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Text style={{ fontSize: 36 }}>🌿</Text>
             <View style={{ flex: 1 }}>
@@ -1241,6 +1283,14 @@ const ss = StyleSheet.create({
   prodMrp: { color: 'rgba(26,46,30,0.35)', fontFamily: Fonts.regular, fontSize: 11, textDecorationLine: 'line-through' },
   addBtn: { paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
   addBtnText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 12 },
+
+  // Blog teaser
+  blogCard: { width: W * 0.62, backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...Shadows.md },
+  blogCardImg: { width: '100%', height: 130 },
+  blogCatBadge: { position: 'absolute', top: 10, left: 10, backgroundColor: Colors.mint, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  blogCatText: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.sage, textTransform: 'uppercase', letterSpacing: 0.5 },
+  blogTitle: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.forest, lineHeight: 20, marginBottom: 4 },
+  blogMeta: { fontFamily: Fonts.regular, fontSize: 11, color: Colors.textDim },
 
   // Offer Banner
   offerBanner: { borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

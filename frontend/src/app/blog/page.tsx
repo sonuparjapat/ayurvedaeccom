@@ -7,7 +7,7 @@ import { Footer } from '@/components/layout/footer'
 import { LeafLoader } from '@/components/ui/leaf-loader'
 import {
   Calendar, User, ArrowRight, Search,
-  ChevronLeft, ChevronRight, BookOpen, Feather,
+  ChevronLeft, ChevronRight, BookOpen, Feather, Clock,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -35,6 +35,12 @@ function categoryColor(cat: string) {
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function readTime(text?: string | null) {
+  if (!text) return '1 min'
+  const words = text.trim().split(/\s+/).length
+  return `${Math.max(1, Math.ceil(words / 200))} min`
 }
 
 export default function BlogPage() {
@@ -185,6 +191,7 @@ export default function BlogPage() {
                       <div style={{ fontSize: 11, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 12 }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><User size={11} />{posts[0].author_name}</span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Calendar size={11} />{fmtDate(posts[0].published_at)}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={11} />{readTime(posts[0].excerpt)} read</span>
                       </div>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
                         Read <ArrowRight size={12} />
@@ -235,6 +242,7 @@ export default function BlogPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: '#9ca3af' }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><User size={10} />{post.author_name}</span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={10} />{fmtDate(post.published_at)}</span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={10} />{readTime(post.excerpt)} read</span>
                         </div>
                         <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: 3 }}>
                           Read <ArrowRight size={11} />

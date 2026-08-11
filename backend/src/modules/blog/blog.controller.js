@@ -108,6 +108,37 @@ exports.getPostBySlug = async (req, res) => {
   }
 }
 
+// GET /api/blog/public/categories — distinct categories from published posts
+exports.getPublicCategories = async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT category FROM blog_posts
+       WHERE status = 'published' AND category IS NOT NULL AND category <> ''
+       ORDER BY category`
+    )
+    res.json({ success: true, categories: rows.map(r => r.category) })
+  } catch (err) {
+    console.error('getPublicCategories error:', err.message)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+// GET /api/blog/public/tags — distinct tags from published posts
+exports.getPublicTags = async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT jsonb_array_elements_text(tags::jsonb) AS tag
+       FROM blog_posts
+       WHERE status = 'published' AND tags IS NOT NULL AND tags::text <> '[]'
+       ORDER BY tag`
+    )
+    res.json({ success: true, tags: rows.map(r => r.tag) })
+  } catch (err) {
+    console.error('getPublicTags error:', err.message)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
 /* ================= ADMIN ================= */
 
 // GET /api/blog/admin — all posts, paginated with search

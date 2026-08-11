@@ -695,7 +695,7 @@ if (!validateShipping()) return;
 
       currency: "INR",
 
-      name: "Ayureveda",
+      name: "Oroganix",
 
       description: "Secure Checkout",
 
@@ -1155,7 +1155,6 @@ if (checkingAddress) {
                             <input
                               className="gold-input"
                               placeholder="Your full name"
-                              disabled
                               value={shipping.name}
                               onChange={e => setShipping({ ...shipping, name: e.target.value })}
                               style={{ paddingLeft: 44 }}
@@ -1171,7 +1170,6 @@ if (checkingAddress) {
                               className="gold-input"
                               placeholder="10-digit mobile number"
                               value={shipping.phone}
-                              disabled
                               onChange={e => setShipping({ ...shipping, phone: e.target.value })}
                               style={{ paddingLeft: 44 }}
                             />
@@ -1188,7 +1186,6 @@ if (checkingAddress) {
                               value={shipping.address}
                               onChange={e => setShipping({ ...shipping, address: e.target.value })}
                               rows={3}
-                              disabled
                               style={{ paddingLeft: 44, resize: 'none', lineHeight: 1.6 }}
                             />
                           </div>
