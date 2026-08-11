@@ -211,21 +211,29 @@ function SpinTab({ wheels, onSpin }: { wheels: SpinWheel[]; onSpin: () => void }
 function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void }) {
   const [spinning, setSpinning] = useState(false)
   const [result, setResult] = useState<any>(null)
+  // Accumulate rotation in a ref so it survives re-renders without causing snap
+  const totalRotation = useRef(0)
   const spinAnim = useRef(new Animated.Value(0)).current
-  const currentRotation = useRef(0)
-  const canSpin = wheel.spins_today < wheel.spins_per_user_per_day
+  // Stable 1:1 interpolation — never recalculated, never causes position snap
+  const rotateStyle = spinAnim.interpolate({ inputRange: [0, 360], outputRange: ['0deg', '360deg'], extrapolate: 'extend' })
+
+  const canSpin = wheel.spins_per_user_per_day === 0 || wheel.spins_today < wheel.spins_per_user_per_day
   const segs = wheel.segments || []
+  const N = segs.length
   const SIZE = W - 80
+  const R = SIZE / 2
+  const A = N > 0 ? 360 / N : 0 // degrees per segment
 
   const spin = async () => {
-    if (spinning || !canSpin) return
+    if (spinning || !canSpin || N === 0) return
     setSpinning(true); setResult(null)
-    const extraRounds = 5 + Math.random() * 5
-    const randomFinal = Math.random() * 360
-    const totalDeg = extraRounds * 360 + randomFinal
-    currentRotation.current += totalDeg
-    spinAnim.setValue(currentRotation.current - totalDeg)
-    Animated.timing(spinAnim, { toValue: currentRotation.current, duration: 4000, useNativeDriver: true }).start(async () => {
+    const extraRounds = 5 + Math.floor(Math.random() * 4)
+    totalRotation.current += extraRounds * 360 + Math.random() * 360
+    Animated.timing(spinAnim, {
+      toValue: totalRotation.current,
+      duration: 4000,
+      useNativeDriver: true,
+    }).start(async () => {
       try {
         const r = await api.post(`/games/spin/${wheel.id}/play`)
         setResult(r.data)
@@ -244,8 +252,6 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
     })
   }
 
-  const spin_interpolate = spinAnim.interpolate({ inputRange: [currentRotation.current - 360 * 10, currentRotation.current + 360 * 10], outputRange: ['-3600deg', '3600deg'], extrapolate: 'extend' })
-
   return (
     <View style={styles.cardWrapper}>
       <View style={{ padding: 16, paddingBottom: 8 }}>
@@ -255,35 +261,59 @@ function SpinWheelItem({ wheel, onSpin }: { wheel: SpinWheel; onSpin: () => void
         </Text>
       </View>
 
-      {/* Wheel visual */}
       <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-        <View style={{ position: 'relative', width: SIZE, height: SIZE }}>
-          {/* Pointer */}
-          <View style={{ position: 'absolute', top: -10, left: SIZE / 2 - 12, width: 0, height: 0, borderLeftWidth: 12, borderRightWidth: 12, borderBottomWidth: 28, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#f97316', zIndex: 10 }} />
-          <Animated.View style={{ width: SIZE, height: SIZE, borderRadius: SIZE / 2, overflow: 'hidden', transform: [{ rotate: spin_interpolate }] }}>
+        {/* Pointer — sits above wheel, outside overflow:hidden */}
+        <View style={{ width: 0, height: 0, borderLeftWidth: 13, borderRightWidth: 13, borderBottomWidth: 26, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#f97316', marginBottom: -2, zIndex: 10 }} />
+
+        {/* Wheel — overflow:hidden clips segments to circle shape */}
+        <View style={{ width: SIZE, height: SIZE, borderRadius: R, overflow: 'hidden', borderWidth: 3, borderColor: 'rgba(255,255,255,0.12)' }}>
+          <Animated.View style={{ width: SIZE, height: SIZE, transform: [{ rotate: rotateStyle }] }}>
+
             {segs.map((seg, i) => {
-              const angle = (360 / segs.length)
-              const rotation = angle * i
+              const startDeg = i * A
+              const midDeg = startDeg + A / 2
               return (
-                <View key={seg.id} style={{ position: 'absolute', width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: `${rotation + angle / 2}deg` }] }}>
-                  <View style={{ position: 'absolute', top: 0, left: SIZE / 2 - 2, width: SIZE / 2, height: SIZE, backgroundColor: seg.color, transformOrigin: 'left center', transform: [{ rotate: `${angle / 2}deg` }, { skewY: `${90 - angle / 2}deg` }] }} />
-                  <Text numberOfLines={1} style={{ position: 'absolute', right: 16, color: '#fff', fontWeight: '700', fontSize: Math.max(8, Math.min(12, 140 / segs.length)), transform: [{ rotate: `${rotation + angle / 2}deg` }] }}>
-                    {seg.label}
-                  </Text>
+                <View key={seg.id} style={{ position: 'absolute', width: SIZE, height: SIZE }}>
+
+                  {/* Pie slice — overflow:hidden right-half clip technique:
+                      Rotate container to segment start, then clip to right half,
+                      then rotate inner colored circle by (A-180)° around its own
+                      center (which aligns with the wheel center). Result: a perfect
+                      wedge of exactly A degrees. Works for any N >= 3 segments. */}
+                  <View style={{ position: 'absolute', width: SIZE, height: SIZE, transform: [{ rotate: `${startDeg}deg` }] }}>
+                    <View style={{ overflow: 'hidden', position: 'absolute', width: R, height: SIZE, left: R, top: 0 }}>
+                      <View style={{
+                        position: 'absolute', width: SIZE, height: SIZE,
+                        borderRadius: R, backgroundColor: seg.color,
+                        left: -R, top: 0,
+                        transform: [{ rotate: `${A - 180}deg` }],
+                      }} />
+                    </View>
+                  </View>
+
+                  {/* Label — pivot at wheel center, offset outward along segment midline */}
+                  <View style={{ position: 'absolute', top: R, left: R, width: 0, height: 0, transform: [{ rotate: `${midDeg}deg` }] }}>
+                    <View style={{ position: 'absolute', left: -28, top: -(R * 0.63), width: 56, alignItems: 'center' }}>
+                      <Text numberOfLines={1} style={{ color: '#fff', fontWeight: '700', fontSize: Math.max(8, Math.min(11, 120 / N)), textAlign: 'center' }}>
+                        {seg.label}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               )
             })}
+
+            {/* Center dot */}
+            <View style={{ position: 'absolute', top: R - 14, left: R - 14, width: 28, height: 28, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#1a3020' }} />
+            </View>
           </Animated.View>
-          {/* Center dot */}
-          <View style={{ position: 'absolute', top: SIZE / 2 - 16, left: SIZE / 2 - 16, width: 32, height: 32, borderRadius: 16, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
-            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#1a3020' }} />
-          </View>
         </View>
 
         <TouchableOpacity onPress={spin} disabled={spinning || !canSpin}
           style={{ marginTop: 20, paddingVertical: 14, paddingHorizontal: 48, borderRadius: 50, backgroundColor: canSpin && !spinning ? '#34d399' : 'rgba(255,255,255,0.1)' }}>
           <Text style={{ fontWeight: '800', fontSize: 16, color: canSpin && !spinning ? '#0f1e14' : 'rgba(255,255,255,0.4)' }}>
-            {spinning ? 'Spinning…' : !canSpin ? `Limit: ${wheel.spins_per_user_per_day}/day` : '🎡 Spin!'}
+            {spinning ? 'Spinning…' : !canSpin ? `Used ${wheel.spins_today}/${wheel.spins_per_user_per_day} today` : '🎡 Spin!'}
           </Text>
         </TouchableOpacity>
       </View>

@@ -134,14 +134,16 @@ exports.claimScratchCard = async (req, res) => {
       return res.status(400).json({ success: false, message: 'This scratch card campaign has ended' })
     }
 
-    // Check per-user lifetime limit
-    const userClaims = await client.query(
-      `SELECT COUNT(*) FROM scratch_card_claims WHERE scratch_card_id=$1 AND user_id=$2`,
-      [cardId, userId]
-    )
-    if (Number(userClaims.rows[0].count) >= card.max_claims_per_user) {
-      await client.query('ROLLBACK')
-      return res.status(400).json({ success: false, message: 'You have already claimed this scratch card' })
+    // Check per-user lifetime limit (0 = unlimited)
+    if (card.max_claims_per_user > 0) {
+      const userClaims = await client.query(
+        `SELECT COUNT(*) FROM scratch_card_claims WHERE scratch_card_id=$1 AND user_id=$2`,
+        [cardId, userId]
+      )
+      if (Number(userClaims.rows[0].count) >= card.max_claims_per_user) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ success: false, message: 'You have already claimed this scratch card' })
+      }
     }
 
     // Check per-user daily limit (0 = no daily limit)
