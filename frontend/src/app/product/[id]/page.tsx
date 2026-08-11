@@ -33,7 +33,7 @@ import {
 
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import { useAuth } from '@/context/auth-context'
 import StarRating from '@/components/StartRatings'
 import Pagination from '@/components/Paginationcom'
@@ -358,10 +358,10 @@ const handlepagechage=(page:number)=>{
  const toggleLike = async (id: string) => {
     try {
       await axios.post('/shop/wishlist', { productId: id })
-      notify.success('Wishlist updated')
+      toast.success('Wishlist updated')
       getwishlist()
     } catch {
-      notify.error('Login required')
+      toast.error('Login required')
     }
   }
 

@@ -52,7 +52,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { useAuth } from '@/context/auth-context'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 
 /* ================= TYPES ================= */
 
@@ -397,7 +397,7 @@ export default function CategoryPage() {
       setTotal(res.data.total || 0)
       setSuggestion(res.data.suggestion || null)
     } catch {
-      notify.error('Failed to load products')
+      toast.error('Failed to load products')
     } finally {
       setLoading(false)
     }
@@ -440,9 +440,9 @@ export default function CategoryPage() {
       setWishLoading(p => ({ ...p, [pid]: true }))
       await axios.post('/shop/wishlist', { productId: pid })
       getwishlist()
-      notify.success(isWishlisted(pid) ? 'Removed from wishlist' : 'Added to wishlist')
+      toast.success(isWishlisted(pid) ? 'Removed from wishlist' : 'Added to wishlist')
     } catch {
-      notify.error('Something went wrong')
+      toast.error('Something went wrong')
     } finally {
       setWishLoading(p => ({ ...p, [pid]: false }))
     }
@@ -484,13 +484,13 @@ export default function CategoryPage() {
     );
 
     fetchCart(loginuserdata?.id);
-    notify.success("Woah..Product is Added to cart!");
+    toast.success("Woah..Product is Added to cart!");
 
   } catch (err: any) {
     if (
       err?.response?.status === 400
     ) {
-      notify.error(
+      toast.error(
         err?.response?.data
           ?.message ||
         "Oops..Unable to add item"
@@ -499,19 +499,19 @@ export default function CategoryPage() {
     } else if (
       err?.response?.status === 404
     ) {
-      notify.error(
+      toast.error(
         "Oops..Product not found"
       );
 
     } else if (
       err?.response?.status === 500
     ) {
-      notify.error(
+      toast.error(
         "Server issue. Try again."
       );
 
     } else {
-      notify.error(
+      toast.error(
         "Oops..Add to cart failed"
       );
     }

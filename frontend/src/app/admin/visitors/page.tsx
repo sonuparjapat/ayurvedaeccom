@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from '@/lib/axios'
 import { io, Socket } from 'socket.io-client'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import {
   Eye, Users, Monitor, Smartphone, Globe, Clock, TrendingUp,
   RefreshCw, Activity, Laptop, Tablet,
@@ -54,7 +54,7 @@ export default function AdminVisitorsPage() {
     try {
       const res = await axios.get('/analytics/visitors', { params: { period } })
       setStats(res.data.data)
-    } catch { notify.error('Failed to load analytics') }
+    } catch { toast.error('Failed to load analytics') }
     finally { setLoading(false) }
   }
 

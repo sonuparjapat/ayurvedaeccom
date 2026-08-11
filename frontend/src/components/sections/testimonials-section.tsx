@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useRef } from 'react'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import { useAuth } from '@/context/auth-context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -251,7 +251,7 @@ export function TestimonialsSection() {
       })
       setReviews(res.data.data || [])
     } catch {
-      notify.error('Unable to load reviews')
+      toast.error('Unable to load reviews')
     } finally {
       setLoading(false)
     }

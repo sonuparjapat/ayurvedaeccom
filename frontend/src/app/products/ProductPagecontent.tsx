@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import axios from '@/lib/axios'
@@ -40,7 +40,7 @@ import {
 
 import { motion, AnimatePresence } from 'framer-motion'
 
-import { notify } from '../utils/notify'
+import toast from 'react-hot-toast'
 import { useAuth } from '@/context/auth-context'
 import { useRouter } from 'next/navigation'
 
@@ -129,7 +129,7 @@ export default function ProductsPageContent() {
       setProducts(res.data.products || [])
       setTotal(res.data.total || 0)
     } catch {
-      notify.error('Unable to load products')
+      toast.error('Unable to load products')
     } finally {
       setLoading(false)
     }
@@ -140,7 +140,7 @@ export default function ProductsPageContent() {
       const res = await axios.get('/shop/categories')
       setCategories(res.data.categories || [])
     } catch {
-      notify.error('Category load failed')
+      toast.error('Category load failed')
     }
   }
 
@@ -176,10 +176,10 @@ export default function ProductsPageContent() {
   const toggleLike = async (id: string) => {
     try {
       await axios.post('/shop/wishlist', { productId: id })
-      notify.success('Wishlist updated')
+      toast.success('Wishlist updated')
       getwishlist()
     } catch {
-      notify.error('Login required')
+      toast.error('Login required')
     }
   }
 
@@ -202,7 +202,7 @@ const addToCart = async (id: string) => {
     const res = await axios.post("/cart", payload);
 
     if (res.status === 200) {
-      notify.success("Added to cart");
+      toast.success("Added to cart");
 
       fetchCart(
         loginuserdata?.id,
@@ -214,7 +214,7 @@ const addToCart = async (id: string) => {
     console.log(err);
 
     if (err?.response?.status === 400) {
-      notify.error(
+      toast.error(
         err?.response?.data?.message ||
         "Ooops..Unable to add item"
       );
@@ -222,17 +222,17 @@ const addToCart = async (id: string) => {
     } else if (
       err?.response?.status === 404
     ) {
-      notify.error("Oops..Product not found");
+      toast.error("Oops..Product not found");
 
     } else if (
       err?.response?.status === 500
     ) {
-      notify.error(
+      toast.error(
         "Server issue.Please Try again."
       );
 
     } else {
-      notify.error(
+      toast.error(
         "OOps..Add to cart failed"
       );
     }

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { Header } from '@/components/layout/header'
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { notify } from '../utils/notify'
+import toast from 'react-hot-toast'
 import {
   User,
   Mail,
@@ -188,7 +188,7 @@ const resetForms = () => {
       !registerForm.phone ||
       !registerForm.password
     ) {
-        notify.error("'All fields are required'")
+        toast.error("'All fields are required'")
       return setErrors({
         general: 'All fields are required'
       })
@@ -196,7 +196,7 @@ const resetForms = () => {
 
 
     if (!isValidEmail(registerForm.email)) {
-       notify.error("Invalid email format")
+       toast.error("Invalid email format")
       return setErrors({
         email: 'Invalid email format'
       })
@@ -204,7 +204,7 @@ const resetForms = () => {
 
 
     if (registerForm.password.length < 6) {
-      notify.error("Minimum 6 characters required")
+      toast.error("Minimum 6 characters required")
       return setErrors({
         password: 'Minimum 6 characters'
       })
@@ -215,7 +215,7 @@ const resetForms = () => {
       registerForm.password !==
       registerForm.confirmPassword
     ) {
-      notify.error("Passwords do not match")
+      toast.error("Passwords do not match")
       return setErrors({
         confirmPassword: 'Passwords do not match'
       })
@@ -238,7 +238,7 @@ const resetForms = () => {
         'Registered Successfully'
       )
 
-      notify.success('Account created ✅')
+      toast.success('Account created ✅')
 setRegisterForm({
   name: '',
   email: '',

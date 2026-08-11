@@ -14,6 +14,7 @@ type ScratchCard = {
   id: number; title: string; description: string
   reward_type: string; reward_value: number
   max_claims_per_user: number; user_claims: number
+  max_claims_per_day: number; user_claims_today: number
   expires_at: string | null
 }
 type Segment = { id: number; label: string; reward_type: string; reward_value: number; color: string; probability_weight: number }
@@ -108,10 +109,12 @@ function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => 
   const [claiming, setClaiming] = useState(false)
   const [result, setResult] = useState<any>(null)
   const alreadyClaimed = card.max_claims_per_user > 0 && card.user_claims >= card.max_claims_per_user
+  const dailyLimitReached = card.max_claims_per_day > 0 && card.user_claims_today >= card.max_claims_per_day
+  const disabled = alreadyClaimed || dailyLimitReached
   const scaleAnim = useRef(new Animated.Value(1)).current
 
   const claim = async () => {
-    if (claiming || alreadyClaimed || result) return
+    if (claiming || disabled || result) return
     Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 0.96, duration: 80, useNativeDriver: true }),
       Animated.timing(scaleAnim, { toValue: 1, duration: 120, useNativeDriver: true }),
@@ -159,13 +162,13 @@ function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => 
               </>
             )
           ) : (
-            <TouchableOpacity onPress={claim} disabled={alreadyClaimed || claiming}
-              style={{ backgroundColor: alreadyClaimed ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.25)', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 32, alignItems: 'center' }}>
+            <TouchableOpacity onPress={claim} disabled={disabled || claiming}
+              style={{ backgroundColor: disabled ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.25)', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 32, alignItems: 'center' }}>
               {claiming ? <ActivityIndicator color="#fff" /> : (
                 <>
-                  <Text style={{ fontSize: 24 }}>{alreadyClaimed ? '✓' : '👆'}</Text>
+                  <Text style={{ fontSize: 24 }}>{disabled ? '✓' : '👆'}</Text>
                   <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14, marginTop: 4 }}>
-                    {alreadyClaimed ? 'Already Claimed' : 'Tap to Scratch!'}
+                    {alreadyClaimed ? 'Limit Reached' : dailyLimitReached ? 'Come Back Tomorrow' : 'Tap to Scratch!'}
                   </Text>
                 </>
               )}
@@ -173,9 +176,16 @@ function ScratchCardItem({ card, onClaim }: { card: ScratchCard; onClaim: () => 
           )}
         </LinearGradient>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 }}>
-          <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>
-            {card.max_claims_per_user > 0 ? `${card.user_claims}/${card.max_claims_per_user} used` : 'Unlimited'}
-          </Text>
+          <View>
+            <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>
+              {card.max_claims_per_user > 0 ? `${card.user_claims}/${card.max_claims_per_user} total` : 'Unlimited'}
+            </Text>
+            {card.max_claims_per_day > 0 && (
+              <Text style={{ color: dailyLimitReached ? '#f87171' : 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 2 }}>
+                {card.user_claims_today}/{card.max_claims_per_day} today
+              </Text>
+            )}
+          </View>
           {card.expires_at && <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>Expires {new Date(card.expires_at).toLocaleDateString('en-IN')}</Text>}
         </View>
       </View>

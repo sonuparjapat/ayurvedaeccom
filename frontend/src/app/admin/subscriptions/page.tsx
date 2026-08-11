@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import {
   RotateCcw, Users, Package, Clock, CheckCircle, XCircle,
   Pause, RefreshCw, Search,
@@ -29,7 +29,7 @@ export default function AdminSubscriptionsPage() {
       const res = await axios.get('/subscriptions/admin', { params })
       setSubs(res.data.data || [])
       setTotal(res.data.total || 0)
-    } catch { notify.error('Failed to load') }
+    } catch { toast.error('Failed to load') }
     finally { setLoading(false) }
   }
 

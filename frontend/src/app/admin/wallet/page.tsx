@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 import {
   Wallet, Plus, Minus, Download, Users, IndianRupee, Award, Search,
   X, ArrowUpRight, ArrowDownLeft, Star, Eye, ChevronLeft, Settings, Save
@@ -26,13 +26,13 @@ function AmountForm({
   }, [])
 
   const submit = async () => {
-    if (!form.user_id || !form.amount) return notify.error('User and amount required')
+    if (!form.user_id || !form.amount) return toast.error('User and amount required')
     try {
       setSaving(true)
       await onSubmit(form)
-      notify.success('Done!')
+      toast.success('Done!')
       onClose(true)
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
     finally { setSaving(false) }
   }
 
@@ -97,7 +97,7 @@ function UserDetailDrawer({ userId, onClose }: { userId: number; onClose: () => 
   useEffect(() => {
     axios.get(`/wallet/admin/user/${userId}`)
       .then(r => setData(r.data))
-      .catch(() => notify.error('Load failed'))
+      .catch(() => toast.error('Load failed'))
       .finally(() => setLoading(false))
   }, [userId])
 
@@ -208,7 +208,7 @@ function LoyaltySettingsPanel() {
         rows.forEach((s: any) => { initial[s.key] = s.value })
         setForm(initial)
       })
-      .catch(() => notify.error('Failed to load settings'))
+      .catch(() => toast.error('Failed to load settings'))
   }, [open])
 
   const save = async () => {
@@ -216,9 +216,9 @@ function LoyaltySettingsPanel() {
       setSaving(true)
       const updates = Object.entries(form).map(([key, value]) => ({ key, value }))
       await axios.put('/wallet/admin/loyalty-settings', { settings: updates })
-      notify.success('Settings saved!')
+      toast.success('Settings saved!')
       setOpen(false)
-    } catch (e: any) { notify.error(e?.response?.data?.message || 'Save failed') }
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Save failed') }
     finally { setSaving(false) }
   }
 
@@ -341,7 +341,7 @@ export default function AdminWalletPage() {
       const r = await axios.get(`/wallet/admin/list?search=${encodeURIComponent(search)}`)
       setUsers(r.data.users || [])
       setStats(r.data.stats || {})
-    } catch { notify.error('Load failed') }
+    } catch { toast.error('Load failed') }
     finally { setLoading(false) }
   }
 

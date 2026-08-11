@@ -23,7 +23,6 @@ import {
   ListChecks,
 } from 'lucide-react'
 
-import { notify } from '@/app/utils/notify'
 import toast from 'react-hot-toast'
 
 import DynamicTable from '@/components/table/table'
@@ -126,7 +125,7 @@ export default function AdminOrdersPage() {
 
     } catch (err: any) {
 
-      notify.error(
+      toast.error(
         err?.response?.data?.message ||
         'Failed to load orders'
       )
@@ -168,12 +167,12 @@ export default function AdminOrdersPage() {
         orderIds: Array.from(selectedIds),
         status: Number(bulkStatus),
       })
-      notify.success(res.data.message || 'Bulk update done')
+      toast.success(res.data.message || 'Bulk update done')
       setSelectedIds(new Set())
       setBulkStatus('')
       load()
     } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Bulk update failed')
+      toast.error(err?.response?.data?.message || 'Bulk update failed')
     } finally {
       setBulkUpdating(false)
     }
@@ -217,7 +216,7 @@ const closeModal = () => {
         { status: Number(editStatus) }
       )
 
-      notify.success('Status updated')
+      toast.success('Status updated')
 
       setOpen(false)
       setCurrent(null)
@@ -227,7 +226,7 @@ const closeModal = () => {
 
     } catch (err: any) {
 
-      notify.error(
+      toast.error(
         err?.response?.data?.message ||
         'Update failed'
       )
@@ -301,9 +300,9 @@ const styles = {
     try {
       const res = await axios.get('/admin/tracking/search', { params: { q: trackingQuery.trim() } })
       setTrackingResults(res.data?.orders || [])
-      if (!res.data?.orders?.length) notify.error('No orders found for that tracking number')
+      if (!res.data?.orders?.length) toast.error('No orders found for that tracking number')
     } catch {
-      notify.error('Search failed')
+      toast.error('Search failed')
     } finally {
       setTrackingSearching(false)
     }
@@ -312,7 +311,7 @@ const styles = {
   const saveTracking = async () => {
 
   if (!current?.courier_name || !current?.tracking_number) {
-    return notify.error('Courier name & tracking number required')
+    return toast.error('Courier name & tracking number required')
   }
 
   try {
@@ -327,7 +326,7 @@ const styles = {
       }
     )
 
-    notify.success('Tracking saved')
+    toast.success('Tracking saved')
 
     setOpen(false)
     setCurrent(null)
@@ -336,7 +335,7 @@ const styles = {
 
   } catch (err: any) {
 
-    notify.error(
+    toast.error(
       err?.response?.data?.message ||
       'Tracking save failed'
     )
@@ -388,7 +387,7 @@ const openModal = async (m: string, order: any) => {
 
 const saveShipment = async () => {
   if (!current?.courier_name || !current?.tracking_number) {
-    return notify.error('Courier name & tracking number required')
+    return toast.error('Courier name & tracking number required')
   }
   setSavingShipment(true)
   try {
@@ -397,14 +396,14 @@ const saveShipment = async () => {
       tracking_number: current.tracking_number,
       expected_delivery_date: current.expected_delivery_date || undefined,
     })
-    notify.success('Shipment updated')
+    toast.success('Shipment updated')
     // Refresh events
     const res = await axios.get(`/admin/orders/${current.id}/shipment-events`)
     setShipmentEvents(res.data?.events || [])
     setShipmentInfo(res.data?.shipment || null)
     load()
   } catch (err: any) {
-    notify.error(err?.response?.data?.message || 'Update failed')
+    toast.error(err?.response?.data?.message || 'Update failed')
   } finally { setSavingShipment(false) }
 }
 
@@ -476,9 +475,9 @@ const generateOTP = async () => {
   try {
     const r = await axios.post(`/admin/orders/${current.id}/delivery-otp`)
     setGeneratedOtp(r.data.otp)
-    notify.success(`OTP generated: ${r.data.otp}`)
+    toast.success(`OTP generated: ${r.data.otp}`)
   } catch (err: any) {
-    notify.error(err?.response?.data?.message || 'Failed to generate OTP')
+    toast.error(err?.response?.data?.message || 'Failed to generate OTP')
   } finally { setOtpLoading(false) }
 }
 
@@ -487,13 +486,13 @@ const verifyOTP = async () => {
   setOtpLoading(true)
   try {
     await axios.post(`/admin/orders/${current.id}/verify-otp`, { otp: otpValue })
-    notify.success('OTP verified — order marked as delivered')
+    toast.success('OTP verified — order marked as delivered')
     setOtpValue('')
     setGeneratedOtp(null)
     closeModal()
     load()
   } catch (err: any) {
-    notify.error(err?.response?.data?.message || 'Invalid OTP')
+    toast.error(err?.response?.data?.message || 'Invalid OTP')
   } finally { setOtpLoading(false) }
 }
 
@@ -530,14 +529,14 @@ const generateInvoice = async () => {
       `/admin/invoices/generate/${current.id}`
     )
 
-    notify.success('Invoice generated')
+    toast.success('Invoice generated')
 
     closeModal()
     load()
 
   } catch (err: any) {
 
-    notify.error(
+    toast.error(
       err?.response?.data?.message ||
       'Invoice generation failed'
     )

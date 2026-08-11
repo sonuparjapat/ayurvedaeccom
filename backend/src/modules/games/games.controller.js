@@ -89,8 +89,9 @@ exports.getActiveScratchCards = async (req, res) => {
     const userId = req.user?.id
     const cards = await pool.query(
       `SELECT sc.id, sc.title, sc.description, sc.reward_type, sc.reward_value, sc.reward_is_percent,
-              sc.expires_at, sc.max_claims_per_user,
-              (SELECT COUNT(*) FROM scratch_card_claims WHERE scratch_card_id=sc.id AND user_id=$1) AS user_claims
+              sc.expires_at, sc.max_claims_per_user, sc.max_claims_per_day,
+              (SELECT COUNT(*) FROM scratch_card_claims WHERE scratch_card_id=sc.id AND user_id=$1) AS user_claims,
+              (SELECT COUNT(*) FROM scratch_card_claims WHERE scratch_card_id=sc.id AND user_id=$1 AND DATE(claimed_at)=CURRENT_DATE) AS user_claims_today
        FROM scratch_cards sc
        WHERE sc.is_active=TRUE
          AND (sc.starts_at IS NULL OR sc.starts_at<=NOW())

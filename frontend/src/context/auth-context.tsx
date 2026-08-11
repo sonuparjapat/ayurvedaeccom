@@ -11,7 +11,7 @@ import {
 } from "react"
 import { usePathname } from 'next/navigation'
 import axios from "@/lib/axios"
-import { notify } from "@/app/utils/notify"
+import toast from "react-hot-toast"
 import { getCategories } from "@/lib/service"
 
 /* ======================
@@ -353,7 +353,7 @@ const fetchCart = async (
       err?.response?.status ===
       500
     ) {
-      notify.error(
+      toast.error(
         "Oops! Unable to load cart"
       );
     }

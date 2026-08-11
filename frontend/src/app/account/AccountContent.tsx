@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -57,7 +57,7 @@ import { useAuth } from '@/context/auth-context'
 import { useOrderSocket } from '@/hooks/useOrderSocket'
 import AppModal from '@/components/modal/AppModal'
 import AyurvedaLoader from '@/components/ui/AyurvedaLoader'
-import { notify } from '../utils/notify'
+import toast from 'react-hot-toast'
 import { addAddress, deleteAccount, deleteAddress, exportData, getAddresses, getSettings, setDefaultAddress, updateAddress, updateProfile, updateSettings } from '@/lib/accountapi'
 import { formatDate } from '../utils/formatDate'
 
@@ -510,11 +510,11 @@ export default function AccountContent() {
     const file = e.target.files?.[0]
     if (!file) return
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      notify.error('Only JPG, PNG, or WEBP images allowed')
+      toast.error('Only JPG, PNG, or WEBP images allowed')
       return
     }
     if (file.size > 5 * 1024 * 1024) {
-      notify.error('Image must be under 5MB')
+      toast.error('Image must be under 5MB')
       return
     }
     setAvatarFile(file)
@@ -698,7 +698,7 @@ useEffect(() => {
       await updateProfile(editForm)
     }
 
-    notify.success("Profile updated");
+    toast.success("Profile updated");
 
     setIsEditing(false);
     setProfileSuccess(true);
@@ -708,7 +708,7 @@ useEffect(() => {
 
   } catch (err: any) {
 
-    notify.error(
+    toast.error(
       err?.response?.data?.message || "Update failed"
     );
 
@@ -724,10 +724,10 @@ const handleSaveAddress = async (data: any) => {
 
     if (editingAddressId) {
       await updateAddress(editingAddressId, data);
-      notify.success("Updated");
+      toast.success("Updated");
     } else {
       await addAddress(data);
-      notify.success("Added");
+      toast.success("Added");
     }
 
     const res = await getAddresses();
@@ -737,7 +737,7 @@ const handleSaveAddress = async (data: any) => {
     setShowAddressForm(false);
 
   } catch {
-    notify.error("Address failed");
+    toast.error("Address failed");
   }
 };
 
@@ -748,10 +748,10 @@ const handleSaveAddress = async (data: any) => {
 
     setAddresses(p => p.filter(a => a.id !== id));
 
-    notify.success("Deleted");
+    toast.success("Deleted");
 
   } catch {
-    notify.error("Delete failed");
+    toast.error("Delete failed");
   }
 };
 
@@ -764,10 +764,10 @@ const handleSaveAddress = async (data: any) => {
 
     setAddresses(res.data.data);
 
-    notify.success("Updated");
+    toast.success("Updated");
 
   } catch {
-    notify.error("Failed");
+    toast.error("Failed");
   }
 };
 
@@ -900,7 +900,7 @@ const handleSaveAddress = async (data: any) => {
       form.append("oldImages", JSON.stringify(item?.oldImages))
       images.forEach((img: any) => form.append("images", img.file))
       await axios.post(`/shop/reviews/order/${order.id}/product/${productId}`, form)
-      notify.success("Review submitted")
+      toast.success("Review submitted")
     } catch (err) {
       alert("Review failed")
     } finally {
@@ -1853,11 +1853,11 @@ const handleSaveAddress = async (data: any) => {
       new_arrivals: updated.newArrivals,
     });
 
-    notify.success("Saved");
+    toast.success("Saved");
 
   } catch {
 
-    notify.error("Save failed");
+    toast.error("Save failed");
   }
 }}
                                 className={`relative w-11 h-6 rounded-full transition-all duration-300 ${val ? 'bg-emerald-500' : 'bg-gray-200'}`}
@@ -1893,10 +1893,10 @@ const handleSaveAddress = async (data: any) => {
 
       a.click();
 
-      notify.success("Downloaded");
+      toast.success("Downloaded");
 
     } catch {
-      notify.error("Export failed");
+      toast.error("Export failed");
     }
 
   }} className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-all text-left group">
@@ -1974,10 +1974,10 @@ const handleSaveAddress = async (data: any) => {
                   setDeleteLoading(true)
                   try {
                     await deleteAccount()
-                    notify.success('Account deleted')
+                    toast.success('Account deleted')
                     window.location.href = '/'
                   } catch {
-                    notify.error('Delete failed — please try again')
+                    toast.error('Delete failed — please try again')
                     setDeleteLoading(false)
                   }
                 }}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import { Bell, Search, Package, Mail, CheckCircle, Clock, RefreshCw, AlertTriangle, XCircle } from 'lucide-react'
-import { notify } from '@/app/utils/notify'
+import toast from 'react-hot-toast'
 
 export default function AdminStockNotificationsPage() {
 
@@ -21,7 +21,7 @@ export default function AdminStockNotificationsPage() {
       const res = await axios.get('/admin/stock-notifications')
       setList(res.data.notifications || [])
     } catch {
-      notify.error('Failed to load stock notifications')
+      toast.error('Failed to load stock notifications')
     } finally {
       setLoading(false)
     }

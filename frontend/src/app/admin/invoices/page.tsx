@@ -22,7 +22,6 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 
-import { notify } from '@/app/utils/notify'
 import toast from 'react-hot-toast'
 
 import DynamicTable from '@/components/table/table'
@@ -93,7 +92,7 @@ export default function AdminInvoicesPage() {
 
     } catch {
 
-      notify.error('Failed to load invoices')
+      toast.error('Failed to load invoices')
 
     } finally {
 
