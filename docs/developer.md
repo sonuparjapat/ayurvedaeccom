@@ -1575,3 +1575,45 @@ All multi-step writes that previously ran outside a transaction were wrapped in 
 | `analytics.controller.js` | Removed unnecessary `pool.connect()` + `BEGIN`/`COMMIT` from read-only `getOverviewAnalytics` |
 | `wallet.controller.js` — `adminDebitLoyalty` | Added `ROLLBACK` before the early 400 return on insufficient balance |
 | `wallet.controller.js` — `adminSaveLoyaltySettings` | Sequential loop → `Promise.all` over filtered updates |
+
+---
+
+## Calculation Bug-Fix Audit — August 2026 (commit ee1b818)
+
+Eleven financial/calculation bugs found and fixed across order creation, invoicing, gaming, and refund flows.
+
+### Bug 1 & 14 — Zero-amount Razorpay guard (`order.controller.js`)
+**Root cause**: When `finalTotal` is fully covered by wallet/loyalty/gift card, `Math.round(finalTotal * 100)` produces 0 or <100 paise. Razorpay rejects orders below 100 paise (minimum ₹1), crashing checkout.
+**Fix**: Both `createOrder` and `buyNow` now check `paise < 100` before calling `razorpay.orders.create()`. When true, the order is auto-marked `payment_status='paid'` — no Razorpay call needed. `retryPayment` has the same guard.
+
+### Bug 2 & 13 — Invoice discount total (`admin.invoice.controller.js`)
+**Root cause**: Invoice `discountAmount` only summed `coupon_discount` (and fell back to the renamed `discount` field). Wallet, loyalty, and gift card discounts were not included, so invoices showed a lower discount than the customer actually received.
+**Fix**: `discountAmount` now sums all four discount fields: `coupon_discount || discount`, `wallet_discount`, `loyalty_discount`, `gift_card_discount`. The `|| discount` fallback handles orders placed before the field rename (backward compatible).
+
+### Bug 3 — `price_breakup` field rename (`order.controller.js`)
+**Root cause**: `createOrder` stored `discount` in `price_breakup` but the invoice controller looked for `coupon_discount`. Loyalty discount was never recorded in the snapshot.
+**Fix**: Renamed `discount` → `coupon_discount`; added `loyalty_discount: loyaltyDiscountApplied`. Applied to both `createOrder` and `buyNow`.
+
+### Bug 4 — COD email showed pre-discount total (`order.controller.js`)
+**Root cause**: `sendOrderConfirmationEmail` received `total` (the pre-discount subtotal+GST+fees total) instead of `finalTotal` (what was actually charged).
+**Fix**: Changed the `total` argument to `finalTotal`.
+
+### Bug 6 — Refund status hardcoded (`admin.controller.js`)
+**Root cause**: Three Razorpay refund paths all wrote `refund_status='processed'` immediately after calling `razorpay.payments.refund()`. Razorpay often returns `status: 'pending'` initially; the webhook updates it to `'processed'` later. Hardcoding bypassed this lifecycle.
+**Fix**: All three paths now use `refund.status === 'processed' ? 'processed' : 'pending'` from the API response. The webhook handler (F24) already correctly updates the status when the refund completes.
+
+### Bug 7 — Quiz loyalty points wrong table (`quiz.controller.js`)
+**Root cause**: `distributeReward` was inserting earned loyalty points into `loyalty_transactions` table, but the entire rest of the codebase (orders, wallet admin, auto-cancel, etc.) uses the `loyalty_points` table. Points earned via quiz were invisible everywhere else.
+**Fix**: Changed INSERT to `loyalty_points (user_id, points, type, source, description)` with `source='quiz'`.
+
+### Bug 9 — `loyalty_min_redeem_points` never enforced (`order.controller.js`)
+**Root cause**: `loyaltyConfig.loyalty_min_redeem_points` was fetched from settings but never compared against the user's balance before allowing redemption. Users with fewer than the minimum points could still redeem.
+**Fix**: Added `if (pts >= loyaltyConfig.loyalty_min_redeem_points)` guard inside the loyalty redemption block in both `createOrder` and `buyNow`.
+
+### Bug 10 — Gift card exception silently swallowed (`order.controller.js`)
+**Root cause**: If `applyGiftCardToOrder` threw (e.g. race condition where another request used the same gift card first), the error was caught and logged but execution continued. The order had already been INSERTed with `finalTotal` that assumed the gift card discount — giving the customer a free discount without actually deducting the gift card balance.
+**Fix**: Re-throw the error inside the `catch` block, forcing a `ROLLBACK` of the entire transaction.
+
+### Bug 12 — Per-item GST float accumulation (`order.controller.js`)
+**Root cause**: `itemTax = (itemSubtotal * gst) / 100` was accumulated into `totalTax` without per-item rounding. Floating-point drift across many items could produce a total that differs from expected by a few paise.
+**Fix**: Each `itemTax` is rounded to 2 decimal places before accumulation: `Math.round(itemTax * 100) / 100`.

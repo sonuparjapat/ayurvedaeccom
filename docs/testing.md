@@ -1580,3 +1580,44 @@ curl http://localhost:5000/api/admin/analytics/overview \
 2. Upload via Admin → Invoice → Bulk Stock Update.
 3. **Expected**: All 3 valid rows update in a single atomic transaction; 2 failures collected in `failed[]`; response shows `{ updated: 3, failed: 2, total: 5 }`.
 4. A DB error mid-upload should rollback all updates (atomicity).
+
+---
+
+## Calculation Bug-Fix Audit — August 2026
+
+### Bug 1 & 14 — Zero-amount order (fully discounted)
+1. Create an order where wallet + loyalty + gift card together cover the full total (e.g. ₹0 finalTotal).
+2. Place the order with payment method `online`.
+3. **Expected**: No Razorpay call is made; order is placed successfully with `payment_status = 'paid'`; no 400/500 error.
+4. Check DB: `orders.payment_status = 'paid'`, `razorpay_order_id = NULL`.
+
+### Bug 6 — Refund status from Razorpay API
+1. Cancel a paid online order from the admin panel → trigger Razorpay refund.
+2. Check DB: `orders.refund_status` should match what Razorpay returned (`'pending'` or `'processed'`) — NOT always `'processed'`.
+3. Once the Razorpay `refund.processed` webhook fires, check again: `refund_status = 'processed'`.
+
+### Bug 7 — Quiz loyalty points visible in wallet history
+1. Complete a dynamic quiz that awards loyalty points.
+2. Go to **Wallet & Points** → Loyalty Points History (web or mobile).
+3. **Expected**: The quiz reward appears in the transaction list.
+4. Check DB: Row should exist in `loyalty_points` table (NOT `loyalty_transactions`) with `source = 'quiz'`.
+
+### Bug 9 — Loyalty min redeem points enforced
+1. In Admin → Settings → Loyalty, set `loyalty_min_redeem_points = 100`.
+2. As a user with 50 points, attempt to redeem points at checkout.
+3. **Expected**: Loyalty discount is NOT applied even if the user enters an amount; `loyaltyDiscountApplied = 0`.
+
+### Bug 10 — Gift card race condition rolls back
+1. Place two concurrent orders both trying to apply the same single-use gift card.
+2. **Expected**: One order succeeds with the discount applied; the other returns HTTP 400 "Gift card could not be applied" — no order is placed without the actual gift card deduction.
+
+### Bug 12 — Per-item GST accuracy
+1. Place an order with 10 items each having GST 18%, price ₹99.99.
+2. Check `price_breakup.gst` in the DB.
+3. **Expected**: Each itemTax is rounded before accumulation → final GST should be `10 × round(99.99 × 0.18 × 100)/100 = 10 × 18.00 = ₹180.00` (not a float with many decimal places).
+
+### Invoice discount correctness
+1. Place an order using coupon (₹50 off) + wallet (₹30) + loyalty (₹20) + gift card (₹25).
+2. Download the invoice from Admin → Invoices.
+3. **Expected**: Invoice "Discount" line = ₹50 + ₹30 + ₹20 + ₹25 = ₹125 (all discounts summed).
+4. For older orders that used the old `discount` field name, verify the invoice still shows the correct amount (backward-compatible fallback).

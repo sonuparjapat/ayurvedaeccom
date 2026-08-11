@@ -769,3 +769,22 @@ When a customer requests a replacement:
 2. Admin approves using **"Send Replacement"** — the order moves to status 8 (Returned) with `return_type=replacement`.
 3. Once the replacement is shipped, admin clicks **"Dispatch Replacement"**, optionally adds a tracking number.
 4. Customer receives an email notification when the replacement is dispatched.
+
+---
+
+## What's Fixed — August 2026 (Calculation Audit)
+
+### Orders & Payments
+- **Free orders now checkout cleanly** — if your wallet, loyalty points, and gift card together cover the full order amount (₹0 remaining), your order is now placed immediately without going through the Razorpay payment screen. Previously this caused a checkout error.
+- **Order confirmation email** (Cash on Delivery) now shows the correct amount you actually owe — the after-discount total — instead of the full pre-discount price.
+- **Invoices now show the full discount** — all discounts (coupon, wallet, loyalty points, and gift card) are now summed correctly on your PDF invoice. Previously wallet and loyalty discounts were missing from the invoice total.
+
+### Loyalty Points
+- **Points earned from quizzes** now appear correctly in your Loyalty Points history. Previously quiz points were saved to a hidden table and didn't show up in your wallet history.
+- **Loyalty point minimum enforced** — you must now have at least the minimum required points (set by the store, default 50) before you can redeem them at checkout. Previously the minimum setting had no effect.
+
+### Refund Status
+- **Refund status is now accurate** — when your refund is initiated, the status correctly shows "Pending" while Razorpay processes it, and updates to "Processed" when complete. Previously it always showed "Processed" immediately even before the money had moved.
+
+### Gift Cards
+- **Gift card security fix** — in rare cases where a gift card was used at exactly the same time by two devices, only one order would actually get the discount. Previously the other order could accidentally go through with the discount applied but the gift card balance not deducted. This is now fixed — the unsuccessful order will receive an error message instead.
