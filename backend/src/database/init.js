@@ -1376,7 +1376,7 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
 
     // Full-text product search using pg_trgm (extension already created above)
     await client.query(`CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING gin(name gin_trgm_ops)`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_desc_trgm ON products USING gin(short_description gin_trgm_ops)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_desc_trgm ON products USING gin(description gin_trgm_ops)`);
 
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");
