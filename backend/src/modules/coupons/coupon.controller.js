@@ -144,6 +144,7 @@ exports.adminList = async (req, res) => {
     const search = req.query.search || '';
 
     const where = search ? `WHERE UPPER(c.code) LIKE UPPER($3)` : '';
+    const countWhere = search ? `WHERE UPPER(c.code) LIKE UPPER($1)` : '';
     const params = search ? [limit, offset, `%${search}%`] : [limit, offset];
 
     const [rows, count] = await Promise.all([
@@ -155,7 +156,7 @@ exports.adminList = async (req, res) => {
          ORDER BY c.created_at DESC LIMIT $1 OFFSET $2`,
         params
       ),
-      pool.query(`SELECT COUNT(*) FROM coupons c ${where}`, search ? [`%${search}%`] : []),
+      pool.query(`SELECT COUNT(*) FROM coupons c ${countWhere}`, search ? [`%${search}%`] : []),
     ]);
 
     res.json({ success: true, coupons: rows.rows, total: Number(count.rows[0].count), page, limit });

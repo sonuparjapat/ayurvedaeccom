@@ -496,7 +496,7 @@ export default function AnalyticsPage() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-400 uppercase font-bold tracking-wide">Total Orders</p>
-                <p className="font-black text-gray-800 text-lg">{chartData.reduce((s,d)=>s+d.orders,0)}</p>
+                <p className="font-black text-gray-800 text-lg">{chartData.reduce((s,d)=>s+(d.orders||0),0)}</p>
               </div>
             </div>
           )}

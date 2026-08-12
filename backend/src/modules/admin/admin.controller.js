@@ -384,7 +384,7 @@ exports.logout = (req, res) => {
 exports.stats = async (req, res) => {
   try {
     const [revenue, orders, users, products, pending, lowStock] = await Promise.all([
-      pool.query(`SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='success'`),
+      pool.query(`SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE payment_status='paid'`),
       pool.query(`SELECT COUNT(*) FROM orders`),
       pool.query(`SELECT COUNT(*) FROM users`),
       pool.query(`SELECT COUNT(*) FROM products`),
@@ -412,8 +412,8 @@ exports.sparklines = async (req, res) => {
   try {
     const [revRows, orderRows, userRows] = await Promise.all([
       pool.query(`
-        SELECT date_trunc('day', created_at) AS day, COALESCE(SUM(amount),0) AS value
-        FROM payments WHERE status='success' AND created_at >= NOW() - INTERVAL '7 days'
+        SELECT date_trunc('day', created_at) AS day, COALESCE(SUM(total_amount),0) AS value
+        FROM orders WHERE payment_status='paid' AND created_at >= NOW() - INTERVAL '7 days'
         GROUP BY day ORDER BY day
       `),
       pool.query(`
@@ -1405,7 +1405,7 @@ exports.getOrders = async (req, res) => {
 
         COUNT(*) FILTER (WHERE status='0') AS pending,
 
-        COUNT(*) FILTER (WHERE status='4') AS completed
+        COUNT(*) FILTER (WHERE status='5') AS completed
 
       FROM orders
 

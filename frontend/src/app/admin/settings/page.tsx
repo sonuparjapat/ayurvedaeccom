@@ -47,7 +47,7 @@ export default function AdminSettingsPage() {
 
     } catch {
 
-      notify.error('Load failed')
+      toast.error('Load failed')
 
     }
   }
@@ -76,13 +76,13 @@ export default function AdminSettingsPage() {
 
       await axios.delete(`/admin/settings/${id}`)
 
-      notify.success('Deleted')
+      toast.success('Deleted')
 
       load()
 
     } catch {
 
-      notify.error('Delete failed')
+      toast.error('Delete failed')
 
     }
   }
@@ -210,7 +210,7 @@ export default function AdminSettingsPage() {
 
     const err = validate()
 
-    if (err) return notify.error(err)
+    if (err) return toast.error(err)
 
 
     try {
@@ -233,14 +233,14 @@ export default function AdminSettingsPage() {
 
       }
 
-      notify.success('Saved')
+      toast.success('Saved')
 
       load()
       closeModal()
 
     } catch {
 
-      notify.error('Save failed')
+      toast.error('Save failed')
 
     } finally {
 
@@ -310,8 +310,8 @@ export default function AdminSettingsPage() {
 
   const saveDeliverySetting = async (key: DeliveryKey) => {
     const val = deliveryEdits[key] ?? getVal(key)
-    if (!val) return notify.error('Enter a value')
-    if (isNaN(Number(val))) return notify.error('Must be a number')
+    if (!val) return toast.error('Enter a value')
+    if (isNaN(Number(val))) return toast.error('Must be a number')
     setDeliverySaving(true)
     try {
       const existing = list.find((r: any) => r.key === key)
@@ -320,10 +320,10 @@ export default function AdminSettingsPage() {
       } else {
         await axios.post('/admin/settings', { key, value: val, type: 'number', description: '', is_active: true })
       }
-      notify.success('Saved')
+      toast.success('Saved')
       load()
       setDeliveryEdits(prev => { const n = { ...prev }; delete n[key]; return n })
-    } catch { notify.error('Save failed') }
+    } catch { toast.error('Save failed') }
     finally { setDeliverySaving(false) }
   }
 

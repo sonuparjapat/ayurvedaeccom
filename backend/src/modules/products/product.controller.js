@@ -948,8 +948,12 @@ exports.getProductReviews = async (req, res) => {
     let params = [isBulk ? req.body.productId : productId];
 
     if (onlyMe) {
-      whereClause += " AND r.user_id = $2";
+      whereClause += ` AND r.user_id = $${params.length + 1}`;
       params.push(userId);
+      if (req.query.order_id) {
+        whereClause += ` AND r.order_id = $${params.length + 1}`;
+        params.push(Number(req.query.order_id));
+      }
     }
 
     /* ================= COUNT ================= */
@@ -1134,11 +1138,11 @@ exports.addToCart = async (req, res) => {
     const { productId, quantity } = req.body
 
     await pool.query(`
-      INSERT INTO cart (id,user_id,product_id,quantity)
-      VALUES($1,$2,$3,$4)
+      INSERT INTO cart (user_id,product_id,quantity)
+      VALUES($1,$2,$3)
       ON CONFLICT(user_id,product_id)
-      DO UPDATE SET quantity = cart.quantity + $4
-    `, [uuid(), userId, productId, quantity || 1])
+      DO UPDATE SET quantity = cart.quantity + $3
+    `, [userId, productId, quantity || 1])
 
     res.json({ success: true })
   } catch (err) {
@@ -1559,18 +1563,13 @@ exports.flagReview = async (req, res) => {
       )
     `)
 
-    const existing = await pool.query(
-      'SELECT id FROM review_flags WHERE review_id=$1 AND user_id=$2',
-      [reviewId, userId]
-    )
-    if (existing.rows.length > 0) {
-      return res.json({ success: true, already_flagged: true, message: 'Already reported' })
-    }
-
-    await pool.query(
-      'INSERT INTO review_flags (review_id, user_id, reason) VALUES ($1, $2, $3)',
+    const result = await pool.query(
+      'INSERT INTO review_flags (review_id, user_id, reason) VALUES ($1, $2, $3) ON CONFLICT (review_id, user_id) DO NOTHING RETURNING id',
       [reviewId, userId, reason || null]
     )
+    if (result.rows.length === 0) {
+      return res.json({ success: true, already_flagged: true, message: 'Already reported' })
+    }
     res.json({ success: true, message: 'Review reported. Our team will review it.' })
   } catch (err) {
     console.error('[flagReview]', err.message)
@@ -1612,9 +1611,9 @@ exports.getSharedWishlist = async (req, res) => {
     if (!sw.rows.length) return res.status(404).json({ success: false, message: 'Wishlist not found or link expired' })
     const { user_id, owner_name } = sw.rows[0]
     const items = await pool.query(
-      `SELECT p.id, p.name, p.slug, p.images, p.price, p.mrp, p.inventory
+      `SELECT p.id, p.name, p.slug, p.images, p.price, p.compareprice, p.inventory
        FROM wishlist w JOIN products p ON p.id = w.product_id
-       WHERE w.user_id = $1 AND p.is_active = TRUE
+       WHERE w.user_id = $1 AND p.status = 'active'
        ORDER BY w.created_at DESC`,
       [user_id]
     )

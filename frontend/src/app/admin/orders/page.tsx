@@ -1191,7 +1191,7 @@ const generateInvoice = async () => {
           ) : (
             /* No refund yet — show "Process Refund" for cancelled paid online orders */
             current.status === 6 && current.payment_method !== 'cod' &&
-            ['paid', 'refunded'].includes(current.payment_status) && (
+            ['paid'].includes(current.payment_status) && (
               <button onClick={processRefund} disabled={refunding}
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
                 {refunding ? 'Processing…' : '↩ Process Refund'}

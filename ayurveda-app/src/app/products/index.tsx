@@ -193,6 +193,7 @@ export default function ProductsScreen() {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    if (searchInput === search) return
     if (searchTimer.current) clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(() => { setSearch(searchInput); setPage(1) }, 400)
   }, [searchInput])

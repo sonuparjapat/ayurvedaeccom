@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import * as Linking from 'expo-linking'
+import RazorpayCheckout from 'react-native-razorpay'
 import api from '../../api/axios'
 import { Image as ExpoImage } from 'expo-image'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
@@ -492,7 +493,7 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
   const loadExistingReviews = async () => {
     try {
       const results = await Promise.allSettled(
-        orderItems.map(item => api.get(`/shop/reviews/product/${item.product_id}`, { params: { me: 1 } }))
+        orderItems.map(item => api.get(`/shop/reviews/product/${item.product_id}`, { params: { me: 1, order_id: id } }))
       )
       setItems(prev => prev.map((it, idx) => {
         const r = results[idx]
@@ -851,27 +852,32 @@ export default function OrderDetailScreen() {
     setActionLoading(true)
     try {
       const res = await api.post(`/orders/${id}/retry-payment`)
-      const payUrl = res.data?.payment_url || res.data?.short_url
-      if (payUrl) {
-        const result = await WebBrowser.openAuthSessionAsync(payUrl, 'oroganix://')
-        if (result.type === 'success' && result.url) {
-          const params = new URL(result.url).searchParams
-          if (params.get('razorpay_payment_id')) {
-            await api.post('/orders/verify', {
-              orderId: order.id,
-              razorpay_order_id: params.get('razorpay_order_id'),
-              razorpay_payment_id: params.get('razorpay_payment_id'),
-              razorpay_signature: params.get('razorpay_signature'),
-            })
-            toast.success('Payment verified successfully.')
-            fetchOrder()
-          }
-        }
-      } else {
-        toast.error('Could not get payment link')
-      }
+      if (!res.data?.success) throw new Error(res.data?.message || 'Retry failed')
+      const { razorpayOrderId, amount, currency, razorpayKey } = res.data
+      const paymentData = await RazorpayCheckout.open({
+        description: 'Oroganix Order Payment',
+        currency: currency || 'INR',
+        key: razorpayKey,
+        amount,
+        name: 'Oroganix',
+        order_id: razorpayOrderId,
+        prefill: { email: user?.email || '', contact: user?.phone || '', name: user?.name || '' },
+        theme: { color: '#1a4228' },
+      })
+      await api.post('/orders/verify', {
+        orderId: order.id,
+        razorpay_order_id: paymentData.razorpay_order_id,
+        razorpay_payment_id: paymentData.razorpay_payment_id,
+        razorpay_signature: paymentData.razorpay_signature,
+      })
+      toast.success('Payment successful!')
+      fetchOrder()
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Payment retry failed')
+      if ((e as any)?.code === 2) {
+        toast.info('Payment cancelled')
+      } else {
+        toast.error(e?.response?.data?.message || (e as any)?.description || 'Payment failed')
+      }
     } finally { setActionLoading(false) }
   }
 

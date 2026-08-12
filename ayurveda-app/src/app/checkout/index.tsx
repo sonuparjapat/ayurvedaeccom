@@ -196,6 +196,7 @@ export default function CheckoutScreen() {
   // Track pending unpaid order so retry reuses it instead of creating a new one
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null)
   const [savedRzpKey, setSavedRzpKey] = useState<string>('')
+  const [savedInvoiceNo, setSavedInvoiceNo] = useState<string>('')
   // Coupon state — pre-filled from home OfferBanner "Apply" button
   const [couponInput, setCouponInput] = useState(params.couponCode || '')
   const [couponApplying, setCouponApplying] = useState(false)
@@ -210,6 +211,7 @@ export default function CheckoutScreen() {
   const [loyaltyApplied, setLoyaltyApplied] = useState(false)
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)
   const [loyaltyRedeemRate, setLoyaltyRedeemRate] = useState(0.1)
+  const [loyaltyMaxRedeemPct, setLoyaltyMaxRedeemPct] = useState(20)
   // Inline add address form
   const [showAddrForm, setShowAddrForm] = useState(false)
   const [newAddr, setNewAddr] = useState({ street: '', city: '', state: '', pincode: '', type: 'home', email: '' })
@@ -246,6 +248,8 @@ export default function CheckoutScreen() {
         setSettings(Object.entries(d).map(([key, value]) => ({ key, value: String(value), type: 'number' })) as any)
         const rate = Number(settingRes.value.data?.settings?.loyalty_redeem_rate)
         if (rate > 0) setLoyaltyRedeemRate(rate)
+        const maxPct = Number(settingRes.value.data?.settings?.loyalty_max_redeem_percent)
+        if (maxPct > 0) setLoyaltyMaxRedeemPct(maxPct)
       }
     } catch { } finally { setLoadingInit(false) }
   }
@@ -361,15 +365,19 @@ export default function CheckoutScreen() {
           name: user?.name || '',
           phone: user?.phone || '',
           address: `${selectedAddr.street}, ${selectedAddr.city}, ${selectedAddr.state} - ${selectedAddr.pincode}`,
+          price_breakup: { subtotal, gst: tax, delivery, platform_fee: platformFee },
         }
+        const baseAfterCoupon = subtotal + tax + delivery + platformFee - (appliedCoupon?.discount || 0)
+        const effectiveWallet = Math.min(walletDiscount, Math.max(0, baseAfterCoupon))
+        const effectiveLoyalty = Math.min(loyaltyDiscount, Math.max(0, baseAfterCoupon - effectiveWallet))
         const orderPayload: any = {
           shipping, addressId: selectedAddr.id,
           paymentMethod: payMethod,
           pricing: { subtotal, tax, delivery, platformFee, total },
           couponCode: appliedCoupon?.code || undefined,
-          walletDiscount: walletDiscount > 0 ? walletDiscount : undefined,
-          loyaltyDiscount: loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
-          loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount / loyaltyRedeemRate) : undefined,
+          walletDiscount: effectiveWallet > 0 ? effectiveWallet : undefined,
+          loyaltyDiscount: effectiveLoyalty > 0 ? effectiveLoyalty : undefined,
+          loyaltyPointsUsed: effectiveLoyalty > 0 ? Math.ceil(effectiveLoyalty / loyaltyRedeemRate) : undefined,
         }
         if (isBuyNow && buyNowItem) {
           orderPayload.productId = buyNowItem.productId
@@ -394,8 +402,9 @@ export default function CheckoutScreen() {
           return
         }
 
-        // Save key and order ID in case payment fails and user retries
+        // Save key, invoice, and order ID in case payment fails and user retries
         setSavedRzpKey(rzpKey)
+        setSavedInvoiceNo(invoiceNo)
         setPendingOrderId(orderId)
       }
 
@@ -404,7 +413,7 @@ export default function CheckoutScreen() {
         setProcessing(false)
         hapticNotify(Haptics.NotificationFeedbackType.Success)
         setPaidAmount(total)
-        setOrderNo(invoiceNo || `ORD-${orderId!}`)
+        setOrderNo(invoiceNo || savedInvoiceNo || `ORD-${orderId!}`)
         setSuccessOrderId(orderId!)
         setStep(3)
         setCartData({ items: [], subtotal: 0, totalItems: 0 })
@@ -439,9 +448,10 @@ export default function CheckoutScreen() {
         })
         hapticNotify(Haptics.NotificationFeedbackType.Success)
         setPendingOrderId(null)
+        setSavedInvoiceNo('')
         setCartData({ items: [], subtotal: 0, totalItems: 0 })
         setPaidAmount(total)
-        setOrderNo(invoiceNo || `ORD-${orderId}`)
+        setOrderNo(invoiceNo || savedInvoiceNo || `ORD-${orderId}`)
         setSuccessOrderId(orderId)
         setStep(3)
       } catch (e: any) {
@@ -456,6 +466,7 @@ export default function CheckoutScreen() {
             setWalletApplied(false); setWalletDiscount(0)
             setLoyaltyApplied(false); setLoyaltyDiscount(0)
             setPendingOrderId(null)
+            setSavedInvoiceNo('')
             toast.info('Payment cancelled — wallet & points restored.')
           } catch {
             // Cancel failed — warn user but keep pendingOrderId for retry
@@ -801,7 +812,7 @@ export default function CheckoutScreen() {
                     <TouchableOpacity
                       onPress={() => {
                         if (loyaltyApplied) { setLoyaltyApplied(false); setLoyaltyDiscount(0) }
-                        else { const max = loyaltyBalance * loyaltyRedeemRate; const use = Math.min(max, total); setLoyaltyDiscount(+use.toFixed(2)); setLoyaltyApplied(true) }
+                        else { const maxByPoints = loyaltyBalance * loyaltyRedeemRate; const maxByPct = total * (loyaltyMaxRedeemPct / 100); const use = Math.min(maxByPoints, maxByPct, total); setLoyaltyDiscount(+use.toFixed(2)); setLoyaltyApplied(true) }
                       }}
                       style={{ backgroundColor: loyaltyApplied ? '#fee2e2' : '#d97706', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 }}
                     >

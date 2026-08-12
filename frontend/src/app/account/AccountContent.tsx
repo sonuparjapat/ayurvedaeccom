@@ -225,7 +225,7 @@ useEffect(() => {
         <div onClick={() =>
   setForm(prev => ({
     ...prev,
-    is_default: true,
+    is_default: !prev.is_default,
   }))
 } className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${form.is_default ? 'bg-emerald-600 border-emerald-600' : 'border-gray-300'}`}>
           {form.is_default && <CheckCircle size={12} className="text-white"  />}

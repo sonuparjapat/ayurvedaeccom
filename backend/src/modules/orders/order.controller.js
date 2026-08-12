@@ -477,7 +477,7 @@ if (addr.pincode) {
   )
   VALUES
   ($1,$2,$3,$4,$5,$6,$7,NOW() + INTERVAL '15 minutes',$8,$9,$10,$11)
-  RETURNING id
+  RETURNING id, invoice_no
 `, [
   userId,
   finalTotal,
@@ -520,6 +520,7 @@ if (addr.pincode) {
 ]);
 
     const orderId = orderRes.rows[0].id;
+    const invoiceNo = orderRes.rows[0].invoice_no;
 
     /* ================= APPLY GIFT CARD ================= */
     if (giftCardCode && requestedGiftCardDiscount && Number(requestedGiftCardDiscount) > 0) {
@@ -866,6 +867,7 @@ if (addr.pincode) {
       success: true,
 
       orderId,
+      invoice_no: invoiceNo,
 
       amount: finalTotal,
 
@@ -975,6 +977,10 @@ exports.verifyPayment = async (req, res) => {
 
     if (!orderData.razorpay_order_id) {
       throw new Error("Invalid order");
+    }
+
+    if (orderData.razorpay_order_id !== razorpay_order_id) {
+      throw new Error("Payment order ID mismatch");
     }
 
     /* ================= CHECK EXPIRY ================= */
@@ -1127,6 +1133,16 @@ exports.getOrderById = async (req, res) => {
         o.refund_amount,
         o.refund_status,
         o.tracking_token,
+        o.coupon_code,
+        o.discount_amount,
+        o.tracking_url,
+        o.expected_delivery_date,
+        o.out_for_delivery_at,
+        o.delivery_attempts,
+        o.rto_initiated_at,
+        o.wallet_discount,
+        o.gift_card_code,
+        o.gift_card_discount,
 
         i.id           AS invoice_id,
         i.invoice_no   AS invoice_number,
@@ -1135,17 +1151,19 @@ exports.getOrderById = async (req, res) => {
 
         json_agg(
           json_build_object(
-            'product_id', p.id,
-            'name',       p.name,
-            'quantity',   oi.quantity,
-            'price',      oi.price,
-            'image',      p.images->>0
+            'product_id',   p.id,
+            'name',         p.name,
+            'quantity',     oi.quantity,
+            'price',        oi.price,
+            'image',        p.images->>0,
+            'variant_label', COALESCE(pv.label, oi.variant_label, NULL)
           )
         ) AS items
 
       FROM orders o
       JOIN order_items oi ON oi.order_id = o.id
       JOIN products p     ON p.id = oi.product_id
+      LEFT JOIN product_variants pv ON pv.id = oi.variant_id
       LEFT JOIN invoices i ON i.order_id = o.id
 
       WHERE o.id = $1 AND o.user_id = $2
@@ -2377,7 +2395,7 @@ exports.buyNow = async (req, res) => {
         (user_id,total_amount,payment_method,shipping_address,address_id,status,payment_status,
          expires_at,coupon_code,discount_amount,wallet_discount,expected_delivery_date)
       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW()+INTERVAL '15 minutes',$8,$9,$10,$11)
-      RETURNING id
+      RETURNING id, invoice_no
     `, [
       userId, finalTotal, paymentMethod,
       JSON.stringify({
@@ -2397,6 +2415,7 @@ exports.buyNow = async (req, res) => {
     ]);
 
     const orderId = orderRes.rows[0].id;
+    const buyNowInvoiceNo = orderRes.rows[0].invoice_no;
 
     if (walletDiscountApplied > 0) {
       await client.query(`UPDATE users SET wallet_balance=wallet_balance-$1 WHERE id=$2`, [walletDiscountApplied, userId]);
@@ -2509,7 +2528,7 @@ exports.buyNow = async (req, res) => {
     }
 
     res.json({
-      success: true, orderId, amount: finalTotal,
+      success: true, orderId, invoice_no: buyNowInvoiceNo, amount: finalTotal,
       breakup: { subtotal, gst: totalTax, delivery, platformFee: PLATFORM, grandTotal: finalTotal },
       razorpay: razorpayOrder, razorpayKey: razorpayOrder ? process.env.RAZORPAY_KEY : undefined,
     });

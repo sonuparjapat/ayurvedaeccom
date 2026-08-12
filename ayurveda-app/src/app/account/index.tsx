@@ -440,7 +440,7 @@ export default function AccountScreen() {
     try {
       await api.post('/users/address', addrForm)
       setShowAddAddr(false)
-      setAddrForm({ street: '', city: '', state: '', pincode: '', type: 'Home', email: '' })
+      setAddrForm(prev => ({ street: '', city: '', state: '', pincode: '', type: 'Home', email: prev.email }))
       fetchAddresses()
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to save address')

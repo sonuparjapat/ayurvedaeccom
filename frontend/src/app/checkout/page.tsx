@@ -633,17 +633,21 @@ if (!validateShipping()) return;
 
     /* ================= CREATE ORDER ================= */
 
+    const baseAfterCoupon = subtotal + tax + delivery + platformFee - (appliedCoupon?.discount || 0)
+    const effectiveWalletDiscount = Math.min(walletDiscount, Math.max(0, baseAfterCoupon))
+    const effectiveLoyaltyDiscount = Math.min(loyaltyDiscount, Math.max(0, baseAfterCoupon - effectiveWalletDiscount))
+
     const orderPayload: any = {
       shipping,
       addressId: selectedAddressId,
       paymentMethod,
       couponCode: appliedCoupon?.code || undefined,
-      walletDiscount: walletDiscount > 0 ? walletDiscount : undefined,
-      loyaltyDiscount: loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
-      loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount * 10) : undefined,
+      walletDiscount: effectiveWalletDiscount > 0 ? effectiveWalletDiscount : undefined,
+      loyaltyDiscount: effectiveLoyaltyDiscount > 0 ? effectiveLoyaltyDiscount : undefined,
+      loyaltyPointsUsed: effectiveLoyaltyDiscount > 0 ? Math.ceil(effectiveLoyaltyDiscount / (chargesMap.loyalty_redeem_rate || 0.1)) : undefined,
       giftCardCode: appliedGiftCard?.code || undefined,
-      giftCardDiscount: giftCardDiscount > 0 ? giftCardDiscount : undefined,
-      pricing: { subtotal, tax, delivery, platformFee, discount, giftCardDiscount, total }
+      giftCardDiscount: (appliedGiftCard?.discount || 0) > 0 ? (appliedGiftCard?.discount || 0) : undefined,
+      pricing: { subtotal, tax, delivery, platformFee, discount, giftCardDiscount: appliedGiftCard?.discount || 0, total }
     };
 
     if (isBuyNow && buyNowItem) {
@@ -660,13 +664,14 @@ if (!validateShipping()) return;
     }
 
     const orderId = res.data.orderId;
+    const invoiceNo = res.data.invoice_no || '';
 
     /* ================= COD FLOW ================= */
 
     if (paymentMethod === "cod") {
       toast.success("Order placed successfully");
       setPaidAmount(total);
-      setOrderNo("ORD" + orderId);
+      setOrderNo(invoiceNo || "ORD" + orderId);
       setOrderPlaced(true);
       if (isBuyNow) sessionStorage.removeItem('buyNowItem');
       fetchCart(loginuserdata?.id)
@@ -724,7 +729,7 @@ if (!validateShipping()) return;
 
             toast.success("Payment successful");
 
-            setOrderNo("ORD" + orderId);
+            setOrderNo(invoiceNo || "ORD" + orderId);
             setPaidAmount(total);
             setOrderPlaced(true);
             if (isBuyNow) sessionStorage.removeItem('buyNowItem');
@@ -1528,8 +1533,9 @@ if (checkingAddress) {
                               </button>
                             ) : (
                               <button onClick={() => {
-                                const maxDiscount = loyaltyBalance * (chargesMap.loyalty_redeem_rate || 0.1)
-                                const use = Math.min(maxDiscount, total)
+                                const maxByPoints = loyaltyBalance * (chargesMap.loyalty_redeem_rate || 0.1)
+                                const maxByPct = total * ((chargesMap.loyalty_max_redeem_percent || 20) / 100)
+                                const use = Math.min(maxByPoints, maxByPct, total)
                                 setLoyaltyDiscount(+use.toFixed(2))
                                 setLoyaltyApplied(true)
                               }}
@@ -1799,7 +1805,7 @@ if (checkingAddress) {
 
 export default function CheckoutPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
       <CheckoutInner />
     </Suspense>
   )
