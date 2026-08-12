@@ -25,6 +25,13 @@ module.exports = async function expireUnpaidOrders() {
     for (const row of expired.rows) {
       const orderId = row.id
 
+      // Fetch order meta for wallet/loyalty restoration
+      const orderMeta = await client.query(
+        `SELECT user_id, wallet_discount FROM orders WHERE id=$1`,
+        [orderId]
+      )
+      const { user_id: userId, wallet_discount: walletDiscount } = orderMeta.rows[0] || {}
+
       // Restore inventory
       const items = await client.query(
         `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id=$1`,
@@ -43,6 +50,49 @@ module.exports = async function expireUnpaidOrders() {
           )
         }
       }
+
+      // Restore wallet credit that was deducted at order creation
+      const walletUsed = Number(walletDiscount || 0)
+      if (walletUsed > 0 && userId) {
+        await client.query(
+          `UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id=$2`,
+          [walletUsed, userId]
+        )
+        await client.query(
+          `INSERT INTO wallet_transactions (user_id, amount, type, source, order_id, description)
+           VALUES ($1, $2, 'credit', 'refund', $3, $4)`,
+          [userId, walletUsed, orderId, `Auto-refund: payment timeout on order #${orderId}`]
+        )
+      }
+
+      // Restore loyalty points that were redeemed at order creation
+      if (userId) {
+        const lpRes = await client.query(
+          `SELECT COALESCE(SUM(points), 0) AS pts FROM loyalty_points WHERE order_id=$1 AND type='redeem'`,
+          [orderId]
+        )
+        const loyaltyPts = Number(lpRes.rows[0]?.pts || 0)
+        if (loyaltyPts > 0) {
+          await client.query(
+            `UPDATE users SET loyalty_points_balance = loyalty_points_balance + $1 WHERE id=$2`,
+            [loyaltyPts, userId]
+          )
+          await client.query(
+            `INSERT INTO loyalty_points (user_id, points, type, source, order_id, description)
+             VALUES ($1, $2, 'earn', 'refund', $3, $4)`,
+            [userId, loyaltyPts, orderId, `Auto-restore: payment timeout on order #${orderId}`]
+          )
+        }
+      }
+
+      // Restore coupon usage if a coupon was applied
+      await client.query(
+        `UPDATE coupons SET used_count = GREATEST(0, used_count - 1) WHERE code = (
+           SELECT coupon_code FROM orders WHERE id=$1 AND coupon_code IS NOT NULL
+         )`,
+        [orderId]
+      )
+      await client.query(`DELETE FROM coupon_uses WHERE order_id=$1`, [orderId])
 
       // Cancel order
       await client.query(

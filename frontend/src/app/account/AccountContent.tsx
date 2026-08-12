@@ -57,7 +57,6 @@ import { useAuth } from '@/context/auth-context'
 import { useOrderSocket } from '@/hooks/useOrderSocket'
 import AppModal from '@/components/modal/AppModal'
 import AyurvedaLoader from '@/components/ui/AyurvedaLoader'
-import toast from 'react-hot-toast'
 import { addAddress, deleteAccount, deleteAddress, exportData, getAddresses, getSettings, setDefaultAddress, updateAddress, updateProfile, updateSettings } from '@/lib/accountapi'
 import { formatDate } from '../utils/formatDate'
 
@@ -83,10 +82,17 @@ interface Order {
   | 'shipped'
   | 'delivered'
   | 'cancelled'
+  | 'refunded'
+  | 'return_requested'
+  | 'returned'
   totalAmount: number
   createdAt: string
   estimatedDelivery?: string
   items: OrderItem[]
+  delivered_at?: string
+  return_window_days?: number
+  is_returnable?: boolean
+  cancel_reason?: string
 }
 
 interface Address {
@@ -670,8 +676,8 @@ useEffect(() => {
   useEffect(() => {
     const socket = orderSocketRef.current
     if (!socket) return
-    const handler = ({ order_id, status }: { order_id: number; status: number }) => {
-      setPagedOrders(prev => prev.map(o => o.id === order_id ? { ...o, status } : o))
+    const handler = ({ order_id, status }: { order_id: number; status: string }) => {
+      setPagedOrders(prev => prev.map(o => o.id === order_id ? { ...o, status: status as Order['status'] } : o))
     }
     socket.on('order_status_updated', handler)
     return () => { socket.off('order_status_updated', handler) }
@@ -1673,7 +1679,7 @@ const handleSaveAddress = async (data: any) => {
                                 <button onClick={() => handleSetDefault(addr.id)} className="text-xs text-emerald-600 font-semibold hover:underline">Set Default</button>
                               )}
                               <button onClick={() => { setEditingAddressId(addr.id); setShowAddressForm(false)
-                                 setEditForm(addr)}} className="text-xs text-gray-500 font-semibold hover:text-gray-700 ml-auto flex items-center gap-1">
+                                 setEditForm(addr as any)}} className="text-xs text-gray-500 font-semibold hover:text-gray-700 ml-auto flex items-center gap-1">
                                 <Edit size={12} /> Edit
                               </button>
                               <button onClick={() => handleDeleteAddress(addr.id)} className="text-xs text-red-400 font-semibold hover:text-red-600 flex items-center gap-1">

@@ -193,6 +193,9 @@ export default function CheckoutScreen() {
   const [orderNo, setOrderNo] = useState('')
   const [paidAmount, setPaidAmount] = useState(0)
   const [successOrderId, setSuccessOrderId] = useState(0)
+  // Track pending unpaid order so retry reuses it instead of creating a new one
+  const [pendingOrderId, setPendingOrderId] = useState<number | null>(null)
+  const [savedRzpKey, setSavedRzpKey] = useState<string>('')
   // Coupon state — pre-filled from home OfferBanner "Apply" button
   const [couponInput, setCouponInput] = useState(params.couponCode || '')
   const [couponApplying, setCouponApplying] = useState(false)
@@ -326,58 +329,99 @@ export default function CheckoutScreen() {
 
   const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); setCouponError('') }
 
+  const refreshBalances = async () => {
+    try {
+      const r = await api.get('/wallet')
+      setWalletBalance(Number(r.data?.wallet_balance || 0))
+      setLoyaltyBalance(Number(r.data?.loyalty_points || 0))
+    } catch {}
+  }
+
   const placeOrder = async () => {
     if (!selectedAddr) { toast.warning('Select a delivery address'); return }
     if (processing) return
     setProcessing(true)
-    try {
-      const shipping = {
-        name: user?.name || '',
-        phone: user?.phone || '',
-        address: `${selectedAddr.street}, ${selectedAddr.city}, ${selectedAddr.state} - ${selectedAddr.pincode}`,
-      }
-      const orderPayload: any = {
-        shipping, addressId: selectedAddr.id,
-        paymentMethod: payMethod,
-        pricing: { subtotal, tax, delivery, platformFee, total },
-        couponCode: appliedCoupon?.code || undefined,
-        walletDiscount: walletDiscount > 0 ? walletDiscount : undefined,
-        loyaltyDiscount: loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
-        loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount / loyaltyRedeemRate) : undefined,
-      }
-      if (isBuyNow && buyNowItem) {
-        orderPayload.productId = buyNowItem.productId
-        orderPayload.quantity = buyNowItem.quantity
-        if (buyNowItem.variantId) orderPayload.variantId = buyNowItem.variantId
-      }
-      const endpoint = isBuyNow && buyNowItem ? '/orders/buy-now' : '/orders/create'
-      const res = await api.post(endpoint, orderPayload)
-      if (!res.data?.success) throw new Error(res.data?.message || 'Order failed')
-      const orderId = res.data.orderId
 
-      if (payMethod === 'cod') {
+    try {
+      let orderId: number
+      let rzp: { id: string; amount: number; currency: string } | null = null
+      let rzpKey: string = savedRzpKey
+      let invoiceNo: string = ''
+
+      // ── If a prior unpaid order exists, retry it instead of creating a new one ──
+      if (pendingOrderId) {
+        const retryRes = await api.post(`/orders/${pendingOrderId}/retry-payment`)
+        if (!retryRes.data?.success) throw new Error(retryRes.data?.message || 'Retry failed')
+        orderId = pendingOrderId
+        rzp = { id: retryRes.data.razorpayOrderId, amount: retryRes.data.amount, currency: retryRes.data.currency || 'INR' }
+        rzpKey = retryRes.data.razorpayKey || savedRzpKey
+      } else {
+        // ── Create a fresh order ──
+        const shipping = {
+          name: user?.name || '',
+          phone: user?.phone || '',
+          address: `${selectedAddr.street}, ${selectedAddr.city}, ${selectedAddr.state} - ${selectedAddr.pincode}`,
+        }
+        const orderPayload: any = {
+          shipping, addressId: selectedAddr.id,
+          paymentMethod: payMethod,
+          pricing: { subtotal, tax, delivery, platformFee, total },
+          couponCode: appliedCoupon?.code || undefined,
+          walletDiscount: walletDiscount > 0 ? walletDiscount : undefined,
+          loyaltyDiscount: loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
+          loyaltyPointsUsed: loyaltyDiscount > 0 ? Math.ceil(loyaltyDiscount / loyaltyRedeemRate) : undefined,
+        }
+        if (isBuyNow && buyNowItem) {
+          orderPayload.productId = buyNowItem.productId
+          orderPayload.quantity = buyNowItem.quantity
+          if (buyNowItem.variantId) orderPayload.variantId = buyNowItem.variantId
+        }
+        const endpoint = isBuyNow && buyNowItem ? '/orders/buy-now' : '/orders/create'
+        const res = await api.post(endpoint, orderPayload)
+        if (!res.data?.success) throw new Error(res.data?.message || 'Order failed')
+        orderId = res.data.orderId
+        invoiceNo = res.data.invoice_no || ''
+        rzp = res.data.razorpay || null
+        rzpKey = res.data.razorpayKey || ''
+
+        if (payMethod === 'cod') {
+          hapticNotify(Haptics.NotificationFeedbackType.Success)
+          setPaidAmount(total)
+          setOrderNo(invoiceNo || `ORD-${orderId}`)
+          setSuccessOrderId(orderId)
+          setStep(3)
+          setCartData({ items: [], subtotal: 0, totalItems: 0 })
+          return
+        }
+
+        // Save key and order ID in case payment fails and user retries
+        setSavedRzpKey(rzpKey)
+        setPendingOrderId(orderId)
+      }
+
+      if (!rzp) {
+        // Amount fully covered by wallet/loyalty — mark paid
+        setProcessing(false)
         hapticNotify(Haptics.NotificationFeedbackType.Success)
         setPaidAmount(total)
-        setOrderNo(res.data.invoice_no || `ORD-${orderId}`)
-        setSuccessOrderId(orderId)
+        setOrderNo(invoiceNo || `ORD-${orderId!}`)
+        setSuccessOrderId(orderId!)
         setStep(3)
         setCartData({ items: [], subtotal: 0, totalItems: 0 })
         return
       }
 
-      // Online payment via react-native-razorpay native SDK
-      const rzp = res.data.razorpay
-      const rzpKey = res.data.razorpayKey
       setProcessing(false)
 
+      // ── Open Razorpay SDK ──
       try {
         const paymentData = await RazorpayCheckout.open({
           description: 'Oroganix Order Payment',
-          currency: rzp?.currency || 'INR',
+          currency: rzp.currency || 'INR',
           key: rzpKey,
-          amount: rzp?.amount,
+          amount: rzp.amount,
           name: 'Oroganix',
-          order_id: rzp?.id,
+          order_id: rzp.id,
           prefill: {
             email: user?.email || '',
             contact: user?.phone || '',
@@ -394,18 +438,34 @@ export default function CheckoutScreen() {
           razorpay_signature: paymentData.razorpay_signature,
         })
         hapticNotify(Haptics.NotificationFeedbackType.Success)
+        setPendingOrderId(null)
         setCartData({ items: [], subtotal: 0, totalItems: 0 })
         setPaidAmount(total)
-        setOrderNo(res.data.invoice_no || `ORD-${orderId}`)
+        setOrderNo(invoiceNo || `ORD-${orderId}`)
         setSuccessOrderId(orderId)
         setStep(3)
       } catch (e: any) {
         console.error('[Razorpay]', JSON.stringify(e))
-        // Razorpay error code 2 = user dismissed the payment sheet
+
         if (e?.code === 2) {
-          toast.warning('Payment cancelled. Your order is pending.')
+          // User dismissed the payment sheet — cancel the order to restore wallet & loyalty
+          try {
+            await api.post(`/orders/${orderId}/cancel`, { reason: 'Payment cancelled by user' })
+            await refreshBalances()
+            // Reset applied discounts so user can re-apply on fresh attempt
+            setWalletApplied(false); setWalletDiscount(0)
+            setLoyaltyApplied(false); setLoyaltyDiscount(0)
+            setPendingOrderId(null)
+            toast.info('Payment cancelled — wallet & points restored.')
+          } catch {
+            // Cancel failed — warn user but keep pendingOrderId for retry
+            toast.warning('Payment cancelled. Tap "Pay" to retry.')
+          }
         } else {
-          const msg = e?.description || e?.response?.data?.message || e?.message || 'Payment failed'
+          // Payment failed (not user cancel) — keep pendingOrderId so next tap retries same order
+          const msg = e?.description && e.description !== 'undefined'
+            ? e.description
+            : e?.response?.data?.message || e?.message || 'Payment failed. Tap "Pay" to retry.'
           toast.error(msg)
         }
       } finally {
@@ -413,6 +473,7 @@ export default function CheckoutScreen() {
       }
     } catch (e: any) {
       toast.error(e?.response?.data?.message || e?.message || 'Something went wrong')
+      setPendingOrderId(null)
       setProcessing(false)
     }
   }
@@ -783,7 +844,7 @@ export default function CheckoutScreen() {
                   {processing
                     ? <ActivityIndicator color="#fff" />
                     : <Text style={ss.nextBtnText}>
-                      {payMethod === 'cod' ? '📦  Place Order' : '🔒  Pay ₹' + total.toFixed(0) + ' Securely'}
+                      {payMethod === 'cod' ? '📦  Place Order' : pendingOrderId ? '🔄  Retry Payment' : '🔒  Pay ₹' + total.toFixed(0) + ' Securely'}
                     </Text>
                   }
                 </LinearGradient>

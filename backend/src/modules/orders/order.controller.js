@@ -1894,6 +1894,7 @@ exports.retryPayment = async (req, res) => {
       amount: rzpOrder.amount,
       currency: rzpOrder.currency,
       orderId: order.id,
+      razorpayKey: process.env.RAZORPAY_KEY,
     });
   } catch (err) {
     console.error("[RETRY PAYMENT]", err);
