@@ -96,10 +96,10 @@ const [cessPercent, setCessPercent] = useState<any>(0)
         params: { page, limit, search }
       })
 
-      const data: ApiResponse = res.data.data
+      const data = res.data?.data || { rows: [], total: 0 }
 
-      setCategories(data.rows)
-      setTotal(data.total)
+      setCategories(data.rows || [])
+      setTotal(data.total || 0)
 
     } catch (err) {
 

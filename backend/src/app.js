@@ -106,7 +106,9 @@ app.use(
   })
 );
 
-
+app.get("/server",async(req,res)=>{
+  return res?.status(200)?.json({msg:"Server is fine and running",status:200})
+})
 /* ================= WEBHOOK (raw body — must be before express.json()) ================= */
 // Razorpay sends raw JSON; we need the Buffer to verify the HMAC signature.
 app.post(

@@ -13,6 +13,8 @@ export function useOrderSocket(
   callbacks?: OrderSocketCallbacks,
 ) {
   const socketRef = useRef<Socket | null>(null)
+  const callbacksRef = useRef(callbacks)
+  useEffect(() => { callbacksRef.current = callbacks })
 
   useEffect(() => {
     if (!userId) return
@@ -30,7 +32,7 @@ export function useOrderSocket(
         duration: 6000,
         icon: '📦',
       })
-      callbacks?.onOrderStatusUpdated?.(data)
+      callbacksRef.current?.onOrderStatusUpdated?.(data)
     })
 
     socket.on('ticket_status_updated', (data: { ticket_id: number; status: string }) => {
