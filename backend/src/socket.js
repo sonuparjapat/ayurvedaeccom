@@ -1,5 +1,6 @@
 const { Server } = require('socket.io');
 const os = require('os');
+const jwt = require('jsonwebtoken');
 
 let io = null;
 let connectedCount = 0;
@@ -43,9 +44,17 @@ function initSocket(httpServer) {
 
     // Admin joins admin room for new order alerts
     socket.on('join_admin', () => {
-      socket.join('admin_room');
-      // Send current stats immediately on admin join
-      socket.emit('server_stats', getLiveStats());
+      try {
+        const cookieStr = socket.handshake.headers.cookie || '';
+        const tokenMatch = cookieStr.match(/(?:^|;\s*)token=([^;]+)/);
+        const token = tokenMatch?.[1];
+        const decoded = jwt.verify(token || '', process.env.JWT_SECRET);
+        if (decoded.role !== 1 && decoded.role !== 2) return;
+        socket.join('admin_room');
+        socket.emit('server_stats', getLiveStats());
+      } catch {
+        // Missing or invalid token — ignore silently
+      }
     });
 
     // Support ticket room
