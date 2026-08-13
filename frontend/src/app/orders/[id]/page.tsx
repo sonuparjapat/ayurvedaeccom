@@ -312,7 +312,7 @@ export default function OrderDetailPage() {
   const isCancellable = [0, 1].includes(order.status)
   const isReturnable = order.status === 5 && returnEligibility?.is_eligible === true
   const canRetryPayment = order.payment_method === 'online' && order.payment_status === 'unpaid' && order.status !== 6
-  const addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address
+  const addr = typeof order.shipping_address === 'string' ? (() => { try { return JSON.parse(order.shipping_address) } catch { return order.shipping_address } })() : order.shipping_address
   const isCancelledOrReturned = [6, 7, 8, 9].includes(order.status)
   const currentStep = isCancelledOrReturned ? -1 : Math.min(order.status, 5)
 

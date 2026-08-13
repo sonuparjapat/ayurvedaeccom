@@ -199,10 +199,14 @@ exports.getPublicConfig = async (req, res) => {
 /* ================= DELETE (SOFT) ================= */
 exports.deleteCompany = async (req, res) => {
   try {
-    await pool.query(
+    const result = await pool.query(
       `UPDATE company_settings SET is_active=false WHERE id=$1`,
       [req.params.id]
     );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ success: false, message: "Company not found" });
+    }
 
     res.json({ success: true, message: "Deleted successfully" });
 

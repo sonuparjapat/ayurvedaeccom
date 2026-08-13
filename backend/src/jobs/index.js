@@ -1,36 +1,10 @@
 const cron = require("node-cron");
-const pool=require("../config/db") // adjust path
+const pool = require("../config/db")
 const runAbandonedCartRecovery = require('../services/abandonedCartRecovery')
 const runSubscriptionBilling = require('../services/subscriptionBilling')
 const autoCancelOrders = require('../services/autoCancelOrders')
-
-/* ======================
-   CLEAN UNPAID ORDERS
-====================== */
-
-const cleanOrders = async () => {
-  try {
-    console.log(
-      "Cleaning unpaid orders..."
-    );
-
-    await pool.query(`
-      DELETE FROM orders
-      WHERE payment_status = 'unpaid'
-      AND expires_at < NOW()
-    `);
-
-    console.log(
-      "Expired unpaid orders cleaned"
-    );
-
-  } catch (err) {
-    console.error(
-      "Order cleanup error:",
-      err
-    );
-  }
-};
+// Proper order expiry handler: cancels, refunds wallet/loyalty/coupons — no hard DELETE
+const startOrderCleanup = require('./orderCleanup')
 
 /* ======================
    CLEAN GUEST CART
@@ -80,11 +54,8 @@ const startJobs = () => {
     "🚀 Starting background jobs..."
   );
 
-  /* every 10 min */
-  cron.schedule(
-    "*/10 * * * *",
-    cleanOrders
-  );
+  /* every 10 min — cancel+refund expired unpaid orders (registered by startOrderCleanup) */
+  startOrderCleanup();
 
   /* every 6 hours */
   cron.schedule(

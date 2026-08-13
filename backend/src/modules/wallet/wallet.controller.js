@@ -45,8 +45,10 @@ exports.applyWallet = async (req, res) => {
 /* ─── Admin: list all users' wallet balances ─── */
 exports.adminListWallets = async (req, res) => {
   try {
-    const { search = '', page = 1, limit = 50 } = req.query
-    const offset = (Number(page) - 1) * Number(limit)
+    const { search = '' } = req.query
+    const limitNum = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50))
+    const pageNum = Math.max(1, parseInt(req.query.page) || 1)
+    const offset = (pageNum - 1) * limitNum
 
     let where = `WHERE u.role = 3`
     const vals = []
@@ -67,7 +69,7 @@ exports.adminListWallets = async (req, res) => {
          ) wt ON wt.user_id = u.id
          ${where}
          ORDER BY u.wallet_balance DESC
-         LIMIT ${Number(limit)} OFFSET ${offset}`,
+         LIMIT ${limitNum} OFFSET ${offset}`,
         vals
       ),
       pool.query(

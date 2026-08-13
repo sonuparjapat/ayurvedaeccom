@@ -28,10 +28,11 @@ exports.adminList = async (req, res) => {
     const offset = (page - 1) * limit;
     const search = req.query.search || '';
     const where = search ? `WHERE title ILIKE $3 OR tag ILIKE $3` : '';
+    const countWhere = search ? `WHERE title ILIKE $1 OR tag ILIKE $1` : '';
     const params = search ? [limit, offset, `%${search}%`] : [limit, offset];
     const [rows, count] = await Promise.all([
       pool.query(`SELECT * FROM banners ${where} ORDER BY sort_order ASC, created_at DESC LIMIT $1 OFFSET $2`, params),
-      pool.query(`SELECT COUNT(*) FROM banners ${where}`, search ? [`%${search}%`] : []),
+      pool.query(`SELECT COUNT(*) FROM banners ${countWhere}`, search ? [`%${search}%`] : []),
     ]);
     res.json({ success: true, banners: rows.rows, total: Number(count.rows[0].count), page, limit });
   } catch (err) {
@@ -69,10 +70,11 @@ exports.adminUpdate = async (req, res) => {
     const { id } = req.params;
     const { tag, title, subtitle, bg_color1, bg_color2, cta_text, cta_link, sort_order, is_active } = req.body;
 
-    let image_url = req.body.image_url || null;
+    const existing = await pool.query('SELECT image_url FROM banners WHERE id=$1', [id]);
+    if (!existing.rows.length) return res.status(404).json({ success: false, message: 'Banner not found' });
+    let image_url = req.body.image_url || existing.rows[0].image_url || null;
     if (req.file) {
-      const old = await pool.query('SELECT image_url FROM banners WHERE id=$1', [id]);
-      if (old.rows[0]?.image_url) await deleteFromAWS(old.rows[0].image_url).catch(() => {});
+      if (existing.rows[0].image_url) await deleteFromAWS(existing.rows[0].image_url).catch(() => {});
       image_url = await uploadImageToAWS(req.file, 'banners');
     }
 

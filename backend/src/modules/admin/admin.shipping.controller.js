@@ -348,7 +348,8 @@ exports.webhookReceiver = async (req, res) => {
       if (mapped.code === 'DELIVERY_ATTEMPTED') updates.push(`delivery_attempts=COALESCE(delivery_attempts,0)+1`)
       if (mapped.code === 'RTO') updates.push(`rto_initiated_at=NOW()`)
       if (mapped.code === 'DELIVERED') {
-        updates.push(`delivered_at='${(deliveredAt || new Date()).toISOString()}'`)
+        const safeDeliveredAt = (deliveredAt && !isNaN(deliveredAt.getTime())) ? deliveredAt : new Date()
+        updates.push(`delivered_at='${safeDeliveredAt.toISOString()}'`)
         updates.push(`status=5`)
       }
       if (mapped.order_status && mapped.order_status !== Number(order.status)) {

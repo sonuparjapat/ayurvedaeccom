@@ -5,7 +5,8 @@ import api from '../api/axios'
 
 const PROJECT_ID = 'dcbef284-0025-4bac-a63e-27fcc1e7c0f0'
 
-const isExpoGo = Constants.appOwnership === 'expo'
+// appOwnership is deprecated in SDK 49+; executionEnvironment is the current API
+const isExpoGo = Constants.executionEnvironment === 'storeClient'
 
 // Call once on app boot (before login) so foreground alerts + channel exist immediately.
 export async function setupNotificationHandler() {

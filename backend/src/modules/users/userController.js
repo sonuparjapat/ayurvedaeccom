@@ -326,6 +326,7 @@ exports.updateAddress = async (req, res) => {
 
 
       if (!result.rowCount) {
+        await client.query("ROLLBACK");
         return res.status(404).json({
           success: false,
           message: "Not found",
@@ -438,6 +439,7 @@ exports.setDefaultAddress = async (req, res) => {
 
 
       if (!result.rowCount) {
+        await client.query("ROLLBACK");
         return res.status(404).json({
           success: false,
           message: "Not found",

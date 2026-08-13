@@ -134,8 +134,9 @@ export default function BottomNav({ active }: { active: string }) {
   const activeIndex = NAV_ITEMS.findIndex(n => n.route === active)
 
   // Sliding pill indicator
-  const pillX = useSharedValue(activeIndex * TAB_W + TAB_W / 2 - 20)
+  const pillX = useSharedValue(activeIndex >= 0 ? activeIndex * TAB_W + TAB_W / 2 - 20 : -40)
   useEffect(() => {
+    if (activeIndex < 0) return
     pillX.value = withSpring(activeIndex * TAB_W + TAB_W / 2 - 20, {
       damping: 22, stiffness: 240,
     })

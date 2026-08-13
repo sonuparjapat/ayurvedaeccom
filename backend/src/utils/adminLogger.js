@@ -1,7 +1,5 @@
 const pool = require('../config/db')
 
-require('../config/db')
-
 exports.addAdminLog =
 async ({
   adminId = null,

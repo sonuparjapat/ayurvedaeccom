@@ -133,7 +133,7 @@ exports.adminCreateBundle = async (req, res) => {
     // Upload image if provided
     let image_url = null
     if (req.file) {
-      image_url = await uploadImageToAWS(req.file)
+      image_url = await uploadImageToAWS(req.file, 'bundles')
       uploadedImage = image_url
     }
 
@@ -194,16 +194,16 @@ exports.adminUpdateBundle = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Bundle not found' })
     }
 
-    let image_url = existing.rows[0].image_url
+    const oldImageUrl = existing.rows[0].image_url
+    let image_url = oldImageUrl
 
-    // Handle image upload
+    // Handle image upload — file wins over remove_image to avoid deleting the new upload
     if (req.file) {
-      if (image_url) await deleteFromAWS(image_url)
-      image_url = await uploadImageToAWS(req.file)
+      image_url = await uploadImageToAWS(req.file, 'bundles')
       uploadedImage = image_url
-    }
-    if (remove_image === 'true') {
-      if (image_url) await deleteFromAWS(image_url)
+      if (oldImageUrl) await deleteFromAWS(oldImageUrl).catch(err => console.error('[Bundles] S3 delete failed:', err.message))
+    } else if (remove_image === 'true') {
+      if (image_url) await deleteFromAWS(image_url).catch(err => console.error('[Bundles] S3 delete failed:', err.message))
       image_url = null
     }
 

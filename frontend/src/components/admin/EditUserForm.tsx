@@ -26,7 +26,7 @@ export default function EditUserForm({ user }: Props) {
 
     e.preventDefault()
 
-    await api.put(`/api/auth/user/${user.id}`, form)
+    await api.put(`/auth/user/${user.id}`, form)
 
     alert("Updated Successfully")
   }

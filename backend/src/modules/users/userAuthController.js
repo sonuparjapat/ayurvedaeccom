@@ -175,23 +175,18 @@ exports.userRegister = async (req, res) => {
     const verifyLink =
       `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
-    /* ================= SEND MAIL ================= */
+    await client.query("COMMIT");
 
-  await mailer.sendTransacEmail({
-  sender: {
-    email: process.env.MAIL_FROM,
-    name: process.env.APP_NAME
-  },
-
-  to: [
-    {
-      email: cleanEmail
-    }
-  ],
-
-  subject: `Welcome to ${process.env.APP_NAME || 'Oroganix'} 🌿 — Verify your email`,
-
-  htmlContent: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f0f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    // mail is sent after commit — a mail failure must not roll back the user record
+    try {
+      await mailer.sendTransacEmail({
+        sender: {
+          email: process.env.MAIL_FROM,
+          name: process.env.APP_NAME
+        },
+        to: [{ email: cleanEmail }],
+        subject: `Welcome to ${process.env.APP_NAME || 'Oroganix'} 🌿 — Verify your email`,
+        htmlContent: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f0f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
     <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
       <div style="background:linear-gradient(135deg,#1a3a2a,#3d7a5a);padding:32px 28px;text-align:center;">
         <p style="color:rgba(255,255,255,0.7);font-size:12px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 8px;">🌿 Welcome</p>
@@ -215,8 +210,10 @@ exports.userRegister = async (req, res) => {
         <p style="font-size:11px;color:#bbb;margin:0;">&copy; ${new Date().getFullYear()} ${process.env.APP_NAME || 'Oroganix'} · Natural Ayurvedic Wellness</p>
       </div>
     </div></body></html>`
-});
-    await client.query("COMMIT");
+      });
+    } catch (mailErr) {
+      console.error('REGISTER: welcome email failed (user already saved):', mailErr.message);
+    }
 
     return res.status(201).json({
       success: true,
@@ -1648,16 +1645,21 @@ exports.googleLogin = async (req, res) => {
 /* ── Google Login via userinfo (mobile fallback when id_token not in auth response) ── */
 exports.googleLoginUserinfo = async (req, res) => {
   try {
-    const { email, name, email_verified } = req.body
-    if (!email) return res.status(400).json({ success: false, message: 'email required' })
-    // email_verified must be true — Google only returns verified emails from /userinfo
-    // but we still check the field if present
-    if (email_verified === false || email_verified === 'false') {
+    const { access_token } = req.body
+    if (!access_token) return res.status(400).json({ success: false, message: 'access_token required' })
+
+    // Verify token server-side — never trust email/name from client body
+    const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${access_token}` }
+    })
+    if (!googleRes.ok) return res.status(401).json({ success: false, message: 'Invalid Google token' })
+    const googleUser = await googleRes.json()
+    if (!googleUser.email || !googleUser.email_verified) {
       return res.status(401).json({ success: false, message: 'Google account email is not verified' })
     }
 
-    const cleanEmail = email.trim().toLowerCase()
-    const cleanName = (name || cleanEmail.split('@')[0]).trim()
+    const cleanEmail = googleUser.email.trim().toLowerCase()
+    const cleanName = (googleUser.name || cleanEmail.split('@')[0]).trim()
 
     let user
     const existing = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1', [cleanEmail])

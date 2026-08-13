@@ -830,8 +830,10 @@ export default function HomeScreen() {
 
   // Real-time flash sale socket updates
   useEffect(() => {
+    let mounted = true
     let socket: any = null
     import('socket.io-client').then(({ io }) => {
+      if (!mounted) return
       const API = (process.env.EXPO_PUBLIC_API_URL || 'https://api.oroganix.com').replace('/api', '')
       socket = io(API, { transports: ['websocket', 'polling'] })
 
@@ -854,7 +856,7 @@ export default function HomeScreen() {
       })
     }).catch(() => {})
 
-    return () => { socket?.disconnect() }
+    return () => { mounted = false; socket?.disconnect() }
   }, [])
 
   // Featured products with auto-retry for cold-start servers

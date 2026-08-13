@@ -1300,6 +1300,14 @@ exports.cancelOrder = async (req, res) => {
       );
     }
 
+    // Restore gift card balance used on this order
+    if (order.gift_card_code && Number(order.gift_card_discount) > 0) {
+      await client.query(
+        `UPDATE gift_cards SET balance = balance + $1 WHERE UPPER(code) = UPPER($2)`,
+        [Number(order.gift_card_discount), order.gift_card_code]
+      );
+    }
+
     // Decrement coupon usage so it can be reused
     if (order.coupon_code) {
       await client.query(
@@ -1691,6 +1699,7 @@ exports.getMyOrders = async (req, res) => {
     o.payment_method,
     o.created_at,
     o.tracking_number,
+    o.tracking_url,
     o.courier_name,
     o.shipped_at,
     o.shipping_address,

@@ -20,7 +20,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import axios from '@/lib/axios'
 
 import { useAuth } from '@/context/auth-context'
@@ -29,6 +29,7 @@ import { useAuth } from '@/context/auth-context'
 export default function AuthPage() {
 
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login } = useAuth()
 
   const [isLoading, setIsLoading] = useState(false)
@@ -127,7 +128,7 @@ const resetForms = () => {
     );
 
     router.push(
-      "/account"
+      searchParams.get('redirect') || "/account"
     );
 
   } catch (err: any) {

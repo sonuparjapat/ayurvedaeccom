@@ -53,7 +53,9 @@ export default function BlogListScreen() {
         setPosts(p => [...p, ...data])
         setAllPosts(p => [...p, ...data])
       }
-      setHasMore(data.length === 10)
+      // Prefer server-provided pagination signal; fall back to length heuristic
+      const serverHasMore = res.data?.has_more ?? res.data?.hasMore ?? res.data?.pagination?.has_next
+      setHasMore(serverHasMore !== undefined ? Boolean(serverHasMore) : data.length === 10)
     } catch {}
     finally {
       setLoading(false)

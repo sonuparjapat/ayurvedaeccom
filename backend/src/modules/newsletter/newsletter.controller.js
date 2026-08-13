@@ -111,7 +111,7 @@ exports.adminList = async (req, res) => {
     else if (status === 'inactive') where = 'WHERE is_active = FALSE'
     const [countRes, result] = await Promise.all([
       pool.query(
-        `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE is_active=TRUE) AS active_count FROM newsletter_subscribers`
+        `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE is_active=TRUE) AS active_count FROM newsletter_subscribers ${where}`
       ),
       pool.query(
         `SELECT * FROM newsletter_subscribers ${where} ORDER BY subscribed_at DESC LIMIT $1 OFFSET $2`,

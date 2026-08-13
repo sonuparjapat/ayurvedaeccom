@@ -649,18 +649,19 @@ useEffect(() => {
 
       /* Addresses */
       const addrRes = await getAddresses();
-      setAddresses(addrRes.data.data);
+      setAddresses(addrRes.data?.data || []);
 
       /* Referral stats */
       axios.get('/users/referral').then(r => { if (r.data?.success) setReferralStats(r.data) }).catch(() => {})
 
       /* Settings */
       const setRes = await getSettings();
+      const settingsData = setRes.data?.data || {}
       setNotifSettings({
-        orderUpdates: setRes.data.data.order_updates,
-        promotions: setRes.data.data.promotions,
-        priceDrops: setRes.data.data.price_drops,
-        newArrivals: setRes.data.data.new_arrivals,
+        orderUpdates: settingsData.order_updates ?? true,
+        promotions: settingsData.promotions ?? true,
+        priceDrops: settingsData.price_drops ?? true,
+        newArrivals: settingsData.new_arrivals ?? true,
       });
 
     } finally {
@@ -905,7 +906,9 @@ const handleSaveAddress = async (data: any) => {
       form.append("comment", comment)
       form.append("oldImages", JSON.stringify(item?.oldImages))
       images.forEach((img: any) => form.append("images", img.file))
-      await axios.post(`/shop/reviews/order/${order.id}/product/${productId}`, form)
+      form.append("order_id", String(order.id))
+      form.append("product_id", String(productId))
+      await axios.post('/shop/reviews/product', form)
       toast.success("Review submitted")
     } catch (err) {
       alert("Review failed")
@@ -2048,10 +2051,10 @@ const handleSaveAddress = async (data: any) => {
               {/* Price Breakup */}
               <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-2 text-sm">
                 {[
-                  { label: 'Subtotal', val: (selectedOrder as any)?.shipping_address?.price_breakup?.subtotal || 0 },
-                  { label: 'GST', val: (selectedOrder as any)?.shipping_address?.price_breakup?.gst || 0 },
-                  { label: 'Delivery', val: (selectedOrder as any)?.shipping_address?.price_breakup?.delivery || 0 },
-                  { label: 'Platform Fee', val: (selectedOrder as any)?.shipping_address?.price_breakup?.platform_fee || 0 },
+                  { label: 'Subtotal', val: (selectedOrder as any)?.price_breakup?.subtotal ?? (selectedOrder as any)?.subtotal ?? 0 },
+                  { label: 'GST', val: (selectedOrder as any)?.price_breakup?.gst ?? (selectedOrder as any)?.tax_amount ?? 0 },
+                  { label: 'Delivery', val: (selectedOrder as any)?.price_breakup?.delivery ?? (selectedOrder as any)?.shipping_charge ?? 0 },
+                  { label: 'Platform Fee', val: (selectedOrder as any)?.price_breakup?.platform_fee ?? (selectedOrder as any)?.platform_fee ?? 0 },
                 ].map(({ label, val }) => (
                   <div key={label} className="flex justify-between text-gray-600">
                     <span>{label}</span>
@@ -2060,7 +2063,7 @@ const handleSaveAddress = async (data: any) => {
                 ))}
                 <div className="flex justify-between font-bold text-gray-900 text-base border-t border-gray-200 pt-2 mt-2">
                   <span>Grand Total</span>
-                  <span className="text-emerald-700">{formatPrice((selectedOrder as any)?.shipping_address?.price_breakup?.grand_total || selectedOrder?.totalAmount)}</span>
+                  <span className="text-emerald-700">{formatPrice((selectedOrder as any)?.price_breakup?.grand_total || selectedOrder?.totalAmount)}</span>
                 </div>
               </div>
             </div>

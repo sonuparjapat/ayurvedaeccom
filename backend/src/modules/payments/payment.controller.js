@@ -25,8 +25,8 @@ exports.getPayments = async (req, res) => {
     })
 
 
-  } catch {
-
+  } catch (err) {
+    console.error('[getPayments]', err)
     res.status(500).json({
       success: false,
       message: 'Load failed'

@@ -437,10 +437,12 @@ export default function AccountScreen() {
       toast.warning('Please fill all address fields'); return
     }
     setSavingAddr(true)
+    // Pre-fill email with logged-in user's email — backend requires it
+    const payload = { ...addrForm, email: addrForm.email || user?.email || '' }
     try {
-      await api.post('/users/address', addrForm)
+      await api.post('/users/address', payload)
       setShowAddAddr(false)
-      setAddrForm(prev => ({ street: '', city: '', state: '', pincode: '', type: 'Home', email: prev.email }))
+      setAddrForm(prev => ({ street: '', city: '', state: '', pincode: '', type: 'Home', email: user?.email || '' }))
       fetchAddresses()
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to save address')
@@ -823,7 +825,7 @@ export default function AccountScreen() {
         {/* ── ADDRESSES ── */}
         {activeTab === 'Addresses' && (
           <Animated.View entering={FadeInDown.duration(350)} style={ss.tabContent}>
-            <TouchableOpacity onPress={() => setShowAddAddr(true)} style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
+            <TouchableOpacity onPress={() => { setAddrForm(p => ({ ...p, email: user?.email || '' })); setShowAddAddr(true) }} style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
               <LinearGradient colors={[Colors.forest, Colors.moss]} style={ss.addAddrBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                 <Text style={{ fontSize: 18, color: '#fff' }}>+</Text>
                 <Text style={ss.addAddrText}>Add New Address</Text>

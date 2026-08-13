@@ -659,7 +659,11 @@ export default function ProductDetailScreen() {
       setQty(cartItem.quantity)
     }
   }, [cartItem?.quantity, cartItem?.product_id])
-  const disc = product?.compareprice ? Math.round(((+product.compareprice - +effectivePrice) / +product.compareprice) * 100) : null
+  const disc = flashPrice != null
+    ? (product?.price ? Math.round(((+product.price - flashPrice) / +product.price) * 100) : null)
+    : product?.compareprice
+      ? Math.round(((+product.compareprice - +product.price) / +product.compareprice) * 100)
+      : null
 
   if (loading) return (
     <View style={{ flex: 1, backgroundColor: Colors.cream, alignItems: 'center', justifyContent: 'center' }}>

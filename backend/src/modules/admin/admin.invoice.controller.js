@@ -498,7 +498,7 @@ exports.generateInvoice = async (req, res) => {
     /* ── update invoice row ── */
     await client.query(
       `UPDATE invoices SET subtotal=$1, tax=$2, total=$3, cgst_amount=$4, sgst_amount=$5, igst_amount=$6,
-       place_of_supply=$7, payment_method=$8, discount_amount=$9, seller_gstin=$10 WHERE id=$11`,
+       place_of_supply=$7, payment_method=$8, discount_amount=$9, seller_gstin=$10, invoice_date=NOW() WHERE id=$11`,
       [subtotal, tax, total, totalCgst, totalSgst, totalIgst,
        address.state || null, order.payment_method || null, discountAmount, company.gst_number || null, invoiceId]
     )

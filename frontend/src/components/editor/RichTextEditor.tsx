@@ -167,8 +167,16 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start w
         onInput={handleInput}
         onPaste={e => {
           e.preventDefault()
-          const text = e.clipboardData.getData('text/html') || e.clipboardData.getData('text/plain')
-          exec('insertHTML', text)
+          const html = e.clipboardData.getData('text/html')
+          const plain = e.clipboardData.getData('text/plain')
+          // Strip script tags and inline event handlers to prevent XSS
+          const safe = html
+            ? html
+                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+                .replace(/javascript:[^\s"'>]*/gi, '')
+            : plain
+          exec('insertHTML', safe)
         }}
         className="outline-none px-6 py-5 prose prose-sm sm:prose-base max-w-none"
         style={{

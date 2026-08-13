@@ -8,9 +8,9 @@ const { admin } = require('../../middlewares/admin')
 router.get('/', controller.getPublic)
 
 // Admin
-router.get('/admin', admin, controller.adminList)
-router.post('/admin', admin, controller.create)
-router.put('/admin/:id', admin, controller.update)
-router.delete('/admin/:id', admin, controller.remove)
+router.get('/admin', auth, admin, controller.adminList)
+router.post('/admin', auth, admin, controller.create)
+router.put('/admin/:id', auth, admin, controller.update)
+router.delete('/admin/:id', auth, admin, controller.remove)
 
 module.exports = router

@@ -109,7 +109,12 @@ exports.adminUpdateQuestion = async (req, res) => {
   try {
     const { id } = req.params
     const { status } = req.body
-    await pool.query(`UPDATE product_questions SET status=$1 WHERE id=$2`, [status, id])
+    const validStatuses = ['pending', 'approved', 'rejected']
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Must be one of: pending, approved, rejected' })
+    }
+    const result = await pool.query(`UPDATE product_questions SET status=$1 WHERE id=$2`, [status, id])
+    if (!result.rowCount) return res.status(404).json({ message: 'Question not found' })
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ message: 'Server error' })

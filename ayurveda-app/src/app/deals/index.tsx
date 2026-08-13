@@ -180,7 +180,7 @@ export default function DealsScreen() {
         <View style={{ marginTop: 16 }}>
           <Text style={s.sectionTitle}>⚡ Flash Sales</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-            {flashSales.map((s) => <FlashBanner key={s.id} sale={s} />)}
+            {flashSales.map((sale) => <FlashBanner key={sale.id} sale={sale} />)}
           </ScrollView>
         </View>
       )}

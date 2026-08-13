@@ -1388,7 +1388,7 @@ if (checkingAddress) {
                               setCouponInput(bestCoupon.code)
                               setTimeout(() => {
                                 axios.post('/coupons/apply', { code: bestCoupon.code, cartTotal: subtotal })
-                                  .then(r => { setAppliedCoupon({ code: r.data.coupon.code, discount: r.data.discount }); toast.success(`🎉 Saved ₹${r.data.discount.toFixed(2)} with ${r.data.coupon.code}!`) })
+                                  .then(r => { const c = r.data.coupon; if (c) { setAppliedCoupon({ code: c.code, discount: r.data.discount }); toast.success(`🎉 Saved ₹${r.data.discount.toFixed(2)} with ${c.code}!`) } })
                                   .catch(err => setCouponError(err?.response?.data?.message || 'Could not apply coupon'))
                               }, 0)
                             }}
@@ -1578,8 +1578,8 @@ if (checkingAddress) {
                                     if (!giftCardInput.trim()) return
                                     setGiftCardApplying(true)
                                     try {
-                                      const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gift-cards/validate/${giftCardInput.trim()}`)
-                                      const data = await r.json()
+                                      const r = await axios.get(`/gift-cards/validate/${giftCardInput.trim()}`)
+                                      const data = r.data
                                       if (!data.success) { setGiftCardError(data.message || 'Invalid gift card'); return }
                                       const discount = Math.min(Number(data.data.balance), total)
                                       setAppliedGiftCard({ code: data.data.code, balance: Number(data.data.balance), discount })
@@ -1593,8 +1593,8 @@ if (checkingAddress) {
                                   if (!giftCardInput.trim()) return
                                   setGiftCardApplying(true)
                                   try {
-                                    const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gift-cards/validate/${giftCardInput.trim()}`)
-                                    const data = await r.json()
+                                    const r = await axios.get(`/gift-cards/validate/${giftCardInput.trim()}`)
+                                    const data = r.data
                                     if (!data.success) { setGiftCardError(data.message || 'Invalid gift card'); return }
                                     const discount = Math.min(Number(data.data.balance), total)
                                     setAppliedGiftCard({ code: data.data.code, balance: Number(data.data.balance), discount })

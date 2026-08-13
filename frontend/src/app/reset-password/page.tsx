@@ -254,7 +254,7 @@ export default function ResetPasswordPage() {
               <Button
                 className="w-full"
                 onClick={() =>
-                  router.push('/')
+                  router.push('/auth')
                 }
               >
                 Continue to Login

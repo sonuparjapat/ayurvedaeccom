@@ -13,13 +13,12 @@ exports.getOverviewAnalytics = async (req, res) => {
 
     const revenueQuery = `
       SELECT
-        COALESCE(SUM(grand_total),0) AS total_revenue,
+        COALESCE(SUM(grand_total) FILTER (WHERE payment_status='paid'),0) AS total_revenue,
         COUNT(*) FILTER (WHERE payment_status='paid') AS paid_orders,
         COUNT(*) FILTER (WHERE payment_status!='paid') AS unpaid_orders,
-        COALESCE(AVG(grand_total),0) AS avg_order_value
+        COALESCE(AVG(grand_total) FILTER (WHERE payment_status='paid'),0) AS avg_order_value
       FROM orders
-      WHERE payment_status='paid'
-      AND grand_total >= 0
+      WHERE grand_total >= 0
       ${dateFilter}
     `;
 

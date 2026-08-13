@@ -56,14 +56,15 @@ exports.updateSettings = async (req, res) => {
 
     const result = await pool.query(
       `
-      UPDATE user_settings
+      INSERT INTO user_settings (user_id, order_updates, promotions, price_drops, new_arrivals)
+      VALUES ($5, $1, $2, $3, $4)
+      ON CONFLICT (user_id) DO UPDATE
       SET
         order_updates=$1,
         promotions=$2,
         price_drops=$3,
         new_arrivals=$4,
         updated_at=NOW()
-      WHERE user_id=$5
       RETURNING *
       `,
       [

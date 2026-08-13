@@ -207,7 +207,7 @@ export default function NotificationsPage() {
   }, [page, tab, typeFilter, readFilter, dateFrom, dateTo])
 
   useEffect(() => {
-    if (!loginuserdata?.id) { router.push('/'); return }
+    if (!loginuserdata?.id) { router.push('/auth?redirect=/notifications'); return }
     loadData(page)
   }, [loginuserdata?.id, page, tab, typeFilter, readFilter, dateFrom, dateTo])
 

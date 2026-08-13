@@ -165,23 +165,44 @@ exports.adminCreate = async (req, res) => {
 /* ─── ADMIN: update ─── */
 exports.adminUpdate = async (req, res) => {
   const client = await pool.connect()
+  let uploadedImage = null
   try {
     const { id } = req.params
     const { title, description, discount_type, discount_value, starts_at, ends_at, max_uses, is_active } = req.body
     let products = req.body.products
     if (typeof products === 'string') try { products = JSON.parse(products) } catch { products = [] }
-    let banner_image = req.body.banner_image || null
+
+    await client.query('BEGIN')
+
+    const existing = await client.query('SELECT * FROM flash_sales WHERE id=$1 FOR UPDATE', [id])
+    if (!existing.rows.length) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ success: false, message: 'Flash sale not found' })
+    }
+    const cur = existing.rows[0]
+
+    let banner_image = cur.banner_image
     if (req.file) {
       const { uploadImageToAWS } = require('../../utils/awsImageUpload')
       banner_image = await uploadImageToAWS(req.file, 'flash-sales')
+      uploadedImage = banner_image
+    } else if ('banner_image' in req.body) {
+      banner_image = req.body.banner_image || null
     }
-    await client.query('BEGIN')
+
+    const finalIsActive = is_active !== undefined
+      ? (is_active !== false && is_active !== 'false')
+      : cur.is_active
 
     await client.query(
       `UPDATE flash_sales SET title=$1, description=$2, discount_type=$3, discount_value=$4,
         starts_at=$5, ends_at=$6, max_uses=$7, banner_image=$8, is_active=$9
        WHERE id=$10`,
-      [title, description, discount_type, discount_value, starts_at, ends_at, max_uses || null, banner_image, is_active !== false && is_active !== 'false', id]
+      [title ?? cur.title, description ?? cur.description,
+       discount_type ?? cur.discount_type, discount_value ?? cur.discount_value,
+       starts_at ?? cur.starts_at, ends_at ?? cur.ends_at,
+       max_uses !== undefined ? (max_uses || null) : cur.max_uses,
+       banner_image, finalIsActive, id]
     )
 
     if (Array.isArray(products)) {
@@ -210,6 +231,10 @@ exports.adminUpdate = async (req, res) => {
     res.json({ success: true })
   } catch (err) {
     await client.query('ROLLBACK')
+    if (uploadedImage) {
+      const { deleteFromAWS } = require('../../utils/awsImageUpload')
+      deleteFromAWS(uploadedImage).catch(() => {})
+    }
     res.status(500).json({ success: false, message: 'Update failed' })
   } finally {
     client.release()
@@ -219,7 +244,8 @@ exports.adminUpdate = async (req, res) => {
 /* ─── ADMIN: delete ─── */
 exports.adminDelete = async (req, res) => {
   try {
-    await pool.query('DELETE FROM flash_sales WHERE id=$1', [req.params.id])
+    const result = await pool.query('DELETE FROM flash_sales WHERE id=$1', [req.params.id])
+    if (!result.rowCount) return res.status(404).json({ success: false, message: 'Flash sale not found' })
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ success: false, message: 'Delete failed' })

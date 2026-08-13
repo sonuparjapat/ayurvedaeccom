@@ -1,7 +1,7 @@
 
-import path from 'path'
+const path = require('path')
 
-export const getMimeType = (fileName = '') => {
+const getMimeType = (fileName = '') => {
   const ext = path
     .extname(fileName)
     .toLowerCase()
@@ -14,3 +14,5 @@ export const getMimeType = (fileName = '') => {
 
   return 'image/jpeg'
 }
+
+module.exports = { getMimeType }

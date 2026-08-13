@@ -89,7 +89,7 @@ const [reviewsData, setReviewsData] = useState({
   },
   error: null,
 });
-const [companydata,setCompanyData]=useState<any>([])
+const [companydata,setCompanyData]=useState<any>(null)
 const [postLoginRedirect,
   setPostLoginRedirect] =
   useState("")
@@ -464,7 +464,6 @@ const fetchPermissions = async () => {
 
 const getintdata=async(user?: User)=>{
   try{
-    await getsettings()
     // /admin/status_codes is an admin-only endpoint — skip for regular customers
     if(user?.role !== 3){
       const res=await axios.get('/admin/status_codes')
@@ -488,7 +487,7 @@ const wishlistres=await axios.get('/shop/wishlist',params&&params)
 setWishlistdata({
       items: wishlistres.data.data||[],
  loading:false,
-      totalItems:wishlistres?.data?.pagination?.totalPages
+      totalPages:wishlistres?.data?.pagination?.totalPages
     })
   }catch (err:any) {
   if (err?.response?.status === 401) {
@@ -544,15 +543,7 @@ const fetchUser = async () => {
 useEffect(() => {
   const init = async () => {
     await fetchUser();
-    await fetchcat();
-await getcompanydata()
-    if (
-      pathname !== "/adminauth" &&
-      pathname !== "/auth" &&
-      !loginuserdata?.id
-    ) {
-      fetchCart();
-    }
+    await getcompanydata()
   };
 
   init();

@@ -44,7 +44,8 @@ exports.adminListGiftCards = async (req, res) => {
 /* ── Admin: Deactivate ── */
 exports.adminDeactivateGiftCard = async (req, res) => {
   try {
-    await pool.query(`UPDATE gift_cards SET is_active=FALSE WHERE id=$1`, [req.params.id])
+    const result = await pool.query(`UPDATE gift_cards SET is_active=FALSE WHERE id=$1`, [req.params.id])
+    if (!result.rowCount) return res.status(404).json({ success: false, message: 'Gift card not found' })
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to deactivate' })

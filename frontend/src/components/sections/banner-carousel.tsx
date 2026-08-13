@@ -47,6 +47,7 @@ export function BannerCarousel() {
   const [current, setCurrent] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const resumeRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     axios.get('/banners/public')
@@ -141,13 +142,13 @@ export function BannerCarousel() {
       {/* Nav arrows */}
       {slides.length > 1 && (
         <>
-          <button onClick={() => { pause(); prev(); setTimeout(resume, 5000) }}
+          <button onClick={() => { pause(); if (resumeRef.current) clearTimeout(resumeRef.current); prev(); resumeRef.current = setTimeout(resume, 5000) }}
             className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full flex items-center justify-center text-white transition-all hover:scale-110"
             style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}
             aria-label="Previous slide">
             <ChevronLeft size={18} />
           </button>
-          <button onClick={() => { pause(); next(); setTimeout(resume, 5000) }}
+          <button onClick={() => { pause(); if (resumeRef.current) clearTimeout(resumeRef.current); next(); resumeRef.current = setTimeout(resume, 5000) }}
             className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full flex items-center justify-center text-white transition-all hover:scale-110"
             style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}
             aria-label="Next slide">

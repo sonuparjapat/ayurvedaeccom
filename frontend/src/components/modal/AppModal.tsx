@@ -135,7 +135,7 @@ export default function AppModal({
         p-3
       "
       style={overlayStyle}
-      onClick={(e) => e.stopPropagation()}
+      onClick={onClose}
     >
 
       <style>{`
@@ -168,6 +168,7 @@ export default function AppModal({
       `}</style>
 
       <div
+        onClick={(e) => e.stopPropagation()}
         className={`
           bg-white rounded-2xl
           w-full ${width}

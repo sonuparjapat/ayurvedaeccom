@@ -24,10 +24,11 @@ exports.updateTracking = async (req, res) => {
     const { orderId } = req.params;
     if (!status) return res.status(400).json({ success: false, message: "status required" });
 
-    await pool.query(
+    const result = await pool.query(
       `UPDATE tracking SET status=$1, location=$2, updated_at=NOW() WHERE order_id=$3`,
       [status, location || null, orderId]
     );
+    if (!result.rowCount) return res.status(404).json({ success: false, message: "No tracking record found for this order" });
     res.json({ success: true, message: "Tracking updated" });
   } catch (err) {
     console.error("[updateTracking]", err.message);

@@ -84,7 +84,7 @@ function ProductCard({ product }: { product: Product }) {
   const img = product.images?.[0]
 
   return (
-    <Link href={`/products/${product.slug || product.id}`} className="group relative bg-white rounded-2xl border border-gray-100 hover:border-emerald-200 hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col">
+    <Link href={`/product/${product.slug || product.id}`} className="group relative bg-white rounded-2xl border border-gray-100 hover:border-emerald-200 hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col">
       {/* Discount badge */}
       {discount > 0 && (
         <span className="absolute top-2 left-2 z-10 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">

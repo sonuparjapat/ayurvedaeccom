@@ -30,6 +30,10 @@ async ({
   return result.rows[0]
 }
 
+const ALLOWED_JOB_COLUMNS = new Set([
+  'status', 'progress', 'result', 'error_text', 'started_at', 'completed_at'
+])
+
 exports.updateJob =
 async (
   id,
@@ -41,6 +45,9 @@ async (
   let i = 1
 
   for (const key in data) {
+    if (!ALLOWED_JOB_COLUMNS.has(key)) {
+      throw new Error(`updateJob: column '${key}' is not allowed`)
+    }
     fields.push(
       `${key}=$${i}`
     )

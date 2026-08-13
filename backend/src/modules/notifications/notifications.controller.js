@@ -21,7 +21,7 @@ exports.list = async (req, res) => {
     const vals = [userId]
     let idx = 2
 
-    if (type && type !== 'all' && type !== 'broadcast') {
+    if (type && type !== 'all') {
       conditions.push(`type = $${idx++}`)
       vals.push(type)
     }

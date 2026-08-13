@@ -262,6 +262,8 @@ exports.getCart = async (req, res) => {
         unit: r.unit || null,
         min_order_qty: r.min_order_qty || 1,
         max_order_qty: r.max_order_qty || 100,
+        is_returnable: r.is_returnable ?? true,
+        return_window_days: r.return_window_days || null,
       }
     });
 

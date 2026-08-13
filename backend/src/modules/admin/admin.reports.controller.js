@@ -123,7 +123,7 @@ exports.monthlyRevenueTrend = async (req, res) => {
         AVG(total_amount)::numeric(10,2) AS avg_order_value
       FROM orders
       WHERE status = 5
-        AND created_at >= NOW() - ($1 || ' months')::INTERVAL
+        AND created_at >= NOW() - ($1::text || ' months')::INTERVAL
       GROUP BY DATE_TRUNC('month', created_at)
       ORDER BY month ASC
     `, [months])

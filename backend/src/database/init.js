@@ -371,7 +371,7 @@ await client.query(`
     await client.query(`ALTER TABLE users  ADD COLUMN IF NOT EXISTS loyalty_tier VARCHAR(20) DEFAULT 'bronze'`);
     await client.query(`ALTER TABLE users  ADD COLUMN IF NOT EXISTS total_spent NUMERIC(12,2) DEFAULT 0`);
     await client.query(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_status_check`);
-    await client.query(`ALTER TABLE orders ADD CONSTRAINT orders_payment_status_check CHECK (payment_status IN ('pending','unpaid','paid','failed','refunded'))`);
+    await client.query(`ALTER TABLE orders ADD CONSTRAINT orders_payment_status_check CHECK (payment_status IN ('pending','unpaid','paid','failed','refunded','cancelled'))`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);`);
@@ -1376,7 +1376,7 @@ await client.query(`CREATE TABLE IF NOT EXISTS order_status_logs (
 
     // Full-text product search using pg_trgm (extension already created above)
     await client.query(`CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING gin(name gin_trgm_ops)`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_desc_trgm ON products USING gin(description gin_trgm_ops)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_desc_trgm ON products USING gin(shortdescription gin_trgm_ops)`);
 
     await client.query("COMMIT");
     console.log("✅ Production-Ready DB Initialized Successfully");

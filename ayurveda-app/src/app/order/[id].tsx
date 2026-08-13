@@ -493,7 +493,7 @@ function WriteReviewModal({ visible, onClose, orderId, orderItems }: {
   const loadExistingReviews = async () => {
     try {
       const results = await Promise.allSettled(
-        orderItems.map(item => api.get(`/shop/reviews/product/${item.product_id}`, { params: { me: 1, order_id: id } }))
+        orderItems.map(item => api.get(`/shop/reviews/product/${item.product_id}`, { params: { me: 1, order_id: orderId } }))
       )
       setItems(prev => prev.map((it, idx) => {
         const r = results[idx]

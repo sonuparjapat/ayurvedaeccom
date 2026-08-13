@@ -202,7 +202,8 @@ exports.adminUpdateTicket = async (req, res) => {
     fields.push(`updated_at=NOW()`);
     vals.push(id);
     const t = (await pool.query(`UPDATE support_tickets SET ${fields.join(',')} WHERE id=$${i} RETURNING user_id`, vals)).rows[0];
-    if (t?.user_id && status) {
+    if (!t) return res.status(404).json({ success: false, message: 'Ticket not found' });
+    if (t.user_id && status) {
       emitToUser(t.user_id, 'ticket_status_updated', { ticket_id: parseInt(id), status });
       const label = status.replace(/_/g, ' ')
       createNotification(t.user_id, 'ticket_status', `Support ticket #${id} — ${label}`, `Your support ticket status has been updated to: ${label}`, { ticket_id: parseInt(id), status })

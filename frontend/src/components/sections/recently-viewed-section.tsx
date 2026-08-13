@@ -44,7 +44,12 @@ function RecentCard({ product }: { product: RecentProduct }) {
     if (isInCart) { setOpencart(true); return }
     setCartLoading(true)
     try {
-      await axios.post('/cart', { productId: product.id, quantity: 1 })
+      const payload: any = { productId: product.id, quantity: 1 }
+      if (!loginuserdata?.id) {
+        const sid = localStorage.getItem('guest_session_id')
+        if (sid) payload.sessionId = sid
+      }
+      await axios.post('/cart', payload)
       toast.success('Added to cart!')
       fetchCart(loginuserdata?.id)
     } catch { toast.error('Could not add to cart') }

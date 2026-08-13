@@ -50,7 +50,7 @@ export default function SupportPage() {
       const params: any = {}
       if (filterStatus) params.status = filterStatus
       const r = await api.get('/support/tickets', { params })
-      setTickets(r.data.tickets)
+      setTickets(r.data.tickets || [])
     } catch { } finally { setLoading(false) }
   }
 
@@ -85,7 +85,8 @@ export default function SupportPage() {
       const r = await api.post('/support/tickets', form)
       setShowForm(false)
       setForm({ subject: '', category: 'general', priority: 'medium', message: '' })
-      router.push(`/support/${r.data.ticket.id}`)
+      const ticket = r.data.ticket
+      if (ticket?.id) router.push(`/support/${ticket.id}`)
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Failed to create ticket. Please try again.'
       alert(msg)

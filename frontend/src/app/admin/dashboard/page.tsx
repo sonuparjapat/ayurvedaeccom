@@ -82,7 +82,7 @@ export default function AdminDashboard() {
       ))
       setStats(prev => {
         // Decrement pending when confirmed (1) or cancelled (6) from pending
-        if (data.new_status === 1 || data.new_status === 6) return { ...prev, pendingOrders: Math.max(0, prev.pendingOrders - 1) }
+        if (data.new_status === 1) return { ...prev, pendingOrders: Math.max(0, prev.pendingOrders - 1) }
         return prev
       })
     })

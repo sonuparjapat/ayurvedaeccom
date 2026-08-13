@@ -190,7 +190,10 @@ export default function ProductsScreen() {
   const [subcategories, setSubcategories] = useState<{ id: number; name: string }[]>([])
   const [selectedSubcat, setSelectedSubcat] = useState<number | null>(null)
 
+  const [debouncedMinPrice, setDebouncedMinPrice] = useState('')
+  const [debouncedMaxPrice, setDebouncedMaxPrice] = useState('')
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const priceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (searchInput === search) return
@@ -198,19 +201,29 @@ export default function ProductsScreen() {
     searchTimer.current = setTimeout(() => { setSearch(searchInput); setPage(1) }, 400)
   }, [searchInput])
 
-  // Fetch subcategories when a category is selected
+  useEffect(() => {
+    if (priceTimer.current) clearTimeout(priceTimer.current)
+    priceTimer.current = setTimeout(() => {
+      setDebouncedMinPrice(minPrice)
+      setDebouncedMaxPrice(maxPrice)
+      setPage(1)
+    }, 500)
+  }, [minPrice, maxPrice])
+
+  // Derive subcategories from the already-loaded categories store (no extra request needed)
   useEffect(() => {
     if (categoryId) {
-      api.get('/shop/categories', { params: { parent_id: categoryId } })
-        .then(r => setSubcategories(r.data?.categories || r.data || []))
-        .catch(() => setSubcategories([]))
+      const children = (categories as any[]).filter(
+        (c: any) => String(c.parent_id) === String(categoryId)
+      )
+      setSubcategories(children)
     } else {
       setSubcategories([])
     }
     setSelectedSubcat(null)
-  }, [categoryId])
+  }, [categoryId, categories])
 
-  useEffect(() => { fetchProducts(1) }, [search, selectedSort, minPrice, maxPrice, minRating, inStockOnly, categoryId, categorySlug, selectedSubcat])
+  useEffect(() => { fetchProducts(1) }, [search, selectedSort, debouncedMinPrice, debouncedMaxPrice, minRating, inStockOnly, categoryId, categorySlug, selectedSubcat])
 
   const fetchProducts = async (pg: number) => {
     if (pg === 1) setLoading(true); else setLoadingMore(true)
@@ -220,11 +233,19 @@ export default function ProductsScreen() {
       const res = await api.get('/shop/public', {
         params: {
           search, page: pg, limit: LIMIT, sortBy, sortOrder,
-          ...(minPrice && { minPrice }),
-          ...(maxPrice && { maxPrice }),
+          ...(debouncedMinPrice && { minPrice: debouncedMinPrice }),
+          ...(debouncedMaxPrice && { maxPrice: debouncedMaxPrice }),
           ...(minRating > 0 && { rating: minRating }),
           ...(inStockOnly && { inStock: true }),
-          ...(selectedSubcat ? { category_id: selectedSubcat } : categoryId ? { category_id: categoryId } : categorySlug ? { category_slug: categorySlug } : {}),
+          ...(selectedSubcat
+            ? { category_id: selectedSubcat }
+            : categoryId && /^\d+$/.test(categoryId)
+              ? { category_id: categoryId }
+              : categoryId
+                ? { category_slug: categoryId }
+                : categorySlug
+                  ? { category_slug: categorySlug }
+                  : {}),
         }
       })
       const newProducts = res.data?.products || []
@@ -496,7 +517,7 @@ export default function ProductsScreen() {
               </TouchableOpacity>
             </ScrollView>
 
-            <TouchableOpacity onPress={() => { setShowFilter(false); setPage(1); fetchProducts(1) }}
+            <TouchableOpacity onPress={() => { setShowFilter(false); setPage(1) }}
               style={{ borderRadius: 14, overflow: 'hidden', marginTop: 10 }}>
               <LinearGradient colors={[Colors.forest, Colors.moss]} style={ss.applyBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                 <Text style={ss.applyBtnText}>Apply Filters</Text>

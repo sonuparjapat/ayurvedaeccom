@@ -153,9 +153,9 @@ export default function ProductsPageContent() {
   }
 
   /* ---------- HELPERS ---------- */
-  const getImageUrl = (images: string) => {
+  const getImageUrl = (images: any) => {
     try {
-      const arr = images || '[]'
+      const arr = Array.isArray(images) ? images : JSON.parse(images || '[]')
       return arr[0] || '/placeholder-product.jpg'
     } catch {
       return '/placeholder-product.jpg'

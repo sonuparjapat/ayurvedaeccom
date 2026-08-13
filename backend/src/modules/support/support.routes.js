@@ -15,9 +15,9 @@ router.post('/tickets/:id/reply', auth, ctrl.replyTicket);
 router.put('/tickets/:id/close', auth, ctrl.closeTicket);
 
 /* ── ADMIN ── */
-router.get('/admin/tickets', admin, ctrl.adminTickets);
-router.get('/admin/tickets/:id', admin, ctrl.getTicket);
-router.put('/admin/tickets/:id', admin, ctrl.adminUpdateTicket);
-router.post('/admin/tickets/:id/reply', admin, ctrl.adminReply);
+router.get('/admin/tickets', auth, admin, ctrl.adminTickets);
+router.get('/admin/tickets/:id', auth, admin, ctrl.getTicket);
+router.put('/admin/tickets/:id', auth, admin, ctrl.adminUpdateTicket);
+router.post('/admin/tickets/:id/reply', auth, admin, ctrl.adminReply);
 
 module.exports = router;

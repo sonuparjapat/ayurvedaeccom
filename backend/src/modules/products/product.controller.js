@@ -699,9 +699,10 @@ exports.addOrUpdateReview = async (req, res) => {
 
       VALUES($1,$2,$3,$4,$5,$6)
 
-      ON CONFLICT(order_id, product_id)
+      ON CONFLICT(user_id, product_id)
 
       DO UPDATE SET
+        order_id=$2,
         rating=$4,
         comment=$5,
         images=$6,
@@ -1552,17 +1553,6 @@ exports.flagReview = async (req, res) => {
   if (!reviewId) return res.status(400).json({ success: false, message: 'Invalid review' })
 
   try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS review_flags (
-        id SERIAL PRIMARY KEY,
-        review_id INTEGER NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
-        user_id INTEGER NOT NULL,
-        reason TEXT,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE(review_id, user_id)
-      )
-    `)
-
     const result = await pool.query(
       'INSERT INTO review_flags (review_id, user_id, reason) VALUES ($1, $2, $3) ON CONFLICT (review_id, user_id) DO NOTHING RETURNING id',
       [reviewId, userId, reason || null]

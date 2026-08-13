@@ -21,7 +21,7 @@ import { notify as hapticNotify, Haptics } from '../../utils/haptics'
 const { width: W } = Dimensions.get('window')
 
 interface Address {
-  id: number; street: string; city: string; state: string; pincode: string; is_default?: boolean
+  id: number; street: string; city: string; state: string; pincode: string; email?: string; is_default?: boolean
 }
 interface Setting { key: string; value: string; type: string }
 type PayMethod = 'cod' | 'online'
@@ -262,7 +262,8 @@ export default function CheckoutScreen() {
     if (!/^\d{6}$/.test(pincode)) { toast.error('Enter valid 6-digit pincode'); return }
     setAddingAddr(true)
     try {
-      await api.post('/users/address', { ...newAddr, is_default: addresses.length === 0 })
+      // Backend destructures `isDefault` (camelCase) — send it in camelCase
+      await api.post('/users/address', { ...newAddr, isDefault: addresses.length === 0 })
       const res = await api.get('/users/address')
       const list: Address[] = res.data?.data || []
       setAddresses(list)

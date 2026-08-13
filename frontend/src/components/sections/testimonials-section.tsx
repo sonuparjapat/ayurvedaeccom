@@ -92,7 +92,7 @@ const GRADIENTS = [
 ]
 function Avatar({ name }: { name: string }) {
   const initials = (name || '??').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-  const idx = Math.abs((name || '').charCodeAt(0) + (name || '').charCodeAt(1 || 0)) % GRADIENTS.length
+  const idx = Math.abs((name || '').charCodeAt(0) + ((name || '').charCodeAt(1) || 0)) % GRADIENTS.length
   return (
     <div
       className={cn(

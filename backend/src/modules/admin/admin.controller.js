@@ -290,7 +290,7 @@ exports.users = async (req, res) => {
 
     const offset = (page - 1) * limit
 
-    let where = "WHERE 1=1"
+    let where = "WHERE u.is_active = TRUE"
     let values = []
     let i = 1
 

@@ -289,7 +289,7 @@ exports.adminUpdatePost = async (req, res) => {
     // Handle slug
     let finalSlug = post.slug
     if (slug && slug !== post.slug) {
-      finalSlug = slugify(slug)
+      finalSlug = await uniqueSlug(slug)
     } else if (title && title !== post.title) {
       finalSlug = await uniqueSlug(title)
     }

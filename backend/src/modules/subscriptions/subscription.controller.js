@@ -97,10 +97,11 @@ exports.cancelSubscription = async (req, res) => {
   try {
     const userId = req.user.id
     const { id } = req.params
-    await pool.query(
+    const result = await pool.query(
       "UPDATE subscriptions SET status='cancelled', updated_at=NOW() WHERE id=$1 AND user_id=$2",
       [id, userId]
     )
+    if (!result.rowCount) return res.status(404).json({ success: false, message: 'Subscription not found' })
     res.json({ success: true, message: 'Subscription cancelled' })
   } catch (err) {
     console.error('[Subscription Cancel]', err)

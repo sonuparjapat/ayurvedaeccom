@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Send, Lock, RefreshCw, MessageSquare } from 'lucide-react'
 import api from '@/lib/axios'
+import toast from 'react-hot-toast'
 import { useAuth } from '@/context/auth-context'
 import { io, Socket } from 'socket.io-client'
 import { Header } from '@/components/layout/header'
@@ -53,8 +54,8 @@ export default function TicketDetailPage() {
     try {
       const r = await api.get(`/support/tickets/${id}`)
       setTicket(r.data.ticket)
-      setMessages(r.data.messages)
-    } catch { alert('Failed to load ticket. Please refresh.') } finally { setLoading(false) }
+      setMessages(r.data.messages || [])
+    } catch { toast.error('Failed to load ticket. Please refresh.') } finally { setLoading(false) }
   }
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function TicketDetailPage() {
     try {
       await api.post(`/support/tickets/${id}/reply`, { message: reply.trim() })
       setReply('')
-    } catch { alert('Failed to send reply. Please try again.') } finally { setSending(false) }
+    } catch { toast.error('Failed to send reply. Please try again.') } finally { setSending(false) }
   }
 
   const closeTicket = async () => {

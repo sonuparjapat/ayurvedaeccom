@@ -21,7 +21,7 @@ const { emitToAdmin } = require('../socket')
 const { logPayment } = require('./paymentLogger')
 
 const CANCEL_REASON = 'Auto-cancelled: Order was not confirmed within the allowed time.'
-const HOURS = Number(process.env.ORDER_AUTO_CANCEL_HOURS || 24)
+const HOURS = parseInt(process.env.ORDER_AUTO_CANCEL_HOURS) || 24
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY,
@@ -38,15 +38,17 @@ async function autoCancelOrders() {
     const res = await pool.query(
       `SELECT o.id, o.user_id, o.payment_method, o.payment_status, o.total_amount,
               o.razorpay_payment_id, o.created_at, o.wallet_discount, o.coupon_code,
+              o.gift_card_code, o.gift_card_discount,
               u.name AS user_name, u.email AS user_email,
               i.invoice_no
        FROM orders o
        JOIN users u ON u.id = o.user_id
        LEFT JOIN invoices i ON i.order_id = o.id
        WHERE o.status = 0
-         AND o.created_at < NOW() - INTERVAL '${HOURS} hours'
+         AND o.created_at < NOW() - ($1 * INTERVAL '1 hour')
          AND (o.payment_status = 'paid' OR o.payment_method = 'cod')
-       ORDER BY o.created_at ASC`
+       ORDER BY o.created_at ASC`,
+      [HOURS]
     )
     staleOrders = res.rows
   } catch (err) {
@@ -128,7 +130,15 @@ async function autoCancelOrders() {
         )
       }
 
-      // 3c. Decrement coupon usage so it can be reused
+      // 3c. Restore gift card balance used on this order
+      if (order.gift_card_code && Number(order.gift_card_discount) > 0) {
+        await client.query(
+          `UPDATE gift_cards SET balance = balance + $1 WHERE UPPER(code) = UPPER($2)`,
+          [Number(order.gift_card_discount), order.gift_card_code]
+        )
+      }
+
+      // 3d. Decrement coupon usage so it can be reused
       if (order.coupon_code) {
         await client.query(
           `UPDATE coupons SET used_count = GREATEST(0, used_count - 1), updated_at = NOW()
