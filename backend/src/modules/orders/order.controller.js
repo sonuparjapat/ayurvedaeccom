@@ -785,6 +785,29 @@ if (addr.pincode) {
           `UPDATE orders SET payment_status='paid', updated_at=NOW() WHERE id=$1`,
           [orderId]
         );
+
+        // Deduct inventory — mirrors verifyPayment (verifyPayment will never be called for zero-cost orders)
+        for (const item of cart) {
+          if (item.variant_id) {
+            const rv = await client.query(
+              `UPDATE product_variants SET inventory = inventory - $1 WHERE id = $2 AND inventory >= $1 RETURNING id`,
+              [item.quantity, item.variant_id]
+            );
+            if (!rv.rows.length) throw new Error("Variant stock mismatch");
+          } else {
+            const rp = await client.query(
+              `UPDATE products SET inventory = inventory - $1 WHERE id = $2 AND inventory >= $1 RETURNING id`,
+              [item.quantity, item.product_id]
+            );
+            if (!rp.rows.length) throw new Error("Stock mismatch");
+          }
+        }
+
+        // Clear cart (buy-now orders never touch cart, but createOrder always does)
+        await client.query("DELETE FROM cart WHERE user_id=$1", [userId]);
+
+        // Credit referral reward (normally done in verifyPayment for online orders)
+        await creditReferralReward(client, userId, orderId);
       } else {
         razorpayOrder = await razorpay.orders.create({
           amount: paise,
@@ -972,6 +995,7 @@ exports.verifyPayment = async (req, res) => {
     const orderData = order.rows[0];
 
     if (orderData.payment_status === "paid") {
+      await client.query("ROLLBACK");
       return res.json({ success: true });
     }
 
@@ -1026,7 +1050,8 @@ exports.verifyPayment = async (req, res) => {
         payment_status='paid',
         status=1,
         razorpay_payment_id=$1,
-        razorpay_signature=$2
+        razorpay_signature=$2,
+        updated_at=NOW()
       WHERE id=$3
     `, [
       razorpay_payment_id,
@@ -1870,38 +1895,51 @@ exports.getOrderShipmentEvents = async (req, res) => {
 /* ================= RETRY PAYMENT (for unpaid online orders) ================= */
 
 exports.retryPayment = async (req, res) => {
+  const client = await pool.connect();
   try {
     const userId = req.user.id;
     const { id } = req.params;
 
-    const orderRes = await pool.query(
+    await client.query("BEGIN");
+
+    // FOR UPDATE prevents two concurrent retry requests from both creating a Razorpay order
+    const orderRes = await client.query(
       `SELECT id, total_amount, payment_status, status, payment_method, razorpay_order_id
-       FROM orders WHERE id=$1 AND user_id=$2`,
+       FROM orders WHERE id=$1 AND user_id=$2 FOR UPDATE`,
       [id, userId]
     );
 
-    if (!orderRes.rows.length)
+    if (!orderRes.rows.length) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ success: false, message: "Order not found" });
+    }
 
     const order = orderRes.rows[0];
 
-    if (order.payment_method !== 'online')
+    if (order.payment_method !== 'online') {
+      await client.query("ROLLBACK");
       return res.status(400).json({ success: false, message: "Not an online payment order" });
+    }
 
-    if (order.payment_status === 'paid')
+    if (order.payment_status === 'paid') {
+      await client.query("ROLLBACK");
       return res.status(400).json({ success: false, message: "Order is already paid" });
+    }
 
-    if (order.status === 6)
+    if (order.status === 6) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ success: false, message: "Order has been cancelled" });
+    }
 
     // Extend expiry by 15 more minutes and create a fresh Razorpay order
     const amount = Math.round(Number(order.total_amount) * 100);
     if (amount < 100) {
       // Should not happen for retry (order was already pending), but guard anyway
-      await pool.query(
+      await client.query(
         `UPDATE orders SET payment_status='paid', updated_at=NOW() WHERE id=$1`,
         [id]
       );
+      await client.query("COMMIT");
       return res.json({ success: true, alreadyFree: true, orderId: order.id });
     }
     const rzpOrder = await razorpay.orders.create({
@@ -1910,10 +1948,12 @@ exports.retryPayment = async (req, res) => {
       receipt: `retry_${id}_${Date.now()}`,
     });
 
-    await pool.query(
+    await client.query(
       `UPDATE orders SET razorpay_order_id=$1, expires_at=NOW()+INTERVAL '15 minutes', status=0, updated_at=NOW() WHERE id=$2`,
       [rzpOrder.id, id]
     );
+
+    await client.query("COMMIT");
 
     res.json({
       success: true,
@@ -1924,8 +1964,11 @@ exports.retryPayment = async (req, res) => {
       razorpayKey: process.env.RAZORPAY_KEY,
     });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("[RETRY PAYMENT]", err);
     res.status(500).json({ success: false, message: "Failed to initiate payment retry" });
+  } finally {
+    client.release();
   }
 };
 
@@ -1938,8 +1981,8 @@ exports.razorpayWebhook = async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
   if (!secret) {
-    console.warn('[WEBHOOK] RAZORPAY_WEBHOOK_SECRET not set — skipping');
-    return res.status(200).json({ received: true });
+    console.error('[WEBHOOK] RAZORPAY_WEBHOOK_SECRET not configured — rejecting webhook so Razorpay retries');
+    return res.status(500).json({ success: false, message: 'Webhook secret not configured' });
   }
 
   // Verify signature using raw body (Buffer from express.raw())
@@ -2096,7 +2139,7 @@ exports.razorpayWebhook = async (req, res) => {
 
     // Mark order paid
     await client.query(
-      `UPDATE orders SET payment_status='paid', status=1, razorpay_payment_id=$1 WHERE id=$2`,
+      `UPDATE orders SET payment_status='paid', status=1, razorpay_payment_id=$1, updated_at=NOW() WHERE id=$2`,
       [razorpay_payment_id, orderId]
     );
 
@@ -2505,6 +2548,24 @@ exports.buyNow = async (req, res) => {
       const paise = Math.round(finalTotal * 100);
       if (paise < 100) {
         await client.query(`UPDATE orders SET payment_status='paid', updated_at=NOW() WHERE id=$1`, [orderId]);
+
+        // Deduct inventory — verifyPayment will never be called for zero-cost buy-now orders
+        if (variantId) {
+          const rv = await client.query(
+            `UPDATE product_variants SET inventory = inventory - $1 WHERE id = $2 AND inventory >= $1 RETURNING id`,
+            [quantity, variantId]
+          );
+          if (!rv.rows.length) throw new Error('Variant stock mismatch');
+        } else {
+          const rp = await client.query(
+            `UPDATE products SET inventory = inventory - $1 WHERE id = $2 AND inventory >= $1 RETURNING id`,
+            [quantity, productId]
+          );
+          if (!rp.rows.length) throw new Error('Stock mismatch');
+        }
+
+        // Credit referral reward (normally done in verifyPayment for online orders)
+        await creditReferralReward(client, userId, orderId);
       } else {
         razorpayOrder = await razorpay.orders.create({
           amount: paise, currency: 'INR',
@@ -2530,7 +2591,7 @@ exports.buyNow = async (req, res) => {
           sendOrderConfirmationEmail({
             email: uRow.email, name: uRow.name, orderId, invoiceNo: invRow.invoice_no,
             items: [{ name: item.product_name, quantity, price: item.effective_price, variant_label: item.variant_label || null }],
-            total, paymentMethod: 'cod', address: invRow.shipping_address?.address || '',
+            total: finalTotal, paymentMethod: 'cod', address: invRow.shipping_address?.address || '',
           });
         }
       } catch (_) {}

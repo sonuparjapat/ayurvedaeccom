@@ -126,17 +126,25 @@ async function runSubscriptionBilling() {
           VALUES ($1,$2,$3,$4,$5,$6)
         `, [orderId, sub.product_id, sub.variant_id || null, sub.variant_label || null, qty, price])
 
-        // Deduct inventory
-        if (sub.variant_id) {
-          await subClient.query(
-            `UPDATE product_variants SET inventory = inventory - $1 WHERE id=$2 AND inventory >= $1`,
-            [qty, sub.variant_id]
+        // Deduct inventory (atomic guard: only deduct if stock is still sufficient)
+        const invUpdate = sub.variant_id
+          ? await subClient.query(
+              `UPDATE product_variants SET inventory = inventory - $1 WHERE id=$2 AND inventory >= $1`,
+              [qty, sub.variant_id]
+            )
+          : await subClient.query(
+              `UPDATE products SET inventory = inventory - $1 WHERE id=$2 AND inventory >= $1`,
+              [qty, sub.product_id]
+            )
+        if (!invUpdate.rowCount) {
+          // Stock was depleted by a concurrent transaction between the outer check and now
+          await subClient.query('ROLLBACK')
+          console.log(`[SubBilling] Sub ${sub.sub_id}: inventory depleted (race condition), skipping`)
+          await pool.query(
+            `UPDATE subscriptions SET next_order_date = next_order_date + INTERVAL '1 day' WHERE id=$1`,
+            [sub.sub_id]
           )
-        } else {
-          await subClient.query(
-            `UPDATE products SET inventory = inventory - $1 WHERE id=$2 AND inventory >= $1`,
-            [qty, sub.product_id]
-          )
+          continue
         }
 
         // Advance next_order_date

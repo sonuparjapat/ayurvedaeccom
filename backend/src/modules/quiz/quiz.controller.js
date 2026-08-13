@@ -408,8 +408,10 @@ exports.submitDynamicQuiz = async (req, res) => {
     const userId = req.user?.id || null
     const { answers, sessionId } = req.body // answers: [{ question_id, option_id }]
 
-    if (!Array.isArray(answers) || !answers.length)
+    if (!Array.isArray(answers) || !answers.length) {
+      await client.query('ROLLBACK')
       return res.status(400).json({ success: false, message: 'Answers required' })
+    }
 
     // Load quiz — FOR UPDATE prevents concurrent submissions from both passing attempt limit
     const quizRes = await client.query(

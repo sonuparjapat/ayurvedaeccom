@@ -1,5 +1,12 @@
 'use client'
 
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    .replace(/javascript:[^\s"'>]*/gi, '')
+}
+
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import axios from '@/lib/axios'
@@ -183,7 +190,7 @@ export default function BlogPostPage() {
                   prose-img:rounded-xl prose-img:shadow-md
                   prose-blockquote:border-emerald-500
                   prose-strong:text-gray-900"
-                dangerouslySetInnerHTML={{ __html: post.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
               />
 
               {/* Tags */}

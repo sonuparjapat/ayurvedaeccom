@@ -39,7 +39,13 @@ exports.updateTracking = async (req, res) => {
 exports.getTracking = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const result = await pool.query(`SELECT * FROM tracking WHERE order_id=$1`, [orderId]);
+    // Verify order belongs to the authenticated user before returning tracking
+    const result = await pool.query(
+      `SELECT t.* FROM tracking t
+       JOIN orders o ON o.id = t.order_id
+       WHERE t.order_id=$1 AND o.user_id=$2`,
+      [orderId, req.user.id]
+    );
     if (!result.rows.length) return res.status(404).json({ success: false, message: "No tracking found for this order" });
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {

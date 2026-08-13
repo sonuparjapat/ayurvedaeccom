@@ -527,7 +527,7 @@ exports.addReview = async (req, res) => {
     let newImages = []
     if (req.files?.length) {
       for (const file of req.files) {
-        const url = await uploadImageToAWS(file)
+        const url = await uploadImageToAWS(file, 'reviews')
         uploaded.push(url)
         newImages.push(url)
       }
@@ -679,7 +679,7 @@ exports.addOrUpdateReview = async (req, res) => {
 
       for (const file of req.files) {
 
-        const url = await uploadImageToAWS(file);
+        const url = await uploadImageToAWS(file, 'reviews');
 
         uploaded.push(url);
         newImages.push(url);

@@ -114,11 +114,18 @@ exports.adminCreditWallet = async (req, res) => {
       return res.status(400).json({ message: 'user_id and positive amount required' })
 
     await client.query('BEGIN')
+    const updateRes = await client.query(
+      'UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id=$2',
+      [amount, user_id]
+    )
+    if (!updateRes.rowCount) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ message: 'User not found' })
+    }
     await client.query(
       `INSERT INTO wallet_transactions (user_id, amount, type, source, description) VALUES ($1,$2,'credit','admin',$3)`,
       [user_id, amount, description || 'Admin credit']
     )
-    await client.query('UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id=$2', [amount, user_id])
     await client.query('COMMIT')
     res.json({ success: true })
   } catch (err) {
@@ -165,11 +172,18 @@ exports.adminCreditLoyalty = async (req, res) => {
       return res.status(400).json({ message: 'user_id and positive points required' })
 
     await client.query('BEGIN')
+    const updateRes = await client.query(
+      'UPDATE users SET loyalty_points_balance = loyalty_points_balance + $1 WHERE id=$2',
+      [points, user_id]
+    )
+    if (!updateRes.rowCount) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ message: 'User not found' })
+    }
     await client.query(
       `INSERT INTO loyalty_points (user_id, points, type, source, description) VALUES ($1,$2,'earn','admin',$3)`,
       [user_id, points, description || 'Admin award']
     )
-    await client.query('UPDATE users SET loyalty_points_balance = loyalty_points_balance + $1 WHERE id=$2', [points, user_id])
     await client.query('COMMIT')
     res.json({ success: true })
   } catch (err) {

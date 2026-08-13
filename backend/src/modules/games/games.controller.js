@@ -282,6 +282,7 @@ exports.adminUpsertSegment = async (req, res) => {
         `UPDATE spin_wheel_segments SET label=$1,reward_type=$2,reward_value=$3,probability_weight=$4,color=$5,sort_order=$6 WHERE id=$7 RETURNING *`,
         [label, reward_type, reward_value, probability_weight, color, sort_order, id]
       )
+      if (!r.rows.length) return res.status(404).json({ success: false, message: 'Segment not found' })
     } else {
       r = await pool.query(
         `INSERT INTO spin_wheel_segments (wheel_id,label,reward_type,reward_value,probability_weight,color,sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,

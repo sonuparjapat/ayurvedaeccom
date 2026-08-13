@@ -60,32 +60,22 @@ exports.createAdmin = async (req, res) => {
     )
 
 
-    /* Send Credentials */
-
-   await mailer.sendTransacEmail({
-  sender: {
-    email:
-      process.env.MAIL_FROM,
-    name:
-      process.env.APP_NAME
-  },
-
-  to: [
-    {
-      email
+    /* Send Credentials — wrapped so a mail failure doesn't roll back the already-inserted admin */
+    try {
+      await mailer.sendTransacEmail({
+        sender: { email: process.env.MAIL_FROM, name: process.env.APP_NAME },
+        to: [{ email }],
+        subject: "Admin Account Created",
+        htmlContent: `
+         <h3>Admin Access</h3>
+         <p>Email: ${email}</p>
+         <p>Password: ${tempPass}</p>
+         <p>Please change after login</p>
+        `
+      });
+    } catch (mailErr) {
+      console.error('[createAdmin] welcome email failed (admin already saved):', mailErr.message)
     }
-  ],
-
-  subject:
-   "Admin Account Created",
-
-  htmlContent: `
-   <h3>Admin Access</h3>
-   <p>Email: ${email}</p>
-   <p>Password: ${tempPass}</p>
-   <p>Please change after login</p>
-  `
-});
 
     res.json({
       success: true,

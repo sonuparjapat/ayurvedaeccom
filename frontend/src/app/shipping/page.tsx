@@ -4,6 +4,13 @@ import axios from '@/lib/axios'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    .replace(/javascript:[^\s"'>]*/gi, '')
+}
+
 export default function ShippingPage() {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
@@ -25,7 +32,7 @@ export default function ShippingPage() {
           {loading ? (
             <div className="text-center py-12 text-gray-400">Loading...</div>
           ) : content ? (
-            <div className="bg-white rounded-2xl border p-8 prose prose-gray max-w-none" dangerouslySetInnerHTML={{ __html: content }} />
+            <div className="bg-white rounded-2xl border p-8 prose prose-gray max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }} />
           ) : (
             <div className="bg-white rounded-2xl border p-12 text-center">
               <p className="text-gray-500">Shipping Policy coming soon.</p>

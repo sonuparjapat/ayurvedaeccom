@@ -120,16 +120,36 @@ exports.addToCart = async (req, res) => {
     }
 
     if (userId) {
-      const wasInCart = await upsertUserCart(pool, userId, productId, vid, qty, maxStock);
-      return res.json({ message: "Product added to cart", inCart: wasInCart });
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const wasInCart = await upsertUserCart(client, userId, productId, vid, qty, maxStock);
+        await client.query("COMMIT");
+        return res.json({ message: "Product added to cart", inCart: wasInCart });
+      } catch (e) {
+        await client.query("ROLLBACK");
+        throw e;
+      } finally {
+        client.release();
+      }
     }
 
     if (!sessionId) return res.status(400).json({ message: "Guest session required" });
     const check = await validateGuestSession(sessionId);
     if (!check.valid) return sessionErrorResponse(res, check);
 
-    const wasInCart = await upsertGuestCart(pool, sessionId, productId, vid, qty, maxStock);
-    return res.json({ message: "Product added to guest cart", inCart: wasInCart });
+    const guestClient = await pool.connect();
+    try {
+      await guestClient.query("BEGIN");
+      const wasInCart = await upsertGuestCart(guestClient, sessionId, productId, vid, qty, maxStock);
+      await guestClient.query("COMMIT");
+      return res.json({ message: "Product added to guest cart", inCart: wasInCart });
+    } catch (e) {
+      await guestClient.query("ROLLBACK");
+      throw e;
+    } finally {
+      guestClient.release();
+    }
 
   } catch (err) {
     console.error("Add to cart error:", err);
@@ -285,7 +305,7 @@ exports.updateCartQty = async (req, res) => {
     const qty = parseInt(quantity);
     const vid = variantId ? parseInt(variantId) : null;
 
-    if (!productId || qty < 1) return res.status(400).json({ message: "Invalid data" });
+    if (!productId || isNaN(qty) || qty < 1) return res.status(400).json({ message: "Invalid data" });
 
     /* stock check */
     let maxStock;
@@ -311,21 +331,23 @@ exports.updateCartQty = async (req, res) => {
     if (qty > maxStock) return res.status(400).json({ message: "Not enough stock" });
 
     if (userId) {
-      await pool.query(
+      const result = await pool.query(
         `UPDATE cart SET quantity=$1
          WHERE user_id=$2 AND product_id=$3
          AND (variant_id=$4 OR (variant_id IS NULL AND $4::int IS NULL))`,
         [qty, userId, productId, vid]
       );
+      if (!result.rowCount) return res.status(404).json({ message: "Item not found in cart" });
     } else {
       const check = await validateGuestSession(sessionId);
       if (!check.valid) return sessionErrorResponse(res, check);
-      await pool.query(
+      const result = await pool.query(
         `UPDATE guest_cart SET quantity=$1
          WHERE guest_session_id=$2 AND product_id=$3
          AND (variant_id=$4 OR (variant_id IS NULL AND $4::int IS NULL))`,
         [qty, sessionId, productId, vid]
       );
+      if (!result.rowCount) return res.status(404).json({ message: "Item not found in cart" });
     }
 
     res.json({ message: "Cart updated successfully" });
