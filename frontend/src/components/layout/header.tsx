@@ -935,13 +935,13 @@ const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_deli
         >
           <div className="top-bar-inner">
             <div className="top-bar-contact">
-              <a href={`tel:+${companydata[0]?.phone||""}`}>
+              <a href={`tel:+${(companydata as any)?.[0]?.phone||""}`}>
                 <Phone size={13} />
-                <span>{companydata[0]?.phone||"0000000000"}</span>
+                <span>{(companydata as any)?.[0]?.phone||"0000000000"}</span>
               </a>
-              <a href={`mailto:${companydata[0]?.email||""}`}>
+              <a href={`mailto:${(companydata as any)?.[0]?.email||""}`}>
                 <Mail size={13} />
-                <span>{companydata[0]?.email||"-----"}</span>
+                <span>{(companydata as any)?.[0]?.email||"-----"}</span>
               </a>
             </div>
             <div className="top-bar-badges">
