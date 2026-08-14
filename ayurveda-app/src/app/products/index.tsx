@@ -254,7 +254,6 @@ export default function ProductsScreen() {
       setTotal(res.data?.total || 0)
       setPage(pg)
     } catch (e: any) {
-      console.warn('[Products fetch]', e?.response?.status, e?.message)
     } finally { setLoading(false); setLoadingMore(false) }
   }
 

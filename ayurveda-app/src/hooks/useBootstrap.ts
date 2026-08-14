@@ -109,9 +109,7 @@ export function useBootstrap() {
         setCompanyData(d)
         writeCache(CACHE_KEYS.companyData, CACHE_KEYS.companyTs, d)
       }
-    } catch (e) {
-      console.warn('[Bootstrap background refresh error]', e)
-    }
+    } catch { }
   }
 
   const fetchCart = async () => {
@@ -119,9 +117,7 @@ export function useBootstrap() {
       const res = await api.get('/cart')
       const items = res.data?.items || []
       useStore.getState().setCartData({ items, subtotal: res.data?.subtotal || 0, totalItems: items.length })
-    } catch (e) {
-      console.warn('[Bootstrap cart error]', e)
-    }
+    } catch { }
   }
 
   const fetchCartGuest = async () => {

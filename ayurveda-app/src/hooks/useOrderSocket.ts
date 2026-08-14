@@ -94,9 +94,7 @@ export function useOrderSocket() {
             { duration: 7000, onPress: () => router.push(`/order/${data.order_id}` as any) }
           )
         })
-      } catch (e) {
-        console.warn('[useOrderSocket] connection error', e)
-      }
+      } catch { }
     }
 
     connect()

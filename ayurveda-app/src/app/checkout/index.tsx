@@ -456,8 +456,6 @@ export default function CheckoutScreen() {
         setSuccessOrderId(orderId)
         setStep(3)
       } catch (e: any) {
-        console.error('[Razorpay]', JSON.stringify(e))
-
         if (e?.code === 2) {
           // User dismissed the payment sheet — cancel the order to restore wallet & loyalty
           try {

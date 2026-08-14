@@ -130,7 +130,6 @@ function Inner() {
     </Stack>
   )
 }
-// console.log("hi")
 // ToastHost sits outside Inner — survives navigation and font-loading
 function ToastHost() {
   const ref = useRef<ToastRef>(null)

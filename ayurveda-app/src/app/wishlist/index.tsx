@@ -281,7 +281,7 @@ export default function WishlistScreen() {
       else setItems(prev => [...prev, ...data])
       setTotalPages(pagination.totalPages || 1)
       setPage(pg)
-    } catch (e) { console.log('[Wishlist]', e) }
+    } catch { }
     finally { setLoading(false); setLoadingMore(false) }
   }
 

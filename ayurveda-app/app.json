@@ -11,7 +11,7 @@
     ],
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.sonu992000parjapat.ayurvedaapp"
     },
     "android": {

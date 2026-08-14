@@ -47,7 +47,6 @@ interface Product {
   meta_title?: string; meta_description?: string
 }
 interface Review { id?: number; name: string; user_name?: string; rating: number; comment: string; images?: string[]; order_id?: number }
-// console.log("hii")
 // ─── IMAGE VIEWER MODAL (fullscreen, multi-image, pinch-to-zoom, swipe-to-dismiss) ──
 function ImageViewerModal({ images, initialIndex, onClose }: { images: string[]; initialIndex: number; onClose: () => void }) {
   const translateY = useRef(new RNAnimated.Value(0)).current
@@ -471,7 +470,6 @@ export default function ProductDetailScreen() {
         } catch { }
       }
     } catch (e: any) {
-      console.warn('[Product detail]', e?.response?.status, e?.message)
       toast.error('Product not found')
     } finally { setLoading(false) }
   }

@@ -33,8 +33,7 @@ export const getGuestSession = async (
 
     return sessionId
 
-  } catch (err) {
-    console.log(err)
+  } catch {
     return null
   }
 }

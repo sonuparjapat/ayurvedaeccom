@@ -71,9 +71,7 @@ export async function registerPushToken(): Promise<string | null> {
 export async function savePushTokenToServer(token: string) {
   try {
     await api.post('/push/token', { token, device_type: Platform.OS })
-  } catch (e) {
-    console.warn('[Push] Token save failed', e)
-  }
+  } catch { }
 }
 
 export async function deletePushToken() {

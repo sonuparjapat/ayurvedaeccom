@@ -146,7 +146,6 @@ export default function AuthScreen() {
         setGoogleLoading(false)
       }
     } catch (e: any) {
-      console.error('[GoogleSignIn] error code:', e.code, 'message:', e.message)
       if (e.code === statusCodes.SIGN_IN_CANCELLED) {
         // user cancelled — no toast needed
       } else if (e.code === statusCodes.IN_PROGRESS) {

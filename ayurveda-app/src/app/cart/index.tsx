@@ -283,7 +283,6 @@ export default function CartScreen() {
         await getGuestSession(true)
         return fetchCart()
       }
-      console.warn('[Cart fetch]', e?.response?.status, e?.message)
     } finally { setLoading(false) }
   }
 
