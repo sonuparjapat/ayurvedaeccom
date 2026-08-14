@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 
@@ -26,7 +26,7 @@ import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
 
 
-export default function AuthPage() {
+function AuthContent() {
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -594,5 +594,13 @@ setActiveTab('login')
       <Footer />
 
     </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={null}>
+      <AuthContent />
+    </Suspense>
   )
 }

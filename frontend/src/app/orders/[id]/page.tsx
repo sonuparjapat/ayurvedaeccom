@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -65,7 +65,7 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-export default function OrderDetailPage() {
+function OrderDetailContent() {
   const { id } = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -932,5 +932,13 @@ export default function OrderDetailPage() {
 
       <Footer />
     </>
+  )
+}
+
+export default function OrderDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <OrderDetailContent />
+    </Suspense>
   )
 }
