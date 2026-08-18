@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+const API = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000') + '/api'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

@@ -1,7 +1,14 @@
 const pool = require('../../config/db')
 const { uploadImageToAWS, deleteFromAWS } = require('../../utils/awsImageUpload')
+const { broadcastAll } = require('../../services/pushNotification')
 
 /* ================= HELPERS ================= */
+
+function computeReadTime(content) {
+  if (!content) return 1
+  const words = content.replace(/<[^>]+>/g, '').trim().split(/\s+/).filter(w => w.length > 0).length
+  return Math.max(1, Math.ceil(words / 200))
+}
 
 function slugify(text) {
   return text
@@ -62,7 +69,7 @@ exports.getPublicPosts = async (req, res) => {
 
     const dataQ = `
       SELECT id, title, slug, excerpt, cover_image, author_name,
-             category, tags, views_count, published_at, created_at
+             category, tags, views_count, published_at, created_at, content
       FROM blog_posts
       ${where}
       ORDER BY published_at DESC
@@ -71,9 +78,11 @@ exports.getPublicPosts = async (req, res) => {
     params.push(limit, offset)
     const { rows } = await pool.query(dataQ, params)
 
+    const data = rows.map(({ content, ...rest }) => ({ ...rest, read_time: computeReadTime(content) }))
+
     res.json({
       success: true,
-      data: rows,
+      data,
       total,
       page,
       totalPages: Math.ceil(total / limit)
@@ -101,7 +110,8 @@ exports.getPostBySlug = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Post not found' })
     }
 
-    res.json({ success: true, data: rows[0] })
+    const post = rows[0]
+    res.json({ success: true, data: { ...post, read_time: computeReadTime(post.content) } })
   } catch (err) {
     console.error('getPostBySlug error:', err.message)
     res.status(500).json({ success: false, message: 'Server error' })
@@ -240,7 +250,16 @@ exports.adminCreatePost = async (req, res) => {
       ]
     )
 
-    res.status(201).json({ success: true, data: rows[0], message: 'Post created' })
+    const created = rows[0]
+    // Fire push notification to all users when a new post is published
+    if (created.status === 'published') {
+      broadcastAll(
+        '📖 New Article Published',
+        created.title,
+        { type: 'blog', slug: created.slug }
+      ).catch(() => {})
+    }
+    res.status(201).json({ success: true, data: created, message: 'Post created' })
   } catch (err) {
     console.error('adminCreatePost error:', err.message)
     res.status(500).json({ success: false, message: 'Server error' })
@@ -319,7 +338,17 @@ exports.adminUpdatePost = async (req, res) => {
       ]
     )
 
-    res.json({ success: true, data: rows[0], message: 'Post updated' })
+    const updated = rows[0]
+    // Fire push notification when a draft is first published
+    const wasPublished = post.status !== 'published' && updated.status === 'published'
+    if (wasPublished) {
+      broadcastAll(
+        '📖 New Article Published',
+        updated.title,
+        { type: 'blog', slug: updated.slug }
+      ).catch(() => {})
+    }
+    res.json({ success: true, data: updated, message: 'Post updated' })
   } catch (err) {
     console.error('adminUpdatePost error:', err.message)
     res.status(500).json({ success: false, message: 'Server error' })

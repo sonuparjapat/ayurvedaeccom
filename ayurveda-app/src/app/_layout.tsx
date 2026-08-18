@@ -119,6 +119,7 @@ function Inner() {
       <Stack.Screen name="faq/index" options={{ presentation: 'card' }} />
       <Stack.Screen name="blog/index" options={{ presentation: 'card' }} />
       <Stack.Screen name="blog/[slug]" options={{ presentation: 'card' }} />
+      <Stack.Screen name="blog/saved" options={{ presentation: 'card' }} />
       <Stack.Screen name="account/subscriptions" options={{ presentation: 'card' }} />
       <Stack.Screen name="quiz/index" options={{ presentation: 'card', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="games/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />

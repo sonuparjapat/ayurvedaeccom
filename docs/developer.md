@@ -1718,3 +1718,141 @@ Eleven financial/calculation bugs found and fixed across order creation, invoici
 - Floating header changed from `pointerEvents="none"` to `pointerEvents="box-none"` so the search area is tappable.
 - Added `floatSearch` touchable alongside the logo — taps navigate to `/search`.
 - Logo resized to make room for the search field (110px wide container).
+
+---
+
+## Blog Section — Premium Overhaul (Aug 2026)
+
+All five files changed together as one atomic feature. No new dependencies added.
+
+### backend/src/modules/blog/blog.controller.js
+
+**`computeReadTime(content)`** helper added (pure function, strips HTML tags, divides word count by 200 wpm, minimum 1).
+
+**`getPublicPosts`** — SELECT now also fetches `content`; after query, rows are mapped: `content` is stripped from the response object and `read_time: computeReadTime(content)` is injected. Response shape unchanged except `read_time` added.
+
+**`getPostBySlug`** — response now includes `read_time: computeReadTime(post.content)` alongside all other columns.
+
+### ayurveda-app/src/app/blog/index.tsx (full rewrite)
+
+| Feature | Implementation |
+|---|---|
+| Featured hero card | First post (when not filtered/searching) rendered as full-width `FeaturedCard` with `LinearGradient` overlay, gold category badge, `✦ FEATURED` label |
+| Search bar | `TextInput` inside the `LinearGradient` header; searches via `params.search` API param; clear ✕ button |
+| Categories from API | `useEffect` on mount hits `/blog/public/categories`; no more deriving from loaded posts |
+| Read time | Displayed from `post.read_time` field on every card |
+| Horizontal thumbnail cards | `PostCard` uses 90×90 thumbnail on left + info on right |
+| Load more footer | `LeafLoader size="sm"` shown when `fetchingMore` is true |
+| Separate `fetchPosts` args | `fetchPosts(pg, cat, q)` — category and search passed as params, not derived from state closures |
+
+### ayurveda-app/src/app/blog/[slug].tsx (full rewrite)
+
+| Feature | Implementation |
+|---|---|
+| Reading progress bar | `View` at `position:'absolute', top:0, zIndex:200`; width driven by `readProgress` state (0–1); updated in `onScroll` handler via `contentHeightRef` |
+| Sticky header with category | `LinearGradient` header shows back btn, centered category label, share btn |
+| Hero cover image | Full-width 240px `ExpoImage` with `LinearGradient` overlay |
+| Author card | Green circle avatar (first initial in gold), author name + "Ayurvedic Wellness Expert" subtitle |
+| Enhanced content renderer | `HtmlContent` parser unchanged but block styles significantly improved; blockquote now uses gold left border + `Colors.goldLight` background |
+| Related posts | 3-column `RelatedCard` grid fetched from `/blog/public?category=…`; filtered to exclude current post |
+| Shop CTA | `LinearGradient` card at bottom with gold "Shop Now →" button linking to `/products` |
+
+### frontend/src/app/blog/page.tsx (enhanced)
+
+| Feature | Implementation |
+|---|---|
+| Categories from API | `useEffect` on mount hits `/blog/public/categories`; merged with any categories from loaded posts |
+| `read_time` from backend | `readTime(post)` helper uses `post.read_time` if present; falls back to excerpt word-count |
+| `FeaturedPost` component | Replaces old inline featured block; uses 3:2 aspect ratio image, "Cover Story" badge, excerpt, meta, hover lift |
+| `NewsletterStrip` | Between featured and grid on page 1 (not shown when filtering); gold gradient form; controlled `submitted` state |
+| Numeric pagination | Page numbers rendered alongside Prev/Next; ellipsis for far pages |
+| `PostCard` | Views badge (shown when >100 views); bottom border row separates meta from title |
+| Active search pill | When `search` is active, shown as a chip in the category bar with a ✕ to clear |
+
+### frontend/src/app/blog/[slug]/page.tsx (enhanced)
+
+| Feature | Implementation |
+|---|---|
+| `ReadingProgressBar` | Fixed `div` at `top:0, zIndex:1000`; emerald-to-teal gradient; `scroll` event listener with `passive:true` |
+| `addHeadingIds` | Regex replaces `<h2>/<h3>` tags with `id=` attribute derived from heading text; called after sanitize |
+| `extractToc` | Parses `<h2>/<h3>` from content HTML; returns `{ level, text, id }[]` |
+| `TableOfContents` | Sticky sidebar (renders only when ≥2 TOC items); active item highlighted via `IntersectionObserver` |
+| Layout | `display:grid, gridTemplateColumns: '1fr 260px'` when TOC present; single column otherwise |
+| `ShareButton` | Uses `navigator.share` (mobile); falls back to `navigator.clipboard`; shows "Copied!" state |
+| `AuthorCard` | Forest gradient circle avatar, author name, "Ayurvedic Wellness Expert" bio |
+| Hero section | Full-width dark hero with cover image behind `opacity:0.35` overlay; title/meta/excerpt rendered on top |
+| `NewsletterCta` | Dark gradient card at end of article; controlled `submitted` state |
+
+---
+
+## Blog — Post-Overhaul Improvements (Aug 2026)
+
+### Improvement #2 — Mobile Search Debounce (`ayurveda-app/src/app/blog/index.tsx`)
+
+Split search into two states: `searchDraft` (updates immediately for responsive input display) and `search` (delayed 350 ms, triggers API call). A `debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)` clears the pending timer on each keystroke. This prevents API floods during fast typing.
+
+### Improvement #3 — Web Skeleton Loaders (`frontend/src/app/blog/page.tsx`)
+
+Added CSS `@keyframes shimmer` (background-position sweep) and three skeleton components:
+- `Skel({ w, h, r, mb })` — single placeholder block
+- `FeaturedSkeleton` — matches featured post hero layout
+- `CardSkeleton` — matches PostCard dimensions
+- `SkeletonGrid` — featured + 6 cards
+
+Shown when `loading && page === 1`; subsequent pages show `LeafLoader` spinner instead.
+
+### Improvement #4 — Mobile Article Bookmarking + Saved Articles Screen
+
+**`ayurveda-app/src/app/blog/[slug].tsx`**: AsyncStorage key `blog_bookmarks_v1` stores an array of bookmarked post slugs. A 🔖 button in the sticky header reads/writes the key. State is loaded on mount via `useEffect`.
+
+**`ayurveda-app/src/app/blog/saved.tsx`** (new file): Reads `blog_bookmarks_v1` on `useFocusEffect`, fetches each slug from `/blog/public/{slug}` via the axios instance, and renders a FlatList of PostCards with an inline "Remove" action. Empty state shows a "Browse Blog" CTA. Re-runs automatically when the screen regains focus (e.g., after bookmarking from the article view).
+
+**`ayurveda-app/src/app/account/index.tsx`**: Added "🔖 Saved Articles" quick-link row (amber gradient) immediately after "Wellness Blog", navigating to `/blog/saved`.
+
+Also registered `blog/saved` in `_layout.tsx` Stack.Screen so expo-router resolves the route.
+
+### Improvement #5 — OG Image Generation (`frontend/src/app/blog/[slug]/opengraph-image.tsx`)
+
+New Next.js edge route using `ImageResponse` (1200×630). On each request it fetches the post from the API server-side (`next: { revalidate: 3600 }`), extracts `title`, `excerpt`, `category`, and `cover_image`, and renders a branded dark-forest card with:
+- Semi-transparent cover image background (opacity 0.22)
+- Gradient overlay (forest → teal)
+- Amber "OROGANIX" brand badge + category label
+- Dynamic font size (42/50/58px) based on title length
+- Gold accent bar + `oroganix.com/blog` footer
+
+### Improvement #6 — Trending / Popular Badges (web + mobile)
+
+**Web** (`frontend/src/app/blog/page.tsx`): `PostCard` top-right overlay badge replaced with:
+- `views_count > 500` → red `🔥 Trending` pill
+- `views_count > 100` → amber `⭐ Popular` pill
+
+**Mobile** (`ayurveda-app/src/app/blog/index.tsx`): `PostCard` info area now shows trending/popular badge above category — styles: `trendingBadge` (red-tinted), `popularBadge` (amber-tinted).
+
+### Improvement #7 — Pull-to-Refresh on Mobile Blog Listing
+
+Added `RefreshControl` import and `refreshing` state to `BlogListScreen`. The `onRefresh` callback calls `fetchPosts(1, selectedCat, search)` and resets `page` to 1. Wired to `FlatList.refreshControl` with `tintColor={Colors.forest}`.
+
+### Improvement #8 — Load More on Web Blog Listing
+
+Replaced numeric pagination in `frontend/src/app/blog/page.tsx` with an append pattern:
+- `load(pg, append)` — when `append=true`, new posts are concat'd onto existing `posts` state
+- `hasMore` tracked from `totalPages` comparison
+- "Load More Articles" button shown when `hasMore` is true; disabled during `loadingMore`
+- Removed `ChevronLeft` and old numeric button grid
+
+### Improvement #9 — Social Share Row on Web Article (`frontend/src/app/blog/[slug]/page.tsx`)
+
+New `SocialShareRow` component placed between article tags and `NewsletterCta`:
+- **Share on X**: `https://twitter.com/intent/tweet` with encoded title + URL
+- **WhatsApp**: `https://wa.me/?text=` with title + URL
+- **Copy link**: `navigator.clipboard.writeText`; button text flips to "Copied!" for 2.2 s
+- Uses inline SVG icons (X logo, WhatsApp logo) — no external CDN
+
+### Improvement #10 — Push Notifications on Blog Publish (`backend/src/modules/blog/blog.controller.js`)
+
+`broadcastAll` imported from `../../services/pushNotification`. Fires when:
+1. `adminCreatePost`: `created.status === 'published'`
+2. `adminUpdatePost`: `post.status !== 'published' && updated.status === 'published'` (draft → published transition only)
+
+Notification payload: `{ title: '📖 New Article Published', body: post.title, data: { type: 'blog', slug } }` — the existing `_layout.tsx` router already handles `type === 'blog'` and navigates to `/blog/:slug`.
+| Related post cards | Use `read_time` from backend instead of computing from `rp.content` |

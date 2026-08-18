@@ -691,6 +691,7 @@ export default function AccountScreen() {
                 { emoji: '📍', label: 'Manage Addresses', sub: 'Delivery addresses', onPress: () => setActiveTab('Addresses'), gradient: ['#059669', '#065f46'] as [string, string] },
                 { emoji: '🔁', label: 'Subscriptions', sub: 'Manage repeat orders', onPress: () => router.push('/account/subscriptions' as any), gradient: ['#0891b2', '#0e7490'] as [string, string] },
                 { emoji: '📖', label: 'Wellness Blog', sub: 'Ayurvedic tips & articles', onPress: () => router.push('/blog' as any), gradient: ['#065f46', '#0f766e'] as [string, string] },
+                { emoji: '🔖', label: 'Saved Articles', sub: 'Your bookmarked posts', onPress: () => router.push('/blog/saved' as any), gradient: ['#b45309', '#92400e'] as [string, string] },
                 { emoji: '❓', label: 'FAQ', sub: 'Common questions answered', onPress: () => router.push('/faq' as any), gradient: ['#7c3aed', '#6d28d9'] as [string, string] },
                 { emoji: '💬', label: 'Support', sub: 'Raise a ticket or enquiry', onPress: () => router.push('/support' as any), gradient: ['#4f46e5', '#3730a3'] as [string, string] },
                 { emoji: '⚙️', label: 'Settings', sub: 'App preferences & security', onPress: () => router.push('/settings' as any), gradient: ['#374151', '#1f2937'] as [string, string] },

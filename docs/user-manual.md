@@ -845,3 +845,61 @@ When a customer requests a replacement:
 
 ### Home
 - **Sticky search bar on scroll** — when you scroll past the main search bar on the home screen, a compact search bar appears inside the floating header so you can search without scrolling back to the top.
+
+---
+
+## Blog — Premium Overhaul
+
+The blog section has been completely redesigned across web and mobile to match the quality of a real editorial publication.
+
+### Web — Blog Listing (`/blog`)
+
+- **Cover Story**: The most recent article is highlighted as a full-width "Cover Story" card at the top with a large image, excerpt, and read time.
+- **Newsletter signup**: A dark Ayurvedic-themed strip appears below the featured story. Enter your email and tap **Subscribe** to receive our weekly Wellness Digest.
+- **Reading time**: Every card now shows an accurate read time (e.g. "5 min read") calculated from the full article content.
+- **Category filter**: Tabs at the top filter articles by category instantly.
+- **Active search pill**: When you search for a term, a gold chip appears in the category bar. Click **✕** on it to clear the search.
+- **Page numbers**: Navigate pages using numbered buttons or Prev / Next.
+
+### Web — Article Page (`/blog/[slug]`)
+
+- **Reading progress bar**: A thin green bar at the very top of the browser window tracks how far through the article you've read.
+- **Hero header**: The article title, author, date, read time, and share button are displayed over a full-width cover image.
+- **Table of contents**: A sticky sidebar on the right (desktop only) lists the article's section headings. Click any heading to jump to it; the active section highlights automatically as you scroll.
+- **Share button**: Tap **Share** to use your browser's native share sheet (mobile), or **Copy link** to copy the article URL to your clipboard.
+- **Author card**: A bio card below the title introduces the author and their Ayurvedic expertise.
+- **Newsletter CTA**: A sign-up prompt appears at the end of every article so you never miss the next one.
+
+### Mobile App — Blog Listing
+
+- **Featured article**: The first article is displayed as a tall hero card with a gradient overlay, gold category badge, and "✦ FEATURED" label — just like a magazine cover story.
+- **Search**: A search bar inside the header lets you find articles by keyword. Tap **✕** to clear.
+- **Reading time**: Every card shows how many minutes the article takes to read.
+- **Categories**: Loaded directly from the server — always up to date without needing to scroll first.
+
+### Mobile App — Article
+
+- **Reading progress bar**: A thin green bar at the very top of the screen shows how far through the article you've read.
+- **Author card**: Displays the author's name and role in a mint-green card near the top.
+- **Related articles**: Three articles from the same category appear at the bottom so you can keep reading.
+- **Shop CTA**: A dark card at the end links to the product catalogue.
+- **Share**: Tap **↑ Share** in the top-right corner to share the article link via any app.
+- **Bookmark**: Tap the **🔖** icon in the top-right to save the article. Tap again to remove it. Bookmarks are stored on the device — no login required.
+
+### Mobile App — Saved Articles
+
+Access your bookmarked articles from **Account → Saved Articles** (🔖). The screen shows a list of every article you've bookmarked, with cover image, title, and reading time. Tap any card to read the article, or tap **Remove** to delete it from your saved list.
+
+### Web Blog — What's New
+
+- **Trending / Popular badges**: Articles with over 500 views show a 🔥 **Trending** badge; articles with over 100 views show a ⭐ **Popular** badge — visible on every post card.
+- **Load More**: The blog listing now has a **Load More Articles** button at the bottom. New posts are added below the existing ones without resetting the page.
+- **Social share row**: At the end of each article (above the newsletter signup), share buttons let you post to **X (Twitter)**, **WhatsApp**, or **copy the link** directly.
+- **Rich social cards**: When you share a blog link on social media, it now shows a branded image preview with the article title, excerpt, and cover photo.
+
+### Mobile Blog — What's New
+
+- **Trending / Popular badges**: Same 🔥 / ⭐ badges appear on post cards in the mobile listing.
+- **Pull to refresh**: Pull down on the blog listing to reload the latest articles.
+- **Push notifications**: When a new article is published, you'll receive a push notification. Tap it to open the article directly.
+- **Saved Articles**: All bookmarked articles are accessible from Account → Saved Articles.

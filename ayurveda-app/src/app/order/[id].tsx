@@ -878,7 +878,9 @@ export default function OrderDetailScreen() {
       if ((e as any)?.code === 2) {
         toast.info('Payment cancelled')
       } else {
-        toast.error(e?.response?.data?.message || (e as any)?.description || 'Payment failed')
+        const rzpDesc = (e as any)?.description
+        const safeDesc = rzpDesc && rzpDesc !== 'undefined' ? rzpDesc : null
+        toast.error(e?.response?.data?.message || safeDesc || 'Payment failed. Please try again.')
       }
     } finally { setActionLoading(false) }
   }

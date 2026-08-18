@@ -1737,3 +1737,131 @@ curl http://localhost:5000/api/admin/analytics/overview \
 3. **Expected**: Floating header appears with a compact search bar alongside the logo.
 4. Tap the search bar in the floating header.
 5. **Expected**: Navigates to `/search`.
+
+---
+
+## Blog Section — Premium Overhaul Testing
+
+### Backend: `read_time` field
+
+1. `GET /api/blog/public` — each post object must include `read_time` (integer ≥ 1); `content` must NOT appear in the response.
+2. `GET /api/blog/public/:slug` — single post must include `read_time`; the value should equal `ceil(wordCount / 200)` where `wordCount` is the plain-text word count of `content`.
+3. Posts with no content → `read_time` must be `1` (minimum).
+
+### Web Blog Listing (`/blog`)
+
+1. Open `/blog` — the first post must appear as a "Cover Story" full-width card above the grid.
+2. Hover the Cover Story card → shadow deepens and card lifts 2px.
+3. Category pills below the hero must be loaded from `/blog/public/categories` (verify in Network tab — request is `GET /api/blog/public/categories`).
+4. Click a category — grid updates to that category only; URL is unchanged (client-side filter).
+5. Type a search term and press **Search** → matching articles shown; a gold chip appears in the category bar with the search term.
+6. Click **✕** on the gold chip → search clears, all articles shown.
+7. Newsletter strip: enter a valid email and click **Subscribe** → form replaced by "✓ You're subscribed!" message.
+8. Newsletter strip: leave email empty and click **Subscribe** → browser native validation prevents submission.
+9. Pagination: if more than 12 posts exist, numbered page buttons appear; clicking a page number loads that page.
+10. Each card shows `read_time` from the backend (e.g. "5 min"), not a calculation from excerpt.
+
+### Web Article Page (`/blog/[slug]`)
+
+1. Scroll down — the green reading-progress bar at the very top of the browser grows from 0 % to 100 %.
+2. Table of contents: appears only when the article has ≥ 2 `<h2>` or `<h3>` headings; otherwise the layout is single-column.
+3. TOC active state: scroll to a heading — its entry in the TOC sidebar highlights in green.
+4. Click a TOC entry → page scrolls to that heading.
+5. **Share** button on desktop (no `navigator.share`) → copies URL; button text changes to "Copied!" for ~2 s.
+6. **Share** button on mobile (has `navigator.share`) → native share sheet opens.
+7. Author card: visible below the article hero; shows author name and "Ayurvedic Wellness Expert".
+8. Newsletter CTA at end: submit with valid email → "✓ You're subscribed!" confirmation.
+9. Related articles: up to 3 cards shown; none should be the current article.
+10. Related article cards show `read_time` (not "undefined").
+
+### Mobile Blog Listing
+
+1. Open the blog screen — the first post must render as a tall `FeaturedCard` with gradient overlay and `✦  FEATURED` label.
+2. Category tabs must appear immediately (loaded from API, not waiting for scroll).
+3. Type in the search bar → posts filter live (API call with `search` param).
+4. Tap **✕** on the search bar → clears search, all posts restored.
+5. Each post card shows `read_time` (e.g. "3 min").
+6. Scroll to bottom → more posts load; `LeafLoader` appears in footer during loading.
+
+### Mobile Article
+
+1. Open any article — a thin green bar appears at the very top of the screen.
+2. Scroll down → the bar grows proportionally to scroll depth.
+3. Author card renders below the post title with the author's first initial in a gold-on-green circle.
+4. If the article's category has other posts → "RELATED ARTICLES" section appears at the bottom with up to 3 cards.
+5. Tap a related article card → navigates to that article correctly.
+6. Tap **↑ Share** → system share sheet opens.
+7. Tap **Shop Now →** → navigates to `/products`.
+8. Block rendering: `<h2>` renders large green bold text; `<blockquote>` renders with gold left border on a light-gold background; `<li>` shows `•` bullet.
+9. Tap **🔖** → icon fills (bookmarked). Tap again → icon reverts (removed).
+
+### Mobile — Search Debounce
+
+1. Open Blog listing and type a search term quickly.
+2. The text input updates instantly; the results list does NOT refresh on every keystroke.
+3. Results update ~350 ms after the last character typed.
+4. Tap **✕** to clear → both draft and search reset; full listing returns.
+
+### Mobile — Saved Articles
+
+1. Bookmark at least one article (🔖 button on article screen).
+2. Navigate to **Account → Saved Articles** → the bookmarked article(s) appear.
+3. Tap a card → article opens correctly.
+4. Tap **Remove** on a card → it disappears from the list immediately.
+5. Remove all bookmarks → empty state shows with "Browse Blog" button.
+6. Tap "Browse Blog" → navigates to `/blog`.
+7. Navigate away from Saved Articles, bookmark a new article, return → new article appears (screen reloads on focus).
+
+### Web — Skeleton Loaders
+
+1. Open Blog listing on a slow or throttled connection (DevTools → Network → Slow 3G).
+2. While data loads on page 1 → shimmer skeleton matching the featured post + 6 cards appears instead of a blank screen.
+3. After "Load More" is clicked → the `loadingMore` state shows "Loading…" on the button; after load, new cards append below existing ones without resetting the list.
+4. After data loads → skeleton/spinner is replaced by actual content with no layout shift.
+
+### Web — Load More Button
+
+1. Open Blog listing, scroll to bottom → if there are more pages, "Load More Articles →" button is visible.
+2. Click it → button shows "Loading…" and is disabled while fetching.
+3. After fetch, new cards appear below the existing ones (not replacing them).
+4. When all posts are loaded → button disappears.
+5. When searching or filtering by category → "Load More" button does not appear (filtered results show all matching posts in one page).
+
+### Web — Trending / Popular Badges
+
+1. Find a post with `views_count > 500` → red "🔥 Trending" badge shows in top-right of the post card image.
+2. Find a post with `views_count` between 101–499 → amber "⭐ Popular" badge shows instead.
+3. Posts with ≤100 views → no badge shown.
+
+### Web — Social Share Row
+
+1. Open any article → below the article content, above the newsletter CTA, a "Share this article" section appears.
+2. Click "Share on X" → browser opens `twitter.com/intent/tweet` with the article title and URL.
+3. Click "WhatsApp" → browser opens the WhatsApp share link.
+4. Click "Copy link" → text flips to "Copied!" for ~2 s; paste confirms correct URL.
+
+### Web — OG Image
+
+1. Visit `https://oroganix.com/blog/<slug>/opengraph-image` → returns a 1200×630 PNG image.
+2. Paste the blog post URL in a social card debugger (e.g. `cards-dev.twitter.com`) → shows the branded dark-forest card with article title and excerpt.
+
+### Mobile — Trending / Popular Badges
+
+1. Post with `views_count > 500` → red "🔥 Trending" chip visible in the PostCard info row.
+2. Post with `views_count` 101–499 → amber "⭐ Popular" chip visible.
+3. Posts with ≤100 views → no chip.
+
+### Mobile — Pull to Refresh
+
+1. Open Blog listing.
+2. Pull down from the top of the list → native spinner appears in forest green.
+3. After release, spinner shows briefly then disappears as posts reload.
+4. If filter or search is active → pull-to-refresh respects current filter and reloads filtered results.
+
+### Mobile + Backend — Push Notifications (Blog)
+
+1. Admin publishes a new blog post via the admin panel (status = published).
+2. All registered mobile users receive a push notification: "📖 New Article Published" with the post title.
+3. Tapping the notification → app opens and navigates to `/blog/<slug>`.
+4. Publishing a draft (draft → published) also triggers the notification.
+5. Updating a post that is already published → no duplicate notification.
