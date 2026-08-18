@@ -133,7 +133,7 @@ function ComparePageInner() {
                           lineHeight: field.multiline ? 1.5 : 'inherit',
                           whiteSpace: field.multiline ? 'pre-line' : 'normal',
                         }}>
-                          {isPrice ? `₹${Number(display).toLocaleString('en-IN')}` : display || '—'}
+                          {isPrice ? (raw != null ? `₹${Number(raw).toLocaleString('en-IN')}` : '—') : display || '—'}
                           {isBest && <span style={{ marginLeft: 4, fontSize: 10, background: '#d1fae5', color: '#065f46', borderRadius: 4, padding: '1px 5px' }}>BEST</span>}
                         </span>
                       </td>

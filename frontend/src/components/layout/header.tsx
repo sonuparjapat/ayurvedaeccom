@@ -1212,6 +1212,7 @@ const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_deli
                 {loginuserdata?.id && (
                   <Link href="/support" className="nav-link">Support</Link>
                 )}
+                <Link href="/dosha-quiz" className="nav-link special">🌿 Dosha Quiz</Link>
                 <Link href="/offers" className="nav-link special">✦ Offers</Link>
                 {loginuserdata?.id && (
                   <Link href="/games" className="nav-link special">🎮 Play & Win</Link>
@@ -1293,6 +1294,9 @@ const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_deli
                         <MessageSquare size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
                       </Link>
                     )}
+                    <Link href="/dosha-quiz" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link special">
+                      <span>🌿 Discover Your Dosha</span>
+                    </Link>
                     <Link href="/offers" onClick={() => setIsMenuOpen(false)} className="mobile-nav-link special">
                       <span>✦ Offers & Deals</span>
                     </Link>

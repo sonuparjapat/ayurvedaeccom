@@ -1453,28 +1453,30 @@ export default function ProductDetailScreen() {
 
         {/* Compare button */}
         {product && (
-          <TouchableOpacity
-            onPress={() => {
-              if (compareIds.includes(product.id)) {
-                toggleCompare(product.id)
-              } else if (compareIds.length >= 3) {
-                toast.warning('Max 3 products for comparison')
-              } else {
-                toggleCompare(product.id)
-                toast.success(`Added to compare (${compareIds.length + 1}/3)`)
-              }
-            }}
-            style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: compareIds.includes(product.id) ? Colors.emerald : Colors.border, backgroundColor: compareIds.includes(product.id) ? 'rgba(16,185,129,0.08)' : 'transparent' }}
-          >
-            <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: compareIds.includes(product.id) ? Colors.emerald : Colors.textDim }}>
-              {compareIds.includes(product.id) ? '✓ Added to Compare' : '⚖️ Add to Compare'}
-            </Text>
+          <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <TouchableOpacity
+              onPress={() => {
+                if (compareIds.includes(product.id)) {
+                  toggleCompare(product.id)
+                } else if (compareIds.length >= 3) {
+                  toast.warning('Max 3 products for comparison')
+                } else {
+                  toggleCompare(product.id)
+                  toast.success(`Added to compare (${compareIds.length + 1}/3)`)
+                }
+              }}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: compareIds.includes(product.id) ? Colors.emerald : Colors.border, backgroundColor: compareIds.includes(product.id) ? 'rgba(16,185,129,0.08)' : 'transparent' }}
+            >
+              <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: compareIds.includes(product.id) ? Colors.emerald : Colors.textDim }}>
+                {compareIds.includes(product.id) ? '✓ Added to Compare' : '⚖️ Add to Compare'}
+              </Text>
+            </TouchableOpacity>
             {compareIds.length > 0 && (
-              <TouchableOpacity onPress={() => router.push('/compare' as any)} style={{ marginLeft: 6 }}>
-                <Text style={{ fontFamily: Fonts.bold, fontSize: 11, color: Colors.emerald, textDecorationLine: 'underline' }}>View ({compareIds.length})</Text>
+              <TouchableOpacity onPress={() => router.push('/compare' as any)} style={{ paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: Colors.emerald }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 11, color: Colors.emerald }}>View ({compareIds.length})</Text>
               </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </View>
         )}
       </Animated.View>
     </View>

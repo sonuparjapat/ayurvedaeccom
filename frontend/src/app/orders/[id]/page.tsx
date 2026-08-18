@@ -445,6 +445,12 @@ function OrderDetailContent() {
                   </p>
                 </div>
               </div>
+              {(order as any).gift_wrap && (
+                <div style={{ background: 'rgba(134,239,172,0.1)', border: '1px solid rgba(134,239,172,0.25)', borderRadius: 12, padding: '10px 14px' }}>
+                  <p style={{ color: '#86efac', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 4px' }}>🎁 Gift Wrap Requested</p>
+                  {(order as any).gift_message && <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, margin: 0 }}>"{(order as any).gift_message}"</p>}
+                </div>
+              )}
               {(order.cancel_reason || order.return_reason) && (
                 <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px' }}>
                   <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 4px' }}>Reason</p>

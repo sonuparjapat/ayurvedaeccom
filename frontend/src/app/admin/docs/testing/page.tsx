@@ -652,6 +652,45 @@ const SECTIONS: TestSection[] = [
     platform: ['web', 'mobile'], color: '#dc2626',
     cases: [
       {
+        id: 'ord-gift-wrap', title: 'Gift Wrap — Checkout, Order Detail, Admin', severity: 'high',
+        steps: [
+          'Add any product to cart and go to checkout',
+          'Step 2 (Payment): scroll down — verify "🎁 Gift Wrap this order" checkbox appears (Free label beside it)',
+          'Check the checkbox — verify a textarea appears for a gift message',
+          'Enter a message, place a COD order',
+          'Open the order detail page (web + mobile) — verify "🎁 Gift Wrap Requested" card appears with the message',
+          'Admin: Orders → open that order — verify green "🎁 Gift Wrap Requested" section appears at the top of the order detail',
+          'Try without gift message: checkbox only — verify order places successfully, admin shows "No gift message added"',
+        ],
+        expected: 'Gift wrap flag and message stored in orders table (gift_wrap=true, gift_message=text). Visible in admin and customer order detail. Not visible on orders where not requested.',
+        where: 'Web: /checkout step 2. Mobile: Checkout screen scroll down. Admin: Orders → order detail.',
+      },
+      {
+        id: 'ord-low-stock-mobile', title: 'Low Stock Badge on Mobile Cards', severity: 'medium',
+        steps: [
+          'Set any active product inventory between 1–5 in Admin → Products',
+          'Open mobile app home screen — find that product in featured/recently viewed',
+          'Verify an orange "Only X left!" badge appears at the bottom-left of the product image',
+          'Open Products listing screen — verify same badge appears on the card',
+          'Set inventory to 6 or higher — verify badge disappears',
+          'Set inventory to 0 — verify "Out of Stock" banner appears instead (not the low-stock badge)',
+        ],
+        expected: 'Orange "Only X left!" badge on mobile product cards when inventory is 1–5. Hidden when ≥6. Out-of-stock overlay shown when inventory=0.',
+        where: 'Mobile: Home screen product cards, Products listing screen.',
+      },
+      {
+        id: 'ord-seasonal', title: 'Seasonal Picks Home Section', severity: 'medium',
+        steps: [
+          'Admin → Products → edit any product — in Tags field, add the current season tag: "winter" (Nov–Feb), "summer" (Mar–May), "monsoon" (Jun–Sep), or "autumn" (Oct)',
+          'Open mobile app home screen and pull to refresh',
+          'Scroll down past the CTAs — verify a "❄️ Winter Picks" (or applicable season) horizontal scroll section appears',
+          'Tap a product card — verify it navigates to the correct product detail',
+          'Remove the seasonal tag from all products — verify the section disappears (not shown when 0 results)',
+        ],
+        expected: 'Seasonal Picks section appears on mobile home when at least one product has the matching season tag. Section is hidden when no products match the current season. Season determined by device date.',
+        where: 'Mobile: Home screen, below CTAs.',
+      },
+      {
         id: 'ord-0a', title: 'Reorder — Must Add Items to Cart (not 500)', severity: 'critical',
         steps: [
           'Login as customer who has past orders',

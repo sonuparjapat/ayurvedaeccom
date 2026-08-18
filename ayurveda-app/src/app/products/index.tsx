@@ -108,6 +108,11 @@ function ProductCard({ p, index, addingId, addToCart, toggleWish, wishlist, inCa
           {p.inventory === 0 && (
             <View style={ss.oosBadge}><Text style={ss.oosText}>Out of Stock</Text></View>
           )}
+          {p.inventory > 0 && p.inventory <= 5 && (
+            <View style={{ position: 'absolute', bottom: 8, left: 8, backgroundColor: '#f97316', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 8, color: '#fff' }}>Only {p.inventory} left!</Text>
+            </View>
+          )}
           <TouchableOpacity onPress={() => toggleWish(p.id)} style={ss.wishBtn} hitSlop={6}>
             <Text style={{ fontSize: 16 }}>{isWished ? '❤️' : '🤍'}</Text>
           </TouchableOpacity>
@@ -162,6 +167,8 @@ export default function ProductsScreen() {
   const categoryId = params.id as string | undefined
   const categorySlug = params.slug as string | undefined
   const initialSearch = params.q as string || ''
+  const brandId = params.brand_id as string | undefined
+  const brandName = params.brand_name as string | undefined
 
   const { cartData, cartCount, setCartData, user, setAuthOpen, wishlistData, categories } = useStore()
 
@@ -223,7 +230,7 @@ export default function ProductsScreen() {
     setSelectedSubcat(null)
   }, [categoryId, categories])
 
-  useEffect(() => { fetchProducts(1) }, [search, selectedSort, debouncedMinPrice, debouncedMaxPrice, minRating, inStockOnly, categoryId, categorySlug, selectedSubcat])
+  useEffect(() => { fetchProducts(1) }, [search, selectedSort, debouncedMinPrice, debouncedMaxPrice, minRating, inStockOnly, categoryId, categorySlug, selectedSubcat, brandId])
 
   const fetchProducts = async (pg: number) => {
     if (pg === 1) setLoading(true); else setLoadingMore(true)
@@ -237,6 +244,7 @@ export default function ProductsScreen() {
           ...(debouncedMaxPrice && { maxPrice: debouncedMaxPrice }),
           ...(minRating > 0 && { rating: minRating }),
           ...(inStockOnly && { inStock: true }),
+          ...(brandId && { brand_id: brandId }),
           ...(selectedSubcat
             ? { category_id: selectedSubcat }
             : categoryId && /^\d+$/.test(categoryId)
@@ -320,9 +328,11 @@ export default function ProductsScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={ss.headerTitle}>
-            {categoryId
-              ? (categories.find((c: any) => String(c.id) === String(categoryId))?.name || 'Category')
-              : 'All Products'}
+            {brandId && brandName
+              ? brandName
+              : categoryId
+                ? (categories.find((c: any) => String(c.id) === String(categoryId))?.name || 'Category')
+                : 'All Products'}
           </Text>
           {!loading && <Text style={ss.headerSub}>{total} products</Text>}
         </View>

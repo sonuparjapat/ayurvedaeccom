@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
-  Dimensions, KeyboardAvoidingView, ScrollView,
+  Alert, Dimensions, KeyboardAvoidingView, Platform, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
   ActivityIndicator,
 } from 'react-native'
@@ -10,7 +10,7 @@ import Animated, { FadeIn, FadeInDown, FadeInUp, ZoomIn } from 'react-native-rea
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-// Lazy require — prevents crash in Expo Go (native module not bundled there)
+// Lazy require — prevents crash in Expo Go (native modules not bundled there)
 let GoogleSignin: any = null
 let statusCodes: Record<string, string> = {}
 try {
@@ -18,6 +18,12 @@ try {
   GoogleSignin = m.GoogleSignin
   statusCodes = m.statusCodes
 } catch {}
+
+let LocalAuthentication: any = null
+try { LocalAuthentication = require('expo-local-authentication') } catch {}
+
+let SecureStore: any = null
+try { SecureStore = require('expo-secure-store') } catch {}
 import api from '../../api/axios'
 import { useStore } from '../../store'
 import { Image as ExpoImage } from 'expo-image'
@@ -122,6 +128,9 @@ export default function AuthScreen() {
   const [mobileForm, setMobileForm] = useState({ phone: '', otp: '' })
   const [forgotEmail, setForgotEmail] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [biometricAvailable, setBiometricAvailable] = useState(false)
+  const [biometricEnabled, setBiometricEnabled] = useState(false)
+  const [biometricLoading, setBiometricLoading] = useState(false)
 
   // ── Google Sign-In ──
   const googleSignIn = async () => {
@@ -178,6 +187,51 @@ export default function AuthScreen() {
     return () => clearInterval(t)
   }, [otpTimer])
 
+  useEffect(() => {
+    const checkBiometric = async () => {
+      if (!LocalAuthentication) return
+      const compatible = await LocalAuthentication.hasHardwareAsync()
+      const enrolled = await LocalAuthentication.isEnrolledAsync()
+      if (compatible && enrolled) {
+        setBiometricAvailable(true)
+        const enabled = await AsyncStorage.getItem('biometric_enabled')
+        setBiometricEnabled(enabled === '1')
+      }
+    }
+    checkBiometric()
+  }, [])
+
+  const handleBiometricLogin = async () => {
+    if (!LocalAuthentication || !SecureStore) return
+    setBiometricLoading(true)
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Sign in to Oroganix',
+        fallbackLabel: 'Use Password',
+        cancelLabel: 'Cancel',
+      })
+      if (!result.success) { setBiometricLoading(false); return }
+      const token = await SecureStore.getItemAsync('biometric_token')
+      if (!token) {
+        toast.error('Quick login expired. Please use your password.')
+        await AsyncStorage.removeItem('biometric_enabled')
+        setBiometricEnabled(false)
+        setBiometricLoading(false)
+        return
+      }
+      await AsyncStorage.setItem('auth_token', token)
+      const res = await api.get('/users/me')
+      const user = res.data?.user
+      if (!user) throw new Error('expired')
+      await afterLogin(user)
+    } catch {
+      toast.error('Biometric login failed. Please use your password.')
+      await AsyncStorage.removeItem('biometric_enabled')
+      if (SecureStore) await SecureStore.deleteItemAsync('biometric_token').catch(() => {})
+      setBiometricEnabled(false)
+    } finally { setBiometricLoading(false) }
+  }
+
   const afterLogin = async (user: any) => {
     try {
       setUser(user)
@@ -217,8 +271,31 @@ export default function AuthScreen() {
     setLoading(true)
     try {
       const res = await api.post('/users/login', loginForm)
-      if (res.data?.token) await AsyncStorage.setItem('auth_token', res.data.token)
-      await afterLogin(res.data.user)
+      const token = res.data?.token
+      if (token) await AsyncStorage.setItem('auth_token', token)
+
+      if (biometricAvailable && !biometricEnabled && SecureStore && token) {
+        Alert.alert(
+          '🔐 Enable Quick Login?',
+          `Use ${Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'fingerprint'} to sign in faster next time.`,
+          [
+            { text: 'Not Now', style: 'cancel', onPress: () => afterLogin(res.data.user) },
+            {
+              text: 'Enable',
+              onPress: async () => {
+                try {
+                  await SecureStore.setItemAsync('biometric_token', token)
+                  await AsyncStorage.setItem('biometric_enabled', '1')
+                  setBiometricEnabled(true)
+                } catch {}
+                await afterLogin(res.data.user)
+              },
+            },
+          ]
+        )
+      } else {
+        await afterLogin(res.data.user)
+      }
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Invalid credentials')
     } finally { setLoading(false) }
@@ -371,6 +448,19 @@ export default function AuthScreen() {
                   <Text style={ss.forgotText}>Forgot password?</Text>
                 </TouchableOpacity>
                 <PrimaryBtn label={loading ? 'Signing in...' : '🔑  Sign In'} onPress={handleLogin} disabled={loading} />
+                {biometricEnabled && biometricAvailable && (
+                  <TouchableOpacity
+                    onPress={handleBiometricLogin}
+                    disabled={biometricLoading}
+                    style={[ss.biometricBtn, biometricLoading && { opacity: 0.55 }]}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ fontSize: 22 }}>{Platform.OS === 'ios' ? '🔒' : '👆'}</Text>
+                    <Text style={ss.biometricText}>
+                      {biometricLoading ? 'Authenticating...' : `Sign in with ${Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'Fingerprint'}`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <View style={ss.divider}>
                   <View style={ss.divLine} />
                   <Text style={ss.divText}>or</Text>
@@ -568,4 +658,7 @@ const ss = StyleSheet.create({
   googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: '#fff', marginBottom: 12, minHeight: 52, ...Shadows.sm },
   googleLogo: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#f1f3f4', alignItems: 'center', justifyContent: 'center' },
   googleBtnText: { fontFamily: Fonts.medium, fontSize: 14, color: Colors.forest },
+
+  biometricBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.emerald, backgroundColor: 'rgba(16,185,129,0.06)', marginBottom: 12, minHeight: 52 },
+  biometricText: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.emerald },
 })

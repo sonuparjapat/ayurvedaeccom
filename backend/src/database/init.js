@@ -1481,6 +1481,8 @@ async function runSafeColumnMigrations() {
     `ALTER TABLE orders ADD COLUMN IF NOT EXISTS gift_card_code TEXT`,
     `ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_token UUID DEFAULT gen_random_uuid()`,
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_tracking_token ON orders(tracking_token)`,
+    `ALTER TABLE orders ADD COLUMN IF NOT EXISTS gift_wrap BOOLEAN DEFAULT FALSE`,
+    `ALTER TABLE orders ADD COLUMN IF NOT EXISTS gift_message TEXT`,
     // review helpful votes
     `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS helpful_count INT DEFAULT 0`,
     `CREATE TABLE IF NOT EXISTS review_helpful_votes (

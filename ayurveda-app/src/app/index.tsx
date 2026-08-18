@@ -445,6 +445,11 @@ function ProductCard({ item, index }: { item: Product; index: number }) {
           {outOfStock && (
             <View style={ss.oosOverlay}><Text style={ss.oosText}>Out of Stock</Text></View>
           )}
+          {!outOfStock && item.inventory > 0 && item.inventory <= 5 && (
+            <View style={{ position: 'absolute', bottom: 8, left: 8, backgroundColor: '#f97316', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 8, color: '#fff' }}>Only {item.inventory} left!</Text>
+            </View>
+          )}
           <Animated.View style={[ss.wishBtn, wishStyle]}>
             <TouchableOpacity onPress={handleWish} hitSlop={8} activeOpacity={0.8}>
               <Text style={{ fontSize: 18 }}>{wished ? '❤️' : '🤍'}</Text>
@@ -800,6 +805,7 @@ export default function HomeScreen() {
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([])
   const [flashSale, setFlashSale] = useState<any>(null)
   const [blogPosts, setBlogPosts] = useState<{ id: number; title: string; slug: string; cover_image?: string; category?: string; published_at?: string }[]>([])
+  const [seasonalProducts, setSeasonalProducts] = useState<Product[]>([])
   const [refreshing, setRefreshing] = useState(false)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -825,6 +831,15 @@ export default function HomeScreen() {
     }).catch(() => {})
     api.get('/blog/public', { params: { page: 1, limit: 3 } })
       .then(r => setBlogPosts(r.data?.posts || r.data?.data || []))
+      .catch(() => {})
+    // Seasonal picks — detect Indian season by month
+    const month = new Date().getMonth() + 1
+    const season = month >= 11 || month <= 2 ? 'winter'
+      : month >= 3 && month <= 5 ? 'summer'
+      : month >= 6 && month <= 9 ? 'monsoon'
+      : 'autumn'
+    api.get('/shop/products', { params: { tag: season, limit: 10 } })
+      .then(r => setSeasonalProducts(r.data?.products || []))
       .catch(() => {})
   }, [])
 
@@ -946,6 +961,7 @@ export default function HomeScreen() {
         api.get('/shop/reviews', { params: { rating: 5, limit: 6, page: 1 } }).then(r => setReviews(r.data?.data || [])),
         api.get('/flash-sales/active').then(r => { const s = r.data?.sales || []; if (s.length) setFlashSale(s[0]) }),
         api.get('/blog/public', { params: { page: 1, limit: 3 } }).then(r => setBlogPosts(r.data?.posts || r.data?.data || [])),
+        (() => { const m = new Date().getMonth() + 1; const s = m >= 11 || m <= 2 ? 'winter' : m >= 3 && m <= 5 ? 'summer' : m >= 6 && m <= 9 ? 'monsoon' : 'autumn'; return api.get('/shop/products', { params: { tag: s, limit: 10 } }).then(r => setSeasonalProducts(r.data?.products || [])) })(),
         new Promise(res => { fetchFeatured(activeCatId); setTimeout(res, 800) }),
       ])
     } catch { }
@@ -1115,6 +1131,18 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
+        {/* Shop by Brand CTA */}
+        <TouchableOpacity onPress={() => router.push('/brand' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
+          <LinearGradient colors={['#0c2340', '#1e4080']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <Text style={{ fontSize: 36 }}>🏷️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Shop by Brand</Text>
+              <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 18 }}>Browse products from your favourite Ayurvedic brands.</Text>
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* Dosha Quiz CTA */}
         <TouchableOpacity onPress={() => router.push('/quiz' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
           <LinearGradient colors={['#0a1f14', '#1a4228']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
@@ -1140,6 +1168,55 @@ export default function HomeScreen() {
             </LinearGradient>
           </TouchableOpacity>
         )}
+
+        {/* Seasonal Picks */}
+        {seasonalProducts.length > 0 && (() => {
+          const month = new Date().getMonth() + 1
+          const season = month >= 11 || month <= 2 ? 'Winter' : month >= 3 && month <= 5 ? 'Summer' : month >= 6 && month <= 9 ? 'Monsoon' : 'Autumn'
+          const emoji = season === 'Winter' ? '❄️' : season === 'Summer' ? '☀️' : season === 'Monsoon' ? '🌧️' : '🍂'
+          return (
+            <View style={{ paddingBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12, gap: 8 }}>
+                <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 17, color: Colors.forest }}>{season} Picks</Text>
+                <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, flex: 1 }}>Curated for the season</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}>
+                {seasonalProducts.map((p, i) => {
+                  const img = Array.isArray(p.images) ? p.images[0] : null
+                  const disc = p.compareprice && p.price < p.compareprice ? Math.round(((p.compareprice - p.price) / p.compareprice) * 100) : null
+                  return (
+                    <TouchableOpacity
+                      key={p.id}
+                      onPress={() => router.push(`/product/${(p as any).slug || p.id}` as any)}
+                      activeOpacity={0.85}
+                      style={{ width: 140, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 0.5, borderColor: Colors.border }}
+                    >
+                      <View style={{ width: 140, height: 120, backgroundColor: Colors.mint }}>
+                        {img
+                          ? <ExpoImage source={{ uri: img }} style={{ width: 140, height: 120 }} contentFit="cover" transition={200} />
+                          : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 32 }}>🌿</Text></View>
+                        }
+                        {disc && disc > 0 && (
+                          <View style={{ position: 'absolute', top: 6, left: 6, backgroundColor: Colors.red, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 }}>
+                            <Text style={{ fontFamily: Fonts.bold, fontSize: 9, color: '#fff' }}>{disc}% OFF</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={{ padding: 10 }}>
+                        <Text style={{ fontFamily: Fonts.medium, fontSize: 12, color: Colors.forest }} numberOfLines={2}>{p.name}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 4 }}>
+                          <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest }}>₹{p.price}</Text>
+                          {p.compareprice && <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: Colors.textDim, textDecorationLine: 'line-through' }}>₹{p.compareprice}</Text>}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
+            </View>
+          )
+        })()}
 
         {/* Trust strip */}
         <View style={{ paddingTop: 8, paddingBottom: 4 }}>

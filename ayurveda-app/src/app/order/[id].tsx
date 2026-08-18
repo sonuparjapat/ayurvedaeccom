@@ -20,6 +20,7 @@ import { Image as ExpoImage } from 'expo-image'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
 import { useStore } from '../../store'
 import { appEvents } from '../../utils/appEvents'
+import { maybeRequestStoreReview } from '../../utils/storeReview'
 
 const LOGO_URL = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/logoayurveda.png'
 
@@ -782,6 +783,7 @@ export default function OrderDetailScreen() {
         const ord = orderRes.value.data?.data || null
         setOrder(ord)
         if (ord?.status === 5) {
+          maybeRequestStoreReview()
           setReturnEligibilityLoading(true)
           setReturnEligibilityError(false)
           api.get(`/orders/${id}/return-eligibility`)
@@ -1031,6 +1033,18 @@ export default function OrderDetailScreen() {
                     {order.refund_id && <Text style={{ fontFamily: Fonts.regular, fontSize: 10, color: '#9ca3af', marginTop: 2 }}>Ref: {order.refund_id}</Text>}
                     <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Credited to original payment within 5–7 business days.</Text>
                   </View>
+                )}
+              </Animated.View>
+            )}
+
+            {/* ── GIFT WRAP ── */}
+            {(order as any).gift_wrap && (
+              <Animated.View entering={FadeInDown.delay(130)} style={[ss.card, { borderColor: '#bbf7d0', borderWidth: 1 }]}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest, marginBottom: 4 }}>🎁 Gift Wrap Requested</Text>
+                {(order as any).gift_message ? (
+                  <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim }}>"{(order as any).gift_message}"</Text>
+                ) : (
+                  <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim }}>No gift message added.</Text>
                 )}
               </Animated.View>
             )}

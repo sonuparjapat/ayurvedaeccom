@@ -141,7 +141,7 @@ exports.createOrder = async (req, res) => {
 
     /* ================= INPUT ================= */
 
-    const { shipping, paymentMethod, addressId, couponCode, walletDiscount: requestedWalletDiscount, loyaltyDiscount: requestedLoyaltyDiscount, loyaltyPointsUsed, giftCardCode, giftCardDiscount: requestedGiftCardDiscount } = req.body;
+    const { shipping, paymentMethod, addressId, couponCode, walletDiscount: requestedWalletDiscount, loyaltyDiscount: requestedLoyaltyDiscount, loyaltyPointsUsed, giftCardCode, giftCardDiscount: requestedGiftCardDiscount, gift_wrap, gift_message } = req.body;
 if (!addressId) {
   return res.status(400).json({
     success: false,
@@ -473,10 +473,12 @@ if (addr.pincode) {
     coupon_code,
     discount_amount,
     wallet_discount,
-    expected_delivery_date
+    expected_delivery_date,
+    gift_wrap,
+    gift_message
   )
   VALUES
-  ($1,$2,$3,$4,$5,$6,$7,NOW() + INTERVAL '15 minutes',$8,$9,$10,$11)
+  ($1,$2,$3,$4,$5,$6,$7,NOW() + INTERVAL '15 minutes',$8,$9,$10,$11,$12,$13)
   RETURNING id, invoice_no
 `, [
   userId,
@@ -517,6 +519,8 @@ if (addr.pincode) {
   discountAmount,
   walletDiscountApplied,
   expectedDeliveryDate.toISOString().slice(0, 10),
+  !!gift_wrap,
+  gift_message ? String(gift_message).slice(0, 500) : null,
 ]);
 
     const orderId = orderRes.rows[0].id;
@@ -1168,6 +1172,8 @@ exports.getOrderById = async (req, res) => {
         o.wallet_discount,
         o.gift_card_code,
         o.gift_card_discount,
+        o.gift_wrap,
+        o.gift_message,
 
         i.id           AS invoice_id,
         i.invoice_no   AS invoice_number,
@@ -2282,6 +2288,7 @@ exports.buyNow = async (req, res) => {
       shipping, paymentMethod, addressId, couponCode,
       walletDiscount: requestedWalletDiscount,
       loyaltyDiscount: requestedLoyaltyDiscount,
+      gift_wrap, gift_message,
     } = req.body;
 
     const quantity = Math.max(1, Number(rawQty) || 1);
@@ -2445,8 +2452,8 @@ exports.buyNow = async (req, res) => {
     const orderRes = await client.query(`
       INSERT INTO orders
         (user_id,total_amount,payment_method,shipping_address,address_id,status,payment_status,
-         expires_at,coupon_code,discount_amount,wallet_discount,expected_delivery_date)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,NOW()+INTERVAL '15 minutes',$8,$9,$10,$11)
+         expires_at,coupon_code,discount_amount,wallet_discount,expected_delivery_date,gift_wrap,gift_message)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,NOW()+INTERVAL '15 minutes',$8,$9,$10,$11,$12,$13)
       RETURNING id, invoice_no
     `, [
       userId, finalTotal, paymentMethod,
@@ -2464,6 +2471,8 @@ exports.buyNow = async (req, res) => {
       paymentMethod === 'cod' ? 'pending' : 'unpaid',
       appliedCouponCode, discountAmount, walletDiscountApplied,
       expectedDeliveryDate.toISOString().slice(0, 10),
+      !!gift_wrap,
+      gift_message ? String(gift_message).slice(0, 500) : null,
     ]);
 
     const orderId = orderRes.rows[0].id;

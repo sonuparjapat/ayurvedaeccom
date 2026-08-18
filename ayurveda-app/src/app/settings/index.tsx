@@ -13,6 +13,9 @@ import { Colors, Fonts, Shadows } from '../../constants/theme'
 import { toast } from '../../components/ui/Toast'
 import { registerPushToken, savePushTokenToServer, deletePushToken } from '../../utils/pushNotifications'
 
+let SecureStore: any = null
+try { SecureStore = require('expo-secure-store') } catch {}
+
 const APP_VERSION = '1.0.0'
 
 function SettingRow({
@@ -57,8 +60,18 @@ export default function SettingsScreen() {
   const [orderUpdates, setOrderUpdates] = useState(true)
   const [promoEmails, setPromoEmails] = useState(false)
   const [clearing, setClearing] = useState(false)
+  const [biometricEnabled, setBiometricEnabled] = useState(false)
+  const [biometricAvailable, setBiometricAvailable] = useState(false)
 
   useEffect(() => {
+    AsyncStorage.getItem('biometric_enabled').then(v => setBiometricEnabled(v === '1'))
+    let LA: any = null
+    try { LA = require('expo-local-authentication') } catch {}
+    if (LA) {
+      Promise.all([LA.hasHardwareAsync(), LA.isEnrolledAsync()])
+        .then(([hw, en]: [boolean, boolean]) => setBiometricAvailable(hw && en))
+        .catch(() => {})
+    }
     AsyncStorage.getItem('push_disabled').then(v => { if (v === 'true') setPushEnabled(false) })
     AsyncStorage.getItem('notification_prefs_v1').then(raw => {
       if (!raw) return
@@ -105,7 +118,8 @@ export default function SettingsScreen() {
         onPress: async () => {
           try {
             await api.post('/users/logout').catch(() => {})
-            await AsyncStorage.multiRemove(['stored_user', 'auth_token', 'guest_session_id'])
+            await AsyncStorage.multiRemove(['stored_user', 'auth_token', 'guest_session_id', 'biometric_enabled'])
+            if (SecureStore) await SecureStore.deleteItemAsync('biometric_token').catch(() => {})
             setUser(null)
             router.replace('/')
           } catch {
@@ -129,7 +143,8 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               await api.delete('/users/account')
-              await AsyncStorage.multiRemove(['stored_user', 'auth_token', 'guest_session_id'])
+              await AsyncStorage.multiRemove(['stored_user', 'auth_token', 'guest_session_id', 'biometric_enabled'])
+            if (SecureStore) await SecureStore.deleteItemAsync('biometric_token').catch(() => {})
               setUser(null)
               toast.success('Account deleted')
               router.replace('/')
@@ -252,6 +267,38 @@ export default function SettingsScreen() {
             }
           />
         </View>
+
+        {/* Security */}
+        {biometricAvailable && (
+          <>
+            <SectionHeader title="Security" />
+            <View style={s.card}>
+              <SettingRow
+                emoji="🔐"
+                label="Quick Login (Biometric)"
+                sub={biometricEnabled ? 'Tap to disable Face ID / Fingerprint login' : 'Enable Face ID / Fingerprint login'}
+                delay={325}
+                right={
+                  <Switch
+                    value={biometricEnabled}
+                    onValueChange={async (val) => {
+                      if (val) {
+                        setBiometricEnabled(true)
+                        await AsyncStorage.setItem('biometric_enabled', '1')
+                      } else {
+                        setBiometricEnabled(false)
+                        await AsyncStorage.removeItem('biometric_enabled')
+                        if (SecureStore) await SecureStore.deleteItemAsync('biometric_token').catch(() => {})
+                      }
+                    }}
+                    trackColor={{ false: '#e5e7eb', true: Colors.emerald }}
+                    thumbColor="#fff"
+                  />
+                }
+              />
+            </View>
+          </>
+        )}
 
         {/* Help & Support */}
         <SectionHeader title="Help & Support" />

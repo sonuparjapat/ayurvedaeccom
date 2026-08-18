@@ -64,7 +64,8 @@
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to update your profile picture or add review images.",
           "cameraPermission": "Allow $(PRODUCT_NAME) to use the camera to take a profile photo."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

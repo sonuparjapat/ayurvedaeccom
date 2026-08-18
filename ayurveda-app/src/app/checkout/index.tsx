@@ -212,6 +212,9 @@ export default function CheckoutScreen() {
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)
   const [loyaltyRedeemRate, setLoyaltyRedeemRate] = useState(0.1)
   const [loyaltyMaxRedeemPct, setLoyaltyMaxRedeemPct] = useState(20)
+  // Gift wrap state
+  const [giftWrap, setGiftWrap] = useState(false)
+  const [giftMessage, setGiftMessage] = useState('')
   // Inline add address form
   const [showAddrForm, setShowAddrForm] = useState(false)
   const [newAddr, setNewAddr] = useState({ street: '', city: '', state: '', pincode: '', type: 'home', email: '' })
@@ -379,6 +382,8 @@ export default function CheckoutScreen() {
           walletDiscount: effectiveWallet > 0 ? effectiveWallet : undefined,
           loyaltyDiscount: effectiveLoyalty > 0 ? effectiveLoyalty : undefined,
           loyaltyPointsUsed: effectiveLoyalty > 0 ? Math.ceil(effectiveLoyalty / loyaltyRedeemRate) : undefined,
+          gift_wrap: giftWrap || undefined,
+          gift_message: giftWrap && giftMessage.trim() ? giftMessage.trim() : undefined,
         }
         if (isBuyNow && buyNowItem) {
           orderPayload.productId = buyNowItem.productId
@@ -822,6 +827,32 @@ export default function CheckoutScreen() {
                   </View>
                 </View>
               )}
+
+              {/* ── GIFT WRAP ── */}
+              <View style={{ backgroundColor: '#f0fdf4', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#bbf7d0' }}>
+                <TouchableOpacity
+                  onPress={() => { setGiftWrap(v => !v); if (giftWrap) setGiftMessage('') }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                  activeOpacity={0.8}
+                >
+                  <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, borderColor: giftWrap ? Colors.emerald : '#9ca3af', backgroundColor: giftWrap ? Colors.emerald : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                    {giftWrap && <Text style={{ color: '#fff', fontSize: 13, fontFamily: Fonts.bold }}>✓</Text>}
+                  </View>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest }}>🎁 Gift Wrap this order</Text>
+                  <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: Colors.sage }}>Free</Text>
+                </TouchableOpacity>
+                {giftWrap && (
+                  <TextInput
+                    value={giftMessage}
+                    onChangeText={setGiftMessage}
+                    placeholder="Add a gift message (optional)"
+                    placeholderTextColor={Colors.textDim}
+                    multiline
+                    maxLength={500}
+                    style={{ marginTop: 12, borderWidth: 1, borderColor: '#bbf7d0', borderRadius: 10, padding: 10, fontSize: 13, fontFamily: Fonts.regular, color: Colors.forest, backgroundColor: '#fff', minHeight: 70 }}
+                  />
+                )}
+              </View>
 
               {/* Price breakdown */}
               <LinearGradient colors={['#0d120d', '#111711']} style={[ss.finalBox, { marginBottom: 12 }]}>

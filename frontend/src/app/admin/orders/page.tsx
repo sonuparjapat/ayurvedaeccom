@@ -1277,6 +1277,14 @@ const generateInvoice = async () => {
 
 </div>
 
+      {/* ── Gift Wrap ── */}
+      {current.gift_wrap && (
+        <div className="rounded-xl p-5 border bg-green-50 border-green-200">
+          <h3 className="font-bold mb-1 text-sm uppercase tracking-wide text-green-700">🎁 Gift Wrap Requested</h3>
+          {current.gift_message && <p className="text-gray-800 text-sm leading-relaxed mt-1">"{current.gift_message}"</p>}
+        </div>
+      )}
+
       {/* ── Cancellation / Return Reason ── */}
       {(current.cancel_reason || current.return_reason) && (
         <div className={`rounded-xl p-5 border ${current.cancel_reason ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>

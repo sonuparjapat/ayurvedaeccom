@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -86,9 +87,15 @@ export default function CompareScreen() {
                 <Animated.View key={p.id} entering={FadeInDown.delay(pi * 100)} style={{ width: CARD_W }}>
                   {/* Product card */}
                   <TouchableOpacity onPress={() => router.push(`/product/${p.id}` as any)} style={ss.productCard}>
-                    <Image source={{ uri: p.images?.[0] || '' }} style={ss.productImg} resizeMode="cover" />
+                    {p.images?.[0] ? (
+                      <Image source={{ uri: p.images[0] }} style={ss.productImg} contentFit="cover" />
+                    ) : (
+                      <View style={[ss.productImg, { alignItems: 'center', justifyContent: 'center' }]}>
+                        <Text style={{ fontSize: 28 }}>🌿</Text>
+                      </View>
+                    )}
                     <Text style={ss.productName} numberOfLines={2}>{p.name}</Text>
-                    <Text style={ss.productPrice}>₹{parseFloat(p.price).toLocaleString('en-IN')}</Text>
+                    <Text style={ss.productPrice}>₹{p.price ? parseFloat(p.price).toLocaleString('en-IN') : '—'}</Text>
                     {p.compareprice && Number(p.compareprice) > Number(p.price) && (
                       <Text style={ss.productMrp}>₹{parseFloat(p.compareprice).toLocaleString('en-IN')}</Text>
                     )}

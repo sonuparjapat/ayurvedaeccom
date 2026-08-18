@@ -25,6 +25,7 @@ exports.getAllPublic = async (req, res) => {
     const brand_id = req.query.brand_id || null
     const is_featured_filter = req.query.is_featured || null
     const is_bestseller_filter = req.query.is_bestseller || null
+    const tag_filter = req.query.tag?.trim() || null
 
     const minPrice = parseFloat(req.query.minPrice) || 0
     const maxPrice = parseFloat(req.query.maxPrice) || null
@@ -106,6 +107,12 @@ exports.getAllPublic = async (req, res) => {
 
     if (is_bestseller_filter === 'true') {
       where += ` AND is_bestseller = TRUE`
+    }
+
+    if (tag_filter) {
+      where += ` AND tags::text ILIKE $${i}`
+      values.push(`%${tag_filter}%`)
+      i++
     }
 
     if (minPrice) {

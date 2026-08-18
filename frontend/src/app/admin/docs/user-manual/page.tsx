@@ -529,7 +529,7 @@ export default function UserManualPage() {
                   ['Weight (grams)', 'Net weight of the product', 'Shows on the product page as product information. Used for shipping cost calculation if you charge by weight. Important for compliance (net weight must be displayed for food products).'],
                   ['Length / Width / Height (cm)', 'Physical dimensions of the product package', 'Shows as shipping dimensions on the product detail page (e.g., "10 × 8 × 12 cm"). Used by logistics partners for volumetric weight calculations. Helps customers understand the package size. All three are optional — fill in all or leave all empty.'],
                   ['Low Stock Threshold', 'Alert number — notify when stock drops below this', 'When inventory falls below this number, the product appears in Admin → Stock Alerts. Set to 10 if you want to be warned when only 10 units remain so you can reorder from your supplier.'],
-                  ['Tags', 'Comma-separated labels (e.g., "bestseller, new, organic")', 'Tags appear as small badges on product cards. Customers can also find products by searching for tags. Use tags to highlight product attributes.'],
+                  ['Tags', 'Comma-separated labels (e.g., "bestseller, new, organic, winter, summer")', 'Tags appear as small badges on product cards. Seasonal tags — "winter", "summer", "monsoon", "autumn" — automatically surface the product in the Seasonal Picks section on the mobile home screen when that season is active. Use these to curate season-specific recommendations without any extra admin work.'],
                   ['Featured', 'Toggle on/off', 'Featured products appear in the "Featured Products" section on the homepage. Turn this on for products you want to promote prominently. Only a limited number should be featured at a time to keep the homepage curated.'],
                   ['Bestseller', 'Toggle on/off', 'Shows a gold "BESTSELLER" badge on the product card. Turn this on for your top-selling or most popular products. This is a manual flag — you decide which products get the badge.'],
                   ['Status', 'Draft / Active / Inactive', 'Only Active products are visible to customers on the store. Use Draft while you are still setting up the product (filling details, uploading images). Use Inactive to temporarily hide a product without deleting it.'],
@@ -639,6 +639,7 @@ export default function UserManualPage() {
                 ['Cancel Order', 'Cancel a Pending or Confirmed order. Stock is automatically restored.'],
                 ['Process Refund', 'For returned online orders — initiates automatic Razorpay refund.'],
               ['Re-order', 'On delivered or cancelled orders — adds all items to cart for the customer to re-purchase.'],
+              ['Gift Wrap', 'If the customer checked "Gift Wrap" at checkout, a green 🎁 Gift Wrap banner appears on the order detail page. Pack the order with gift wrap and include the gift message (if any) printed or handwritten inside.'],
               ]}
             />
             <InfoBox type="warning">You cannot skip order statuses (e.g., you cannot jump from Processing directly to Delivered). The system enforces valid transitions to maintain accurate tracking history.</InfoBox>

@@ -387,6 +387,9 @@ function CheckoutInner() {
   const [loyaltyBalance, setLoyaltyBalance] = useState(0)
   const [loyaltyApplied, setLoyaltyApplied] = useState(false)
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0)
+  // Gift wrap state
+  const [giftWrap, setGiftWrap] = useState(false)
+  const [giftMessage, setGiftMessage] = useState('')
   // Gift card state
   const [giftCardInput, setGiftCardInput] = useState('')
   const [giftCardApplying, setGiftCardApplying] = useState(false)
@@ -647,6 +650,8 @@ if (!validateShipping()) return;
       loyaltyPointsUsed: effectiveLoyaltyDiscount > 0 ? Math.ceil(effectiveLoyaltyDiscount / (chargesMap.loyalty_redeem_rate || 0.1)) : undefined,
       giftCardCode: appliedGiftCard?.code || undefined,
       giftCardDiscount: (appliedGiftCard?.discount || 0) > 0 ? (appliedGiftCard?.discount || 0) : undefined,
+      gift_wrap: giftWrap || undefined,
+      gift_message: giftWrap && giftMessage.trim() ? giftMessage.trim() : undefined,
       pricing: { subtotal, tax, delivery, platformFee, discount, giftCardDiscount: appliedGiftCard?.discount || 0, total }
     };
 
@@ -1609,6 +1614,30 @@ if (checkingAddress) {
                             </div>
                             {giftCardError && <p style={{ fontSize: 11, color: '#dc2626' }}>⚠ {giftCardError}</p>}
                           </div>
+                        )}
+                      </div>
+
+                      {/* GIFT WRAP */}
+                      <div style={{ marginBottom: 24 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={giftWrap}
+                            onChange={e => { setGiftWrap(e.target.checked); if (!e.target.checked) setGiftMessage('') }}
+                            style={{ width: 16, height: 16, accentColor: '#14532d', cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>🎁 Gift Wrap this order</span>
+                          <span style={{ fontSize: 12, color: 'var(--muted)' }}>Free</span>
+                        </label>
+                        {giftWrap && (
+                          <textarea
+                            value={giftMessage}
+                            onChange={e => setGiftMessage(e.target.value)}
+                            placeholder="Add a gift message (optional) — e.g. Happy Birthday! Wishing you great health."
+                            maxLength={500}
+                            rows={3}
+                            style={{ marginTop: 12, width: '100%', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--ink)', background: 'var(--parchment)', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                          />
                         )}
                       </div>
 

@@ -16,6 +16,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useStore } from '../../store'
 import { Colors, Fonts, Shadows } from '../../constants/theme'
 
+let SecureStore: any = null
+try { SecureStore = require('expo-secure-store') } catch {}
+
 interface Order {
   id: number; invoice_no?: string; status: number; total_amount: string
   created_at: string; delivered_at?: string; return_window_days?: number; is_returnable?: boolean
@@ -501,6 +504,8 @@ export default function AccountScreen() {
           await AsyncStorage.removeItem('auth_token')
           await AsyncStorage.removeItem('user')
           await AsyncStorage.removeItem('stored_user')
+          await AsyncStorage.removeItem('biometric_enabled')
+          if (SecureStore) await SecureStore.deleteItemAsync('biometric_token').catch(() => {})
           setCartData({ items: [], subtotal: 0, totalItems: 0 })
           // Navigate FIRST before clearing user to avoid showing NotLoggedIn briefly
           router.replace('/')

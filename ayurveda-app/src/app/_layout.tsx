@@ -127,6 +127,7 @@ function Inner() {
       <Stack.Screen name="settings/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />
       <Stack.Screen name="deals/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />
       <Stack.Screen name="compare/index" options={{ presentation: 'card', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="brand/index" options={{ presentation: 'card', animation: 'slide_from_right' }} />
     </Stack>
   )
 }
