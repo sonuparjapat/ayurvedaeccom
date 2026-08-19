@@ -1865,3 +1865,57 @@ curl http://localhost:5000/api/admin/analytics/overview \
 3. Tapping the notification → app opens and navigates to `/blog/<slug>`.
 4. Publishing a draft (draft → published) also triggers the notification.
 5. Updating a post that is already published → no duplicate notification.
+
+---
+
+## Premium UI/UX Verification (2026-08-19)
+
+### Web — Custom Cursor
+1. Open website on a desktop (non-touch) device.
+2. Move mouse — verify green dot appears immediately, ring follows with slight lag.
+3. Hover a button or link — verify ring expands, dot grows.
+4. Click — verify dot shrinks briefly to amber.
+5. Move mouse off screen — verify cursor elements disappear.
+6. On mobile/tablet (touch device) — cursor must NOT appear.
+
+### Web — Scroll Progress Bar
+1. Open any page with scrollable content (e.g. `/shop`).
+2. Scroll down — verify thin gradient bar at very top grows from left.
+3. Scroll to bottom — bar should be at 100%.
+4. Scroll back up — bar should shrink accordingly.
+
+### Web — Back to Top Button
+1. Scroll more than 500px on any page.
+2. Verify green floating button appears bottom-right with ring pulse.
+3. Click it — page smoothly scrolls to top.
+4. At top of page — button should be invisible.
+
+### Web — 3D Product Card Tilt
+1. Visit `/` or `/shop`.
+2. Move mouse slowly over a product card.
+3. Verify card tilts in 3D (X/Y rotation) matching cursor direction.
+4. Verify shine highlight follows cursor.
+5. Move mouse away — card smoothly returns to flat position.
+6. No functional regression: Add to Cart, Wishlist, product link all work.
+
+### Web — 3D Features Card Tilt
+Same tilt test as above on the "Why Choose Oroganix" section cards.
+
+### Web — Testimonials Marquee
+1. Visit homepage, scroll to reviews section.
+2. Verify row 1 scrolls left, row 2 scrolls right continuously.
+3. Hover a card — verify both rows pause.
+4. Remove hover — scrolling resumes.
+5. When fewer than 3 reviews exist — row 2 should not appear.
+
+### Mobile — Section Header Pulse
+1. Open home screen.
+2. Verify small pulsing dot appears before each section title.
+3. On dark background sections (Why Oroganix, Reviews) — dot should be gold/amber colored.
+
+### Mobile — WhyUs Cards
+1. Scroll to "Why Oroganix" section.
+2. Verify each card has a colored accent line at the top.
+3. Verify icon circle has a matching colored border.
+4. Verify card title uses the accent color (not plain white).
+5. Cards animate in sequentially — verify spring-damped entry.

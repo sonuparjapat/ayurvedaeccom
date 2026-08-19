@@ -9,7 +9,10 @@ import { AuthSheet } from "@/components/auth/AuthSheet";
 import PageTracker from "@/components/analytics/PageTracker";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CompareBar } from "@/components/compare/CompareBar"
-import { AyushDisclaimer } from "@/components/layout/AyushDisclaimer";
+import { AyushDisclaimer } from "@/components/layout/AyushDisclaimer"
+import { CustomCursor } from "@/components/ui/custom-cursor"
+import { ScrollProgress } from "@/components/ui/scroll-progress"
+import { BackToTop } from "@/components/ui/back-to-top";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -110,6 +113,8 @@ export default function RootLayout({
           suppressHydrationWarning   // ✅ THIS FIXES YOUR ERROR
           className={`${inter.variable} font-sans antialiased bg-background text-foreground relative z-0`}
         >
+          <ScrollProgress />
+          <CustomCursor />
           <PageTracker />
           <AyushDisclaimer />
           <ErrorBoundary>
@@ -117,6 +122,7 @@ export default function RootLayout({
           </ErrorBoundary>
   <Suspense fallback={null}><AuthSheet /></Suspense>
   <Suspense fallback={null}><CompareBar /></Suspense>
+  <BackToTop />
 
 <Toaster
   position="bottom-right"

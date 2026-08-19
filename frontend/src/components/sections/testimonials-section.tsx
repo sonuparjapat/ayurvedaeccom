@@ -1,10 +1,10 @@
 ﻿'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { motion, useInView, AnimatePresence } from 'framer-motion'
+import { motion, useInView } from 'framer-motion'
 import {
   Star, ShoppingBag, Leaf, ShieldCheck, Truck, HeartHandshake,
-  FlaskConical, Award, BadgeCheck, ChevronLeft, ChevronRight, Quote
+  FlaskConical, Award, BadgeCheck, Quote
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import axios from '@/lib/axios'
@@ -233,12 +233,6 @@ export function TestimonialsSection() {
     ? extra.stats.map((s: any) => ({ value: s.value, label: s.label }))
     : STATS
 
-  // Carousel state
-  const CARDS_PER_VIEW = 3
-  const [page, setPage] = useState(0)
-  const totalPages = Math.ceil(reviews.length / CARDS_PER_VIEW)
-  const visible = reviews.slice(page * CARDS_PER_VIEW, page * CARDS_PER_VIEW + CARDS_PER_VIEW)
-
   useEffect(() => {
     fetchReviews()
   }, [])
@@ -247,7 +241,7 @@ export function TestimonialsSection() {
     try {
       setLoading(true)
       const res = await axios.get('/shop/reviews', {
-        params: { rating: 5, limit: 9, page: 1 },
+        params: { rating: 5, limit: 12, page: 1 },
       })
       setReviews(res.data.data || [])
     } catch {
@@ -256,9 +250,6 @@ export function TestimonialsSection() {
       setLoading(false)
     }
   }
-
-  const prev = () => setPage((p) => Math.max(0, p - 1))
-  const next = () => setPage((p) => Math.min(totalPages - 1, p + 1))
 
   return (
     <section className="relative bg-[#0d120d] text-white overflow-hidden">
@@ -377,65 +368,92 @@ export function TestimonialsSection() {
           </motion.p>
         </div>
 
-        {/* ── Cards ── */}
+        {/* ── Marquee Reviews ── */}
+        <style>{`
+          @keyframes marquee-left  { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+          @keyframes marquee-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+          .marquee-track { display: flex; width: max-content; gap: 20px; }
+          .marquee-track.left  { animation: marquee-left  42s linear infinite; }
+          .marquee-track.right { animation: marquee-right 54s linear infinite; }
+          .marquee-wrap { overflow: hidden; mask-image: linear-gradient(90deg, transparent 0%, black 10%, black 90%, transparent 100%); -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 10%, black 90%, transparent 100%); }
+          .marquee-wrap:hover .marquee-track { animation-play-state: paused; }
+          .marquee-card { width: 320px; flex-shrink: 0; }
+        `}</style>
+
         {loading ? (
-          /* Skeleton */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-64 rounded-3xl bg-white/[0.04] animate-pulse" />
+          <div className="flex gap-5 overflow-hidden mb-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="w-80 h-52 flex-shrink-0 rounded-3xl bg-white/[0.04] animate-pulse" />
             ))}
           </div>
         ) : reviews.length === 0 ? (
           <p className="text-center text-stone-500 py-16">No reviews yet — be the first!</p>
         ) : (
-          <>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={page}
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
-              >
-                {visible.map((t, i) => (
-                  <TestimonialCard key={t.user_name + i} t={t} delay={i * 0.07} />
+          <div className="space-y-5 mb-8">
+            {/* Row 1 — scrolls left */}
+            <div className="marquee-wrap">
+              <div className="marquee-track left">
+                {[...reviews, ...reviews].map((t, i) => (
+                  <div key={i} className="marquee-card">
+                    <div className="relative flex flex-col rounded-3xl border border-white/[0.07] bg-[#141a14] p-5 h-full group hover:-translate-y-1 transition-transform duration-300">
+                      <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-3xl bg-gradient-to-r from-emerald-500 via-teal-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <Quote className="absolute top-4 right-4 w-8 h-8 text-emerald-900/50 -scale-x-100" />
+                      <div className="flex items-center gap-3 mb-3">
+                        <Avatar name={t.user_name} />
+                        <div>
+                          <p className="font-semibold text-stone-100 text-[14px] leading-tight">{t.user_name}</p>
+                          <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-[2px] rounded-full bg-emerald-900/60 text-emerald-400 text-[10px] font-medium">
+                            <BadgeCheck className="w-2.5 h-2.5" /> Verified
+                          </span>
+                        </div>
+                      </div>
+                      <Stars rating={t.rating} />
+                      <blockquote className="text-stone-300 text-[13px] leading-relaxed mt-3 italic line-clamp-3">
+                        "{t.comment}"
+                      </blockquote>
+                      <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/[0.06]">
+                        <ShoppingBag className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <p className="text-[12px] text-emerald-400 font-medium truncate">{t.product_name}</p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </motion.div>
-            </AnimatePresence>
+              </div>
+            </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 mb-4">
-                <button
-                  onClick={prev}
-                  disabled={page === 0}
-                  className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-stone-400 hover:text-white hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <div className="flex gap-2">
-                  {[...Array(totalPages)].map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setPage(i)}
-                      className={cn(
-                        'h-2 rounded-full transition-all duration-300',
-                        i === page ? 'w-6 bg-emerald-400' : 'w-2 bg-stone-600 hover:bg-stone-400'
-                      )}
-                    />
+            {/* Row 2 — scrolls right */}
+            {reviews.length >= 3 && (
+              <div className="marquee-wrap">
+                <div className="marquee-track right">
+                  {[...reviews.slice().reverse(), ...reviews.slice().reverse()].map((t, i) => (
+                    <div key={i} className="marquee-card">
+                      <div className="relative flex flex-col rounded-3xl border border-white/[0.07] bg-[#141a14] p-5 group hover:-translate-y-1 transition-transform duration-300">
+                        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-3xl bg-gradient-to-r from-amber-500 via-orange-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <Quote className="absolute top-4 right-4 w-8 h-8 text-amber-900/50 -scale-x-100" />
+                        <div className="flex items-center gap-3 mb-3">
+                          <Avatar name={t.user_name} />
+                          <div>
+                            <p className="font-semibold text-stone-100 text-[14px] leading-tight">{t.user_name}</p>
+                            <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-[2px] rounded-full bg-amber-900/40 text-amber-400 text-[10px] font-medium">
+                              <BadgeCheck className="w-2.5 h-2.5" /> Verified
+                            </span>
+                          </div>
+                        </div>
+                        <Stars rating={t.rating} />
+                        <blockquote className="text-stone-300 text-[13px] leading-relaxed mt-3 italic line-clamp-3">
+                          "{t.comment}"
+                        </blockquote>
+                        <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/[0.06]">
+                          <ShoppingBag className="w-3 h-3 text-emerald-500 shrink-0" />
+                          <p className="text-[12px] text-emerald-400 font-medium truncate">{t.product_name}</p>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
-                <button
-                  onClick={next}
-                  disabled={page === totalPages - 1}
-                  className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-stone-400 hover:text-white hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* ── CTA ── */}

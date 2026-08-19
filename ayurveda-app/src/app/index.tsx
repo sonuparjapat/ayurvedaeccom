@@ -298,10 +298,23 @@ function FilterPills({ activeCatId, setActiveCatId }: { activeCatId: number | nu
 
 // ─── SECTION HEADER ───────────────────────────────────────────────────────────
 function SectionHeader({ title, onSeeAll, light = false }: { title: string; onSeeAll?: () => void; light?: boolean }) {
+  const pulse = useSharedValue(1)
+  useEffect(() => {
+    pulse.value = withRepeat(withSequence(withTiming(1.5, { duration: 900 }), withTiming(1, { duration: 900 })), -1, false)
+  }, [])
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }], opacity: interpolate(pulse.value, [1, 1.5], [0.8, 0.3], Extrapolation.CLAMP) }))
+
   return (
     <View style={ss.sectionHeader}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <View style={[ss.sectionAccent, { backgroundColor: light ? Colors.gold : Colors.forest }]} />
+        {/* Pulsing dot */}
+        <View style={{ width: 12, height: 12, alignItems: 'center', justifyContent: 'center' }}>
+          <Animated.View style={[{
+            position: 'absolute', width: 12, height: 12, borderRadius: 6,
+            backgroundColor: light ? Colors.gold + '40' : Colors.forest + '30',
+          }, pulseStyle]} />
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: light ? Colors.gold : Colors.forest }} />
+        </View>
         <Text style={[ss.sectionTitle, light && { color: '#f1f5f9' }]}>{title}</Text>
       </View>
       {onSeeAll && (
@@ -580,11 +593,16 @@ function WhyUsSection() {
     <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         {why.map((w: any, i: number) => (
-          <Animated.View key={w.title} entering={FadeInDown.delay(i * 70).duration(400)} style={ss.whyCard}>
-            <View style={[ss.whyIcon, { backgroundColor: w.color + '22' }]}>
-              <Text style={{ fontSize: 20 }}>{w.emoji}</Text>
+          <Animated.View key={w.title} entering={FadeInDown.delay(i * 80).springify().damping(14)} style={[ss.whyCard, { borderColor: w.color + '28', overflow: 'hidden' }]}>
+            {/* Accent top bar */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, borderTopLeftRadius: 18, borderTopRightRadius: 18, backgroundColor: w.color, opacity: 0.65 }} />
+            {/* Glow blob */}
+            <View style={{ position: 'absolute', top: -16, right: -16, width: 70, height: 70, borderRadius: 35, backgroundColor: w.color, opacity: 0.06 }} />
+            {/* Icon */}
+            <View style={[ss.whyIcon, { backgroundColor: w.color + '18', borderWidth: 0.5, borderColor: w.color + '45' }]}>
+              <Text style={{ fontSize: 22 }}>{w.emoji}</Text>
             </View>
-            <Text style={ss.whyTitle}>{w.title}</Text>
+            <Text style={[ss.whyTitle, { color: w.color }]}>{w.title}</Text>
             <Text style={ss.whyBody}>{w.body}</Text>
           </Animated.View>
         ))}

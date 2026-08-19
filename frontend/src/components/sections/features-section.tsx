@@ -90,33 +90,59 @@ type Feature = typeof DEFAULT_FEATURES[0]
 ───────────────────────────────────────────── */
 function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const [hovered, setHovered] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 })
   const { Icon } = feature
- 
+
+  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = cardRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const x = (e.clientX - rect.left) / rect.width
+    const y = (e.clientY - rect.top) / rect.height
+    setTilt({ rx: (0.5 - y) * 12, ry: (x - 0.5) * 12, mx: x * 100, my: y * 100 })
+  }
+  const onMouseLeave = () => {
+    setHovered(false)
+    setTilt({ rx: 0, ry: 0, mx: 50, my: 50 })
+  }
+
   return (
     <div
-      className="opacity-0 translate-y-7"
+      className="opacity-0 translate-y-7 h-full"
       style={{
         animation: `featFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) ${index * 100 + 100}ms forwards`,
+        perspective: '800px',
       }}
     >
       {/* outer glow wrapper */}
       <div
-        className="h-full rounded-[20px] transition-all duration-350"
+        ref={cardRef}
+        className="h-full rounded-[20px]"
         style={{
           boxShadow: hovered
-            ? `0 0 0 1.5px ${feature.tagBg}, 0 20px 50px ${feature.accent}16, 0 8px 20px rgba(0,0,0,0.06)`
+            ? `0 0 0 1.5px ${feature.tagBg}, 0 24px 56px ${feature.accent}20, 0 8px 20px rgba(0,0,0,0.07)`
             : '0 0 0 0.5px #e5e7eb',
+          transform: hovered
+            ? `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translateY(-6px) scale(1.01)`
+            : 'rotateX(0) rotateY(0) translateY(0) scale(1)',
+          transition: hovered
+            ? 'box-shadow 0.15s ease, transform 0.08s ease'
+            : 'box-shadow 0.4s ease, transform 0.55s cubic-bezier(0.22,1,0.36,1)',
+          transformStyle: 'preserve-3d',
         }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseMove={onMouseMove}
+        onMouseLeave={onMouseLeave}
       >
         <div
-          className="relative flex flex-col h-full rounded-[20px] overflow-hidden bg-white transition-transform duration-350 cursor-default"
-          style={{
-            transform: hovered ? 'translateY(-5px) scale(1.008)' : 'translateY(0) scale(1)',
-            transitionTimingFunction: 'cubic-bezier(0.22,1,0.36,1)',
-          }}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
+          className="relative flex flex-col h-full rounded-[20px] overflow-hidden bg-white cursor-default"
         >
+          {/* Shine overlay */}
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: 'inherit', pointerEvents: 'none', zIndex: 20,
+            background: `radial-gradient(circle at ${tilt.mx}% ${tilt.my}%, rgba(255,255,255,0.18) 0%, transparent 65%)`,
+            opacity: hovered ? 1 : 0, transition: 'opacity 0.25s',
+          }} />
           {/* top gradient bar */}
           <div className="h-[3px] w-full flex-shrink-0" style={{ background: feature.bar }} />
  
@@ -224,7 +250,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
     </div>
   )
 }
- 
+
 /* ─────────────────────────────────────────────
    BACKGROUND
 ───────────────────────────────────────────── */

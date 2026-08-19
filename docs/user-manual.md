@@ -903,3 +903,46 @@ Access your bookmarked articles from **Account → Saved Articles** (🔖). The 
 - **Pull to refresh**: Pull down on the blog listing to reload the latest articles.
 - **Push notifications**: When a new article is published, you'll receive a push notification. Tap it to open the article directly.
 - **Saved Articles**: All bookmarked articles are accessible from Account → Saved Articles.
+
+---
+
+## Premium UI/UX Features (2026-08-19)
+
+### Website — Visual Enhancements
+
+**Custom Cursor (desktop only)**
+- A dual-ring cursor follower replaces the default pointer on desktop.
+- The outer ring lags slightly behind for a premium fluid feel.
+- The cursor grows and glows when hovering buttons and links.
+
+**Scroll Progress Bar**
+- A thin emerald-to-gold gradient bar appears at the top of every page as you scroll.
+- Shows exactly how far through the page you are.
+
+**Back to Top Button**
+- A floating green button appears in the bottom-right corner after scrolling down.
+- Click to smoothly scroll back to the top.
+- Pulses with a ring animation to draw attention.
+
+**3D Product Cards**
+- Product cards now tilt in 3D based on where your cursor is on the card.
+- A subtle shine highlight follows your cursor across the card surface.
+- Cards spring back smoothly when you move away.
+
+**3D Feature Cards**
+- The "Why Choose Oroganix" feature cards use the same 3D tilt effect.
+
+**Testimonials Marquee**
+- Customer reviews now scroll continuously in two rows (opposite directions).
+- Hover over any review card to pause the scroll and read it fully.
+
+### Mobile App — Visual Enhancements
+
+**Animated Section Headers**
+- Each section title now has an animated pulsing dot indicator.
+- The dot gently expands and fades in a loop.
+
+**Premium WhyUs Cards**
+- "Why Oroganix" cards now show a colored accent top border per card.
+- Each card has a soft color-matched glow behind the icon.
+- Card titles use the card's accent color for a vibrant look.

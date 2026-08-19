@@ -1856,3 +1856,69 @@ New `SocialShareRow` component placed between article tags and `NewsletterCta`:
 
 Notification payload: `{ title: '📖 New Article Published', body: post.title, data: { type: 'blog', slug } }` — the existing `_layout.tsx` router already handles `type === 'blog'` and navigates to `/blog/:slug`.
 | Related post cards | Use `read_time` from backend instead of computing from `rp.content` |
+
+---
+
+## Premium UI/UX Overhaul (2026-08-19)
+
+### Web — New Global Components
+
+#### `frontend/src/components/ui/custom-cursor.tsx`
+- Dual-ring magnetic cursor follower (dot + lagging ring).
+- Hides native cursor (`cursor: none` via `@media (pointer: fine)`) — desktop only.
+- Grows and changes color when hovering links/buttons (`a, button, [role="button"]`).
+- Shrinks ring on mouse-down (click feedback).
+- Cleaned up via `cancelAnimationFrame` on unmount.
+
+#### `frontend/src/components/ui/scroll-progress.tsx`
+- Fixed 3px bar at top of every page, z-index 99999.
+- Gradient: `#059669 → #10b981 → #34d399 → #d97706` with infinite shimmer animation.
+- `width` updated on `scroll` event (passive listener).
+
+#### `frontend/src/components/ui/back-to-top.tsx`
+- Fixed bottom-right floating button, visible after 500px scroll.
+- Smooth `scrollTo({top:0, behavior:'smooth'})` on click.
+- In/out animation with spring scale, pulse ring animation.
+- Added to `frontend/src/app/layout.tsx` alongside cursor and progress bar.
+
+### Web — Enhanced Product Cards
+**File**: `frontend/src/components/sections/featured-products-section.tsx`
+
+- **3D tilt on hover**: tracks mouse position within card → `perspective(900px) rotateX(Xdeg) rotateY(Ydeg)`.
+- **Shine overlay**: `radial-gradient` follows cursor position, `pointerEvents: none`.
+- **Premium info section**: green dot category indicator, hover-to-green title, "Save X%" pill.
+- Card transition: fast `0.08s` response on hover, slow spring `0.5s` on release.
+
+### Web — Features Section Cards
+**File**: `frontend/src/components/sections/features-section.tsx`
+
+- Same 3D tilt + shine overlay added to each `FeatureCard`.
+- `transformStyle: preserve-3d` on outer wrapper.
+- Closing tags balanced (extra `</div>` added to account for shine overlay).
+
+### Web — Testimonials Marquee
+**File**: `frontend/src/components/sections/testimonials-section.tsx`
+
+- **Replaced** the old grid + pagination with an **infinite CSS marquee**.
+- Two rows: row 1 scrolls left (42s), row 2 scrolls right (54s) with reversed array.
+- CSS keyframes `marquee-left` / `marquee-right` at 50% array duplication (`[...arr, ...arr]`).
+- Edge fade via `mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent)`.
+- Hover-pause: `.marquee-wrap:hover .marquee-track { animation-play-state: paused }`.
+- Increased reviews limit from 9 → 12 to give marquee enough cards.
+- Removed unused: `ChevronLeft`, `ChevronRight`, `AnimatePresence`, carousel state.
+
+### Mobile — WhyUs Section
+**File**: `ayurveda-app/src/app/index.tsx`
+
+- Each `WhyCard` now shows a **colored top accent bar** (2px, accent color, 65% opacity).
+- **Glow blob**: absolute positioned circle behind icon, colored, 6% opacity.
+- **Icon ring**: colored border (`borderWidth: 0.5, borderColor: w.color + '45'`).
+- **Title** uses the card's accent color instead of generic white.
+- Entry animation upgraded: `.springify().damping(14)` for a more lively reveal.
+
+### Mobile — Section Headers
+**File**: `ayurveda-app/src/app/index.tsx` → `SectionHeader` component
+
+- Replaced static accent bar with an **animated pulsing dot**.
+- Inner dot (6px) + outer ring (12px) that scales 1→1.5 and fades using `withRepeat + withSequence`.
+- Light variant (dark backgrounds) uses gold color; default uses forest green.

@@ -28,6 +28,8 @@ interface Product {
 function ProductCard({ product, index }: { product: Product; index: number }) {
   const [hovered, setHovered] = useState(false)
   const [cartLoading, setCartLoading] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 })
   const { loginuserdata, cartdata, fetchCart, getwishlist, wishlistdata, setOpencart } = useAuth()
 
   const isWishlisted = !!wishlistdata?.items?.find((i: any) => i?.id == product.id)
@@ -36,6 +38,18 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
   const discount = product.compareprice
     ? Math.round(((Number(product.compareprice) - Number(product.flash_price || product.price)) / Number(product.compareprice)) * 100)
     : 0
+
+  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = cardRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const x = (e.clientX - rect.left) / rect.width   // 0–1
+    const y = (e.clientY - rect.top) / rect.height   // 0–1
+    setTilt({ rx: (0.5 - y) * 14, ry: (x - 0.5) * 14, mx: x * 100, my: y * 100 })
+  }
+  const onMouseLeave = () => {
+    setHovered(false)
+    setTilt({ rx: 0, ry: 0, mx: 50, my: 50 })
+  }
 
   const handleCart = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -79,18 +93,35 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
 
   return (
     <Link href={`/product/${product.slug || product.id}`} className="block group focus:outline-none"
-      style={{ animation: `pcFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) ${index * 80 + 100}ms both` }}>
+      style={{ animation: `pcFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) ${index * 80 + 100}ms both`, perspective: '900px' }}>
       <div
-        className="relative rounded-2xl overflow-hidden bg-white transition-all duration-300"
+        ref={cardRef}
+        className="relative rounded-2xl overflow-hidden bg-white"
         style={{
           boxShadow: hovered
-            ? '0 20px 48px rgba(0,0,0,0.10), 0 0 0 1.5px #e8f5ee'
-            : '0 2px 12px rgba(0,0,0,0.05), 0 0 0 0.5px #f0f0f0',
-          transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
+            ? `0 28px 60px rgba(0,0,0,0.13), 0 0 0 1.5px #c6f0dc, 0 0 40px rgba(16,185,129,0.08)`
+            : '0 2px 16px rgba(0,0,0,0.06), 0 0 0 0.5px #f0f0f0',
+          transform: hovered
+            ? `perspective(900px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translateY(-6px) scale(1.01)`
+            : 'perspective(900px) rotateX(0) rotateY(0) translateY(0) scale(1)',
+          transition: hovered
+            ? 'box-shadow 0.15s ease, transform 0.08s ease'
+            : 'box-shadow 0.35s ease, transform 0.5s cubic-bezier(0.22,1,0.36,1)',
         }}
         onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        onMouseMove={onMouseMove}
+        onMouseLeave={onMouseLeave}
       >
+        {/* Shine overlay — moves with cursor */}
+        <div
+          style={{
+            position: 'absolute', inset: 0, borderRadius: 'inherit', pointerEvents: 'none',
+            zIndex: 20,
+            background: `radial-gradient(circle at ${tilt.mx}% ${tilt.my}%, rgba(255,255,255,0.22) 0%, transparent 65%)`,
+            opacity: hovered ? 1 : 0,
+            transition: 'opacity 0.25s',
+          }}
+        />
         {/* Image */}
         <div className="relative overflow-hidden bg-gray-50" style={{ aspectRatio: '1/1' }}>
           <img
@@ -174,40 +205,50 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
         </div>
 
         {/* Info */}
-        <div className="p-4">
+        <div className="p-4 pt-3.5 relative z-10">
           {product.category_name && (
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
+            <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-600 mb-1.5 flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-emerald-400 inline-block" />
               {product.category_name}
             </p>
           )}
 
-          <h3 className="text-sm font-semibold text-gray-900 leading-snug mb-2 line-clamp-2">
+          <h3 className="text-[13px] font-bold text-gray-900 leading-snug mb-2 line-clamp-2 group-hover:text-emerald-800 transition-colors duration-200">
             {product.name}
           </h3>
 
           {/* Stars */}
           {stars > 0 && (
-            <div className="flex items-center gap-1 mb-2">
+            <div className="flex items-center gap-1.5 mb-2.5">
               <div className="flex gap-0.5">
                 {[1, 2, 3, 4, 5].map(s => (
-                  <Star key={s} size={11}
+                  <Star key={s} size={10}
                     fill={s <= stars ? '#f59e0b' : 'none'}
                     color={s <= stars ? '#f59e0b' : '#e5e7eb'}
                   />
                 ))}
               </div>
-              <span className="text-[10px] text-gray-400">({product.reviewcount})</span>
+              {product.reviewcount > 0 && (
+                <span className="text-[10px] text-gray-400 font-medium">({product.reviewcount})</span>
+              )}
             </div>
           )}
 
-          {/* Price */}
-          <div className="flex items-baseline gap-2">
-            <span className="text-base font-bold text-emerald-700">
-              ₹{Number(product.flash_price || product.price).toFixed(0)}
-            </span>
-            {product.compareprice && Number(product.compareprice) > Number(product.flash_price || product.price) && (
-              <span className="text-xs text-gray-400 line-through">
-                ₹{Number(product.compareprice).toFixed(0)}
+          {/* Price row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[15px] font-extrabold text-emerald-700">
+                ₹{Number(product.flash_price || product.price).toFixed(0)}
+              </span>
+              {product.compareprice && Number(product.compareprice) > Number(product.flash_price || product.price) && (
+                <span className="text-[11px] text-gray-400 line-through font-medium">
+                  ₹{Number(product.compareprice).toFixed(0)}
+                </span>
+              )}
+            </div>
+            {discount > 5 && (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                Save {discount}%
               </span>
             )}
           </div>
