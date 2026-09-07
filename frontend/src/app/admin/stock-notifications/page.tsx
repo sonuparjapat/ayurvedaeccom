@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import { Bell, Search, Package, Mail, CheckCircle, Clock, RefreshCw, AlertTriangle, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 export default function AdminStockNotificationsPage() {
 
@@ -71,6 +72,18 @@ export default function AdminStockNotificationsPage() {
               <p className="text-gray-500 mt-1 text-sm">
                 Customers waiting to be notified when products are back in stock
               </p>
+              <PageInfoBanner
+                title="Stock Notifications"
+                description="Customers who requested a back-in-stock alert for an out-of-stock product are listed here. When you restock the product, the system automatically emails them. This page also shows current Out of Stock and Low Stock product alerts."
+                tips={[
+                  "Pending status means the customer has not yet been emailed — the product is still out of stock.",
+                  "Notified status means the back-in-stock email was sent after the product was restocked.",
+                  "Out of Stock panel lists products with zero inventory — restock them in the Products section.",
+                  "Low Stock panel warns products below their threshold — plan replenishment before they sell out.",
+                  "Search by product name, customer email, or variant to find a specific notification request.",
+                  "Notification emails are sent automatically — no manual action needed when products are restocked.",
+                ]}
+              />
             </div>
             <button
               onClick={() => { load(); loadAlerts() }}

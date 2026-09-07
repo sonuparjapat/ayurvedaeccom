@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { BarChart2, TrendingUp, MapPin, Tag, Package, Award } from 'lucide-react'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 const fmt = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
 const pct = (n: number) => `${Number(n || 0).toFixed(1)}%`
@@ -82,6 +83,18 @@ export default function AdminReportsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Sales Reports</h1>
           <p className="text-sm text-gray-500 mt-0.5">Revenue, performance, and profit analysis</p>
+          <PageInfoBanner
+            title="Sales Reports"
+            description="Deep-dive sales analysis across products, categories, states, and coupons. Filter by date range to compare performance periods. Use these reports to identify top sellers, underperforming SKUs, and profitable markets."
+            tips={[
+              "Set From/To date range and click Apply to filter all reports to a specific period.",
+              "Monthly Revenue Trend bar chart shows month-by-month revenue — hover for exact numbers.",
+              "Top Products by Revenue helps you identify best-sellers to prioritize in ads and promotions.",
+              "Category Revenue shows which Ayurvedic categories drive the most sales — use for inventory planning.",
+              "State Revenue reveals your highest-value delivery zones for targeted regional marketing.",
+              "Profit Margin table uses Cost Price from product settings — ensure costs are set accurately for correct margins.",
+            ]}
+          />
         </div>
         <div className="flex items-center gap-2">
           <input type="date" value={from} onChange={e => setFrom(e.target.value)}

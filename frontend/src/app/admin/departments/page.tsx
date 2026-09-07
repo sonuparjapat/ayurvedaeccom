@@ -5,6 +5,7 @@ import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Edit2, Shield, Users, Check, X, ChevronDown, ChevronUp, Search } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 import { toast } from 'react-hot-toast'
 
 interface Permission {
@@ -196,6 +197,18 @@ export default function DepartmentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Departments &amp; Roles</h1>
           <p className="text-sm text-gray-500 mt-1">Manage admin departments and their permissions</p>
+          <PageInfoBanner
+            title="Departments & Roles"
+            description="Create departments (e.g. Orders Team, Support Team) and assign specific admin permissions to each. Assign admin users to departments so they only see and access the parts of the admin panel relevant to their role."
+            tips={[
+              "Create a department first, then click it to open the permission editor and assign permissions.",
+              "Use the group-level checkbox to quickly grant or revoke all permissions in a category.",
+              "Assigning a department to an admin user restricts them to only the permissions that department has.",
+              "A super admin (role 1) bypasses department restrictions and can see all pages.",
+              "Use the Search Permissions box to find a specific permission key across all groups.",
+              "Deleting a department unassigns all users from it — reassign them to another department afterward.",
+            ]}
+          />
         </div>
         <button
           onClick={() => setShowCreate(true)}
@@ -443,7 +456,9 @@ export default function DepartmentsPage() {
             <h3 className="text-lg font-bold mb-4">Create Department</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                  <LabelWithInfo label="Name *" required what="The department's display name shown to admins" why="Used to identify this group in the admin panel and when assigning users" example="Orders Team, Support Team, Inventory Manager" />
+                </label>
                 <input
                   type="text"
                   value={createName}
@@ -455,7 +470,9 @@ export default function DepartmentsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                  <LabelWithInfo label="Description" what="A brief explanation of what this department is responsible for" why="Helps other super admins understand this department's scope at a glance" example="Handles all customer order queries and returns" />
+                </label>
                 <textarea
                   value={createDesc}
                   onChange={e => setCreateDesc(e.target.value)}

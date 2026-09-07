@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Brain, Plus, Trash2, Edit3, ChevronDown, ChevronUp, CheckCircle, XCircle, BarChart3, Users, Trophy, Clock, X, Check, RefreshCw } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 type Quiz = {
   id: number; title: string; description: string; type: string
@@ -131,6 +132,18 @@ export default function AdminQuizPage() {
             <Brain size={22} className="text-violet-600" /> Quiz Manager
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Create knowledge quizzes with rewards for user engagement</p>
+          <PageInfoBanner
+            title="Quiz Manager"
+            description="Create interactive quizzes that reward customers with wallet credits, loyalty points, or coupon codes. Each quiz has questions with options — correct answers earn points. Quizzes can be used for product education or seasonal campaigns."
+            tips={[
+              "Quiz Type 'scored' shows the final score and gives rewards based on pass score threshold.",
+              "Pass Score is the minimum score (0-100%) required to earn the reward — set 0 to reward all attempts.",
+              "Max Attempts Per User controls how many times a customer can retake the quiz.",
+              "Click a quiz row to expand it and add/edit questions and answer options.",
+              "Mark the correct option(s) for each question — only correct answers earn points.",
+              "View Attempts shows how many customers have taken the quiz and their pass/fail breakdown.",
+            ]}
+          />
         </div>
         <button onClick={() => setShowCreate(true)}
           className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-violet-700">
@@ -173,7 +186,9 @@ export default function AdminQuizPage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Max Attempts / User</label>
+                  <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+                    <LabelWithInfo label="Max Attempts / User" what="Total number of times a single customer can attempt this quiz (0 = unlimited)" why="Limits repeat attempts to prevent gaming the reward system" example="1 = one attempt only, 3 = three chances to pass" />
+                  </label>
                   <input type="number" min={0} value={editQuiz ? editQuiz.max_attempts_per_user : form.max_attempts_per_user}
                     onChange={e => editQuiz ? setEditQuiz(p => p ? { ...p, max_attempts_per_user: Number(e.target.value) } : p) : setForm(p => ({ ...p, max_attempts_per_user: Number(e.target.value) }))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500" />
@@ -185,7 +200,9 @@ export default function AdminQuizPage() {
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Pass Score (pts)</label>
+                  <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+                    <LabelWithInfo label="Pass Score (pts)" what="Minimum points a customer must score to receive the reward (0 = everyone gets the reward)" why="Encourages genuine engagement — customers must answer correctly to win" example="0 = reward all, 3 = must score 3+ points out of the total" />
+                  </label>
                   <input type="number" min={0} value={editQuiz ? editQuiz.pass_score : form.pass_score}
                     onChange={e => editQuiz ? setEditQuiz(p => p ? { ...p, pass_score: Number(e.target.value) } : p) : setForm(p => ({ ...p, pass_score: Number(e.target.value) }))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500" />
@@ -193,7 +210,9 @@ export default function AdminQuizPage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Reward Type</label>
+                  <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+                    <LabelWithInfo label="Reward Type" what="What is awarded to customers who pass the quiz" why="Wallet credit deducts from store's wallet, Points go to loyalty account, Coupon generates a discount code" example="Wallet Credit = ₹50 added to wallet, Loyalty Points = 100 pts earned" />
+                  </label>
                   <select value={editQuiz ? editQuiz.reward_type : form.reward_type}
                     onChange={e => editQuiz ? setEditQuiz(p => p ? { ...p, reward_type: e.target.value } : p) : setForm(p => ({ ...p, reward_type: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500">
@@ -201,7 +220,9 @@ export default function AdminQuizPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Reward Value (₹/pts)</label>
+                  <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+                    <LabelWithInfo label="Reward Value (₹/pts)" what="The amount of the reward — ₹ for wallet credit, number for loyalty points" why="Controls the generosity of the reward — balance it against the cost of running the quiz" example="50 = ₹50 wallet credit, 100 = 100 loyalty points" />
+                  </label>
                   <input type="number" min={0} value={editQuiz ? editQuiz.reward_value : form.reward_value}
                     onChange={e => editQuiz ? setEditQuiz(p => p ? { ...p, reward_value: Number(e.target.value) } : p) : setForm(p => ({ ...p, reward_value: Number(e.target.value) }))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500" />

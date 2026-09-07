@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import {
   BookOpen, Plus, Pencil, Trash2, Search, Eye, Clock, RefreshCw,
 } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 import AppModal from '@/components/modal/AppModal'
 import RichTextEditor from '@/components/editor/RichTextEditor'
 
@@ -182,6 +183,18 @@ export default function AdminBlogPage() {
             <div>
               <h1 className="text-xl font-bold">Blog Management</h1>
               <p className="text-white/70 text-sm">{stats.total} posts total</p>
+              <PageInfoBanner
+                title="Blog Management"
+                description="Write and publish blog articles about Ayurveda, wellness tips, product guides, and seasonal topics. Published posts appear on the public blog and help with SEO. Draft posts are saved but not visible to customers."
+                tips={[
+                  "Status Draft means the post is saved but not yet visible on the public blog.",
+                  "Status Published makes the post live immediately — it appears in the blog listing.",
+                  "Slug is the URL path — auto-generated from the title but can be edited manually.",
+                  "Meta Title and Meta Description are used by search engines — keep them under 60 and 160 characters.",
+                  "Cover Image appears as the hero image at the top of the post — recommended 1200x600px.",
+                  "Use Tags to help customers find related posts — separate multiple tags with commas.",
+                ]}
+              />
             </div>
           </div>
           <button onClick={openCreate} className="bg-white text-teal-700 font-semibold text-sm px-4 py-2 rounded-xl hover:bg-teal-50 transition flex items-center gap-2">
@@ -290,7 +303,9 @@ export default function AdminBlogPage() {
 
           {/* Title */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Title *</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+              <LabelWithInfo label="Title *" required what="The blog post headline shown at the top of the article and in the blog listing" why="A clear, descriptive title improves SEO and drives more clicks from search results" example="5 Ayurvedic Herbs for Immunity: A Complete Guide" />
+            </label>
             <input className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none"
               value={form.title}
               onChange={e => {
@@ -302,7 +317,9 @@ export default function AdminBlogPage() {
 
           {/* Slug */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Slug</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+              <LabelWithInfo label="Slug" what="The URL-safe version of the title used in the blog post URL" why="Used to build the public URL like /blog/[slug] — keep it lowercase with hyphens" example="5-ayurvedic-herbs-for-immunity-a-complete-guide" note="Auto-generated from the title but can be edited manually" />
+            </label>
             <input className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none font-mono text-xs"
               value={form.slug}
               onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
@@ -311,7 +328,9 @@ export default function AdminBlogPage() {
 
           {/* Excerpt */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Excerpt</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+              <LabelWithInfo label="Excerpt" what="A short 1-2 sentence summary of the post shown on the blog listing card" why="Helps readers decide whether to read the full post — also used in meta descriptions if Meta Description is empty" example="Discover 5 powerful Ayurvedic herbs that strengthen immunity and protect against seasonal illness." />
+            </label>
             <textarea className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none resize-none" rows={2}
               value={form.excerpt}
               onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))}
@@ -320,7 +339,9 @@ export default function AdminBlogPage() {
 
           {/* Content — Rich Text Editor */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Content *</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-2">
+              <LabelWithInfo label="Content *" required what="The full body of the blog post — supports rich text formatting" why="This is the main article text visible to customers when they open the post" example="Use headings, bullet points, and images to create a well-structured, readable article" />
+            </label>
             <RichTextEditor
               value={form.content}
               onChange={(html: string) => setForm(f => ({ ...f, content: html }))}
@@ -331,7 +352,9 @@ export default function AdminBlogPage() {
 
           {/* Cover Image */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Cover Image</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+              <LabelWithInfo label="Cover Image" what="The hero image displayed at the top of the blog post and as a thumbnail in the listing" why="A high-quality image makes the post more engaging and clickable" example="Upload a 1200x600px JPG/PNG image relevant to the post topic" />
+            </label>
             {(coverPreview && !removeCover) ? (
               <div className="flex items-center gap-3">
                 <img src={coverPreview} alt="Cover" className="w-24 h-16 object-cover rounded-lg border" />
@@ -351,14 +374,18 @@ export default function AdminBlogPage() {
           {/* Category & Author */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Category</label>
+              <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+                <LabelWithInfo label="Category" what="The topic group this post belongs to — shown as a tag on the listing card" why="Helps customers filter blog posts by interest area" example="Ayurveda, Wellness, Recipes, Product Guide" />
+              </label>
               <input className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none"
                 value={form.category}
                 onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                 placeholder="General" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Author Name</label>
+              <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+                <LabelWithInfo label="Author Name" what="The name displayed as the author of this post" why="Adds credibility — use your team name or a specific person's name" example="Oroganix Team, Dr. Priya Sharma" />
+              </label>
               <input className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none"
                 value={form.author_name}
                 onChange={e => setForm(f => ({ ...f, author_name: e.target.value }))}
@@ -368,7 +395,9 @@ export default function AdminBlogPage() {
 
           {/* Tags */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tags (comma-separated)</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+              <LabelWithInfo label="Tags (comma-separated)" what="Keywords that describe the post's topics — used for filtering and discovery" why="Tags help customers find related posts and improve internal search" example="ayurveda, health, immunity, herbs, wellness" />
+            </label>
             <input className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none"
               value={form.tags}
               onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
@@ -377,7 +406,9 @@ export default function AdminBlogPage() {
 
           {/* Status */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Status</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+              <LabelWithInfo label="Status" what="Controls whether the post is visible to the public" why="Draft keeps the post hidden; Published makes it live immediately; Archived hides a previously published post" example="Use Draft while writing, Published when ready to go live" />
+            </label>
             <select className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none"
               value={form.status}
               onChange={e => setForm(f => ({ ...f, status: e.target.value as any }))}>
@@ -392,14 +423,18 @@ export default function AdminBlogPage() {
             <p className="text-xs font-semibold text-gray-400 uppercase mb-3">SEO Settings</p>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Meta Title</label>
+                <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+                  <LabelWithInfo label="Meta Title" what="Custom title shown in Google search results and browser tab for this post" why="If left blank, the post Title is used. Override for better SEO — keep under 60 characters." example="5 Ayurvedic Herbs for Immunity | Oroganix Blog" />
+                </label>
                 <input className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none"
                   value={form.meta_title}
                   onChange={e => setForm(f => ({ ...f, meta_title: e.target.value }))}
                   placeholder="SEO title (optional)" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Meta Description</label>
+                <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+                  <LabelWithInfo label="Meta Description" what="Short description shown beneath the title in Google search results" why="Improves click-through rate — keep under 160 characters and include relevant keywords" example="Discover 5 Ayurvedic herbs that boost immunity naturally. Backed by ancient wisdom and modern science." />
+                </label>
                 <textarea className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-300 focus:outline-none resize-none" rows={2}
                   value={form.meta_description}
                   onChange={e => setForm(f => ({ ...f, meta_description: e.target.value }))}

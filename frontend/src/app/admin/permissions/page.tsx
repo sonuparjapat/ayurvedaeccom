@@ -6,6 +6,7 @@ import { useAuth } from '@/context/auth-context'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Edit2, Shield, Search, X, Check } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 interface Permission {
   id: number
@@ -145,6 +146,18 @@ export default function PermissionsPage() {
           <p className="text-sm text-gray-500 mt-1">
             {permissions.length} permissions across {groups.length - 1} groups — these are assigned to departments
           </p>
+          <PageInfoBanner
+            title="Permissions"
+            description="Permissions are the building blocks of admin access control. Each permission has a unique dot-notation key (e.g. orders.view) that is bound to a sidebar menu item. Assign permissions to departments in the Departments page."
+            tips={[
+              "Each permission key must be unique — it cannot be changed after creation because code references it.",
+              "The Group field organises permissions into collapsible sections in the department editor.",
+              "Use the Sidebar Bindings table at the bottom to verify every menu item has its permission in the DB.",
+              "Permissions marked 'Missing in DB' will cause that menu item to never be visible to department admins.",
+              "Superadmins (role 1) bypass all permission checks and always see every page.",
+              "Delete a permission only if no department has it assigned — the API will reject it otherwise.",
+            ]}
+          />
         </div>
         <button
           onClick={openCreate}
@@ -303,8 +316,8 @@ export default function PermissionsPage() {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Key <span className="text-red-500">*</span>
+                <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                  <LabelWithInfo label="Key *" required what="Unique dot-notation identifier for this permission (e.g. orders.view)" why="The key is referenced in code — it cannot be changed after creation because the sidebar binds to it" example="orders.view, products.edit, settings.manage" note="Use module.action format — lowercase, no spaces" />
                   <span className="text-xs text-gray-400 font-normal ml-2">dot notation e.g. orders.view</span>
                 </label>
                 <input
@@ -320,8 +333,8 @@ export default function PermissionsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Label <span className="text-red-500">*</span>
+                <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                  <LabelWithInfo label="Label *" required what="Human-readable name shown in the department permissions editor" why="Helps admins understand what this permission grants when assigning to a department" example="View Orders, Manage Products, Send Notifications" />
                 </label>
                 <input
                   type="text"
@@ -334,8 +347,8 @@ export default function PermissionsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Group <span className="text-red-500">*</span>
+                <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                  <LabelWithInfo label="Group *" required what="Category name used to group related permissions in the department editor" why="Makes the permissions list easier to navigate — all permissions in the same group are collapsible together" example="Orders, Products, Settings, Analytics" />
                   <span className="text-xs text-gray-400 font-normal ml-2">groups permissions in the department editor</span>
                 </label>
                 <input
@@ -354,7 +367,9 @@ export default function PermissionsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+                  <LabelWithInfo label="Description" what="Optional explanation of what this permission allows — shown as a hint below the label in the department editor" why="Helps department managers understand the scope of this permission before assigning it" example="Allows viewing and exporting order data. Does not allow status changes." />
+                </label>
                 <textarea
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}

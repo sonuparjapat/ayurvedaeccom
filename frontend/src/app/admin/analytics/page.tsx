@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 /* ── Recharts Area Chart ── */
 function RevenueChart({ data: chartData, loading }: { data: any[]; loading: boolean }) {
@@ -368,6 +369,19 @@ export default function AnalyticsPage() {
       `}</style>
 
       <div className="p-4 md:p-6 space-y-6 analytics-page">
+
+        <PageInfoBanner
+          title="Analytics Dashboard"
+          description="View real-time and historical business performance — revenue, orders, users, product performance, and the customer conversion funnel. Filter by date range to compare periods."
+          tips={[
+            "Use From/To date range to filter all metrics to a specific period — click Apply to refresh.",
+            "Monthly Growth shows the revenue change compared to the previous month.",
+            "Switch between Daily / Weekly / Monthly views in the Revenue Overview chart for trend analysis.",
+            "Product Performance sortable by Revenue, Units Sold, Orders, or Returns — use Returns to spot quality issues.",
+            "Conversion Funnel shows the drop-off from Visitors → Cart → Checkout → Order — low step conversion rates indicate friction.",
+            "Today Revenue and Month Revenue always reflect the current day/month regardless of the date filter.",
+          ]}
+        />
 
         {/* ================= FILTER ================= */}
         <div className="filter-card">

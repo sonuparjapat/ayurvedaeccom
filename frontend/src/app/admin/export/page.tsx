@@ -4,6 +4,7 @@ import { useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Download, FileText, Users, ShoppingCart } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 export default function ExportPage() {
   const [ordersFilter, setOrdersFilter] = useState({ from: '', to: '', status: 'all' })
@@ -45,6 +46,18 @@ export default function ExportPage() {
       <div className="bg-white rounded-2xl p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Download className="text-emerald-500" size={22} /> Export Data</h1>
         <p className="text-gray-500 text-sm mt-1">Download CSV reports for orders, users, and revenue</p>
+        <PageInfoBanner
+          title="Export Data"
+          description="Download complete CSV reports for orders and customers. Use date range and status filters to narrow the orders export. Files download directly to your browser — no email needed."
+          tips={[
+            "Leave From Date and To Date blank to export all orders regardless of date.",
+            "Filter by Status to export only Delivered orders for accounting, or Cancelled orders for analysis.",
+            "Orders CSV includes: Order ID, customer info, items list, total amount, payment method, and tracking.",
+            "Users CSV includes: name, email, wallet balance, loyalty points, total orders, and registration date.",
+            "Large exports may take a few seconds — do not click Export multiple times.",
+            "Use these CSVs for offline accounting, mail-merge campaigns, or importing into analytics tools.",
+          ]}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -54,18 +67,22 @@ export default function ExportPage() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-gray-400 uppercase">From Date</label>
+                <label className="text-xs font-semibold text-gray-400 uppercase flex items-center gap-1">
+                  <LabelWithInfo label="From Date" what="The start date for the orders export range" why="Narrows the export to orders placed on or after this date" example="2024-01-01 to export orders from January onwards" />
+                </label>
                 <input type="date" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm"
                   value={ordersFilter.from} onChange={e => setOrdersFilter(f => ({...f, from: e.target.value}))} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-400 uppercase">To Date</label>
+                <label className="text-xs font-semibold text-gray-400 uppercase flex items-center gap-1">
+                  <LabelWithInfo label="To Date" what="The end date for the orders export range" why="Narrows the export to orders placed on or before this date" example="2024-01-31 to export orders up to end of January" /></label>
                 <input type="date" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm"
                   value={ordersFilter.to} onChange={e => setOrdersFilter(f => ({...f, to: e.target.value}))} />
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-400 uppercase">Status</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase flex items-center gap-1">
+                <LabelWithInfo label="Status" what="Filter exported orders by their current order status" why="Export only specific stages — e.g. Delivered for accounting, Cancelled for analysis" example="Select 'Delivered' to export only completed orders for the period" /></label>
               <select className="w-full border rounded-xl px-3 py-2 mt-1 text-sm"
                 value={ordersFilter.status} onChange={e => setOrdersFilter(f => ({...f, status: e.target.value}))}>
                 <option value="all">All Status</option>

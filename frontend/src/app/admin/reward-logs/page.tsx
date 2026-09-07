@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import { Trophy, Search, Filter } from 'lucide-react'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 type RewardLog = {
   id: number; user_id: number; user_name: string; user_email: string
@@ -57,6 +58,18 @@ export default function RewardLogsPage() {
             <Trophy size={22} className="text-amber-500" /> Reward Audit Logs
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Complete history of all rewards distributed — quiz, games, gift cards, manual</p>
+          <PageInfoBanner
+            title="Reward Audit Logs"
+            description="Complete immutable log of every reward distributed — from quizzes, scratch cards, spin wheels, gift cards, and manual grants. Use this for auditing and to track the total value of rewards given out."
+            tips={[
+              "Filter by Source to focus on rewards from a specific game type (Quiz, Scratch Card, Spin Wheel).",
+              "Search by customer name, email, or description to find rewards for a specific user.",
+              "Ref / Code column shows the coupon code or gift card code generated as the reward.",
+              "Reward type Wallet means the amount was added to the customer's wallet balance.",
+              "Reward type Points means loyalty points were credited to the customer's account.",
+              "This log is read-only — all entries are auto-created when rewards are issued.",
+            ]}
+          />
         </div>
         <div className="text-sm text-gray-400 font-medium">{total.toLocaleString()} total records</div>
       </div>

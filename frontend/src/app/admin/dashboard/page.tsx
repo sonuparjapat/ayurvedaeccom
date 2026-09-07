@@ -11,6 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DollarSign, Users, Package, ShoppingCart, BarChart3, AlertTriangle, TrendingUp, Clock, ArrowUpRight, Bell } from 'lucide-react'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useAuth } from '@/context/auth-context'
@@ -159,6 +160,21 @@ export default function AdminDashboard() {
           ))}
         </AnimatePresence>
       </div>
+
+      {/* ── Page Info Banner ── */}
+      <PageInfoBanner
+        title="Admin Dashboard"
+        description="Real-time overview of store performance — revenue, orders, users, products, pending orders, and low-stock alerts. Order counts and status updates via WebSocket without page refresh."
+        tips={[
+          "Pending Orders count in red means new orders are waiting for confirmation — go to Orders to process them.",
+          "Low Stock count shows products below their threshold — restock them to avoid lost sales.",
+          "Revenue & Orders chart: switch Daily / Weekly / Monthly to see trends at different granularities.",
+          "New order toast notifications appear at the bottom-right in real time — click to open the order.",
+          "Top Products shows your best-sellers by units sold — useful for inventory prioritisation.",
+          "Live sparklines (mini charts on KPI cards) show the last 7-day trend for revenue, orders, and users.",
+        ]}
+        defaultOpen={false}
+      />
 
       {/* ── KPI Stat Cards ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

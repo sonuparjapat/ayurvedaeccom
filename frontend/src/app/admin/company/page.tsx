@@ -8,6 +8,7 @@ import {
   Twitter, Youtube, Image as ImageIcon, Loader2, Plus, Trash2,
   Layout, Palette, Star, Megaphone,
 } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 const FALLBACK_LOGO = 'https://amzn-s3-ayurvedaeccom-bucket.s3.ap-south-1.amazonaws.com/importantlinks/mainayurvedalogo.png'
 
@@ -227,6 +228,18 @@ export default function CompanyPage() {
             <div>
               <h1 className="text-xl font-bold">Company Settings</h1>
               <p className="text-white/70 text-sm">Logo, contact info, policies & platform content</p>
+              <PageInfoBanner
+                title="Company Settings"
+                description="Central settings for your store — company identity, legal info, bank details, social links, policies, and the homepage platform configuration. Changes to Platform Config update the homepage hero, stats, features, and trust badges."
+                tips={[
+                  "Company Name is shown on invoices and all transactional emails — keep it your legal entity name.",
+                  "Support Email receives a copy of every support ticket from customers.",
+                  "GST / PAN / FSSAI numbers are printed on invoices — required for legal compliance.",
+                  "Platform Config tab controls the homepage hero text, trust items, features, and ticker.",
+                  "Logo: upload a file (PNG/SVG recommended) or paste a URL — file takes priority over URL.",
+                  "Privacy Policy, Terms, Shipping Policy, and Return Policy are shown in the footer links.",
+                ]}
+              />
             </div>
           </div>
           <button

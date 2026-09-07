@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Gamepad2, Plus, Trash2, Edit3, X, Check, Ticket, RefreshCw, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 type ScratchCard = {
   id: number; title: string; description: string
@@ -150,6 +151,18 @@ export default function AdminGamesPage() {
             <Gamepad2 size={22} className="text-emerald-600" /> Games & Rewards
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage scratch card campaigns and spin-the-wheel games</p>
+          <PageInfoBanner
+            title="Games & Rewards"
+            description="Create and manage interactive reward games for customers — Scratch Cards (single-scratch reveal) and Spin the Wheel (daily spin). Both types issue wallet credits, loyalty points, or coupon codes as prizes."
+            tips={[
+              "Scratch Cards: customers get one or more scratch opportunities per campaign — set Max Claims Per User to limit per customer.",
+              "Spin Wheel: each wheel has segments with probability weights — all weights must add up to exactly 100.",
+              "Reward Type 'No Reward' is used for losing slots — set a high probability weight to control win rate.",
+              "Starts At and Expires At let you schedule a limited-time campaign (leave blank for always-active).",
+              "Max Claims is the global campaign cap — once reached, no more claims are accepted.",
+              "Each game's reward is automatically credited to the customer's wallet or loyalty account.",
+            ]}
+          />
         </div>
       </div>
 

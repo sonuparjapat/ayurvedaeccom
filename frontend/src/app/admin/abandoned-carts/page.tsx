@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { ShoppingCart, RefreshCw, Mail, IndianRupee, Users, Clock, AlertCircle } from 'lucide-react'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 export default function AbandonedCartsPage() {
   const [carts, setCarts] = useState<any[]>([])
@@ -36,6 +37,18 @@ export default function AbandonedCartsPage() {
               <p className="text-orange-100 text-sm mt-0.5">Carts with items, inactive for 1-48 hours (no order placed)</p>
             </div>
           </div>
+          <PageInfoBanner
+            title="Abandoned Carts"
+            description="Shows customers who added items to their cart but did not complete checkout within the last 1-48 hours. Recovery emails are automatically sent every 30 minutes to remind them. Use this to understand cart abandonment patterns and potential lost revenue."
+            tips={[
+              "Potential Revenue is the total cart value of all abandoned carts — the max you could recover.",
+              "Automatic recovery emails are sent every 30 minutes via the background job — no manual sending needed.",
+              "Carts older than 48 hours are excluded (they are considered fully abandoned and stale).",
+              "High cart value customers are at the top of the list — prioritize follow-up for large orders.",
+              "If a customer places the order later, their cart is removed from this list automatically.",
+              "Use this data to identify which products are frequently abandoned and optimize their pages or pricing.",
+            ]}
+          />
           <button
             onClick={load}
             disabled={loading}

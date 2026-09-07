@@ -7,6 +7,7 @@ import {
   Wallet, Plus, Minus, Download, Users, IndianRupee, Award, Search,
   X, ArrowUpRight, ArrowDownLeft, Star, Eye, ChevronLeft, Settings, Save
 } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 type ModalType = 'credit_wallet' | 'debit_wallet' | 'credit_loyalty' | 'debit_loyalty' | null
 
@@ -45,7 +46,9 @@ function AmountForm({
         </div>
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">User</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              <LabelWithInfo label="User" required what="The customer whose wallet or loyalty balance will be adjusted" why="Select the specific customer to credit or debit — the change applies only to them" example="Search by name — e.g. Priya Sharma (priya@email.com)" />
+            </label>
             <select
               className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-300 bg-white"
               value={form.user_id} onChange={e => setForm({ ...form, user_id: e.target.value })}
@@ -55,7 +58,9 @@ function AmountForm({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              <LabelWithInfo label={label} required what="The amount to credit or debit — wallet amounts are in Indian Rupees (₹), loyalty amounts are in points" why="This exact amount will be added or deducted from the customer's balance immediately" example="Enter 100 to credit ₹100 to the wallet, or 50 to award 50 loyalty points" />
+            </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">{prefix}</span>
               <input
@@ -67,7 +72,9 @@ function AmountForm({
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Note (optional)</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              <LabelWithInfo label="Note (optional)" what="Internal note explaining why this adjustment was made" why="Appears in the customer's transaction history so they understand the credit or debit" example="Refund for order #1234, Compensation for delay, Festival bonus credit" />
+            </label>
             <input
               className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-300"
               value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
@@ -396,6 +403,18 @@ export default function AdminWalletPage() {
             <div>
               <h1 className="text-2xl font-bold text-white">Wallet & Loyalty</h1>
               <p className="text-purple-100 text-sm mt-0.5">Manage store credits and loyalty points</p>
+              <PageInfoBanner
+                title="Wallet & Loyalty"
+                description="View and manage each customer's store wallet balance and loyalty points. Use the Credit/Debit buttons to manually adjust balances, and Settings to configure earn/redeem rates for the loyalty program."
+                tips={[
+                  "Credit Wallet adds money to a customer's store wallet — they can use it at checkout.",
+                  "Debit Wallet removes money — use this only for corrections or policy-based deductions.",
+                  "Award Points grants loyalty points — useful for manual rewards, compensation, or promotions.",
+                  "Use Settings (top-right) to adjust the earn rate (pts per ₹1 spent) and redeem rate (₹ per pt).",
+                  "Export downloads a CSV of all users with their wallet and loyalty balances.",
+                  "Click View Details on any user to see their full wallet and loyalty transaction history.",
+                ]}
+              />
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">

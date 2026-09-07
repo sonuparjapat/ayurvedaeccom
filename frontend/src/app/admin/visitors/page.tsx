@@ -8,6 +8,7 @@ import {
   Eye, Users, Monitor, Smartphone, Globe, Clock, TrendingUp,
   RefreshCw, Activity, Laptop, Tablet,
 } from 'lucide-react'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 interface Stats {
   totalViews: number
@@ -88,6 +89,18 @@ export default function AdminVisitorsPage() {
             <div>
               <h1 className="text-xl font-bold">Visitor Analytics</h1>
               <p className="text-white/70 text-sm">Track website traffic and user behavior</p>
+              <PageInfoBanner
+                title="Visitor Analytics"
+                description="Real-time and historical website traffic data — page views, unique visitors, device types, browser usage, and top visited pages. The Live Now counter updates in real time via WebSocket."
+                tips={[
+                  "Switch the period filter (24h / 7d / 30d / 90d) to zoom in or out on the traffic trend.",
+                  "Live Now shows the number of active WebSocket connections — does not include bots.",
+                  "Top Pages lists the most visited URLs in the selected period — use this to find popular content.",
+                  "Device Breakdown helps you prioritise mobile vs. desktop optimisation efforts.",
+                  "Browser Breakdown helps catch compatibility issues affecting a large share of your audience.",
+                  "All data is collected server-side — no external analytics service needed.",
+                ]}
+              />
             </div>
           </div>
           <div className="flex items-center gap-3">

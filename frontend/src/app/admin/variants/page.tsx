@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Plus, Trash2, Edit2, Search, ChevronDown } from 'lucide-react'
+import { PageInfoBanner, FieldInfo } from '@/components/admin/FieldInfo'
 
 interface Variant {
   id: number
@@ -143,6 +144,18 @@ export default function AdminVariantsPage() {
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1a3a2a', margin: 0 }}>Product Variants</h1>
           <p style={{ color: '#888', fontSize: 13, marginTop: 4 }}>Manage size, weight, and other variants for each product</p>
+          <PageInfoBanner
+            title="Product Variants"
+            description="Manage multiple variants (size, weight, pack) for each product. Each variant has its own price, stock, SKU, and optional image. Customers select a variant on the product page before adding to cart."
+            tips={[
+              "Select a product first — variants are always tied to a specific product.",
+              "Label is what customers see in the variant selector, e.g. '250g Pack', '1kg', 'Small'.",
+              "Set a Compare Price (MRP) higher than Price to show a strikethrough savings badge.",
+              "Cost Price is private — used to calculate profit margins in Reports. Customers never see it.",
+              "Attributes accept JSON key-value pairs, e.g. {\"size\":\"500g\",\"unit\":\"grams\"} for structured filtering.",
+              "Inactive variants are hidden from the product page but inventory is preserved.",
+            ]}
+          />
         </div>
 
         {/* Product selector */}
@@ -248,47 +261,47 @@ export default function AdminVariantsPage() {
                 {editingId ? 'Edit Variant' : 'New Variant'}
               </h2>
 
-              <FormField label="Label *" hint="e.g. 500g, 1kg, Small, Large">
+              <FormField label="Label *" hint="e.g. 500g, 1kg, Small, Large" infoProps={{ what: "The variant name shown in the size/weight selector on the product page.", why: "Customers choose variants by this label — make it descriptive and consistent.", example: "250g Pack, 500ml Bottle, Large, 1kg" }}>
                 <input value={form.label} onChange={e => set('label', e.target.value)} placeholder="e.g. 250g Pack, 500ml Bottle, Large" style={inp} />
               </FormField>
-              <FormField label="SKU">
+              <FormField label="SKU" infoProps={{ what: "Stock Keeping Unit — a unique internal code for this specific variant.", why: "Used in inventory management, purchase orders, and warehouse picking.", example: "TRP-250G, HIM-TRPH-500ML" }}>
                 <input value={form.sku} onChange={e => set('sku', e.target.value)} placeholder="e.g. TRP-250G (unique code for this variant)" style={inp} />
               </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="Price (₹) *">
+                <FormField label="Price (₹) *" infoProps={{ what: "The selling price of this variant shown on the product page.", why: "Different sizes/weights typically have different prices.", example: "299 (250g), 549 (500g), 999 (1kg)" }}>
                   <input type="number" value={form.price} onChange={e => set('price', e.target.value)} min={0} placeholder="e.g. 299" style={inp} />
                 </FormField>
-                <FormField label="Compare Price (₹)">
+                <FormField label="Compare Price (₹)" infoProps={{ what: "The original or MRP price shown as a strikethrough next to the selling price.", why: "Creates a visual discount that motivates purchase — leave blank if there's no discount to show.", example: "399 (MRP) when selling at ₹299" }}>
                   <input type="number" value={form.compareprice} onChange={e => set('compareprice', e.target.value)} min={0} placeholder="e.g. 399 (MRP, shows as strikethrough)" style={inp} />
                 </FormField>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="Cost Price (₹)">
+                <FormField label="Cost Price (₹)" infoProps={{ what: "Your procurement/manufacturing cost for this variant — never shown to customers.", why: "Used to calculate profit margin in the Reports section.", example: "150 (if you sell at ₹299 and bought at ₹150)" }}>
                   <input type="number" value={form.cost_price} onChange={e => set('cost_price', e.target.value)} min={0} placeholder="e.g. 150 (your cost, private)" style={inp} />
                 </FormField>
-                <FormField label="Weight (g)">
+                <FormField label="Weight (g)" infoProps={{ what: "Physical weight of this variant in grams — used for shipping rate calculation.", why: "Accurate weight ensures correct shipping charges are applied at checkout.", example: "250 (for a 250g pack), 500, 1000" }}>
                   <input type="number" value={form.weight_grams} onChange={e => set('weight_grams', e.target.value)} min={0} placeholder="e.g. 250" style={inp} />
                 </FormField>
               </div>
-              <FormField label="Barcode">
+              <FormField label="Barcode" infoProps={{ what: "The EAN/UPC barcode of this variant for physical retail or warehouse scanning.", why: "Enables barcode-based stock management and retail POS integration.", example: "8901234567890 (13-digit EAN barcode)" }}>
                 <input value={form.barcode} onChange={e => set('barcode', e.target.value)} placeholder="e.g. 8901234567890" style={inp} />
               </FormField>
-              <FormField label="Image URL">
+              <FormField label="Image URL" infoProps={{ what: "A specific product image for this variant (e.g. a different pack size photo).", why: "Swapping the image when a variant is selected improves clarity for the customer.", example: "https://s3.amazonaws.com/product-250g.jpg" }}>
                 <input value={form.image_url} onChange={e => set('image_url', e.target.value)} placeholder="e.g. https://s3.amazonaws.com/product-250g.jpg" style={inp} />
               </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="Inventory">
+                <FormField label="Inventory" infoProps={{ what: "Current stock count for this specific variant.", why: "Customers see 'Out of Stock' when inventory reaches 0 for the selected variant.", example: "50 (if you have 50 units of this pack size in stock)" }}>
                   <input type="number" value={form.inventory} onChange={e => set('inventory', e.target.value)} min={0} placeholder="e.g. 50 (stock for this variant)" style={inp} />
                 </FormField>
-                <FormField label="Sort Order">
+                <FormField label="Sort Order" infoProps={{ what: "The display position of this variant in the size selector (lower = appears first).", why: "Typically list variants smallest to largest or most popular first.", example: "0 (250g), 1 (500g), 2 (1kg)" }}>
                   <input type="number" value={form.sort_order} onChange={e => set('sort_order', e.target.value)} min={0} placeholder="e.g. 0 (display order in variant selector)" style={inp} />
                 </FormField>
               </div>
-              <FormField label="Attributes (JSON)" hint='e.g. {"size":"500g","unit":"grams"}'>
+              <FormField label="Attributes (JSON)" hint='e.g. {"size":"500g","unit":"grams"}' infoProps={{ what: "Structured key-value attributes for this variant used in filtering or display.", why: "Enables faceted search and structured variant data for integrations.", example: '{"size":"500g","unit":"grams","color":"brown"}' }}>
                 <input value={form.attributes} onChange={e => set('attributes', e.target.value)} placeholder='{"size":"500g"}' style={inp} />
                 <p className="text-xs text-gray-400 mt-1">{"JSON key-value pairs, e.g. {\"size\":\"250g\",\"color\":\"brown\"}"}</p>
               </FormField>
-              <FormField label="Status">
+              <FormField label="Status" infoProps={{ what: "Whether this variant is visible and purchasable on the product page.", why: "Inactive variants are hidden — use to temporarily disable out-of-stock sizes.", example: "Checked = active and selectable; unchecked = hidden from product page" }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                   <input type="checkbox" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} />
                   <span style={{ fontSize: 13, color: '#1a3a2a' }}>Active</span>
@@ -311,10 +324,13 @@ export default function AdminVariantsPage() {
   )
 }
 
-function FormField({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+function FormField({ label, children, hint, infoProps }: { label: string; children: React.ReactNode; hint?: string; infoProps?: any }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={{ fontSize: 12, fontWeight: 600, color: '#666', display: 'block', marginBottom: 5 }}>{label}</label>
+      <label style={{ fontSize: 12, fontWeight: 600, color: '#666', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 }}>
+        {label}
+        {infoProps && <FieldInfo {...infoProps} />}
+      </label>
       {hint && <div style={{ fontSize: 10, color: '#aaa', marginBottom: 4 }}>{hint}</div>}
       {children}
     </div>

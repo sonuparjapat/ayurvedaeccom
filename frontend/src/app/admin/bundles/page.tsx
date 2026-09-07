@@ -5,6 +5,7 @@ import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Plus, Edit, Trash2, Package, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 const empty = {
   name: '',
@@ -145,6 +146,18 @@ export default function BundlesPage() {
           <p className="text-pink-100 text-sm mt-1">
             Create product bundles with special discounts
           </p>
+          <PageInfoBanner
+            title="Product Bundles"
+            description="Create curated product bundles sold at a discounted price. Bundles appear on a dedicated bundle page and can be shared as a single add-to-cart item. Discounts apply to the combined price of all products in the bundle."
+            tips={[
+              "Bundle discount is applied to the total of all included products — customers save vs buying individually.",
+              "Select at least 2 products for a meaningful bundle — common combos: immunity kit, hair care set.",
+              "Upload a bundle image (800x800px) that represents the combo — it appears on the bundle listing page.",
+              "Inactive bundles are hidden from the storefront but remain saved for future activation.",
+              "Percent discount works best for bundles (e.g. 15% off the kit total).",
+              "Bundles do not reduce individual product inventory — ensure stock is managed per product.",
+            ]}
+          />
         </div>
         <Button
           onClick={openCreate}
@@ -266,9 +279,7 @@ export default function BundlesPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase">
-                  Name *
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Name *" required what="The display name of the bundle shown on the bundle listing page." why="A descriptive name like 'Winter Immunity Kit' communicates the value of the combo to customers." example="Immunity Bundle, Hair Care Combo, Stress Relief Kit" /></label>
                 <input
                   className="w-full border rounded-xl px-3 py-2 mt-1 text-sm"
                   value={form.name}
@@ -278,9 +289,7 @@ export default function BundlesPage() {
               </div>
 
               <div className="col-span-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase">
-                  Description
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Description" what="A short description of what this bundle includes and its health benefit." why="Helps customers understand why the combination of products is beneficial." example="Boost your immunity naturally with Tulsi, Ashwagandha, and Giloy — trusted Ayurvedic herbs." /></label>
                 <textarea
                   className="w-full border rounded-xl px-3 py-2 mt-1 text-sm"
                   rows={2}
@@ -293,9 +302,7 @@ export default function BundlesPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">
-                  Discount Type
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Discount Type" what="Whether the bundle discount is a percentage or a fixed rupee amount off the combined price." why="Percent is more dynamic; flat works better for high-value combos." example="Percent: 15% off combo total; Flat: ₹150 off" /></label>
                 <select
                   className="w-full border rounded-xl px-3 py-2 mt-1 text-sm"
                   value={form.discount_type}
@@ -309,9 +316,7 @@ export default function BundlesPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">
-                  Discount Value *
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Discount Value *" required what="The numeric discount value applied to the combined price of all bundle products." why="Displayed on the bundle page as savings — motivates customers to choose the combo over individual products." example="15 (for 15% off), 150 (for ₹150 off)" /></label>
                 <input
                   type="number"
                   className="w-full border rounded-xl px-3 py-2 mt-1 text-sm"
@@ -324,9 +329,7 @@ export default function BundlesPage() {
               </div>
 
               <div className="col-span-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase">
-                  Bundle Image
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Bundle Image" what="A representative image for the bundle shown on the bundle listing and detail page." why="A photo showing all products together helps customers visualize the kit and builds purchase confidence." example="Group photo of all 3 products, 800x800px JPG or PNG" /></label>
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"

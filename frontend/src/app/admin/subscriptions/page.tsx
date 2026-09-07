@@ -7,6 +7,7 @@ import {
   RotateCcw, Users, Package, Clock, CheckCircle, XCircle,
   Pause, RefreshCw, Search,
 } from 'lucide-react'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string; Icon: any }> = {
   active: { label: 'Active', color: 'text-green-700', bg: 'bg-green-50', Icon: CheckCircle },
@@ -54,6 +55,18 @@ export default function AdminSubscriptionsPage() {
             <div>
               <h1 className="text-xl font-bold">Subscription Management</h1>
               <p className="text-white/70 text-sm">Auto-reorder subscriptions from customers</p>
+              <PageInfoBanner
+                title="Subscription Management"
+                description="View all customer auto-reorder subscriptions. Customers set up subscriptions on the product page to auto-reorder at a fixed interval. This page shows all active, paused, and cancelled subscriptions across the store."
+                tips={[
+                  "Active subscriptions auto-generate an order on the Next Order Date — no manual action needed.",
+                  "Paused subscriptions have been temporarily stopped by the customer — they can resume from the app.",
+                  "Cancelled subscriptions are permanently stopped — customers need to re-subscribe from the product page.",
+                  "Frequency Days shows how often the subscription repeats (e.g. 30 = monthly, 90 = quarterly).",
+                  "Total Orders shows how many times this subscription has successfully placed an auto-order.",
+                  "Filter by status to focus on Active subscriptions coming up for renewal.",
+                ]}
+              />
             </div>
           </div>
           <button onClick={load} className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition">

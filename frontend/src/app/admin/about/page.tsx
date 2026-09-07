@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import {
   BookOpen, Plus, Trash2, Save, Loader2, Eye,
 } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 import Link from 'next/link'
 
 /* ================= TYPES ================= */
@@ -210,6 +211,18 @@ export default function AdminAboutPage() {
             <div>
               <h1 className="text-2xl font-bold">About Page Editor</h1>
               <p className="text-emerald-100 text-sm">Manage your About page content</p>
+              <PageInfoBanner
+                title="About Page Editor"
+                description="Manage all content shown on the public About page — hero banner, core values, company milestones, team members, and the CTA section. All changes are saved to the company record and rendered on the frontend in real time."
+                tips={[
+                  "Hero Section: Title and Description are the first things visitors see at the top of the About page.",
+                  "Values Section: use emojis as icons (e.g. 🌿, 💚, 🔬) for a visual, modern look.",
+                  "Milestones Section: list company achievements by year — use 4-digit year format (e.g. 2024).",
+                  "Team Section: each member card needs a name, role, image URL, and short bio.",
+                  "CTA Section: the call-to-action at the bottom of the page — use it to drive shop visits.",
+                  "Click Save Changes to publish — all content updates go live on the About page immediately.",
+                ]}
+              />
             </div>
           </div>
           <div className="flex gap-3">
@@ -248,7 +261,9 @@ export default function AdminAboutPage() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+              <LabelWithInfo label="Title" what="The main headline displayed in the hero banner at the top of the About page" why="First impression for visitors — should convey your brand mission in one line" example="Bringing Ancient Ayurvedic Wisdom to Modern Wellness" />
+            </label>
             <input
               type="text"
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
@@ -258,7 +273,9 @@ export default function AdminAboutPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-1">
+              <LabelWithInfo label="Description" what="Supporting paragraph shown below the hero title — describes your brand story" why="Gives visitors context about your mission, founding story, and values" example="Founded in 2024, Oroganix is on a mission to make authentic Ayurvedic products accessible to everyone..." />
+            </label>
             <textarea
               rows={3}
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"

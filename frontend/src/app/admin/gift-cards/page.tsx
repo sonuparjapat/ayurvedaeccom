@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Gift, Plus, X, Check, Copy } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 export default function AdminGiftCardsPage() {
   const [cards, setCards] = useState<any[]>([])
@@ -56,6 +57,18 @@ export default function AdminGiftCardsPage() {
             <Gift size={22} className="text-emerald-600" /> Gift Cards
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Create and manage digital gift cards</p>
+          <PageInfoBanner
+            title="Gift Cards"
+            description="Create digital gift cards with a unique code that customers can use as store credit at checkout. Gift cards have a balance that decreases with each redemption — partial use is supported."
+            tips={[
+              "Each gift card gets an auto-generated unique code — share the code with the recipient.",
+              "Amount is the initial value; Balance shows how much credit remains after redemptions.",
+              "Recipient Email is optional — enter it to send the gift card via email automatically.",
+              "Expires At is optional — leave blank for no expiry. Expired cards cannot be used at checkout.",
+              "Deactivating a card immediately blocks it from being used — even if balance remains.",
+              "Gift cards are redeemable at checkout as a payment method alongside or in place of other payments.",
+            ]}
+          />
         </div>
         <button onClick={() => setShowForm(true)}
           className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-700">
@@ -69,19 +82,19 @@ export default function AdminGiftCardsPage() {
           <h3 className="font-semibold text-gray-900 mb-4">New Gift Card</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Amount (₹) *</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block"><LabelWithInfo label="Amount (₹) *" required what="The monetary value of the gift card in Indian Rupees." why="This is the store credit added to the recipient's account when the card is redeemed." example="500, 1000, 2000" /></label>
               <input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
                 placeholder="500" min={1}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Recipient Email</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block"><LabelWithInfo label="Recipient Email" what="The email address of the person receiving this gift card." why="If provided, the system emails the code and card value to this address automatically." example="friend@email.com (optional — leave blank to share the code manually)" /></label>
               <input type="email" value={form.issued_to_email} onChange={e => setForm(p => ({ ...p, issued_to_email: e.target.value }))}
                 placeholder="customer@email.com"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Expires At</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block"><LabelWithInfo label="Expires At" what="The date after which this gift card can no longer be used." why="Expiry creates urgency and limits financial liability — leave blank for no expiry." example="2027-03-31 (one year from now)" /></label>
               <input type="date" value={form.expires_at} onChange={e => setForm(p => ({ ...p, expires_at: e.target.value }))}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
             </div>

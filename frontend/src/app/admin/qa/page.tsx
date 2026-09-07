@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { MessageSquare, Check, X, Trash2, Send, HelpCircle, Clock, Package, MessageCircle } from 'lucide-react'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 export default function AdminQAPage() {
   const [questions, setQuestions] = useState<any[]>([])
@@ -73,6 +74,18 @@ export default function AdminQAPage() {
             <div>
               <h1 className="text-2xl font-bold text-white">Q&A Moderation</h1>
               <p className="text-blue-100 text-sm mt-0.5">Review and answer customer questions</p>
+              <PageInfoBanner
+                title="Q&A Moderation"
+                description="Customers ask questions about products on the product detail page. This panel lets you review, approve, reject, delete, and officially answer those questions. Approved questions with answers are publicly visible on the product page."
+                tips={[
+                  "Pending tab shows questions waiting for review — approve or reject them to process the queue.",
+                  "Approved tab shows questions visible to customers — add your answer to improve product info.",
+                  "Rejected tab stores declined questions — you can still answer or delete them from here.",
+                  "Use the Answer box to post an official store response — it appears below the question on the product page.",
+                  "Delete a question only if it is spam, inappropriate, or a duplicate — prefer rejection otherwise.",
+                  "Approving a question makes it and any existing answer publicly visible immediately.",
+                ]}
+              />
             </div>
           </div>
           <div className="flex items-center gap-2">

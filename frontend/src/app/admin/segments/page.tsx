@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import { Users, TrendingUp, AlertTriangle, Crown, Zap, Star } from 'lucide-react'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 interface Segments {
   new_users: number; loyal: number; high_value: number; inactive: number; vip: number
@@ -42,6 +43,18 @@ export default function CustomerSegmentsPage() {
       <div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1a2e1e', margin: 0 }}>Customer Segments</h1>
         <p style={{ color: '#6b7280', fontSize: 13, marginTop: 4 }}>Understand your customer base and target the right segments.</p>
+        <PageInfoBanner
+          title="Customer Segments"
+          description="View auto-calculated customer segments based on purchase behavior. Use these segments to target campaigns — win back inactive users, reward VIPs, or convert new registrations into first orders."
+          tips={[
+            "New Users: registered in the last 30 days with no orders — target with a first-order coupon campaign.",
+            "Loyal Customers: 3+ delivered orders — reward with exclusive early access or loyalty discounts.",
+            "High-Value Orders: placed at least one order over ₹5,000 — candidates for premium product recommendations.",
+            "VIP Customers: lifetime spend over ₹10,000 — highest priority for retention campaigns.",
+            "At-Risk / Inactive: no activity in 90+ days — send a win-back campaign with a strong discount.",
+            "Use the Recommended Actions below to link directly to Newsletter or Push Notifications for each segment.",
+          ]}
+        />
       </div>
 
       {loading ? (

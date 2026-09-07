@@ -26,6 +26,7 @@ import toast from 'react-hot-toast'
 
 import DynamicTable from '@/components/table/table'
 import AppModal from '@/components/modal/AppModal'
+import { PageInfoBanner, FieldInfo } from '@/components/admin/FieldInfo'
 
 
 export default function AdminInvoicesPage() {
@@ -277,6 +278,18 @@ export default function AdminInvoicesPage() {
               Invoice Management
             </h1>
             <p className="text-gray-600 mt-2">Track and manage all generated invoices</p>
+          <PageInfoBanner
+            title="Invoice Management"
+            description="View and download PDF invoices auto-generated for each order. Void invoices that need to be cancelled — voiding issues a credit note and marks the invoice as invalid (the original number is preserved as required by Indian GST law)."
+            tips={[
+              "Invoices are auto-generated when an order is placed — no manual creation needed.",
+              "Click the Download icon to open the PDF invoice in a new tab for saving or printing.",
+              "Void an invoice only when necessary — it cannot be undone. A credit note is issued automatically.",
+              "Indian GST law requires invoice numbers to be sequential and non-deletable — voided invoices remain.",
+              "Search by invoice number (e.g. INV-0001), order ID, or customer name.",
+              "Page Revenue shows the sum of all invoices on the current page — not total store revenue.",
+            ]}
+          />
           </div>
           <button
             onClick={load}
@@ -405,7 +418,7 @@ export default function AdminInvoicesPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Reason for voiding *</label>
+              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">Reason for voiding *<FieldInfo what="A written explanation of why this invoice is being voided." why="Required for audit trail and GST compliance — the reason is stored with the void record." example="Order cancelled by customer before dispatch" note="Minimum 5 characters required." /></label>
               <textarea
                 value={voidReason}
                 onChange={e => setVoidReason(e.target.value)}

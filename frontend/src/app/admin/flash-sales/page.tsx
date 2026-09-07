@@ -5,6 +5,7 @@ import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Plus, Edit, Trash2, Zap, Clock, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 const empty = {
   title: '', description: '', discount_type: 'percent', discount_value: '',
@@ -124,6 +125,18 @@ export default function FlashSalesPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Zap className="text-amber-500" size={22} /> Flash Sales</h1>
           <p className="text-gray-500 text-sm mt-1">Create limited-time offers with countdown timers</p>
+          <PageInfoBanner
+            title="Flash Sales"
+            description="Create time-limited discount events with countdown timers on the storefront. Products in a flash sale show a special price and a live countdown. Optionally notify newsletter subscribers when a new sale launches."
+            tips={[
+              "A flash sale is only LIVE when it is active AND the current time is between Starts At and Ends At.",
+              "Discount applies to the Special Price you set per product — leave Special Price blank to use the sitewide discount value.",
+              "Banner Image is shown on the flash sale banner on the home page — recommended 1200x400px.",
+              "Max Uses limits how many orders can use flash sale pricing — leave blank for unlimited.",
+              "Check 'Notify newsletter subscribers' on creation to auto-email your mailing list about the sale.",
+              "Use IST (your local time) when entering start/end times — the system converts to UTC automatically.",
+            ]}
+          />
         </div>
         <Button onClick={openCreate} className="bg-amber-500 hover:bg-amber-600 gap-2"><Plus size={16} /> New Flash Sale</Button>
       </div>
@@ -167,34 +180,34 @@ export default function FlashSalesPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Title *</label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Title *" required what="The display name of the flash sale shown on the storefront banner and sale listing." why="A compelling title like 'Monsoon Wellness Sale' drives curiosity and urgency." example="Big Ayurveda Sale, Summer Immunity Bundle, Festive Herbal Deals" /></label>
                 <input className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. Big Ayurveda Sale" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Discount Type</label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Discount Type" what="Whether the sitewide flash sale discount is a percentage or flat rupee amount." why="The discount type applies to products that don't have a specific Special Price set." example="Percent: 20% off all products; Flat: ₹100 off each product" /></label>
                 <select className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.discount_type} onChange={e => setForm({...form, discount_type: e.target.value})}>
                   <option value="percent">Percent (%)</option>
                   <option value="flat">Flat (₹)</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Discount Value *</label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Discount Value *" required what="The numeric value of the discount (% or ₹ based on type selected)." why="Applied to products that don't have a Special Price override." example="20 (for 20% off), 100 (for ₹100 flat off)" /></label>
                 <input type="number" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.discount_value} onChange={e => setForm({...form, discount_value: e.target.value})} placeholder="e.g. 20" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Starts At * <span className="normal-case font-normal text-gray-400">(your local time / IST)</span></label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Starts At *" required what="The date and time when the flash sale becomes active (IST, your local time)." why="The sale countdown starts from this time on the storefront." example="Today at 10:00 AM IST" note="Enter in your local time — the system converts to UTC." /></label>
                 <input type="datetime-local" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.starts_at} onChange={e => setForm({...form, starts_at: e.target.value})} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Ends At * <span className="normal-case font-normal text-gray-400">(your local time / IST)</span></label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Ends At *" required what="The date and time when the flash sale ends and discounts stop applying (IST)." why="The countdown timer on the storefront ticks down to this time." example="Today at 11:59 PM IST" note="Enter in your local time — the system converts to UTC." /></label>
                 <input type="datetime-local" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.ends_at} onChange={e => setForm({...form, ends_at: e.target.value})} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase">Max Uses (optional)</label>
+                <label className="text-xs font-semibold text-gray-500 uppercase"><LabelWithInfo label="Max Uses (optional)" what="The maximum number of orders that can use flash sale pricing before it stops." why="Useful for limited-stock deals — automatically stops discounting once the limit is reached." example="100 (first 100 orders get the deal), leave blank for unlimited" /></label>
                 <input type="number" className="w-full border rounded-xl px-3 py-2 mt-1 text-sm" value={form.max_uses} onChange={e => setForm({...form, max_uses: e.target.value})} placeholder="Leave blank for unlimited" />
               </div>
               <div className="col-span-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Banner Image</label>
+                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block"><LabelWithInfo label="Banner Image" what="A wide banner image shown on the home page or sale landing page during the flash sale." why="A visual banner immediately communicates the sale event to shoppers browsing the site." example="1200x400px JPG showing the sale offer and products" note="Supports both file upload and URL paste." /></label>
                 <div className="flex gap-2 mb-2">
                   <button type="button" onClick={() => setBannerMode('upload')}
                     className={`px-3 py-1 rounded-lg text-xs font-medium ${bannerMode === 'upload' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>Upload File</button>

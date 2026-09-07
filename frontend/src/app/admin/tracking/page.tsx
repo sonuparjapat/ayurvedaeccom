@@ -8,6 +8,7 @@ import {
   Clock, AlertCircle, CheckCircle2, Package,
 } from 'lucide-react'
 import AppModal from '@/components/modal/AppModal'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 const COURIERS = [
   'Delhivery', 'BlueDart', 'DTDC', 'Shadowfax', 'Ecom Express',
@@ -161,6 +162,18 @@ export default function TrackingPage() {
             <Truck size={24} className="text-emerald-600" /> Shipment Tracking
           </h1>
           <p className="text-sm text-gray-500 mt-1">All in-transit orders with tracking info. Add events manually or receive them via courier webhook.</p>
+          <PageInfoBanner
+            title="Shipment Tracking"
+            description="Track all in-transit shipments, add manual tracking events, and update courier / AWB details. Configure the courier webhook URL in your Shiprocket or Delhivery dashboard for automatic event updates."
+            tips={[
+              "Copy the Webhook URL and paste it in Shiprocket → Settings → Webhooks for automatic tracking updates.",
+              "Click 'Events' to view the full tracking timeline for any shipment — latest event is shown first.",
+              "Click 'Update' to change the courier partner, AWB number, or expected delivery date.",
+              "Add Event manually when testing before courier API is connected — choose a preset or enter custom status.",
+              "EDD (Expected Delivery Date) is shown to the customer on the order tracking page.",
+              "Delivery Attempts column shows how many times delivery was attempted and failed.",
+            ]}
+          />
         </div>
         <button onClick={load} className="flex items-center gap-2 px-3 py-2 border rounded-lg text-sm hover:bg-gray-50">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
@@ -357,7 +370,7 @@ export default function TrackingPage() {
           </p>
 
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Event Preset</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="Event Preset" what="A pre-defined tracking status template — auto-fills the Status Label." why="Presets use standard courier status codes for consistency across orders." example="IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, RTO" /></label>
             <select value={newEvent.status_code} onChange={e => handlePresetChange(e.target.value)}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
               {EVENT_PRESETS.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
@@ -365,14 +378,14 @@ export default function TrackingPage() {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Status Label *</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="Status Label *" required what="The human-readable tracking status shown to the customer in their order timeline." why="Customers read this label to understand where their package is." example="Reached Mumbai HUB, Out for delivery in Pune, Delivered to customer" /></label>
             <input value={newEvent.status_label} onChange={e => setNewEvent(p => ({ ...p, status_label: e.target.value }))}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               placeholder="e.g. Reached Mumbai HUB" />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Description</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="Description" what="Optional additional details about this tracking event." why="Provides more context for the customer or for your internal records." example="Package scanned at transit hub, estimated next update in 4 hours" /></label>
             <input value={newEvent.description} onChange={e => setNewEvent(p => ({ ...p, description: e.target.value }))}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               placeholder="Additional details" />
@@ -380,13 +393,13 @@ export default function TrackingPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Location</label>
+              <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="Location" what="The city or facility where this tracking event occurred." why="Shown in the customer tracking timeline to help them visualize the journey." example="Pune HUB, Mumbai Airport, Delhi Sorting Facility" /></label>
               <input value={newEvent.location} onChange={e => setNewEvent(p => ({ ...p, location: e.target.value }))}
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                 placeholder="e.g. Pune HUB" />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Event Time (optional)</label>
+              <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="Event Time (optional)" what="The actual date and time this event occurred." why="Leave blank to use the current timestamp — set manually if back-dating a missed event." example="2026-09-07T14:30 (the actual scan time at the facility)" /></label>
               <input type="datetime-local" value={newEvent.event_time}
                 onChange={e => setNewEvent(p => ({ ...p, event_time: e.target.value }))}
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
@@ -409,7 +422,7 @@ export default function TrackingPage() {
         title={`Update Shipment — Order #${selectedOrder?.id}`}>
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Courier Partner *</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="Courier Partner *" required what="The logistics company handling this shipment." why="Used to generate the tracking URL — selecting the correct courier shows a valid tracking link." example="Delhivery, BlueDart, Shiprocket, India Post" /></label>
             <select value={shipmentForm.courier_name}
               onChange={e => setShipmentForm(p => ({ ...p, courier_name: e.target.value }))}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
@@ -418,14 +431,14 @@ export default function TrackingPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">AWB / Tracking Number *</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="AWB / Tracking Number *" required what="The courier's airway bill or tracking number for this shipment." why="Customers use this to track their order on the courier website." example="1234567890 (Delhivery AWB), SHPR1234567 (Shiprocket)" /></label>
             <input value={shipmentForm.tracking_number}
               onChange={e => setShipmentForm(p => ({ ...p, tracking_number: e.target.value }))}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               placeholder="Enter AWB number" />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Expected Delivery Date</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="Expected Delivery Date" what="The estimated date the package will be delivered to the customer." why="Shown on the customer order tracking page so they know when to expect delivery." example="2026-09-10 (3 days from dispatch for metro, 5-7 days for tier-2)" /></label>
             <input type="date" value={shipmentForm.expected_delivery_date}
               onChange={e => setShipmentForm(p => ({ ...p, expected_delivery_date: e.target.value }))}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />

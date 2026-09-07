@@ -77,6 +77,18 @@ export default function PushNotificationsPage() {
             <Bell className="text-blue-500" size={22} /> Push Notifications
           </h1>
           <p className="text-gray-500 text-sm mt-1">Broadcast notifications to all app users</p>
+          <PageInfoBanner
+            title="Push Notifications"
+            description="Send broadcast push notifications to all app users who have registered their device. Notifications are delivered via Expo Push Notification Service to iOS and Android devices."
+            tips={[
+              "Push tokens are registered when users log in on the mobile app — production or preview build required (not Expo Go).",
+              "Notifications are broadcast to ALL users simultaneously — there is no segmentation or scheduling yet.",
+              "Title is limited to 60 characters; message is limited to 200 characters — keep both concise.",
+              "A live preview appears below the compose form so you can see how it will look on a device.",
+              "Broadcast history updates in real-time via WebSocket after each send — no need to refresh.",
+              "Use for flash sales, new product launches, order updates, and seasonal health tips.",
+            ]}
+          />
         </div>
         <div className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${connected ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
           {connected ? <Wifi size={13} /> : <WifiOff size={13} />}
@@ -111,7 +123,7 @@ export default function PushNotificationsPage() {
           <div className="space-y-3 pt-2">
             <h3 className="font-semibold text-gray-800">Compose Notification</h3>
             <div>
-              <label className="text-xs font-semibold text-gray-400 uppercase">Title *</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase flex items-center gap-1"><LabelWithInfo label="Title *" required what="The bold heading of the push notification shown on the device lock screen and notification bar." why="Title is the first thing users see — make it specific and attention-grabbing." example="Flash Sale LIVE! | New Arrivals | Order Shipped" note="Max 60 characters." /></label>
               <input
                 className="w-full border rounded-xl px-3 py-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-200 outline-none"
                 value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
@@ -120,7 +132,7 @@ export default function PushNotificationsPage() {
               <p className="text-right text-xs text-gray-400 mt-0.5">{form.title.length}/60</p>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-400 uppercase">Message *</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase flex items-center gap-1"><LabelWithInfo label="Message *" required what="The body text of the push notification shown below the title." why="Briefly explain the offer or action needed — users decide to open the app based on this." example="Up to 40% off on Ayurvedic immunity boosters. Offer ends tonight!" note="Max 200 characters." /></label>
               <textarea
                 className="w-full border rounded-xl px-3 py-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-200 outline-none resize-none"
                 rows={3} value={form.body} onChange={e => setForm({ ...form, body: e.target.value })}
