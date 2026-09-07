@@ -1648,6 +1648,9 @@ async function runSafeColumnMigrations() {
     // daily limit columns for gamification
     `ALTER TABLE scratch_cards ADD COLUMN IF NOT EXISTS max_claims_per_day INTEGER DEFAULT 0`,
     `ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS max_attempts_per_day INTEGER DEFAULT 0`,
+    // HSN snapshot on order_items (GST compliance — freeze HSN at purchase time)
+    `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS hsn_code VARCHAR(30)`,
+    `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS gst_percent NUMERIC(5,2)`,
   ]
   for (const sql of migrations) {
     const c = await pool.connect()

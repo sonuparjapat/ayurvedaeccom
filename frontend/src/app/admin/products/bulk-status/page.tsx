@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
-import { Power, Download } from 'lucide-react'
+import { Power, Download, Eye } from 'lucide-react'
 import {
   AdminInfoPanel,
   BulkPageHeader,
@@ -11,6 +11,7 @@ import {
   BulkSubmitButton,
   BulkJobStatus,
 } from '@/components/admin/BulkUi'
+import BulkCsvPreview from '@/components/admin/BulkCsvPreview'
 
 const INFO = {
   title: 'How Bulk Status Update Works',
@@ -19,12 +20,7 @@ const INFO = {
     'Use this page to change the visibility/status of many products simultaneously. For example: publish all new arrivals, unpublish discontinued items, or move seasonal products to draft. Upload a CSV with SKU and the desired status value.',
   fields: [
     { name: 'sku', purpose: 'Unique product identifier. Must exactly match the SKU in the system.', example: 'APL001', required: true },
-    {
-      name: 'status',
-      purpose: 'New status for the product. Controls whether it is visible on the storefront.',
-      example: 'active',
-      required: true,
-    },
+    { name: 'status', purpose: 'New status for the product. Controls whether it is visible on the storefront.', example: 'active', required: true },
   ],
   csvExample: `sku,status\nAPL001,active\nNK101,inactive\nPUMA55,draft\nHRB200,active`,
   notes: [
@@ -40,14 +36,16 @@ export default function BulkStatusPage() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [jobId, setJobId] = useState<number | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
 
-  const submit = async () => {
-    if (!file) return toast.error('Please select a CSV file first')
+  const submit = async (fileOverride?: File) => {
+    const f = fileOverride ?? file
+    if (!f) return toast.error('Please select a CSV file first')
     try {
       setLoading(true)
       setJobId(null)
       const form = new FormData()
-      form.append('file', file)
+      form.append('file', f)
       const res = await axios.post('/admin/products/bulk-status', form)
       const id = res.data?.data?.jobId
       if (id) {
@@ -82,7 +80,6 @@ export default function BulkStatusPage() {
         <AdminInfoPanel {...INFO} />
       </div>
 
-      {/* Accepted values quick reference */}
       <div style={{ background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 16, padding: '16px 20px', marginBottom: 20 }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 12 }}>Quick Reference — Valid Status Values</p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -106,16 +103,25 @@ export default function BulkStatusPage() {
             <Download size={14} />Download Template
           </button>
         </div>
-        <BulkUploadBox
-          file={file}
-          setFile={setFile}
-          hint="Required columns: sku, status — valid values: active / inactive / draft"
-        />
+        <BulkUploadBox file={file} setFile={setFile} hint="Required columns: sku, status — valid values: active / inactive / draft" />
+        {file && (
+          <button onClick={() => setShowPreview(true)} style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 9, border: '1.5px solid #a5b4fc', background: '#eef2ff', color: '#4338ca', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+            <Eye size={14} />Preview &amp; Edit CSV
+          </button>
+        )}
       </div>
 
-      <BulkSubmitButton loading={loading} text="Update Status" onClick={submit} />
+      <BulkSubmitButton loading={loading} text="Update Status" onClick={() => submit()} />
 
       {jobId && <BulkJobStatus jobId={jobId} />}
+
+      <BulkCsvPreview
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        csvFile={file}
+        confirmLabel="Update Status — Submit Rows"
+        onConfirm={(edited) => { setShowPreview(false); submit(edited) }}
+      />
     </div>
   )
 }

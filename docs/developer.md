@@ -1975,3 +1975,139 @@ Notification payload: `{ title: '📖 New Article Published', body: post.title, 
 - Replaced static accent bar with an **animated pulsing dot**.
 - Inner dot (6px) + outer ring (12px) that scales 1→1.5 and fades using `withRepeat + withSequence`.
 - Light variant (dark backgrounds) uses gold color; default uses forest green.
+
+---
+
+## Bulk Upload System — Extended Features (2026-09-07)
+
+### Primary Image Behavior
+
+`images[0]` is always the primary/card image system-wide — used in product cards, search results, cart, recently-viewed, and mobile app. No special flag or column — position determines primary.
+
+**Admin form**: `AdminProductForm.tsx` — a green MAIN badge label sits above `SortableImageGrid` reminding admins that the first image is the card image.
+
+**Bulk images**: first URL in `image_urls` (pipe-separated) = primary. In ZIP: `SKU-1.jpg` = primary, `SKU-2.jpg`, etc.
+
+---
+
+### `processBulkStockJob.js` — Add / Subtract Modes
+
+**File**: `backend/src/services/processBulkStockJob.js`
+
+Three modes via `r.mode` column (defaults to `'set'` if missing):
+
+| Mode | SQL |
+|---|---|
+| `set` | `SET inventory = $1` |
+| `add` | `SET inventory = inventory + $1` |
+| `subtract` | `SET inventory = GREATEST(0, inventory - $1)` |
+
+`GREATEST(0, ...)` ensures subtract never goes negative. Validation: `inventory < 0` or `isNaN` throws before the query runs.
+
+---
+
+### `processBulkPriceJob.js` — Percent Modes
+
+**File**: `backend/src/services/processBulkPriceJob.js`
+
+Three modes via `r.mode` (defaults to `'set'`):
+
+- **`set`**: reads exact `price`, `compareprice`, `cost_price` from CSV row. `cost_price` null-safe (blank = keep existing via `COALESCE`).
+- **`percent_increase`** / **`percent_decrease`**: reads current prices from DB first, applies `factor = 1 ± pct/100`, rounds to 2dp:
+  ```js
+  finalPrice = Math.max(1, Math.round(cur.price * factor * 100) / 100)
+  finalCompare = cur.compareprice ? Math.round(cur.compareprice * factor * 100) / 100 : 0
+  finalCost = cur.cost_price ? Math.round(cur.cost_price * factor * 100) / 100 : null
+  ```
+  `Math.max(1, ...)` floor prevents price going below ₹1. `pct` is read from the `price` column (1–100), validated before the DB fetch.
+
+UPDATE query: `cost_price = COALESCE($3, cost_price)` — passing null leaves existing cost_price untouched.
+
+---
+
+### `processBulkImagesJob.js` — Prepend Mode
+
+**File**: `backend/src/services/processBulkImagesJob.js`
+
+Three modes via `r.mode` (defaults to `'replace'`):
+
+```js
+if (mode === 'append')  finalImages = [...oldImages, ...newImages]
+else if (mode === 'prepend') finalImages = [...newImages, ...oldImages]  // new = primary
+else finalImages = newImages  // replace (default)
+```
+
+`[...new Set(finalImages)]` deduplicates after merge. New images are uploaded to AWS before the mode merge. On any row failure, all uploaded URLs for that row are cleaned up via `safeDeleteAws`.
+
+**Bug fixed (pre-existing)**: frontend was sending `form.append('zip', ...)` but multer expected field name `imagesZip`. Fixed to `form.append('imagesZip', zipFile)` — ZIP uploads now actually reach the backend.
+
+---
+
+### `BulkCsvPreview` Shared Component
+
+**File**: `frontend/src/components/admin/BulkCsvPreview.tsx`
+
+Props:
+```tsx
+{ open: boolean, onClose: () => void, csvFile: File | null,
+  onConfirm: (edited: File) => void, confirmLabel?: string }
+```
+
+Features:
+- Full CSV parser: handles quoted fields, escaped quotes (`""`), multi-column
+- Cell editing: click to edit, Tab to navigate, Enter/Escape to commit/cancel
+- Row add / delete
+- `buildCsvText()` rebuilds CSV with proper escaping
+- `handleConfirm()` creates new `File` from edited content, calls `onConfirm(editedFile)`
+- All CSS prefixed `bcpv-` to avoid collision with existing `.modal-overlay`, `.csv-tbl` etc. in bulk-upload/page.tsx
+- `confirmLabel` defaults to `"Submit These N Rows"`
+
+Wired on: bulk-stock, bulk-price, bulk-status, bulk-category, bulk-images, bulk-coupon pages.
+
+---
+
+### `exportProductsCSV` — Product Export
+
+**File**: `backend/src/modules/admin/admin.controller.js` → `exports.exportProductsCSV`
+
+**Route**: `GET /api/admin/export/products` (auth + admin)
+
+**Optional query params**: `?status=active`, `?category_id=5`
+
+**Columns** (53 total, matching bulk import template exactly):
+`name, slug, price, compareprice, inventory, sku, category_id, gst_percent, hsn_code, cess_percent, brand, brand_id, status, shortdescription, longdescription, meta_title, meta_description, meta_keywords, images, tags, is_featured, is_bestseller, cost_price, weight_grams, length_cm, width_cm, height_cm, barcode, low_stock_threshold, product_type, unit, tax_included, shipping_class, allow_backorder, highlights, ingredients, benefits, usage_instructions, storage_instructions, warnings, video_url, fssai_number, coa_url, focus_keyword, min_order_qty, max_order_qty, is_returnable, return_window_days, replacement_available, sort_order, specifications, faqs, safety_tags`
+
+**Serialization helpers**:
+- `parseImages(raw)` — JSONB array → pipe-separated string
+- `parsePipeArr(raw)` — JSONB array (tags) → pipe-separated string
+- `parsePgArr(raw)` — PostgreSQL `{a,b}` text array → pipe-separated string (for `safety_tags`)
+- `parseJsonArr(raw)` — JSONB (specifications, faqs) → JSON string
+- `esc(v)` — wraps in `"..."`, escapes `"` → `""`
+
+**Frontend button**: `frontend/src/app/admin/products/page.tsx` → `exportProducts()` function. Uses `axios.get('/admin/export/products', { responseType: 'blob' })`, creates object URL, clicks `<a>` to download, revokes URL.
+
+---
+
+### Bulk Coupon Creation
+
+**Processor**: `backend/src/services/processBulkCouponJob.js`
+
+**Job type**: `bulk_coupon` (registered in `jobWorker.js`)
+
+**Controller**: `backend/src/modules/admin/admin.bulk.controller.js` → `bulkCouponCreate`, `downloadCouponTemplate`
+
+**Routes** (`admin.routes.js`):
+```
+GET  /api/admin/coupons/bulk-template   → downloadCouponTemplate
+POST /api/admin/coupons/bulk-create     → uploadBulkFiles + bulkCouponCreate
+```
+
+**Frontend**: `frontend/src/app/admin/coupons/bulk-create/page.tsx`
+
+**Processor logic**:
+- Validates: `code` (required), `type` (flat/percent), `value` (>0, ≤100 for percent)
+- `is_active` defaults to `true` — only `'false'` string sets it false
+- Dates: empty string → null in DB
+- Duplicate detection: `err.code === '23505'` → friendly "Duplicate code — already exists" message
+- Inserts with `UPPER($1)` for code — case-insensitive
+- Returns `{ created, failed, total }` — same pattern as all other bulk processors

@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
-import { ImageIcon, Upload, FileArchive, FileSpreadsheet, Loader2, Download } from 'lucide-react'
+import { ImageIcon, Upload, FileArchive, FileSpreadsheet, Loader2, Download, Eye } from 'lucide-react'
 import { AdminInfoPanel, BulkJobStatus } from '@/components/admin/BulkUi'
+import BulkCsvPreview from '@/components/admin/BulkCsvPreview'
 
 const INFO = {
   title: 'How Bulk Image Upload Works',
@@ -26,11 +27,13 @@ const INFO = {
       required: false,
     },
   ],
-  csvExample: `sku,mode,image_urls\nNK101,replace,https://site.com/nk101-1.jpg|https://site.com/nk101-2.jpg\nAPL001,append,https://site.com/apl001-3.jpg\nHRB200,replace,`,
+  csvExample: `sku,mode,image_urls\nNK101,replace,https://site.com/nk101-1.jpg|https://site.com/nk101-2.jpg\nAPL001,append,https://site.com/apl001-3.jpg\nHRB200,prepend,https://site.com/hrb200-new-main.jpg\nPUMA55,replace,`,
   notes: [
-    'mode must be "append" or "replace". "replace" deletes ALL existing product images before adding the new ones.',
-    'Separate multiple image URLs with a pipe character | (no spaces).',
-    'For ZIP uploads: name files as SKU-1.jpg, SKU-2.jpg — e.g. NK101-1.jpg, NK101-2.jpg.',
+    '"replace" removes ALL existing images and uses only the new ones. "append" adds new images after existing ones. "prepend" adds new images BEFORE existing ones — making them the primary/card image.',
+    'Image order matters — the first URL in image_urls (or SKU-1.jpg from ZIP) becomes the primary image shown on product cards, search results, and the cart.',
+    'Use "prepend" when you have a better main photo to set as primary without losing existing images.',
+    'Separate multiple image URLs with a pipe character | (no spaces). Example: https://cdn.com/img1.jpg|https://cdn.com/img2.jpg',
+    'For ZIP uploads: name files as SKU-1.jpg (primary), SKU-2.jpg, SKU-3.jpg — the number suffix controls display order.',
     'If a product appears in both the CSV and ZIP, the ZIP images are used (ZIP takes priority).',
     'Supported image formats: JPG, JPEG, PNG, WEBP.',
     'Jobs are queued and processed in the background — track progress in the Jobs page.',
@@ -43,15 +46,17 @@ export default function BulkImagesPage() {
   const [zipFile, setZipFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [jobId, setJobId] = useState<number | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
 
-  const submit = async () => {
-    if (!csvFile) return toast.error('Please select a CSV file first')
+  const submit = async (fileOverride?: File) => {
+    const f = fileOverride ?? csvFile
+    if (!f) return toast.error('Please select a CSV file first')
     try {
       setJobId(null)
       setLoading(true)
       const form = new FormData()
-      form.append('file', csvFile)
-      if (zipFile) form.append('zip', zipFile)
+      form.append('file', f)
+      if (zipFile) form.append('imagesZip', zipFile)
       const res = await axios.post('/admin/products/bulk-images', form)
       const id = res.data?.data?.jobId
       if (id) {
@@ -120,8 +125,9 @@ export default function BulkImagesPage() {
         <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 12 }}>Quick Reference — Mode Values</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 10 }}>
           {[
-            { val: 'append', desc: 'Keep existing images and add new ones alongside them', bg: '#f0fdf4', color: '#059669' },
             { val: 'replace', desc: 'Remove ALL current images and use only the new ones', bg: '#fef2f2', color: '#dc2626' },
+            { val: 'append', desc: 'Keep existing images and add new ones at the end (existing primary stays)', bg: '#f0fdf4', color: '#059669' },
+            { val: 'prepend', desc: 'Add new images at the START — they become the new primary/card image', bg: '#eff6ff', color: '#1d4ed8' },
           ].map(m => (
             <div key={m.val} style={{ padding: '12px 16px', borderRadius: 12, background: m.bg }}>
               <p style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: m.color, margin: '0 0 4px' }}>{m.val}</p>
@@ -156,8 +162,16 @@ export default function BulkImagesPage() {
       </div>
 
       {/* Submit */}
+      {csvFile && (
+        <div style={{ marginBottom: 16 }}>
+          <button onClick={() => setShowPreview(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 9, border: '1.5px solid #a5b4fc', background: '#eef2ff', color: '#4338ca', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+            <Eye size={14} />Preview &amp; Edit CSV
+          </button>
+        </div>
+      )}
+
       <button
-        onClick={submit}
+        onClick={() => submit()}
         disabled={loading}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 32px', borderRadius: 12, border: 'none', background: loading ? '#bfdbfe' : 'linear-gradient(135deg,#2563eb,#3b82f6)', color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', boxShadow: '0 4px 16px rgba(37,99,235,0.22)', transition: 'opacity 0.18s' }}
       >
@@ -176,6 +190,14 @@ export default function BulkImagesPage() {
           </button>
         </>
       )}
+
+      <BulkCsvPreview
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        csvFile={csvFile}
+        confirmLabel="Submit Image Upload Rows"
+        onConfirm={(edited) => { setShowPreview(false); submit(edited) }}
+      />
     </div>
   )
 }

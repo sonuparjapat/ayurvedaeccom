@@ -431,8 +431,9 @@ exports.generateInvoice = async (req, res) => {
     /* ── items with GST fields ── */
     const itemsRes = await client.query(`
       SELECT oi.quantity, oi.price, oi.product_id, oi.variant_id,
-             p.name, COALESCE(p.hsn_code,'') AS hsn_code,
-             COALESCE(p.gst_percent,0) AS gst_percent,
+             p.name,
+             COALESCE(NULLIF(oi.hsn_code,''), p.hsn_code, '') AS hsn_code,
+             COALESCE(oi.gst_percent, p.gst_percent, 0) AS gst_percent,
              COALESCE(p.unit,'Nos') AS unit
       FROM order_items oi
       JOIN products p ON p.id=oi.product_id

@@ -391,6 +391,10 @@ export default function AdminLayout({
             Coupons
           </MenuItem>
 
+          <MenuItem href="/admin/coupons/bulk-create" icon={<Tag size={18} />} perm="coupons.manage">
+            Bulk Coupons
+          </MenuItem>
+
           <MenuItem href="/admin/variants" icon={<Package size={18} />} perm="products.edit">
             Variants
           </MenuItem>

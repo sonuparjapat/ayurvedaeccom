@@ -2252,6 +2252,8 @@ exports.adminBulkUploadPincodes = async (req, res) => {
       const days    = parseInt(r.delivery_days) || 3
       const rawActive = String(r.is_active || 'true').toLowerCase()
       const isActive  = rawActive === 'false' || rawActive === '0' || rawActive === 'no' ? false : true
+      const rawCod    = String(r.cod_available !== undefined ? r.cod_available : 'true').toLowerCase()
+      const isCod     = rawCod === 'false' || rawCod === '0' || rawCod === 'no' ? false : true
 
       if (!/^\d{6}$/.test(pincode)) {
         results.errors.push({ row: i + 2, pincode: pincode || '(empty)', reason: 'Invalid pincode — must be exactly 6 digits' })
@@ -2267,13 +2269,14 @@ exports.adminBulkUploadPincodes = async (req, res) => {
       }
 
       const upsert = await client.query(
-        `INSERT INTO serviceable_pincodes (pincode, city, state, delivery_days, is_active)
-         VALUES ($1,$2,$3,$4,$5)
+        `INSERT INTO serviceable_pincodes (pincode, city, state, delivery_days, is_active, cod_available)
+         VALUES ($1,$2,$3,$4,$5,$6)
          ON CONFLICT (pincode) DO UPDATE
            SET city=EXCLUDED.city, state=EXCLUDED.state,
-               delivery_days=EXCLUDED.delivery_days, is_active=EXCLUDED.is_active
+               delivery_days=EXCLUDED.delivery_days, is_active=EXCLUDED.is_active,
+               cod_available=EXCLUDED.cod_available
          RETURNING (xmax = 0) AS inserted`,
-        [pincode, city, state || null, days, isActive]
+        [pincode, city, state || null, days, isActive, isCod]
       )
       if (upsert.rows[0]?.inserted) results.inserted++
       else results.updated++
@@ -2469,6 +2472,103 @@ exports.exportUsersCSV = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="users_${Date.now()}.csv"`)
     res.send(csv)
   } catch (err) {
+    res.status(500).json({ message: 'Export failed' })
+  }
+}
+
+exports.exportProductsCSV = async (req, res) => {
+  try {
+    const { status, category_id } = req.query
+    let where = 'WHERE 1=1'
+    const params = []
+    if (status) { params.push(status); where += ` AND p.status = $${params.length}` }
+    if (category_id) { params.push(Number(category_id)); where += ` AND p.category_id = $${params.length}` }
+
+    const r = await pool.query(
+      `SELECT p.id, p.name, p.slug, p.price, p.compareprice, p.inventory, p.sku,
+              p.category_id, p.category_name, p.gst_percent, p.hsn_code, p.cess_percent,
+              p.brand, p.brand_id, p.status, p.shortdescription, p.longdescription,
+              p.meta_title, p.meta_description, p.meta_keywords,
+              p.images, p.tags, p.is_featured, p.is_bestseller,
+              p.cost_price, p.weight_grams, p.length_cm, p.width_cm, p.height_cm,
+              p.barcode, p.low_stock_threshold, p.product_type, p.unit,
+              p.tax_included, p.shipping_class, p.allow_backorder,
+              p.highlights, p.ingredients, p.benefits,
+              p.usage_instructions, p.storage_instructions, p.warnings,
+              p.video_url, p.fssai_number, p.coa_url, p.focus_keyword,
+              p.min_order_qty, p.max_order_qty, p.is_returnable, p.return_window_days,
+              p.replacement_available, p.sort_order,
+              p.specifications, p.faqs, p.safety_tags,
+              p.created_at
+       FROM products p ${where} ORDER BY p.id ASC`,
+      params
+    )
+
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+
+    const parseImages = (raw) => {
+      try {
+        const arr = Array.isArray(raw) ? raw : JSON.parse(raw || '[]')
+        return arr.join('|')
+      } catch { return '' }
+    }
+
+    const parseJsonArr = (raw) => {
+      if (!raw) return ''
+      try { return JSON.stringify(Array.isArray(raw) ? raw : JSON.parse(raw)) } catch { return '' }
+    }
+
+    const parsePgArr = (raw) => {
+      if (!raw) return ''
+      if (Array.isArray(raw)) return raw.join('|')
+      return String(raw).replace(/^\{/, '').replace(/\}$/, '').split(',').map(s => s.replace(/^"|"$/g, '')).join('|')
+    }
+
+    const parsePipeArr = (raw) => {
+      if (!raw) return ''
+      try { const arr = Array.isArray(raw) ? raw : JSON.parse(raw || '[]'); return arr.join('|') } catch { return '' }
+    }
+
+    const headers = [
+      'name','slug','price','compareprice','inventory','sku',
+      'category_id','gst_percent','hsn_code','cess_percent',
+      'brand','brand_id','status','shortdescription','longdescription',
+      'meta_title','meta_description','meta_keywords',
+      'images','tags','is_featured','is_bestseller',
+      'cost_price','weight_grams','length_cm','width_cm','height_cm',
+      'barcode','low_stock_threshold','product_type','unit',
+      'tax_included','shipping_class','allow_backorder',
+      'highlights','ingredients','benefits',
+      'usage_instructions','storage_instructions','warnings',
+      'video_url','fssai_number','coa_url','focus_keyword',
+      'min_order_qty','max_order_qty','is_returnable','return_window_days',
+      'replacement_available','sort_order',
+      'specifications','faqs','safety_tags',
+    ]
+
+    const rows = r.rows.map(p => [
+      p.name, p.slug, p.price, p.compareprice, p.inventory, p.sku,
+      p.category_id, p.gst_percent, p.hsn_code, p.cess_percent,
+      p.brand, p.brand_id || '', p.status, p.shortdescription, p.longdescription,
+      p.meta_title, p.meta_description, p.meta_keywords,
+      parseImages(p.images), parsePipeArr(p.tags), p.is_featured, p.is_bestseller,
+      p.cost_price || '', p.weight_grams || '', p.length_cm || '', p.width_cm || '', p.height_cm || '',
+      p.barcode || '', p.low_stock_threshold, p.product_type, p.unit || '',
+      p.tax_included, p.shipping_class, p.allow_backorder,
+      p.highlights || '', p.ingredients || '', p.benefits || '',
+      p.usage_instructions || '', p.storage_instructions || '', p.warnings || '',
+      p.video_url || '', p.fssai_number || '', p.coa_url || '', p.focus_keyword || '',
+      p.min_order_qty, p.max_order_qty || '', p.is_returnable, p.return_window_days,
+      p.replacement_available, p.sort_order,
+      parseJsonArr(p.specifications), parseJsonArr(p.faqs), parsePgArr(p.safety_tags),
+    ])
+
+    const csv = [headers, ...rows].map(row => row.map(v => esc(v)).join(',')).join('\n')
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="products_${Date.now()}.csv"`)
+    res.send(csv)
+  } catch (err) {
+    console.error('[exportProductsCSV]', err)
     res.status(500).json({ message: 'Export failed' })
   }
 }

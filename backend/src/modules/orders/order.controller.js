@@ -229,6 +229,7 @@ if (addr.pincode) {
         c.quantity,
         p.name                                AS product_name,
         p.gst_percent,
+        p.hsn_code,
         p.status,
         COALESCE(pv.price, p.price)           AS effective_price,
         COALESCE(pv.inventory, p.inventory)   AS effective_inventory,
@@ -594,8 +595,8 @@ if (addr.pincode) {
 
       await client.query(`
         INSERT INTO order_items
-        (order_id, product_id, variant_id, variant_label, quantity, price)
-        VALUES ($1,$2,$3,$4,$5,$6)
+        (order_id, product_id, variant_id, variant_label, quantity, price, gst_percent, hsn_code)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       `, [
         orderId,
         item.product_id,
@@ -603,6 +604,8 @@ if (addr.pincode) {
         item.variant_label || null,
         qty,
         price,
+        item.gst_percent || null,
+        item.hsn_code || null,
       ]);
     }
 
@@ -2331,7 +2334,7 @@ exports.buyNow = async (req, res) => {
 
     // Fetch product + variant in one query, lock product row
     const productRes = await client.query(`
-      SELECT p.id AS product_id, p.name AS product_name, p.gst_percent, p.status,
+      SELECT p.id AS product_id, p.name AS product_name, p.gst_percent, p.hsn_code, p.status,
              COALESCE(pv.price, p.price) AS effective_price,
              COALESCE(pv.inventory, p.inventory) AS effective_inventory,
              pv.label AS variant_label
@@ -2494,9 +2497,9 @@ exports.buyNow = async (req, res) => {
 
     // Insert single order item
     await client.query(`
-      INSERT INTO order_items (order_id,product_id,variant_id,variant_label,quantity,price)
-      VALUES ($1,$2,$3,$4,$5,$6)
-    `, [orderId, item.product_id, variantId || null, item.variant_label || null, quantity, price]);
+      INSERT INTO order_items (order_id,product_id,variant_id,variant_label,quantity,price,gst_percent,hsn_code)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    `, [orderId, item.product_id, variantId || null, item.variant_label || null, quantity, price, item.gst_percent || null, item.hsn_code || null]);
 
     // Flash sale count — atomic compare-and-swap (prevents oversell under concurrency)
     const pendingSocketEvents = [];

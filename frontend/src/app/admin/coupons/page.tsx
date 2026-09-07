@@ -5,7 +5,8 @@ import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import AppModal from '@/components/modal/AppModal'
 import DynamicTable from '@/components/table/table'
-import { Loader2, Plus, Search, User, X } from 'lucide-react'
+import { Loader2, Plus, Search, Upload, User, X } from 'lucide-react'
+import Link from 'next/link'
 import { LabelWithInfo, PageInfoBanner } from '@/components/admin/FieldInfo'
 import AdminPagination from '@/components/admin/AdminPagination'
 
@@ -268,6 +269,9 @@ export default function AdminCoupons() {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input value={search} onChange={e => { setPage(1); setSearch(e.target.value) }} placeholder="Search code..." className="pl-8 pr-4 py-2.5 w-full sm:w-56 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500 bg-slate-800 text-slate-100" />
             </div>
+            <Link href="/admin/coupons/bulk-create" className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-600 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition">
+              <Upload size={14} /> Bulk Create
+            </Link>
             <button onClick={openCreate} className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition">
               <Plus size={14} /> Add Coupon
             </button>

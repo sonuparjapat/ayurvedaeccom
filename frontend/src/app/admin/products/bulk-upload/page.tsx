@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   FileArchive,
   Download,
+  BookOpen,
   Loader2,
   ShieldCheck,
   X,
@@ -447,13 +448,14 @@ export default function BulkUploadPage() {
     } finally { setLoading(false) }
   }
 
-  const downloadCategoryList = async () => {
+  const downloadReferenceKit = async () => {
     try {
-      const res = await axios.get('/admin/products/category-template', { responseType: 'blob' })
-      const url = window.URL.createObjectURL(new Blob([res.data]))
-      const a = document.createElement('a'); a.href = url; a.download = 'categories-master.csv'; a.click()
-      toast.success('Categories downloaded')
-    } catch { toast.error('Download failed') }
+      const res = await axios.get('/admin/products/bulk-reference', { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/zip' }))
+      const a = document.createElement('a'); a.href = url; a.download = 'bulk-upload-reference.zip'; a.click()
+      window.URL.revokeObjectURL(url)
+      toast.success('Reference kit downloaded — open the ZIP to find categories, brands & field guide')
+    } catch { toast.error('Reference kit download failed') }
   }
 
   const confirmImport = async () => {
@@ -620,8 +622,11 @@ export default function BulkUploadPage() {
           </div>
           <div className="header-actions">
             <button onClick={downloadTemplate} className="btn-outline"><Download size={16} />Download Template</button>
-            <button onClick={downloadCategoryList} className="btn-outline"><Download size={16} />Categories CSV</button>
+            <button onClick={downloadReferenceKit} className="btn-outline btn-outline-ref">
+              <BookOpen size={16} />Reference Kit
+            </button>
           </div>
+          <style>{`.btn-outline-ref{border-color:#7c3aed;color:#7c3aed;}.btn-outline-ref:hover{border-color:#7c3aed;color:#7c3aed;background:#faf5ff;box-shadow:0 2px 8px rgba(124,58,237,0.12);}`}</style>
         </div>
 
         {/* Progress */}
@@ -643,19 +648,19 @@ export default function BulkUploadPage() {
           <h2 className="guide-section-title">How Bulk Upload Works</h2>
           <p className="guide-section-sub">Follow the examples below for smooth import.</p>
           <div className="guide-steps">
-            <GuideCard title="1. Prepare CSV" desc="Download template and fill product details. GST / HSN optional." />
-            <GuideCard title="2. Prepare ZIP" desc="Rename images using SKU format." />
-            <GuideCard title="3. Upload & Import" desc="Upload files and start bulk process." />
+            <GuideCard title="1. Get Reference Kit" desc="Click the purple Reference Kit button — it downloads a ZIP with the category IDs, brand IDs, and a full field guide for every column." />
+            <GuideCard title="2. Fill the Template" desc="Download the CSV template, fill rows using IDs from the reference kit. GST / HSN auto-fill from category if left blank." />
+            <GuideCard title="3. Upload & Import" desc="Upload your filled CSV (and optional images ZIP), validate, fix any row errors, then import." />
           </div>
           <div className="example-grid">
             <div className="example-box">
               <div className="example-header">📄 CSV Example</div>
               <div style={{ overflowX: 'auto' }}>
                 <table className="example-table">
-                  <thead><tr><th>name</th><th>sku</th><th>price</th><th>inventory</th><th>category_id</th><th>gst_percent</th><th>hsn_code</th><th>weight_grams</th><th>length_cm</th><th>width_cm</th><th>height_cm</th><th>is_returnable</th><th>return_window_days</th><th>replacement_available</th><th>safety_tags</th></tr></thead>
+                  <thead><tr><th>name</th><th>sku</th><th>price</th><th>inventory</th><th title="Get ID from Reference Kit → 1_categories.csv" style={{cursor:'help',borderBottom:'2px dashed #7c3aed',color:'#7c3aed'}}>category_id ⚠</th><th>gst_percent</th><th>hsn_code</th><th>weight_grams</th><th>is_returnable</th><th>safety_tags</th></tr></thead>
                   <tbody>
-                    <tr><td>Ashwagandha 60</td><td>AYU001</td><td>499</td><td>100</td><td>1</td><td>12</td><td>3004</td><td>120</td><td>8</td><td>6</td><td>10</td><td>true</td><td>7</td><td>false</td><td>Vegan|GlutenFree</td></tr>
-                    <tr><td>Herbal Oil 100ml</td><td>AYU002</td><td>299</td><td>50</td><td>2</td><td></td><td></td><td>200</td><td></td><td></td><td></td><td>false</td><td>0</td><td>false</td><td></td></tr>
+                    <tr><td>Ashwagandha 60</td><td>AYU001</td><td>499</td><td>100</td><td title="Get real ID from Reference Kit">1</td><td>12</td><td>3004</td><td>120</td><td>true</td><td>Vegan|GlutenFree</td></tr>
+                    <tr><td>Herbal Oil 100ml</td><td>AYU002</td><td>299</td><td>50</td><td title="Get real ID from Reference Kit">2</td><td></td><td></td><td>200</td><td>false</td><td></td></tr>
                   </tbody>
                 </table>
               </div>
@@ -664,9 +669,9 @@ export default function BulkUploadPage() {
               <div className="example-header">🗜️ ZIP Images Example</div>
               <div className="zip-preview">
                 <span className="zip-root">images.zip</span>
-                <span className="zip-file">APL001-1.jpg</span>
+                <span className="zip-file">APL001-1.jpg <span style={{color:'#059669',fontSize:10,fontWeight:700}}>← primary/card</span></span>
                 <span className="zip-file">APL001-2.jpg</span>
-                <span className="zip-file">NK101-1.jpg</span>
+                <span className="zip-file">NK101-1.jpg <span style={{color:'#059669',fontSize:10,fontWeight:700}}>← primary/card</span></span>
                 <span className="zip-file">NK101-2.jpg</span>
               </div>
             </div>
@@ -674,10 +679,10 @@ export default function BulkUploadPage() {
           <div className="notes-box">
             <span>CSV file is required.</span>
             <span>ZIP file is optional.</span>
-            <span>Best image naming: SKU-1.jpg, SKU-2.jpg</span>
+            <span><strong>images</strong>: pipe-separated URLs (e.g. <code>url1|url2|url3</code>). The <strong>first URL is the primary / card image</strong> shown on product listings and search results. For ZIP uploads, name files <code>SKU-1.jpg</code> (primary), <code>SKU-2.jpg</code> etc. — the lowest number loads first.</span>
             <span>Invalid rows will be skipped with detailed errors.</span>
             <span>If GST / HSN is blank, system uses category defaults.</span>
-            <span>Download Categories CSV for category_id reference.</span>
+            <span><strong>category_id</strong> and <strong>brand_id</strong> require numeric IDs — download the Reference Kit (purple button above) to get a ZIP with <code>1_categories.csv</code>, <code>2_brands.csv</code>, and a complete field guide.</span>
             <span><strong>is_returnable</strong>: true / false — whether the product can be returned (default: true).</span>
             <span><strong>return_window_days</strong>: number of days after delivery to return (default: 7). Set to 0 if non-returnable.</span>
             <span><strong>replacement_available</strong>: true / false — whether a replacement can be offered instead of refund (default: false).</span>
@@ -727,13 +732,13 @@ export default function BulkUploadPage() {
         <div className="rules-box">
           <div className="rules-title"><ShieldCheck size={18} color="#059669" />Upload Rules</div>
           <ul className="rules-list">
-            <li>CSV file is required.</li>
-            <li>ZIP file is optional for images.</li>
-            <li>Recommended image naming: SKU-1.jpg, SKU-2.jpg</li>
-            <li>Invalid rows will be skipped with detailed errors.</li>
-            <li>GST / HSN columns are optional in CSV.</li>
-            <li>Blank tax fields auto-fill from selected category_id.</li>
-            <li>Existing product flow remains unchanged.</li>
+            <li>CSV file is required. ZIP file is optional.</li>
+            <li>Download the Reference Kit before filling your CSV — it has all valid category IDs, brand IDs, and a field guide.</li>
+            <li>category_id and brand_id must be numeric IDs from your store (see Reference Kit).</li>
+            <li>GST / HSN / cess are optional — auto-filled from the category if blank.</li>
+            <li>Invalid rows are skipped with a detailed per-row error report.</li>
+            <li>Image naming: SKU-1.jpg, SKU-2.jpg inside the ZIP.</li>
+            <li>specifications and faqs columns must be valid JSON arrays.</li>
           </ul>
         </div>
 

@@ -55,6 +55,12 @@ router.get(
   admin,
   bulkController.downloadCategoryTemplate
 )
+router.get(
+  '/products/bulk-reference',
+  auth,
+  admin,
+  bulkController.downloadReferenceKit
+)
 
 router.post(
   '/products/bulk-upload',
@@ -209,6 +215,11 @@ router.get('/orders/:id/timeline', auth, admin, controller.getOrderTimeline)
 /* ─── CSV EXPORTS ─── */
 router.get('/export/orders', auth, admin, controller.exportOrdersCSV)
 router.get('/export/users', auth, admin, controller.exportUsersCSV)
+router.get('/export/products', auth, admin, controller.exportProductsCSV)
+
+/* ─── BULK COUPON CREATE ─── */
+router.get('/coupons/bulk-template', auth, admin, bulkController.downloadCouponTemplate)
+router.post('/coupons/bulk-create', auth, admin, bulkController.uploadBulkFiles, bulkController.bulkCouponCreate)
 
 /* ─── REVIEWS MODERATION ─── */
 router.get('/reviews', auth, admin, controller.adminListReviews)

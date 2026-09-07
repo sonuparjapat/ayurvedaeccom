@@ -98,6 +98,10 @@ async function processBulkImagesJob(job) {
         .trim()
         .toLowerCase()
 
+      if (!['replace', 'append', 'prepend'].includes(mode)) {
+        throw new Error('Invalid mode — must be replace, append, or prepend')
+      }
+
       const imageUrls =
         (r.image_urls || '')
         .trim()
@@ -231,12 +235,16 @@ async function processBulkImagesJob(job) {
       let finalImages =
         newImages
 
-      if (
-        mode === 'append'
-      ) {
+      if (mode === 'append') {
         finalImages = [
           ...oldImages,
           ...newImages
+        ]
+      } else if (mode === 'prepend') {
+        /* new images go FIRST — they become the primary/card image */
+        finalImages = [
+          ...newImages,
+          ...oldImages
         ]
       }
 

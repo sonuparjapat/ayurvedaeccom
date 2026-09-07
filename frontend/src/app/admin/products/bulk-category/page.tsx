@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
-import { Download, FolderTree } from 'lucide-react'
+import { Download, FolderTree, Eye } from 'lucide-react'
+import BulkCsvPreview from '@/components/admin/BulkCsvPreview'
 import {
   AdminInfoPanel,
   BulkPageHeader,
@@ -35,14 +36,16 @@ export default function BulkCategoryPage() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [jobId, setJobId] = useState<number | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
 
-  const submit = async () => {
-    if (!file) return toast.error('Please select a CSV file first')
+  const submit = async (fileOverride?: File) => {
+    const f = fileOverride ?? file
+    if (!f) return toast.error('Please select a CSV file first')
     try {
       setLoading(true)
       setJobId(null)
       const form = new FormData()
-      form.append('file', file)
+      form.append('file', f)
       const res = await axios.post('/admin/products/bulk-category', form)
       const id = res.data?.data?.jobId
       if (id) {
@@ -116,11 +119,24 @@ export default function BulkCategoryPage() {
           setFile={setFile}
           hint="Required columns: sku, category_id — get valid IDs from Category Master above"
         />
+        {file && (
+          <button onClick={() => setShowPreview(true)} style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 9, border: '1.5px solid #a5b4fc', background: '#eef2ff', color: '#4338ca', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+            <Eye size={14} />Preview &amp; Edit CSV
+          </button>
+        )}
       </div>
 
-      <BulkSubmitButton loading={loading} text="Update Categories" onClick={submit} />
+      <BulkSubmitButton loading={loading} text="Update Categories" onClick={() => submit()} />
 
       {jobId && <BulkJobStatus jobId={jobId} />}
+
+      <BulkCsvPreview
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        csvFile={file}
+        confirmLabel="Update Categories — Submit Rows"
+        onConfirm={(edited) => { setShowPreview(false); submit(edited) }}
+      />
     </div>
   )
 }

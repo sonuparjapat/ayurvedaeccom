@@ -15,6 +15,8 @@ const {
 const safeDeleteAws =
 require('../utils/safeDeleteAws')
 
+const VALID_MODES = ['set', 'add', 'subtract']
+
 module.exports =
 async function processBulkStockJob(job) {
 
@@ -72,6 +74,11 @@ async function processBulkStockJob(job) {
           r.inventory
         )
 
+      const mode =
+        (r.mode || 'set')
+        .trim()
+        .toLowerCase()
+
       if (!sku) {
         throw new Error(
           'SKU missing'
@@ -79,26 +86,49 @@ async function processBulkStockJob(job) {
       }
 
       if (
-        inventory < 0 ||
-        Number.isNaN(
-          inventory
-        )
+        !VALID_MODES.includes(mode)
       ) {
         throw new Error(
-          'Invalid inventory'
+          `Invalid mode — must be set, add, or subtract`
         )
       }
 
-      const result =
-        await pool.query(`
+      if (
+        inventory < 0 ||
+        Number.isNaN(inventory)
+      ) {
+        throw new Error(
+          'Invalid inventory — must be 0 or a positive whole number'
+        )
+      }
+
+      let result
+
+      if (mode === 'set') {
+        result = await pool.query(`
           UPDATE products
-          SET inventory=$1
-          WHERE LOWER(sku)=LOWER($2)
+          SET inventory = $1
+          WHERE LOWER(sku) = LOWER($2)
           RETURNING id
-        `,[
-          inventory,
-          sku
-        ])
+        `, [inventory, sku])
+
+      } else if (mode === 'add') {
+        result = await pool.query(`
+          UPDATE products
+          SET inventory = inventory + $1
+          WHERE LOWER(sku) = LOWER($2)
+          RETURNING id
+        `, [inventory, sku])
+
+      } else {
+        /* subtract — floor at 0, never go negative */
+        result = await pool.query(`
+          UPDATE products
+          SET inventory = GREATEST(0, inventory - $1)
+          WHERE LOWER(sku) = LOWER($2)
+          RETURNING id
+        `, [inventory, sku])
+      }
 
       if (
         !result.rowCount
@@ -113,8 +143,8 @@ async function processBulkStockJob(job) {
     } catch (err) {
 
       failed.push({
-        row:rowNo,
-        sku:r.sku || '',
+        row: rowNo,
+        sku: r.sku || '',
         error:
           err.message ||
           'Failed'
@@ -129,24 +159,23 @@ async function processBulkStockJob(job) {
       'BULK_STOCK_UPDATE',
     module:
       'PRODUCTS',
-    details:{
+    details: {
       updated,
       failed:
         failed.length,
       total:
         rows.length
     },
-    ip:'QUEUE'
+    ip: 'QUEUE'
   })
 
-  /* delete temp csv from AWS */
   try {
 
     await safeDeleteAws(
       payload.csvPath,
       {
-        source:'bulk_temp',
-        refId:job.id
+        source: 'bulk_temp',
+        refId: job.id
       }
     )
 

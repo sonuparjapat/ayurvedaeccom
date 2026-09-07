@@ -1954,3 +1954,153 @@ Same tilt test as above on the "Why Choose Oroganix" section cards.
 3. Verify icon circle has a matching colored border.
 4. Verify card title uses the accent color (not plain white).
 5. Cards animate in sequentially — verify spring-damped entry.
+
+---
+
+## Bulk Upload Improvements — Verification (2026-09-07)
+
+### Primary Image — Admin Product Form
+1. Open `Admin → Products → Add Product` or edit any existing product.
+2. Scroll to the Images section.
+3. **Expected**: a green **MAIN** badge label appears above the image grid with text "First image is the card / primary image shown on listings and search. Drag to reorder."
+4. Upload 3 images, then drag the second image to the first position.
+5. **Expected**: the product card on the storefront now shows the newly-dragged image as the main card photo.
+
+### Primary Image — Bulk Images CSV
+1. Go to `Admin → Products → Bulk Images`.
+2. Upload a CSV with a product using `prepend` mode and one new URL.
+3. After the job completes, open the product on the storefront.
+4. **Expected**: the new image is now the first / card image; existing images are still present after it.
+
+---
+
+### Bulk Stock — Add Mode
+1. Go to `Admin → Products → Bulk Stock`.
+2. Note the current stock of a test product (e.g. SKU = `TEST001`, stock = 20).
+3. Upload a CSV: `sku,inventory,mode\nTEST001,30,add`
+4. Wait for the job to complete (green "completed" status in job tracker).
+5. **Expected**: product stock is now 50 (20 + 30).
+
+### Bulk Stock — Subtract Mode
+1. Product `TEST001` has stock = 50.
+2. Upload: `sku,inventory,mode\nTEST001,200,subtract`
+3. **Expected**: stock becomes 0, NOT negative — `GREATEST(0, 50-200) = 0`.
+
+### Bulk Stock — Set Mode (default)
+1. Upload: `sku,inventory\nTEST001,100` (no mode column).
+2. **Expected**: stock is set to exactly 100 regardless of previous value.
+
+---
+
+### Bulk Price — Percent Increase
+1. Note current price of `TEST001` (e.g. ₹500).
+2. Upload: `sku,price,compareprice,cost_price,mode\nTEST001,10,,,percent_increase`
+3. After job completes, check the product.
+4. **Expected**: price is ₹550 (500 × 1.10, rounded to 2dp).
+
+### Bulk Price — Percent Decrease
+1. Product price = ₹550.
+2. Upload: `sku,price,compareprice,cost_price,mode\nTEST001,50,,,percent_decrease`
+3. **Expected**: price = ₹275 (550 × 0.50).
+
+### Bulk Price — Floor at ₹1
+1. Product price = ₹2.
+2. Upload: `sku,price,compareprice,cost_price,mode\nTEST001,99,,,percent_decrease`
+3. **Expected**: price = ₹1 (not ₹0.02 — floor is enforced).
+
+### Bulk Price — Set Mode
+1. Upload: `sku,price,compareprice,cost_price,mode\nTEST001,499,699,300,set`
+2. **Expected**: price = ₹499, MRP = ₹699, cost = ₹300.
+3. Upload: `sku,price,compareprice,cost_price,mode\nTEST001,399,,,set` (blank compareprice and cost)
+4. **Expected**: price = ₹399, compareprice = 0 (cleared), cost_price unchanged (COALESCE keeps existing).
+
+---
+
+### Bulk Images — Prepend Mode
+1. Product `TEST001` has 2 existing images: [A.jpg, B.jpg].
+2. Upload CSV: `sku,mode,image_urls\nTEST001,prepend,https://site.com/new-main.jpg`
+3. After job completes, check product images.
+4. **Expected**: images = [new-main.jpg, A.jpg, B.jpg] — new image is first (primary).
+5. Verify product card on storefront shows new-main.jpg.
+
+### Bulk Images — Append Mode
+1. Same product with images [A.jpg, B.jpg].
+2. Upload: `sku,mode,image_urls\nTEST001,append,https://site.com/extra.jpg`
+3. **Expected**: images = [A.jpg, B.jpg, extra.jpg] — existing primary (A.jpg) is unchanged.
+
+### Bulk Images — ZIP Upload Fix
+1. Go to Bulk Images, select a ZIP file in addition to a CSV.
+2. Submit.
+3. **Expected**: job processes and ZIP images appear on products (previously ZIP was silently ignored due to field name mismatch — now fixed).
+
+---
+
+### CSV Preview Modal — All Bulk Pages
+1. Go to any bulk page (stock, price, status, category, images, coupon bulk-create).
+2. Select a CSV file.
+3. **Expected**: a purple "Preview & Edit CSV" button appears below the file selector.
+4. Click it — modal opens showing all rows in a table.
+5. Click any cell → it becomes an editable input. Edit the value.
+6. Press Tab → moves to next cell.
+7. Press Enter or click outside → commits the edit.
+8. Click "Delete Row" on any row → row is removed.
+9. Click "Add Row" → blank row appended.
+10. Click the confirm button (e.g. "Update Stock — Submit Rows").
+11. **Expected**: job is queued with the edited CSV content (not the original file).
+
+---
+
+### Export Products CSV
+1. Go to `Admin → Products`.
+2. **Expected**: an "Export CSV" button appears in the top-right header next to "Add Product".
+3. Click it.
+4. **Expected**: a CSV file named `products_<timestamp>.csv` downloads.
+5. Open the file — verify it has 53 columns matching the bulk import template.
+6. Verify `images` column contains pipe-separated URLs.
+7. Verify `specifications` and `faqs` columns contain valid JSON strings.
+8. Verify `safety_tags` column contains pipe-separated values.
+9. Re-import the exported CSV via Bulk Import — **Expected**: no errors for valid rows.
+
+```bash
+# API test
+curl "http://localhost:5000/api/admin/export/products?status=active" \
+  -H "Cookie: token=<admin_token>" -o products.csv
+head -1 products.csv
+# Expected: name,slug,price,compareprice,inventory,sku,...
+```
+
+---
+
+### Bulk Coupon Creation
+1. Go to `Admin → Coupons → Bulk Create`.
+2. **Expected**: page loads with yellow/amber theme, type reference cards (flat/percent), upload area, and "Download CSV Template" button.
+3. Click "Download CSV Template" — CSV downloads with 3 example rows.
+4. Create a test CSV: `code,type,value,min_order,max_discount,usage_limit,usage_per_user,valid_from,valid_to,description,is_active\nTEST50,flat,50,300,0,10,1,,,Test coupon,true`
+5. Upload it and click "Create Coupons from CSV".
+6. **Expected**: job queued, progress tracker appears.
+7. After job completes, go to `Admin → Coupons`.
+8. **Expected**: `TEST50` coupon exists with correct values. Code is uppercase.
+
+### Bulk Coupon — Duplicate Code
+1. Upload same CSV again (TEST50 already exists).
+2. After job completes, check the failed list in the job result.
+3. **Expected**: row shows "Duplicate code — already exists" error for TEST50. No crash.
+
+### Bulk Coupon — Validation
+1. Upload: `code,type,value\n,flat,50` (blank code)
+2. **Expected**: row fails with "code missing".
+3. Upload: `code,type,value\nBAD01,percent,150`
+4. **Expected**: row fails with "percent value cannot exceed 100".
+5. Upload: `code,type,value\nBAD02,discount,10` (invalid type)
+6. **Expected**: row fails with "type must be flat or percent".
+
+```bash
+curl -X POST http://localhost:5000/api/admin/coupons/bulk-create \
+  -H "Cookie: token=<admin_token>" \
+  -F "file=@test-coupons.csv"
+# Expected: { success: true, data: { jobId: N, status: 'pending' } }
+
+curl http://localhost:5000/api/admin/coupons/bulk-template \
+  -H "Cookie: token=<admin_token>" -o template.csv
+# Expected: CSV with 3 example rows downloads
+```

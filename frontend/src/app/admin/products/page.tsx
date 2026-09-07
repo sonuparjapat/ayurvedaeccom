@@ -12,6 +12,7 @@ import {
   Trash2,
   X,
   Loader2,
+  Download,
 } from 'lucide-react'
 import AdminPagination from '@/components/admin/AdminPagination'
 
@@ -107,6 +108,24 @@ useEffect(() => {
   const totalPages = Math.ceil(total / limit)
 
 
+  /* ================= EXPORT ================= */
+
+  const exportProducts = async () => {
+    try {
+      const res = await axios.get('/admin/export/products', { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `products_${Date.now()}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
+      toast.success('Products exported successfully')
+    } catch {
+      toast.error('Export failed')
+    }
+  }
+
+
   /* ================= UI ================= */
 
   return (
@@ -131,19 +150,29 @@ useEffect(() => {
         </div>
 
 
-        <button
-          onClick={() => {
-            setCurrentItem(null)
-            setFormMode('create')
-            setShowForm(true)
-          }}
-          className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
-        >
+        <div className="flex items-center gap-2">
 
-          <Plus size={18} />
-          Add Product
+          <button
+            onClick={exportProducts}
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium"
+          >
+            <Download size={16} />
+            Export CSV
+          </button>
 
-        </button>
+          <button
+            onClick={() => {
+              setCurrentItem(null)
+              setFormMode('create')
+              setShowForm(true)
+            }}
+            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
+          >
+            <Plus size={18} />
+            Add Product
+          </button>
+
+        </div>
 
       </div>
 

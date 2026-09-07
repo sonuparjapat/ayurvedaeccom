@@ -28,6 +28,7 @@ interface ParsedRow {
   state: string
   delivery_days: string
   is_active: string
+  cod_available: string
   _valid: boolean
   _errors: string[]
   _rowNum: number
@@ -43,12 +44,12 @@ const EMPTY: Omit<Pincode, 'id' | 'created_at'> = {
   pincode: '', city: '', state: '', delivery_days: 3, is_active: true, cod_available: true,
 }
 
-const CSV_TEMPLATE = `pincode,city,state,delivery_days,is_active
-400001,Mumbai,Maharashtra,3,true
-560001,Bengaluru,Karnataka,4,true
-110001,New Delhi,Delhi,2,true
-700001,Kolkata,West Bengal,5,true
-600001,Chennai,Tamil Nadu,4,false`
+const CSV_TEMPLATE = `pincode,city,state,delivery_days,is_active,cod_available
+400001,Mumbai,Maharashtra,3,true,true
+560001,Bengaluru,Karnataka,4,true,true
+110001,New Delhi,Delhi,2,true,true
+700001,Kolkata,West Bengal,5,true,false
+600001,Chennai,Tamil Nadu,4,false,true`
 
 function parseAndValidateCsv(text: string): ParsedRow[] {
   const lines = text.trim().split(/\r?\n/)
@@ -61,14 +62,16 @@ function parseAndValidateCsv(text: string): ParsedRow[] {
   const iState = idxOf('state')
   const iDays = idxOf('delivery_days')
   const iActive = idxOf('is_active')
+  const iCod = idxOf('cod_available')
 
   return lines.slice(1).filter(l => l.trim()).map((line, idx) => {
     const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''))
-    const pincode   = iPin >= 0    ? (cols[iPin]    || '') : ''
-    const city      = iCity >= 0   ? (cols[iCity]   || '') : ''
-    const state     = iState >= 0  ? (cols[iState]  || '') : ''
-    const daysRaw   = iDays >= 0   ? (cols[iDays]   || '3') : '3'
-    const activeRaw = iActive >= 0 ? (cols[iActive] || 'true') : 'true'
+    const pincode    = iPin >= 0    ? (cols[iPin]    || '') : ''
+    const city       = iCity >= 0   ? (cols[iCity]   || '') : ''
+    const state      = iState >= 0  ? (cols[iState]  || '') : ''
+    const daysRaw    = iDays >= 0   ? (cols[iDays]   || '3') : '3'
+    const activeRaw  = iActive >= 0 ? (cols[iActive] || 'true') : 'true'
+    const codRaw     = iCod >= 0    ? (cols[iCod]    || 'true') : 'true'
 
     const errors: string[] = []
     if (!/^\d{6}$/.test(pincode)) errors.push('Pincode must be exactly 6 digits')
@@ -77,11 +80,14 @@ function parseAndValidateCsv(text: string): ParsedRow[] {
     if (isNaN(days) || days < 1 || days > 30) errors.push(`delivery_days must be 1–30 (got "${daysRaw}")`)
     const al = activeRaw.toLowerCase()
     if (!['true','false','1','0','yes','no',''].includes(al)) errors.push(`is_active must be true/false/yes/no (got "${activeRaw}")`)
+    const cl = codRaw.toLowerCase()
+    if (!['true','false','1','0','yes','no',''].includes(cl)) errors.push(`cod_available must be true/false/yes/no (got "${codRaw}")`)
 
     return {
       pincode, city, state,
       delivery_days: daysRaw,
       is_active: activeRaw,
+      cod_available: codRaw,
       _valid: errors.length === 0,
       _errors: errors,
       _rowNum: idx + 2,
@@ -239,6 +245,7 @@ export default function AdminPincodesPage() {
         state: r.state,
         delivery_days: parseInt(r.delivery_days) || 3,
         is_active: !['false','0','no'].includes(r.is_active.toLowerCase()),
+        cod_available: !['false','0','no'].includes(r.cod_available.toLowerCase()),
       }))
       const res = await axios.post('/admin/pincodes/bulk', { rows: payload })
       setBulkResult(res.data)

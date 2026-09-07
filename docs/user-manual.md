@@ -964,3 +964,122 @@ Access your bookmarked articles from **Account → Saved Articles** (🔖). The 
 - "Why Oroganix" cards now show a colored accent top border per card.
 - Each card has a soft color-matched glow behind the icon.
 - Card titles use the card's accent color for a vibrant look.
+
+---
+
+## Admin — Bulk Upload Improvements (2026-09-07)
+
+### Primary Image — Which Image Appears on Product Cards?
+
+The **first image** in a product's image list is always the **primary / card image** — the one shown on product listing cards, search results, and the cart. This applies everywhere on the site and mobile app.
+
+**In the product edit form**: drag images to reorder them. Whatever is first in the list is the card image. A green **MAIN** badge label above the image grid shows this reminder.
+
+**In bulk image upload CSV**:
+- The first URL in the `image_urls` column (pipe-separated) becomes the primary image.
+- In a ZIP upload: name files as `SKU-1.jpg` (primary), `SKU-2.jpg`, `SKU-3.jpg` — the number controls the order.
+
+---
+
+### Bulk Stock Update — Add / Subtract Modes
+
+The Bulk Stock Update page (`Admin → Products → Bulk Stock`) now supports three modes in the `mode` column of your CSV:
+
+| Mode | What it does | Example use |
+|---|---|---|
+| `set` | Overwrites stock with the exact number you enter | Full stock-take reset |
+| `add` | Adds your number to the existing stock | Received a delivery of 50 units |
+| `subtract` | Deducts your number from existing stock — never goes below 0 | Removing damaged units |
+
+**Example CSV**:
+```
+sku,inventory,mode
+APL001,150,set
+NK101,50,add
+PUMA55,10,subtract
+```
+
+If the `mode` column is missing, every row defaults to `set`.
+
+---
+
+### Bulk Price Update — Percentage Modes
+
+The Bulk Price Update page (`Admin → Products → Bulk Price`) now supports three modes:
+
+| Mode | What it does |
+|---|---|
+| `set` | Set exact prices — fill price, compareprice, cost_price columns with ₹ values |
+| `percent_increase` | Raise all prices by X% — put the percentage (e.g. 10) in the price column |
+| `percent_decrease` | Lower all prices by X% — put the percentage in the price column |
+
+In percent modes, the selling price, MRP, and cost price are all adjusted by the same percentage automatically. The selling price will never be reduced below ₹1.
+
+**Example CSV** (mix of modes in one upload):
+```
+sku,price,compareprice,cost_price,mode
+APL001,499,699,300,set
+NK101,10,,,percent_increase
+PUMA55,15,,,percent_decrease
+```
+
+---
+
+### Bulk Image Upload — Prepend Mode
+
+The Bulk Images page now supports a third mode: `prepend`.
+
+| Mode | What it does |
+|---|---|
+| `replace` | Removes all existing images and uses only the new ones |
+| `append` | Adds new images after existing ones (existing primary stays first) |
+| `prepend` | Adds new images **before** existing ones — they become the new primary/card image |
+
+Use `prepend` when you have a better main photo and want to set it as primary without losing existing images.
+
+---
+
+### CSV Preview & Edit — All Bulk Pages
+
+Every bulk upload page now has a **"Preview & Edit CSV"** button that appears after you select a CSV file. Click it to:
+- See all rows in a table before submitting
+- Click any cell to edit it directly
+- Add or delete rows
+- Submit the edited version
+
+This lets you catch and fix mistakes before the job is queued.
+
+---
+
+### Export All Products to CSV
+
+From `Admin → Products`, click the **"Export CSV"** button next to "Add Product" to download all your products as a CSV. The exported file uses the same column format as the bulk import template — so you can edit the export and re-upload it via bulk import.
+
+**Optional filters via URL**: append `?status=active` or `?category_id=5` to download only a subset of products.
+
+---
+
+### Bulk Coupon Creation
+
+Go to `Admin → Coupons → Bulk Create` to create multiple discount coupons at once from a CSV file.
+
+**CSV columns**:
+
+| Column | Required | Description |
+|---|---|---|
+| `code` | Yes | Unique coupon code (auto-uppercased) |
+| `type` | Yes | `flat` (fixed ₹ amount) or `percent` (percentage) |
+| `value` | Yes | Discount amount — for percent, must be 1–100 |
+| `min_order` | No | Minimum cart total to use the coupon (₹). Default 0 = no minimum |
+| `max_discount` | No | Max discount cap in ₹ for percent coupons. Default 0 = no cap |
+| `usage_limit` | No | Total uses allowed across all users. 0 = unlimited |
+| `usage_per_user` | No | How many times one user can use it. Default 1 |
+| `valid_from` | No | Start date in YYYY-MM-DD format |
+| `valid_to` | No | Expiry date in YYYY-MM-DD format |
+| `description` | No | Internal label (not shown to customers) |
+| `is_active` | No | `true` or `false`. Default `true` |
+
+**Rules**:
+- Duplicate codes are skipped — existing coupons are never overwritten.
+- The job runs in the background — track progress on the Jobs page.
+- Download the CSV template from the page for a ready-to-fill example.

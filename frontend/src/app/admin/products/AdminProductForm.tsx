@@ -936,13 +936,18 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
 
         {form.images.length > 0 && (
-          <SortableImageGrid
-            images={form.images}
-            disabled={!!isView}
-            onReorder={(next: any[]) => setForm({ ...form, images: next })}
-            onRemove={(i: number) => setForm({ ...form, images: form.images.filter((_: any, idx: number) => idx !== i) })}
-          />
-
+          <>
+            <p style={{ fontSize: 11.5, color: '#6b7280', margin: '8px 0 2px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ background: '#059669', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: 3, padding: '1px 5px' }}>MAIN</span>
+              First image is the card / primary image shown on listings and search. Drag to reorder.
+            </p>
+            <SortableImageGrid
+              images={form.images}
+              disabled={!!isView}
+              onReorder={(next: any[]) => setForm({ ...form, images: next })}
+              onRemove={(i: number) => setForm({ ...form, images: form.images.filter((_: any, idx: number) => idx !== i) })}
+            />
+          </>
         )}
 
       </Section>

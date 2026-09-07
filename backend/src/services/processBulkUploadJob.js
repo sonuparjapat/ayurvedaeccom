@@ -238,8 +238,8 @@ if (cess_percent !== '') {
   }
 }
 
-if (hsn_code && hsn_code.length > 30) {
-  rowErrors.push('Invalid hsn_code')
+if (hsn_code && !/^\d{2,8}$/.test(hsn_code)) {
+  rowErrors.push('Invalid hsn_code — must be 2–8 digits only')
 }
 
 // Optional dimension fields — validate if present
