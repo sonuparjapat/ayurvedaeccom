@@ -280,7 +280,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
         if (k === 'images') {
 
-          v.forEach((f: any) => {
+          (v as any[]).forEach((f: any) => {
 
             if (typeof f === 'string') {
 

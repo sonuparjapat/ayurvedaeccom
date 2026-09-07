@@ -269,7 +269,7 @@ export default function TrackingPage() {
 
       {/* Shipment Events Modal */}
       <AppModal open={detailOpen} onClose={() => setDetailOpen(false)}
-        title={`Tracking Events — Order #${selectedOrder?.id}`} size="lg">
+        title={`Tracking Events — Order #${selectedOrder?.id}`} width="max-w-4xl">
         <div className="space-y-4">
           {shipment && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">

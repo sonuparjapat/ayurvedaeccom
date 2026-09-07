@@ -53,7 +53,7 @@ export default function AdminCoupons() {
   const [userResults, setUserResults] = useState<UserResult[]>([])
   const [userSearching, setUserSearching] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserResult | null>(null)
-  const userDebounce = useRef<ReturnType<typeof setTimeout>>()
+  const userDebounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
