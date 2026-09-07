@@ -8,6 +8,7 @@ import {
   Search, Send, Tag, Megaphone, ChevronDown, ChevronUp, Eye, X,
 } from 'lucide-react'
 import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 type CampaignType = 'custom' | 'coupon'
 
@@ -370,15 +371,7 @@ export default function AdminNewsletterPage() {
           </tbody>
         </table>
 
-        {total > 30 && (
-          <div className="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-500">
-            <span>Page {page} of {Math.ceil(total / 30)}</span>
-            <div className="flex gap-2">
-              <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 rounded-lg border hover:bg-gray-50 disabled:opacity-40">Prev</button>
-              <button disabled={page * 30 >= total} onClick={() => setPage(p => p + 1)} className="px-3 py-1 rounded-lg border hover:bg-gray-50 disabled:opacity-40">Next</button>
-            </div>
-          </div>
-        )}
+        <AdminPagination page={page} pages={Math.ceil(total / 30)} total={total} limit={30} onChange={setPage} />
       </div>
     </div>
   )

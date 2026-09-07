@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import AppModal from '@/components/modal/AppModal'
 import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 interface Brand {
   id: number
@@ -199,15 +200,7 @@ export default function AdminBrandsPage() {
           </tbody>
         </table>
 
-        {total > 20 && (
-          <div className="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-500">
-            <span>Page {page} of {Math.ceil(total / 20)}</span>
-            <div className="flex gap-2">
-              <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 rounded-lg border hover:bg-gray-50 disabled:opacity-40">Prev</button>
-              <button disabled={page * 20 >= total} onClick={() => setPage(p => p + 1)} className="px-3 py-1 rounded-lg border hover:bg-gray-50 disabled:opacity-40">Next</button>
-            </div>
-          </div>
-        )}
+        <AdminPagination page={page} pages={Math.ceil(total / 20)} total={total} limit={20} onChange={setPage} />
       </div>
 
       {/* Modal */}

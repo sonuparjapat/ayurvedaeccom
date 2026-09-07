@@ -5,6 +5,7 @@ import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Star, Check, X, Trash2, Filter, MessageSquare, Send, ChevronDown, ChevronUp } from 'lucide-react'
 import { PageInfoBanner, FieldInfo } from '@/components/admin/FieldInfo'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<any[]>([])
@@ -227,13 +228,7 @@ export default function AdminReviewsPage() {
         </div>
       )}
 
-      {total > limit && (
-        <div className="flex justify-center gap-3">
-          <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-4 py-2 border rounded-lg disabled:opacity-50">Previous</button>
-          <span className="px-4 py-2 text-sm">Page {page} of {Math.ceil(total / limit)}</span>
-          <button disabled={page >= Math.ceil(total / limit)} onClick={() => setPage(p => p + 1)} className="px-4 py-2 border rounded-lg disabled:opacity-50">Next</button>
-        </div>
-      )}
+      <AdminPagination page={page} pages={Math.ceil(total / limit)} total={total} limit={limit} onChange={setPage} />
     </div>
   )
 }

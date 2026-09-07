@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import { Trophy, Search, Filter } from 'lucide-react'
 import { PageInfoBanner } from '@/components/admin/FieldInfo'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 type RewardLog = {
   id: number; user_id: number; user_name: string; user_email: string
@@ -144,17 +145,7 @@ export default function RewardLogsPage() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-400">Page {page} of {totalPages}</p>
-            <div className="flex gap-2">
-              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1.5 rounded-lg text-xs border border-gray-200 disabled:opacity-40 hover:bg-gray-50">Prev</button>
-              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1.5 rounded-lg text-xs border border-gray-200 disabled:opacity-40 hover:bg-gray-50">Next</button>
-            </div>
-          </div>
-        )}
+        <AdminPagination page={page} pages={totalPages} total={total} limit={limit} onChange={setPage} />
       </div>
     </div>
   )

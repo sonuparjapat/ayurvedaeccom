@@ -8,6 +8,7 @@ import {
   Pause, RefreshCw, Search,
 } from 'lucide-react'
 import { PageInfoBanner } from '@/components/admin/FieldInfo'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string; Icon: any }> = {
   active: { label: 'Active', color: 'text-green-700', bg: 'bg-green-50', Icon: CheckCircle },
@@ -157,15 +158,7 @@ export default function AdminSubscriptionsPage() {
           </tbody>
         </table>
 
-        {total > 20 && (
-          <div className="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-500">
-            <span>Page {page}</span>
-            <div className="flex gap-2">
-              <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 rounded-lg border hover:bg-gray-50 disabled:opacity-40">Prev</button>
-              <button disabled={page * 20 >= total} onClick={() => setPage(p => p + 1)} className="px-3 py-1 rounded-lg border hover:bg-gray-50 disabled:opacity-40">Next</button>
-            </div>
-          </div>
-        )}
+        <AdminPagination page={page} pages={Math.ceil(total / 20)} total={total} limit={20} onChange={setPage} />
       </div>
     </div>
   )

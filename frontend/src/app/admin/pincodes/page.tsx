@@ -9,6 +9,7 @@ import {
   FileSpreadsheet, AlertTriangle, ChevronRight, X,
 } from 'lucide-react'
 import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 interface Pincode {
   id: number
@@ -412,15 +413,7 @@ export default function AdminPincodesPage() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 pt-2">
-          <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition">Previous</button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, page - 3), page + 2).map(pg => (
-            <button key={pg} onClick={() => setPage(pg)} className={`w-9 h-9 rounded-lg text-sm font-medium transition ${pg === page ? 'bg-emerald-600 text-white shadow-sm' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{pg}</button>
-          ))}
-          <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)} className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition">Next</button>
-        </div>
-      )}
+      <AdminPagination page={page} pages={totalPages} total={total} limit={limit} onChange={setPage} />
 
       {/* ═══ MODAL ═══ */}
       {showModal && (

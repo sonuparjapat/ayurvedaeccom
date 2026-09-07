@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import AppModal from '@/components/modal/AppModal'
 import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 const COURIERS = [
   'Delhivery', 'BlueDart', 'DTDC', 'Shadowfax', 'Ecom Express',
@@ -269,15 +270,7 @@ export default function TrackingPage() {
         )}
 
         {/* Pagination */}
-        {meta.pages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50 text-sm">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-white">← Prev</button>
-            <span className="text-gray-500">Page {page} of {meta.pages}</span>
-            <button onClick={() => setPage(p => Math.min(meta.pages, p + 1))} disabled={page === meta.pages}
-              className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-white">Next →</button>
-          </div>
-        )}
+        <AdminPagination page={page} pages={meta.pages || 1} total={meta.total || 0} limit={20} onChange={setPage} />
       </div>
 
       {/* Shipment Events Modal */}

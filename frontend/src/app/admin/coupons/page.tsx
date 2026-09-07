@@ -7,6 +7,7 @@ import AppModal from '@/components/modal/AppModal'
 import DynamicTable from '@/components/table/table'
 import { Loader2, Plus, Search, User, X } from 'lucide-react'
 import { LabelWithInfo, PageInfoBanner } from '@/components/admin/FieldInfo'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 interface Coupon {
   id: number
@@ -282,13 +283,7 @@ export default function AdminCoupons() {
         </div>
 
         {/* PAGINATION */}
-        {totalPages > 1 && (
-          <div className="flex flex-wrap justify-center items-center gap-4">
-            <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-4 py-2 rounded-lg border border-slate-700 text-slate-400 hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-30">← Prev</button>
-            <span className="text-sm text-slate-400">Page {page} of {totalPages}</span>
-            <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)} className="px-4 py-2 rounded-lg border border-slate-700 text-slate-400 hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-30">Next →</button>
-          </div>
-        )}
+        <AdminPagination page={page} pages={totalPages} total={total} limit={limit} onChange={setPage} />
 
         {/* MODAL */}
         <AppModal

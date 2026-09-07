@@ -13,6 +13,7 @@ import {
   X,
   Loader2,
 } from 'lucide-react'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 import AdminProductForm from './AdminProductForm'
 
@@ -420,51 +421,7 @@ useEffect(() => {
 
 
       {/* PAGINATION */}
-
-      {totalPages > 1 && (
-
-        <div className="flex justify-center gap-1">
-
-          <button
-            disabled={page === 1}
-            onClick={() => setPage(p => p - 1)}
-            className="px-3 py-1 border rounded disabled:opacity-40"
-          >
-            Prev
-          </button>
-
-
-          {Array.from({ length: totalPages }).map((_, i) => (
-
-            <button
-              key={i}
-              onClick={() => setPage(i + 1)}
-              className={`
-                px-3 py-1 rounded border text-sm
-                ${
-                  page === i + 1
-                    ? 'bg-emerald-600 text-white'
-                    : 'hover:bg-gray-100'
-                }
-              `}
-            >
-              {i + 1}
-            </button>
-
-          ))}
-
-
-          <button
-            disabled={page === totalPages}
-            onClick={() => setPage(p => p + 1)}
-            className="px-3 py-1 border rounded disabled:opacity-40"
-          >
-            Next
-          </button>
-
-        </div>
-
-      )}
+      <AdminPagination page={page} pages={totalPages} total={total} limit={limit} onChange={setPage} />
 
 
       {/* FORM MODAL */}

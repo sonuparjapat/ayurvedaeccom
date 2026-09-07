@@ -8,6 +8,7 @@ import {
   User, Search, RefreshCw, Eye, Truck,
 } from 'lucide-react'
 import { PageInfoBanner, FieldInfo } from '@/components/admin/FieldInfo'
+import AdminPagination from '@/components/admin/AdminPagination'
 import { Button } from '@/components/ui/button'
 import AppModal from '@/components/modal/AppModal'
 
@@ -253,15 +254,7 @@ export default function AdminReturnsPage() {
           </table>
         </div>
 
-        {meta.total > 20 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-sm text-gray-500">Showing {filtered.length} of {meta.total}</span>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Prev</Button>
-              <Button size="sm" variant="outline" disabled={page * 20 >= meta.total} onClick={() => setPage(p => p + 1)}>Next</Button>
-            </div>
-          </div>
-        )}
+        <AdminPagination page={page} pages={Math.ceil((meta.total || 0) / 20)} total={meta.total || 0} limit={20} onChange={setPage} />
       </div>
 
       {/* View / Process Modal */}

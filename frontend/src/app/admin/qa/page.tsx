@@ -5,6 +5,7 @@ import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { MessageSquare, Check, X, Trash2, Send, HelpCircle, Clock, Package, MessageCircle } from 'lucide-react'
 import { PageInfoBanner } from '@/components/admin/FieldInfo'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 export default function AdminQAPage() {
   const [questions, setQuestions] = useState<any[]>([])
@@ -267,27 +268,7 @@ export default function AdminQAPage() {
       )}
 
       {/* Pagination */}
-      {total > limit && (
-        <div className="flex justify-center items-center gap-3 pt-2">
-          <button
-            disabled={page === 1}
-            onClick={() => setPage(p => p - 1)}
-            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            Previous
-          </button>
-          <span className="px-4 py-2 text-sm text-gray-500 font-medium">
-            Page {page} of {Math.ceil(total / limit)}
-          </span>
-          <button
-            disabled={page >= Math.ceil(total / limit)}
-            onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            Next
-          </button>
-        </div>
-      )}
+      <AdminPagination page={page} pages={Math.ceil(total / limit)} total={total} limit={limit} onChange={setPage} />
     </div>
   )
 }

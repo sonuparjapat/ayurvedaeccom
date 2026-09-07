@@ -8,6 +8,7 @@ import {
   Wallet, Star, ChevronLeft, ChevronRight, Eye, X,
   Users, ShoppingBag, Calendar, AlertCircle,
 } from 'lucide-react'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 /* ─── types ─── */
 interface PriceLog {
@@ -428,36 +429,7 @@ export default function PriceLogsPage() {
       </div>
 
       {/* ── Pagination ── */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2">
-          <button
-            disabled={page === 1}
-            onClick={() => setPage(p => p - 1)}
-            className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            <ChevronLeft size={15} />
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .slice(Math.max(0, page - 3), page + 2)
-            .map(pg => (
-              <button
-                key={pg}
-                onClick={() => setPage(pg)}
-                className={`w-9 h-9 rounded-lg text-sm font-medium transition ${pg === page ? 'bg-slate-700 text-white shadow-sm' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-              >
-                {pg}
-              </button>
-            ))}
-          <button
-            disabled={page === totalPages}
-            onClick={() => setPage(p => p + 1)}
-            className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            <ChevronRight size={15} />
-          </button>
-          <span className="text-sm text-gray-400 ml-2">{total} total</span>
-        </div>
-      )}
+      <AdminPagination page={page} pages={totalPages} total={total} limit={limit} onChange={setPage} />
 
       {/* ── Detail modal ── */}
       {selected && <LogDetailModal log={selected} onClose={() => setSelected(null)} />}

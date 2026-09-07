@@ -9,6 +9,7 @@ import {
   Download, UploadCloud, CheckCircle2, AlertTriangle,
   ExternalLink,
 } from 'lucide-react'
+import AdminPagination from '@/components/admin/AdminPagination'
 
 /* ── Types ── */
 interface HsnCode { id: number; hsn_code: string; description: string; created_at: string }
@@ -476,43 +477,13 @@ export default function HsnCodesPage() {
         )}
 
         {/* PAGINATION */}
-        {pages > 1 && (
-          <div className="px-4 py-3 border-t flex items-center justify-between gap-2">
-            <p className="text-xs text-gray-500">
-              Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
-            </p>
-            <div className="flex gap-1">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1 border rounded text-xs disabled:opacity-40 hover:bg-gray-50"
-              >← Prev</button>
-
-              {Array.from({ length: Math.min(pages, 7) }, (_, i) => {
-                // Show pages around current
-                const half = 3
-                let start = Math.max(1, page - half)
-                const end = Math.min(pages, start + 6)
-                start = Math.max(1, end - 6)
-                const p = start + i
-                if (p > pages) return null
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`px-3 py-1 border rounded text-xs ${p === page ? 'bg-emerald-600 text-white border-emerald-600' : 'hover:bg-gray-50'}`}
-                  >{p}</button>
-                )
-              })}
-
-              <button
-                disabled={page >= pages}
-                onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1 border rounded text-xs disabled:opacity-40 hover:bg-gray-50"
-              >Next →</button>
-            </div>
-          </div>
-        )}
+        <AdminPagination
+          page={page}
+          pages={pages}
+          total={total}
+          limit={limit}
+          onChange={setPage}
+        />
       </div>
 
       {/* ═══════════ MODALS ═══════════ */}
