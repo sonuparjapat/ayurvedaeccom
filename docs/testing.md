@@ -2,6 +2,41 @@
 
 ---
 
+## Admin Field Info System — Verification (2026-09-07)
+
+### PageInfoBanner
+1. Open any admin page (e.g., `/admin/products`, `/admin/coupons`, `/admin/categories`).
+2. **Expected**: a green collapsible banner appears at the very top, collapsed by default, with a "Show guide ▼" button.
+3. Click "Show guide ▼" — **Expected**: banner expands showing description and ✓ tip list.
+4. Click "Hide ▲" — **Expected**: banner collapses again.
+
+### FieldInfo popover
+1. On any admin form page, open the create/edit modal or form.
+2. **Expected**: every field label has a small green ℹ️ circle button (16px) next to it.
+3. Click the ℹ️ button on any field.
+4. **Expected**: a popover opens above the button with sections: field name header (green), What, Why it matters, Example (green box), and optionally Warning (yellow box).
+5. Click anywhere outside the popover.
+6. **Expected**: popover closes.
+7. Click a different field's ℹ️ while one popover is already open.
+8. **Expected**: first popover closes, second one opens (or both can be open — component is per-instance).
+
+### TypeScript
+```bash
+cd frontend && npx tsc --noEmit
+# Expected: 0 new errors from admin pages
+# 6 pre-existing errors in EditUserForm, UserTable, auth-context, categories-section, product page are unrelated
+```
+
+### Pages to spot-check
+- `/admin/categories` — Name, Slug, Sort Order, GST%, HSN Code fields
+- `/admin/coupons` — Code, Type, Discount Value, Min Order Amount fields
+- `/admin/products` (create) — Name, SKU, Selling Price, Stock Quantity fields
+- `/admin/banners` — Tag, Sort Order, CTA Text fields
+- `/admin/users` — Full Name, Email, Phone fields
+- `/admin/flash-sales` — Title, Discount Type, Starts At fields
+
+---
+
 ## Phase 3 Bug-Fix Verification (2026-07-29)
 
 ### Security: SQL injection — company settings update

@@ -4,13 +4,12 @@ import { useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Download, FolderTree } from 'lucide-react'
-import downloadFailedCsv from '@/app/utils/downloadFailedCsv'
 import {
   AdminInfoPanel,
   BulkPageHeader,
   BulkUploadBox,
   BulkSubmitButton,
-  BulkSummaryStats,
+  BulkJobStatus,
 } from '@/components/admin/BulkUi'
 
 const INFO = {
@@ -35,19 +34,25 @@ const INFO = {
 export default function BulkCategoryPage() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-  const [report, setReport] = useState<any>(null)
+  const [jobId, setJobId] = useState<number | null>(null)
 
   const submit = async () => {
-    if (!file) return toast.error('Please upload a CSV file first')
+    if (!file) return toast.error('Please select a CSV file first')
     try {
       setLoading(true)
+      setJobId(null)
       const form = new FormData()
       form.append('file', file)
       const res = await axios.post('/admin/products/bulk-category', form)
-      setReport(res.data)
-      toast.success(res?.data?.message || 'Category updated with tax sync')
+      const id = res.data?.data?.jobId
+      if (id) {
+        setJobId(id)
+        toast.success('CSV uploaded — tracking progress below…')
+      } else {
+        toast.error('Upload succeeded but no job ID returned')
+      }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Update failed')
+      toast.error(err?.response?.data?.message || 'Upload failed — check your file and try again')
     } finally {
       setLoading(false)
     }
@@ -115,24 +120,7 @@ export default function BulkCategoryPage() {
 
       <BulkSubmitButton loading={loading} text="Update Categories" onClick={submit} />
 
-      {report && (
-        <div style={{ marginTop: 20 }}>
-          <BulkSummaryStats report={report} />
-          {report?.failed?.length > 0 && (
-            <div style={{ marginTop: 14, background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: 14, padding: '14px 18px' }}>
-              <p style={{ fontSize: 13, color: '#991b1b', fontWeight: 700, marginBottom: 10 }}>
-                {report.failed.length} rows failed — download to review errors
-              </p>
-              <button
-                onClick={() => downloadFailedCsv(report.failed, 'category_failed_rows.csv')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 10, border: '1.5px solid #fca5a5', background: '#fff', color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              >
-                <Download size={14} />Download Failed Rows CSV
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {jobId && <BulkJobStatus jobId={jobId} />}
     </div>
   )
 }

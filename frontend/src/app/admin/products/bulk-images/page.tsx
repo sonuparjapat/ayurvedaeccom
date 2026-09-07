@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
-import { ImageIcon, Upload, FileArchive, FileSpreadsheet, CheckCircle2, Loader2, Download } from 'lucide-react'
-import { AdminInfoPanel } from '@/components/admin/BulkUi'
+import { ImageIcon, Upload, FileArchive, FileSpreadsheet, Loader2, Download } from 'lucide-react'
+import { AdminInfoPanel, BulkJobStatus } from '@/components/admin/BulkUi'
 
 const INFO = {
   title: 'How Bulk Image Upload Works',
@@ -43,20 +42,26 @@ export default function BulkImagesPage() {
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [zipFile, setZipFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-  const [job, setJob] = useState<any>(null)
+  const [jobId, setJobId] = useState<number | null>(null)
 
   const submit = async () => {
-    if (!csvFile) return toast.error('Please upload a CSV file first')
+    if (!csvFile) return toast.error('Please select a CSV file first')
     try {
+      setJobId(null)
+      setLoading(true)
       const form = new FormData()
       form.append('file', csvFile)
       if (zipFile) form.append('zip', zipFile)
-      setLoading(true)
       const res = await axios.post('/admin/products/bulk-images', form)
-      setJob(res?.data?.data || null)
-      toast.success(res?.data?.message || 'Job queued successfully')
+      const id = res.data?.data?.jobId
+      if (id) {
+        setJobId(id)
+        toast.success('Files uploaded — tracking progress below…')
+      } else {
+        toast.error('Upload succeeded but no job ID returned')
+      }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Upload failed')
+      toast.error(err?.response?.data?.message || 'Upload failed — check your files and try again')
     } finally {
       setLoading(false)
     }
@@ -160,33 +165,16 @@ export default function BulkImagesPage() {
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </button>
 
-      {/* Job queued result */}
-      {job && (
-        <div style={{ marginTop: 20, background: '#f0fdf4', border: '1.5px solid #6ee7b7', borderRadius: 18, padding: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#065f46', marginBottom: 16 }}>
-            <CheckCircle2 size={22} />
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Job Queued Successfully</h3>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginBottom: 16 }}>
-            {[
-              { label: 'Job ID', val: `#${job.jobId}` },
-              { label: 'Status', val: job.status },
-            ].map(s => (
-              <div key={s.label} style={{ background: '#fff', borderRadius: 12, padding: '12px 16px', border: '1px solid #bbf7d0' }}>
-                <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px', fontWeight: 600 }}>{s.label}</p>
-                <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0, fontFamily: 'monospace' }}>{s.val}</p>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <Link href="/admin/jobs" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 22px', borderRadius: 10, background: '#059669', color: '#fff', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>
-              Track Job Progress
-            </Link>
-            <button onClick={() => { setJob(null); setCsvFile(null); setZipFile(null) }} style={{ padding: '10px 22px', borderRadius: 10, border: '1.5px solid #6ee7b7', background: '#fff', color: '#065f46', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
-              Upload Another Batch
-            </button>
-          </div>
-        </div>
+      {jobId && (
+        <>
+          <BulkJobStatus jobId={jobId} />
+          <button
+            onClick={() => { setJobId(null); setCsvFile(null); setZipFile(null) }}
+            style={{ marginTop: 12, padding: '10px 22px', borderRadius: 10, border: '1.5px solid #6ee7b7', background: '#fff', color: '#065f46', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Upload Another Batch
+          </button>
+        </>
       )}
     </div>
   )

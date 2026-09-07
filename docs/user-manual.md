@@ -2,6 +2,24 @@
 
 ---
 
+## Admin Panel — Field Info System (2026-09-07)
+
+Every admin page now has two built-in help features:
+
+### Page Info Banner
+A collapsible green banner at the top of each admin page. Click **Show guide ▼** to expand it. It explains what the page does and lists tips specific to that section. It starts collapsed so it doesn't take up space once you're familiar with the page.
+
+### Field Info Buttons (ℹ️)
+Every form field label has a small green ℹ️ circle button next to it. Click it to open a popover showing:
+- **What** — what this field is
+- **Why it matters** — how it affects orders, customers, or the storefront
+- **Example** — a real example value you can copy
+- **Warning** (where relevant) — common mistakes to avoid
+
+The popover closes when you click anywhere outside it. This works on all admin pages: products, categories, coupons, orders, users, banners, settings, and every other section.
+
+---
+
 ## What's Fixed (2026-07-29)
 
 ### Wishlist

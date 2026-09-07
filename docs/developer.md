@@ -2,6 +2,59 @@
 
 ---
 
+## Admin Field Info System (2026-09-07)
+
+### Overview
+All admin pages now use a shared info component system from `frontend/src/components/admin/FieldInfo.tsx`.
+
+### Components
+
+**`FieldInfo`** — clickable ℹ️ circle button that opens a popover
+```tsx
+import { FieldInfo } from '@/components/admin/FieldInfo'
+
+<FieldInfo
+  label="Field Name"        // popover header (optional)
+  what="What this field is"
+  why="Why it matters"
+  example="example value"
+  note="optional warning"   // optional
+/>
+```
+
+**`LabelWithInfo`** — label text + FieldInfo in one inline element
+```tsx
+<LabelWithInfo
+  label="Coupon Code"
+  required={true}           // shows red asterisk
+  what="Unique discount code customers type at checkout"
+  why="Identifies which coupon to apply"
+  example="SUMMER20"
+/>
+```
+
+**`PageInfoBanner`** — collapsible green banner at top of page
+```tsx
+<PageInfoBanner
+  title="Coupon Management"
+  description="Create and manage discount codes..."
+  tips={['Codes are case-insensitive', 'Set expiry dates to prevent stale codes']}
+  defaultOpen={false}  // default — starts collapsed
+/>
+```
+
+### Implementation pattern
+All admin form pages follow this pattern:
+1. Import: `import { PageInfoBanner, FieldInfo, LabelWithInfo } from '@/components/admin/FieldInfo'`
+2. Place `<PageInfoBanner>` as the first child inside the page wrapper div
+3. Replace `<label>Field Name</label>` with `<label><LabelWithInfo label="Field Name" .../></label>`
+4. For standalone info next to a label, use `<FieldInfo ... />` inline
+
+### Pages covered
+Every page under `frontend/src/app/admin/` has been updated. Display-only pages (analytics, reports, logs) have `PageInfoBanner` only; form pages have both banner and per-field `FieldInfo`.
+
+---
+
 ## Bug-Fix Audit — Phase 3 (2026-07-29)
 
 ### Security fixes

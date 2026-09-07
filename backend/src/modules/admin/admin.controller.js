@@ -1236,19 +1236,24 @@ const finalImages = [
 
 
 
-/* DELETE */
+/* DEACTIVATE (soft delete — sets status to inactive) */
 exports.remove = async (req,res)=>{
   try {
-    await pool.query(`
+    const result = await pool.query(`
       UPDATE products
       SET status='inactive'
       WHERE id=$1
+      RETURNING id
     `,[req.params.id])
 
-    res.json({ success:true })
+    if (!result.rowCount) {
+      return res.status(404).json({ success: false, message: 'Product not found' })
+    }
+
+    res.json({ success: true, message: 'Product deactivated — it is now hidden from the storefront' })
   } catch (err) {
-    console.error('[Delete Product]', err)
-    res.status(500).json({ success: false, message: 'Delete failed' })
+    console.error('[Deactivate Product]', err)
+    res.status(500).json({ success: false, message: 'Deactivation failed' })
   }
 }
 

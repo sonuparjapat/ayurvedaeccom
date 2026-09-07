@@ -88,7 +88,7 @@ useEffect(() => {
         { withCredentials: true }
       )
 
-      toast.success('Deleted')
+      toast.success('Product deactivated — it is now hidden from the storefront')
 
       setDeleteItem(null)
 
@@ -495,25 +495,25 @@ useEffect(() => {
 
           <div className="text-center space-y-4">
 
-            <Trash2
-              size={40}
-              className="mx-auto text-red-600"
-            />
+            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+              <Trash2 size={22} className="text-amber-600" />
+            </div>
 
-            <h3 className="text-lg font-bold">
-              Delete Product?
+            <h3 className="text-lg font-bold text-gray-800">
+              Deactivate Product?
             </h3>
 
-            <p className="text-sm text-gray-600">
-              This action cannot be undone
+            <p className="text-sm text-gray-600 max-w-xs mx-auto">
+              <strong>{deleteItem?.name}</strong> will be hidden from the storefront and search results. It will still appear in your admin panel with status <span className="text-amber-600 font-semibold">Inactive</span>.
             </p>
+            <p className="text-xs text-gray-400">You can re-activate it anytime by editing the product and changing its status back to Active.</p>
 
 
             <div className="flex justify-center gap-3 pt-2">
 
               <button
                 onClick={() => setDeleteItem(null)}
-                className="px-4 py-2 border rounded-lg"
+                className="px-4 py-2 border rounded-lg text-sm"
               >
                 Cancel
               </button>
@@ -521,10 +521,9 @@ useEffect(() => {
 
               <button
                 onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg"
+                className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold"
               >
-                Delete
-
+                Yes, Deactivate
               </button>
 
             </div>

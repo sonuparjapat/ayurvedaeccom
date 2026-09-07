@@ -166,7 +166,8 @@ app.use('/api/faq', faqRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/gift-cards', giftCardRoutes);
 app.use('/api/games', gamesRoutes);
-app.use('/api/admin/gst', require('./modules/gst/gst.routes'));
+app.use('/api/admin/gst',      require('./modules/gst/gst.routes'));
+app.use('/api/admin/hsn-codes', require('./modules/hsn/hsn.routes'));
 
 
 /* ================= 404 HANDLER ================= */

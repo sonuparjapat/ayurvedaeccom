@@ -1,7 +1,8 @@
 'use client'
 
-import { ReactNode } from 'react'
-import { UploadCloud, Loader2, Info, AlertTriangle } from 'lucide-react'
+import { ReactNode, useEffect, useRef, useState } from 'react'
+import { UploadCloud, Loader2, Info, AlertTriangle, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import axios from '@/lib/axios'
 
 /* ─────────────────────────────────────────────
    SHARED STYLES (injected once per component)
@@ -202,6 +203,116 @@ export function BulkSummaryStats({ report }: { report: any }) {
           <h3 style={{ fontSize: '2rem', fontWeight: 800, color: s.value > 0 ? s.color : '#374151', margin: 0, lineHeight: 1.1 }}>{s.value}</h3>
         </div>
       ))}
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────
+   BulkJobStatus — live-polls a queued job
+   Show this after submit instead of a raw toast.
+   Props:
+     jobId   – returned from the queue API
+     onDone  – called when job completes (with result data)
+───────────────────────────────────────────── */
+export function BulkJobStatus({ jobId, onDone }: { jobId: number; onDone?: (result: any) => void }) {
+  const [status, setStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending')
+  const [result, setResult] = useState<any>(null)
+  const [errorText, setErrorText] = useState<string | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (!jobId) return
+
+    const poll = async () => {
+      try {
+        const res = await axios.get(`/admin/jobs/${jobId}`)
+        const job = res.data?.data
+        if (!job) return
+        setStatus(job.status)
+        if (job.status === 'completed') {
+          setResult(job.result)
+          onDone?.(job.result)
+          if (timerRef.current) clearInterval(timerRef.current)
+        } else if (job.status === 'failed') {
+          setErrorText(job.error_text || 'Job failed')
+          if (timerRef.current) clearInterval(timerRef.current)
+        }
+      } catch { /* ignore poll errors */ }
+    }
+
+    poll()
+    timerRef.current = setInterval(poll, 3000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [jobId])
+
+  const isRunning = status === 'pending' || status === 'processing'
+
+  const BG = {
+    pending: '#fff7ed',
+    processing: '#f0fdf4',
+    completed: '#f0fdf4',
+    failed: '#fef2f2',
+  }
+  const BORDER = {
+    pending: '#fed7aa',
+    processing: '#6ee7b7',
+    completed: '#6ee7b7',
+    failed: '#fca5a5',
+  }
+
+  return (
+    <div style={{ background: BG[status], border: `1.5px solid ${BORDER[status]}`, borderRadius: 16, padding: '18px 20px', marginTop: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: result?.summary ? 14 : 0 }}>
+        {isRunning && <Loader2 size={20} style={{ color: '#059669', animation: 'spin 1s linear infinite', flexShrink: 0 }} />}
+        {status === 'completed' && <CheckCircle2 size={20} style={{ color: '#059669', flexShrink: 0 }} />}
+        {status === 'failed' && <XCircle size={20} style={{ color: '#dc2626', flexShrink: 0 }} />}
+        <div>
+          <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: status === 'failed' ? '#991b1b' : '#0f172a' }}>
+            {status === 'pending' && 'Your file is in the queue — processing will start shortly…'}
+            {status === 'processing' && 'Processing your CSV file — please wait…'}
+            {status === 'completed' && 'Done! Your CSV has been processed successfully.'}
+            {status === 'failed' && 'Processing failed — see details below.'}
+          </p>
+          {isRunning && (
+            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#6b7280' }}>
+              This page updates automatically every 3 seconds. Job #{jobId}
+            </p>
+          )}
+          {status === 'failed' && errorText && (
+            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#dc2626' }}>{errorText}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Results summary */}
+      {status === 'completed' && result?.summary && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10, marginTop: 14 }}>
+          {[
+            { label: 'Updated', value: result.summary.updated ?? result.summary.imported ?? 0, color: '#059669' },
+            { label: 'Failed rows', value: result.summary.failed ?? 0, color: result.summary.failed > 0 ? '#dc2626' : '#374151' },
+            { label: 'Total rows', value: result.summary.total ?? 0, color: '#374151' },
+          ].map(s => (
+            <div key={s.label} style={{ background: '#fff', borderRadius: 12, padding: '12px 16px', border: '1px solid #e5e7eb' }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</p>
+              <p style={{ fontSize: '1.6rem', fontWeight: 800, color: s.color, margin: 0, lineHeight: 1 }}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Failed rows download */}
+      {status === 'completed' && result?.failed?.length > 0 && (
+        <div style={{ marginTop: 12, padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fca5a5' }}>
+          <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600, color: '#991b1b' }}>
+            {result.failed.length} rows could not be processed — check below for the reason.
+          </p>
+          <p style={{ margin: 0, fontSize: 12, color: '#dc2626' }}>
+            Go to <strong>Logs → Bulk Jobs</strong> to download the failed rows CSV.
+          </p>
+        </div>
+      )}
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
