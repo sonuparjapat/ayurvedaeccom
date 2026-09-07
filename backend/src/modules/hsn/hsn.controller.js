@@ -19,7 +19,30 @@ const ensureTable = async () => {
   `)
 }
 
-/* ─── Validate HSN format: 2–8 digits ─── */
+/* ─── Normalise raw HSN value from CSV (handles "10011090.00" → "10011090") ─── */
+function normaliseHsn(raw) {
+  let s = raw.toString().trim().replace(/,/g, '') // strip commas (1,001 → 1001)
+
+  if (s.includes('.')) {
+    const [intPart, decPart] = s.split('.')
+    if (/^0+$/.test(decPart)) {
+      s = intPart // ".00" / ".000" → strip cleanly
+    } else {
+      // Non-zero decimal → return original so caller can report it
+      return { code: null, raw: s, reason: `"${s}" has a non-zero decimal part — HSN codes must be whole numbers` }
+    }
+  }
+
+  if (!/^\d+$/.test(s))
+    return { code: null, raw: s, reason: `"${s}" contains non-numeric characters` }
+
+  if (s.length < 2 || s.length > 8)
+    return { code: null, raw: s, reason: `"${s}" is ${s.length} digits — HSN codes must be 2–8 digits` }
+
+  return { code: s, raw: s, reason: null }
+}
+
+/* ─── Validate already-normalised HSN ─── */
 const isValidHsn = (code) => /^\d{2,8}$/.test(code)
 
 /* ─── GET / (list with pagination + search) ─── */
@@ -156,84 +179,106 @@ exports.bulkImport = async (req, res) => {
     await new Promise((resolve, reject) => {
       Readable.from(rawCsv)
         .pipe(csv({
-          // Normalize header names: lowercase + underscores, handles "Hsn code", "HSN Code", "hsn_code"
           mapHeaders: ({ header }) =>
             header.trim().toLowerCase().replace(/\s+/g, '_'),
         }))
         .on('data', (row) => {
           rowNum++
-          // Support both "hsn_code" and "hsn code" → already mapped to "hsn_code"
-          const hsnCode    = (row.hsn_code || '').toString().trim()
+          const rawHsn     = (row.hsn_code || '').toString().trim()
           const description = (row.description || '').toString().trim()
 
-          if (!hsnCode && !description) return // skip completely blank rows
+          if (!rawHsn && !description) return // skip blank rows silently
 
-          if (!hsnCode) {
-            parseErrors.push({ row: rowNum, reason: 'Missing "Hsn code" value', data: row })
+          if (!rawHsn) {
+            parseErrors.push({ row: rowNum, hsn_code: '', reason: 'Missing "Hsn code" value' })
             return
           }
-          if (!isValidHsn(hsnCode)) {
-            parseErrors.push({ row: rowNum, hsn_code: hsnCode, reason: `"${hsnCode}" is not valid — HSN codes must be 2–8 digits` })
+
+          // Normalise: strips decimal zeros, validates digits + length
+          const norm = normaliseHsn(rawHsn)
+          if (!norm.code) {
+            parseErrors.push({ row: rowNum, hsn_code: rawHsn, reason: norm.reason })
             return
           }
+
           if (!description) {
-            parseErrors.push({ row: rowNum, hsn_code: hsnCode, reason: 'Missing "Description" value' })
+            parseErrors.push({ row: rowNum, hsn_code: norm.code, reason: 'Missing "Description" value' })
             return
           }
 
-          parsed.push({ hsn_code: hsnCode, description })
+          parsed.push({ hsn_code: norm.code, description, _row: rowNum })
         })
         .on('end', resolve)
         .on('error', reject)
     })
 
-    /* Check required columns exist (at least one valid row or explicit error) */
     if (rowNum === 0) {
       return res.status(400).json({ success: false, message: 'CSV has no data rows. Required columns: "Hsn code" and "Description"' })
     }
 
-    /* Deduplicate within the CSV itself (keep last occurrence) */
-    const dedupMap = new Map()
-    for (const r of parsed) dedupMap.set(r.hsn_code, r)
-    const unique = Array.from(dedupMap.values())
+    /* Deduplicate within CSV: track all duplicate occurrences */
+    const seenRows = new Map() // hsn_code → first row number
+    const dupErrors = []
+    const unique = []
+
+    for (const r of parsed) {
+      if (seenRows.has(r.hsn_code)) {
+        dupErrors.push({
+          row: r._row,
+          hsn_code: r.hsn_code,
+          reason: `Duplicate in CSV — HSN ${r.hsn_code} already appeared at row ${seenRows.get(r.hsn_code)} (last value kept)`,
+        })
+        // Update to keep last occurrence
+        const idx = unique.findIndex(u => u.hsn_code === r.hsn_code)
+        if (idx !== -1) unique[idx] = r
+      } else {
+        seenRows.set(r.hsn_code, r._row)
+        unique.push(r)
+      }
+    }
 
     /* Upsert to DB */
-    let inserted = 0, updated = 0
+    let inserted = 0
+    let updated = 0
+    const processedRows = []
     const dbErrors = []
 
     for (const row of unique) {
       try {
         const existing = await pool.query('SELECT id FROM hsn_codes WHERE hsn_code=$1', [row.hsn_code])
         if (existing.rowCount) {
-          await pool.query(
-            'UPDATE hsn_codes SET description=$1, updated_at=NOW() WHERE hsn_code=$2',
+          const upd = await pool.query(
+            'UPDATE hsn_codes SET description=$1, updated_at=NOW() WHERE hsn_code=$2 RETURNING *',
             [row.description, row.hsn_code]
           )
           updated++
+          processedRows.push({ ...upd.rows[0], action: 'updated' })
         } else {
-          await pool.query(
-            'INSERT INTO hsn_codes (hsn_code, description) VALUES ($1, $2)',
+          const ins = await pool.query(
+            'INSERT INTO hsn_codes (hsn_code, description) VALUES ($1, $2) RETURNING *',
             [row.hsn_code, row.description]
           )
           inserted++
+          processedRows.push({ ...ins.rows[0], action: 'inserted' })
         }
       } catch (e) {
-        dbErrors.push({ hsn_code: row.hsn_code, reason: e.message })
+        dbErrors.push({ row: row._row, hsn_code: row.hsn_code, reason: e.message })
       }
     }
 
-    const allFailed = [...parseErrors, ...dbErrors]
+    const allSkipped = [...parseErrors, ...dupErrors, ...dbErrors]
 
     return res.json({
       success: true,
-      message: `Import done — ${inserted} added, ${updated} updated${allFailed.length ? `, ${allFailed.length} row(s) skipped` : ''}`,
+      message: `Import done — ${inserted} added, ${updated} updated${allSkipped.length ? `, ${allSkipped.length} row(s) skipped` : ''}`,
       summary: {
+        total:    rowNum,
         inserted,
         updated,
-        skipped: allFailed.length,
-        total:   rowNum,
+        skipped:  allSkipped.length,
       },
-      errors: allFailed,
+      processed: processedRows,
+      errors:    allSkipped,
     })
   } catch (err) {
     console.error('[HSN bulkImport]', err)

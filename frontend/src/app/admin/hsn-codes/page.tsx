@@ -35,10 +35,14 @@ export default function HsnCodesPage() {
   const [saving, setSaving]     = useState(false)
 
   /* bulk state */
-  const [csvFile, setCsvFile]   = useState<File | null>(null)
+  const [csvFile, setCsvFile]     = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
+  const [progress, setProgress]   = useState(0)   // 0-100
   const [importResult, setImportResult] = useState<any>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [showErrors, setShowErrors]     = useState(false)
+  const [showProcessed, setShowProcessed] = useState(false)
+  const fileRef      = useRef<HTMLInputElement>(null)
+  const progressRef  = useRef<ReturnType<typeof setInterval> | null>(null)
 
   /* ── load ── */
   const load = useCallback(async (p = page, q = search) => {
@@ -111,16 +115,46 @@ export default function HsnCodesPage() {
     if (!csvFile) return toast.error('Please select a CSV file first')
     setImporting(true)
     setImportResult(null)
+    setProgress(0)
+
+    // After upload completes (upload progress hits 100%), creep toward 95% while server processes
+    const startCreep = () => {
+      if (progressRef.current) clearInterval(progressRef.current)
+      progressRef.current = setInterval(() => {
+        setProgress(p => {
+          if (p >= 95) { clearInterval(progressRef.current!); return p }
+          // Slow down as it approaches 95
+          const step = p < 70 ? 3 : p < 85 ? 1.5 : 0.5
+          return Math.min(95, p + step)
+        })
+      }, 150)
+    }
+
     try {
       const fd = new FormData()
       fd.append('file', csvFile)
-      const res = await axios.post('/admin/hsn-codes/bulk', fd)
+      const res = await axios.post('/admin/hsn-codes/bulk', fd, {
+        onUploadProgress: (e) => {
+          const pct = e.total ? Math.round((e.loaded / e.total) * 70) : 0
+          setProgress(pct)
+          if (pct >= 70) startCreep()
+        },
+      })
+
+      // Done — snap to 100%
+      if (progressRef.current) clearInterval(progressRef.current)
+      setProgress(100)
+
       setImportResult(res.data)
+      setShowErrors(res.data.errors?.length > 0)
+      setShowProcessed(true)
       toast.success(res.data.message)
       setCsvFile(null)
       if (fileRef.current) fileRef.current.value = ''
       load(1, search)
     } catch (err: any) {
+      if (progressRef.current) clearInterval(progressRef.current)
+      setProgress(0)
       toast.error(err?.response?.data?.message || 'Import failed — check your file')
     } finally {
       setImporting(false)
@@ -212,7 +246,7 @@ export default function HsnCodesPage() {
               hidden
               type="file"
               accept=".csv"
-              onChange={e => { setCsvFile(e.target.files?.[0] || null); setImportResult(null) }}
+              onChange={e => { setCsvFile(e.target.files?.[0] || null); setImportResult(null); setProgress(0) }}
             />
           </label>
 
@@ -233,30 +267,122 @@ export default function HsnCodesPage() {
             </button>
           </div>
 
+          {/* Progress bar */}
+          {importing && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>
+                  {progress < 70
+                    ? 'Uploading file…'
+                    : progress < 95
+                    ? 'Processing rows…'
+                    : progress < 100
+                    ? 'Almost done…'
+                    : 'Complete!'}
+                </span>
+                <span className="font-mono font-semibold text-emerald-700">{progress}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-gray-200 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-200"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Progress bar at 100% — brief "done" flash before result appears */}
+          {!importing && progress === 100 && !importResult && (
+            <div className="h-2.5 rounded-full bg-emerald-100 overflow-hidden">
+              <div className="h-full w-full rounded-full bg-emerald-500" />
+            </div>
+          )}
+
           {/* Import result */}
           {importResult && (
-            <div className={`rounded-xl border p-4 ${importResult.summary?.skipped > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                {importResult.summary?.skipped > 0
-                  ? <AlertTriangle size={16} className="text-amber-600" />
-                  : <CheckCircle2 size={16} className="text-emerald-600" />}
-                <span className="text-sm font-semibold text-gray-800">{importResult.message}</span>
+            <div className="space-y-3">
+              {/* Summary bar */}
+              <div className={`rounded-xl border p-4 ${importResult.summary?.skipped > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {importResult.summary?.skipped > 0
+                    ? <AlertTriangle size={16} className="text-amber-600" />
+                    : <CheckCircle2 size={16} className="text-emerald-600" />}
+                  <span className="text-sm font-semibold text-gray-800">{importResult.message}</span>
+                </div>
+                <div className="flex flex-wrap gap-4 text-xs text-gray-600">
+                  <span className="text-emerald-700 font-semibold">+ {importResult.summary?.inserted ?? 0} added</span>
+                  <span className="text-blue-700 font-semibold">↻ {importResult.summary?.updated ?? 0} updated</span>
+                  <span>{importResult.summary?.total ?? 0} total rows in CSV</span>
+                  {importResult.summary?.skipped > 0 && (
+                    <span className="text-amber-600 font-semibold">⚠ {importResult.summary.skipped} skipped</span>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-4 text-xs text-gray-600">
-                <span>✓ {importResult.summary?.inserted ?? 0} added</span>
-                <span>↻ {importResult.summary?.updated ?? 0} updated</span>
-                <span>{importResult.summary?.total ?? 0} total rows</span>
-                {importResult.summary?.skipped > 0 && (
-                  <span className="text-amber-600 font-semibold">⚠ {importResult.summary.skipped} skipped</span>
-                )}
-              </div>
-              {importResult.errors?.length > 0 && (
-                <div className="mt-3 space-y-1 max-h-40 overflow-y-auto">
-                  {importResult.errors.map((e: any, i: number) => (
-                    <div key={i} className="text-xs text-red-700 bg-red-50 rounded px-2 py-1">
-                      {e.hsn_code ? <><strong>HSN {e.hsn_code}:</strong> {e.reason}</> : <><strong>Row {e.row}:</strong> {e.reason}</>}
+
+              {/* Imported rows table */}
+              {importResult.processed?.length > 0 && (
+                <div className="border rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setShowProcessed(v => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-emerald-50 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                  >
+                    <span>✓ {importResult.processed.length} rows imported successfully</span>
+                    <span className="text-xs text-emerald-600">{showProcessed ? 'Hide ▲' : 'Show ▼'}</span>
+                  </button>
+                  {showProcessed && (
+                    <div className="max-h-64 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-gray-50 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold text-gray-600 w-28">HSN Code</th>
+                            <th className="px-3 py-2 text-left font-semibold text-gray-600">Description</th>
+                            <th className="px-3 py-2 text-left font-semibold text-gray-600 w-20">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {importResult.processed.map((r: any, i: number) => (
+                            <tr key={i} className="hover:bg-gray-50">
+                              <td className="px-3 py-1.5">
+                                <code className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{r.hsn_code}</code>
+                              </td>
+                              <td className="px-3 py-1.5 text-gray-700">{r.description}</td>
+                              <td className="px-3 py-1.5">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.action === 'inserted' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                  {r.action === 'inserted' ? 'Added' : 'Updated'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
+                  )}
+                </div>
+              )}
+
+              {/* Skipped / error rows */}
+              {importResult.errors?.length > 0 && (
+                <div className="border border-red-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setShowErrors(v => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-red-50 text-sm font-semibold text-red-800 hover:bg-red-100 transition-colors"
+                  >
+                    <span>⚠ {importResult.errors.length} row{importResult.errors.length !== 1 ? 's' : ''} skipped — click to review</span>
+                    <span className="text-xs text-red-600">{showErrors ? 'Hide ▲' : 'Show ▼'}</span>
+                  </button>
+                  {showErrors && (
+                    <div className="max-h-64 overflow-y-auto divide-y divide-red-100">
+                      {importResult.errors.map((e: any, i: number) => (
+                        <div key={i} className="flex gap-3 items-start px-4 py-2 text-xs">
+                          <span className="shrink-0 text-gray-400 font-mono w-12">Row {e.row ?? '—'}</span>
+                          {e.hsn_code && (
+                            <code className="shrink-0 text-red-700 bg-red-50 px-1.5 py-0.5 rounded font-bold">{e.hsn_code}</code>
+                          )}
+                          <span className="text-red-700">{e.reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
