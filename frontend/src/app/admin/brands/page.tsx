@@ -8,6 +8,7 @@ import {
   CheckCircle, XCircle, Image as ImageIcon,
 } from 'lucide-react'
 import AppModal from '@/components/modal/AppModal'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 interface Brand {
   id: number
@@ -117,6 +118,18 @@ export default function AdminBrandsPage() {
             <Plus size={16} /> Add Brand
           </button>
         </div>
+        <PageInfoBanner
+          title="Brand Management"
+          description="Manage product brands — add logos, set sort order, and control which brands appear in site filters. Brands are shown on product cards and in the brand filter on listing pages."
+          tips={[
+            "Brands with lower sort order numbers appear first in the brand filter on the storefront.",
+            "Upload a square logo (200x200px PNG with transparent background) for best results on product cards.",
+            "Inactive brands are hidden from the site filter but their products remain visible.",
+            "The slug is auto-generated from the name — it is used in the URL if a brand page is added.",
+            "Deleting a brand does not delete its products — products become unbranded.",
+            "Use brands for Ayurvedic manufacturers like Patanjali, Himalaya, Dabur to help customers filter.",
+          ]}
+        />
       </div>
 
       {/* Search */}
@@ -201,34 +214,37 @@ export default function AdminBrandsPage() {
       <AppModal open={modalOpen} onClose={() => { if (!saving) setModalOpen(false) }} title={editing ? 'Edit Brand' : 'Create Brand'}>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Brand Name *</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1"><LabelWithInfo label="Brand Name *" required what="The display name of the brand shown on product cards and the brand filter." why="Customers use brand names to identify trusted Ayurvedic manufacturers and filter products." example="Patanjali, Himalaya, Dabur, Kerala Ayurveda" /></label>
             <input className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
               value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Patanjali" />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Description</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1"><LabelWithInfo label="Description" what="A short description of the brand shown on the brand detail page if enabled." why="Helps customers understand the brand's philosophy and product range." example="Patanjali Ayurved is an Indian consumer goods company producing Ayurvedic and herbal products." /></label>
             <textarea className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none resize-none" rows={2}
               value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional brand description" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Sort Order</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1"><LabelWithInfo label="Sort Order" what="The display position of this brand in the filter list (lower = appears first)." why="Helps you prioritize popular or featured brands at the top of the brand filter." example="0 (first), 1, 2 ... 10 (last)" /></label>
               <input type="number" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none"
                 value={form.sort_order} onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) || 0 }))} placeholder="e.g. 0 (lower = appears first in brand filter)" />
             </div>
             <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded text-indigo-600" checked={form.is_active}
-                  onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
-                <span className="text-sm font-medium text-gray-700">Active</span>
-              </label>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1"><LabelWithInfo label="Active" what="Whether this brand is visible in the storefront brand filter." why="Inactive brands are hidden from the filter but their products remain on the site." example="Checked = brand appears in filter; unchecked = hidden from filter" /></label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 rounded text-indigo-600" checked={form.is_active}
+                    onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
+                  <span className="text-sm font-medium text-gray-700">Active</span>
+                </label>
+              </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Logo</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1"><LabelWithInfo label="Logo" what="The brand logo image shown on product cards and the brand filter." why="A recognizable logo builds trust and helps customers quickly identify trusted brands." example="Square PNG 200x200px with transparent background works best" /></label>
             {(logoPreview && !removeLogo) ? (
               <div className="flex items-center gap-3">
                 <img src={logoPreview} alt="Logo" className="w-16 h-16 object-contain rounded-lg border" />

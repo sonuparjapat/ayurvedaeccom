@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Loader2, GripVertical } from 'lucide-react'
+import { FieldInfo, PageInfoBanner } from '@/components/admin/FieldInfo'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent,
 } from '@dnd-kit/core'
@@ -370,6 +371,21 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
       </h2>
 
+      {/* PAGE INFO BANNER */}
+      {!isView && (
+        <PageInfoBanner
+          title="How to fill this product form"
+          description="Fill in all required sections below to create or update a product. Each field has an ℹ️ info button — click it to understand what the field is for, why it matters, and see an example value."
+          tips={[
+            'Name + Category + Price + Stock + Image are the minimum required fields.',
+            'Selecting a Category auto-fills GST%, HSN Code, and CESS — you can override them.',
+            'Compare Price (MRP) must be higher than the selling price. It shows as a strikethrough on the storefront.',
+            'SKU must be unique across all products — it is used in bulk uploads and inventory tracking.',
+            'Safety Tags (e.g. Vegan, Gluten Free) appear as badge chips on the product page.',
+            'SEO fields (Meta Title, Meta Description) directly affect your Google search ranking.',
+          ]}
+        />
+      )}
 
       {/* BASIC INFO */}
 
@@ -382,6 +398,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             value={form.name}
             readOnly={isView}
             placeholder="e.g. Organic Triphala Powder"
+            info={{ what: 'The product name displayed to customers on the storefront and search results.', why: 'Clear, keyword-rich names improve search visibility and conversion.', example: 'Organic Triphala Churna 500g' }}
             onChange={(v: string) => {
 
               setForm({
@@ -405,8 +422,9 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
           <div className="space-y-1">
 
-            <label className="text-sm font-medium">
+            <label className="text-sm font-medium flex items-center gap-1.5">
               Category
+              <FieldInfo label="Category" what="The product category this item belongs to." why="Selecting a category auto-fills GST%, HSN Code, and CESS from the category's tax settings. Also controls where the product appears in the storefront navigation." example="Ayurvedic Herbs → Triphala" note="Changing category will overwrite your manually entered tax fields." />
             </label>
 
             <select
@@ -448,10 +466,10 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
           </div>
        <div className="space-y-1">
-  <label className="text-sm font-medium">
+  <label className="text-sm font-medium flex items-center gap-1.5">
     GST Percent (%)
+    <FieldInfo label="GST Percent" what="Goods & Services Tax rate applicable to this product as a percentage." why="Used to calculate GST amount on the invoice and GST reports. Auto-filled when you select a category." example="12 (for 12% GST)" note="Over-riding this will make the product's GST differ from its category's default." />
   </label>
-
   <Input
     value={form.gst_percent}
     onChange={(v:string)=>
@@ -466,7 +484,8 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
   label="HSN Code"
   value={form.hsn_code}
   readOnly={isView}
-  placeholder="e.g. 30039011 (auto-filled from category)"
+  placeholder="e.g. 30039011"
+  info={{ what: 'Harmonised System of Nomenclature code — the government tax classification code for this product.', why: 'Required on GST invoices. Wrong HSN can lead to compliance issues.', example: '30039011 (Ayurvedic medicines)' }}
   onChange={(v:string)=>
     setForm({...form,hsn_code:v})
   }
@@ -476,6 +495,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
   type="number"
   value={form.cess_percent}
   readOnly={isView}
+  info={{ what: 'Additional cess levied on top of GST for certain product categories.', why: 'Required for correct GST invoice calculation if the product attracts cess.', example: '0 (most Ayurvedic products have 0% cess)' }}
   onChange={(v:string)=>
     setForm({...form,cess_percent:v})
   }
@@ -490,7 +510,10 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 /> */}
           {/* BRAND DROPDOWN */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">Brand</label>
+            <label className="text-sm font-medium flex items-center gap-1.5">
+              Brand
+              <FieldInfo label="Brand" what="The brand or manufacturer this product belongs to." why="Brands appear as a filter on the storefront and help customers find products they trust." example="Patanjali, Himalaya, Oroganix" />
+            </label>
             <select
               value={form.brand_id || ''}
               disabled={isView}
@@ -508,6 +531,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
           </div>
 
           <Select label="Status" value={form.status} readOnly={isView}
+            info={{ what: 'Controls whether this product is visible to customers on the storefront.', why: 'Draft = admin only. Active = live. Use draft for products not ready to sell.', example: 'active (visible to customers)' }}
             onChange={(v: string) => setForm({ ...form, status: v })} />
 
           {/* TAGS */}
@@ -516,6 +540,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             value={typeof form.tags === 'string' ? form.tags : (form.tags || []).join(', ')}
             readOnly={isView}
             placeholder="e.g. bestseller, new arrival, organic, immunity"
+            info={{ what: 'Keywords and labels used for internal filtering and search.', why: 'Tags help customers find products via search and filter on the storefront.', example: 'organic, immunity, bestseller, gluten-free' }}
             onChange={(v: string) => setForm({ ...form, tags: v })}
           />
 
@@ -577,29 +602,31 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             value={form.price}
             readOnly={isView}
             placeholder="e.g. 499"
+            info={{ what: 'The actual price the customer pays at checkout.', why: 'This is the amount deducted from the customer\'s wallet or charged to their payment method.', example: '499' }}
             onChange={(v: string) =>
               setForm({ ...form, price: v })
             }
           />
 
-
           <Input
-            label="Compare Price / MRP (₹) — shows as strikethrough"
+            label="Compare Price / MRP (₹)"
             type="number"
             value={form.compareprice}
             readOnly={isView}
             placeholder="e.g. 699 (must be higher than selling price)"
+            info={{ what: 'The original / Maximum Retail Price shown with a strikethrough next to the selling price.', why: 'Creates a visual discount effect. Customers see how much they\'re saving.', example: '699 (shows ~~₹699~~ → ₹499)', note: 'Must be higher than the selling price or validation will fail.' }}
             onChange={(v: string) =>
               setForm({ ...form, compareprice: v })
             }
           />
 
           <Input
-            label="Cost Price (₹) — private, for profit reports only"
+            label="Cost Price (₹)"
             type="number"
             value={form.cost_price}
             readOnly={isView}
             placeholder="e.g. 250 (never shown to customers)"
+            info={{ what: 'Your purchase / landed cost for this product. Never shown to customers.', why: 'Used in the Profit & Loss reports to calculate your actual margin per product.', example: '250 (cost price) vs 499 (selling price) = ₹249 gross profit' }}
             onChange={(v: string) =>
               setForm({ ...form, cost_price: v })
             }
@@ -607,7 +634,10 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
 
           {/* TAX INCLUDED */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">Tax</label>
+            <label className="text-sm font-medium flex items-center gap-1.5">
+              Tax
+              <FieldInfo label="Tax Included in Price" what="Whether the GST is already included in the selling price shown above." why="If checked: price shown to customer is tax-inclusive. If unchecked: GST is added on top at checkout." example="Checked for MRP-based products. Unchecked for B2B." />
+            </label>
             <div className="flex gap-4 pt-1">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" className="w-4 h-4 rounded" checked={!!form.tax_included} disabled={isView}
@@ -634,6 +664,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             value={form.inventory}
             readOnly={isView}
             placeholder="e.g. 100"
+            info={{ what: 'How many units of this product are currently in stock.', why: 'When stock reaches 0, the product shows as out-of-stock on the storefront. Low stock triggers a warning.', example: '100 (100 units available)' }}
             onChange={(v: string) =>
               setForm({ ...form, inventory: v })
             }
@@ -645,6 +676,7 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             value={form.sku}
             readOnly={isView}
             placeholder="e.g. TRP-500G-ORG"
+            info={{ what: 'Your unique internal code for this product.', why: 'SKU is used in bulk uploads, inventory reports, and order tracking. Must be unique across all products.', example: 'TRP-500G-ORG or AYU001', note: 'Once set and orders are placed, avoid changing the SKU.' }}
             onChange={(v: string) =>
               setForm({ ...form, sku: v })
             }
@@ -655,21 +687,26 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
             value={form.barcode}
             readOnly={isView}
             placeholder="e.g. 8901234567890"
+            info={{ what: 'The product\'s barcode number (EAN-13 or UPC).', why: 'Used for POS scanning and marketplace listings. Not required for online-only stores.', example: '8901234567890' }}
             onChange={(v: string) => setForm({ ...form, barcode: v })}
           />
 
           <Input
-            label="Low Stock Alert Threshold — notify when stock drops below"
+            label="Low Stock Alert Threshold"
             type="number"
             value={form.low_stock_threshold}
             readOnly={isView}
             placeholder="e.g. 10"
+            info={{ what: 'When stock falls below this number, a low-stock warning appears in the admin.', why: 'Helps you restock before the product goes out-of-stock on the storefront.', example: '10 (alert when fewer than 10 units remain)' }}
             onChange={(v: string) => setForm({ ...form, low_stock_threshold: v })}
           />
 
           {/* ALLOW BACKORDER */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">Backorder</label>
+            <label className="text-sm font-medium flex items-center gap-1.5">
+              Backorder
+              <FieldInfo label="Allow Backorder" what="Whether customers can place orders even when this product is out of stock." why="Allows you to keep selling while waiting for a restock. Orders are fulfilled once stock arrives." example="Enabled for made-to-order or pre-order items" />
+            </label>
             <div className="flex gap-4 pt-1">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" className="w-4 h-4 rounded" checked={!!form.allow_backorder} disabled={isView}
@@ -680,20 +717,22 @@ if (Number(form.cess_percent) < 0 || Number(form.cess_percent) > 100)
           </div>
 
           <Input
-            label="Min Order Qty — minimum per order"
+            label="Min Order Qty"
             type="number"
             value={form.min_order_qty}
             readOnly={isView}
-            placeholder="e.g. 1 (default) or 2 for bulk-only products"
+            placeholder="e.g. 1"
+            info={{ what: 'Minimum number of units a customer must add to cart to purchase this product.', why: 'Use for wholesale or bulk-only products that cannot be sold in single units.', example: '1 (retail) or 6 (must buy a pack of 6)' }}
             onChange={(v: string) => setForm({ ...form, min_order_qty: v })}
           />
 
           <Input
-            label="Max Order Qty — prevent hoarding"
+            label="Max Order Qty"
             type="number"
             value={form.max_order_qty}
             readOnly={isView}
-            placeholder="e.g. 100 (default) or 10 for limited items"
+            placeholder="e.g. 100"
+            info={{ what: 'Maximum units a single customer can purchase per order.', why: 'Prevents bulk hoarding on limited-stock or promotional items.', example: '5 (limit to 5 per customer for flash sale items)' }}
             onChange={(v: string) => setForm({ ...form, max_order_qty: v })}
           />
 
@@ -1109,91 +1148,57 @@ function Grid({ children }: any) {
 
 
 function Input({
-  label,
-  value,
-  onChange,
-  type = 'text',
-  readOnly = false,
+  label, value, onChange, type = 'text', readOnly = false, placeholder, info,
 }: any) {
-
   return (
-
     <div className="space-y-1">
-
-      <label className="text-sm font-medium">
-
+      <label className="text-sm font-medium flex items-center gap-1.5">
         {label}
-
+        {info && <FieldInfo label={label} {...info} />}
       </label>
-
-
       <input
         type={type}
         value={value}
         readOnly={readOnly}
+        placeholder={placeholder}
         onChange={e => onChange?.(e.target.value)}
-        className={`
-          w-full border rounded px-3 py-2
-          focus:ring-2 focus:ring-emerald-500
-          ${readOnly
-            ? 'bg-gray-100 cursor-not-allowed'
-            : 'bg-white'
-          }
-        `}
+        className={`w-full border rounded px-3 py-2 focus:ring-2 focus:ring-emerald-500 ${readOnly ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
       />
-
     </div>
   )
 }
+
 function Select({
-  label,
-  value,
-  onChange,
-  type = 'text',
-  readOnly = false,
+  label, value, onChange, readOnly = false, info, children,
 }: any) {
-
   return (
-
     <div className="space-y-1">
-
-      <label className="text-sm font-medium">
-
+      <label className="text-sm font-medium flex items-center gap-1.5">
         {label}
-
+        {info && <FieldInfo label={label} {...info} />}
       </label>
-      <select value={value} disabled={readOnly} onChange={e => onChange?.(e.target.value)} className={`
-          w-full border rounded px-3 py-2
-          focus:ring-2 focus:ring-emerald-500
-          ${readOnly
-          ? 'bg-gray-100 cursor-not-allowed'
-          : 'bg-white'
-        }
-        `}>
+      <select value={value} disabled={readOnly} onChange={e => onChange?.(e.target.value)}
+        className={`w-full border rounded px-3 py-2 focus:ring-2 focus:ring-emerald-500 ${readOnly ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}>
+        {children || (
+          <>
             <option value="">Select</option>
-        <option value="draft">Draft</option>
-        <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+          </>
+        )}
       </select>
-      
-
     </div>
   )
 }
 
 function TextArea({
-  label,
-  value,
-  onChange,
-  rows = 3,
-  readOnly = false,
+  label, value, onChange, rows = 3, readOnly = false, placeholder, info,
 }: any) {
-
   return (
-
     <div className="space-y-1">
-
-      <label className="text-sm font-medium">
+      <label className="text-sm font-medium flex items-center gap-1.5">
         {label}
+        {info && <FieldInfo label={label} {...info} />}
       </label>
 
 

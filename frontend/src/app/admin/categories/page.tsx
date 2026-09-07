@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 
 import AppModal from '@/components/modal/AppModal'
 import DynamicTable from '@/components/table/table'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 import { Loader2, Plus, Search } from 'lucide-react'
 
@@ -419,6 +420,18 @@ const columns = [
           <h1 className="text-xl md:text-3xl font-bold">
             Category Management
           </h1>
+          <PageInfoBanner
+            title="Category Management"
+            description="Categories organise your Ayurvedic products into a browsable hierarchy. Each category can have a parent, a GST rate, an HSN code, and an image to display in the storefront."
+            tips={[
+              "Leave Parent Category empty to create a top-level category (e.g. 'Supplements'). Choose a parent to nest it underneath (e.g. 'Churna' under 'Digestive Care').",
+              "The GST % and HSN Code you set here auto-fill on new products created in this category — you can still override them per product.",
+              "Sort Order controls the display position — 0 comes first. Featured categories appear prominently on the homepage carousel.",
+              "The Slug is the URL path segment (e.g. 'ayurvedic-supplements'). It auto-generates from the name but you can customise it.",
+              "Color Class accepts Tailwind classes (e.g. 'bg-emerald-500') used for UI accents on the storefront.",
+              "Deleting a category with products or sub-categories may fail — reassign or delete them first.",
+            ]}
+          />
 
 
           <div className="flex flex-wrap items-center gap-3">
@@ -583,7 +596,7 @@ const columns = [
             {/* PARENT CATEGORY */}
             <div>
               <label className="text-xs uppercase text-slate-400 font-semibold">
-                Parent Category (optional)
+                <LabelWithInfo label="Parent Category (optional)" what="The category this one belongs under. Leave empty for top-level." why="Creates a hierarchy so customers can browse by main category then sub-category." example="'Digestive Care' as parent of 'Churna'" />
               </label>
               <select
                 value={parentId}
@@ -601,7 +614,7 @@ const columns = [
             {/* NAME */}
             <div>
               <label className="text-xs uppercase text-slate-400 font-semibold">
-                Category Name
+                <LabelWithInfo label="Category Name" required what="The display name of the category shown in menus and product filters." why="Customers browse by category name, so it should be clear and descriptive." example="Ayurvedic Supplements" />
               </label>
               <input
                 value={name}
@@ -618,7 +631,7 @@ const columns = [
             {/* SLUG */}
             <div>
               <label className="text-xs uppercase text-slate-400 font-semibold">
-                Slug (URL-friendly)
+                <LabelWithInfo label="Slug (URL-friendly)" what="The URL segment for this category (lowercase, hyphens only)." why="Used in the browser URL like /category/herbal-oils — must be unique per category." example="herbal-oils" note="Auto-generated from the name. Only change if you need a custom URL." />
               </label>
               <input
                 value={slug}
@@ -632,7 +645,7 @@ const columns = [
             <div className="flex gap-4">
               <div className="flex-1">
                 <label className="text-xs uppercase text-slate-400 font-semibold">
-                  Sort Order
+                  <LabelWithInfo label="Sort Order" what="A numeric rank that controls display order in category lists." why="Lower numbers appear first in menus and on the homepage." example="0 (appears before categories with order 1, 2, 3...)" />
                 </label>
                 <input
                   type="number"
@@ -646,7 +659,7 @@ const columns = [
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" className="w-4 h-4 rounded" checked={isFeatured}
                     onChange={e => setIsFeatured(e.target.checked)} />
-                  <span className="text-sm font-medium">Featured</span>
+                  <span className="text-sm font-medium">Featured <LabelWithInfo label="Featured" what="Marks this category as featured so it appears prominently on the homepage." why="Featured categories get extra visibility in the homepage section and app banners." example="Check for 'Immunity Boosters' during a wellness campaign" /></span>
                 </label>
                 <p className="text-xs text-gray-400">Featured categories appear prominently on the homepage</p>
               </div>
@@ -657,7 +670,7 @@ const columns = [
             <div>
               <label className="text-xs uppercase
               text-slate-400 font-semibold">
-                GST %
+                <LabelWithInfo label="GST %" what="Default GST percentage applied to all products in this category." why="India's GST law requires correct tax rates — this auto-fills product tax to reduce manual errors." example="12 (for most Ayurvedic products) or 18 (supplements)" note="You can override this per product." />
               </label>
 
               <input
@@ -672,7 +685,7 @@ const columns = [
             </div>
             <div>
   <label className="text-xs uppercase text-slate-400 font-semibold">
-    Default HSN Code
+    <LabelWithInfo label="Default HSN Code" what="Harmonised System of Nomenclature code — a tax classification code for this product category." why="Required on GST invoices and GSTR-1 filings. Mandatory for turnover above ₹5 crore." example="30039011 (Ayurvedic patent medicines)" />
   </label>
 
   <input
@@ -699,7 +712,7 @@ const columns = [
 
 <div>
   <label className="text-xs uppercase text-slate-400 font-semibold">
-    Default CESS %
+    <LabelWithInfo label="Default CESS %" what="Additional cess on top of GST for certain goods (e.g. tobacco, luxury items)." why="Required for specific product categories — most Ayurvedic products are 0% cess." example="0 (Ayurvedic products typically have no cess)" />
   </label>
 
   <input
@@ -718,7 +731,7 @@ const columns = [
             <div>
               <label className="text-xs uppercase
               text-slate-400 font-semibold">
-                Color Class
+                <LabelWithInfo label="Color Class" what="A Tailwind CSS class used for UI accents on this category's cards and banners." why="Gives each category a distinctive colour theme in the storefront." example="bg-emerald-500 or bg-amber-400" />
               </label>
 
               <input
@@ -734,7 +747,7 @@ const columns = [
             <div>
               <label className="text-xs uppercase
               text-slate-400 font-semibold">
-                Description
+                <LabelWithInfo label="Description" what="A short marketing description of what this category contains." why="Displayed on the category page for SEO and customer context." example="Traditional Ayurvedic supplements for immunity, digestion, and daily wellness." />
               </label>
 
               <textarea
@@ -751,7 +764,7 @@ const columns = [
             <div>
               <label className="text-xs uppercase
               text-slate-400 font-semibold">
-                Image
+                <LabelWithInfo label="Image" what="Upload a category banner or icon image (max 10 MB, any image format)." why="Shown on the category card on the storefront homepage and category listings." example="A 400x400 herbal leaf image for 'Herbal Oils'" />
               </label>
 
               <input

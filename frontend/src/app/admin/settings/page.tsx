@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 
 import { Plus, Eye, Edit, Trash2, Loader2, Truck, IndianRupee, Package } from 'lucide-react'
+import { PageInfoBanner, FieldInfo } from '@/components/admin/FieldInfo'
 
 import toast from 'react-hot-toast'
 
@@ -339,6 +340,19 @@ export default function AdminSettingsPage() {
 
 <div className="space-y-6 w-full">
 
+      <PageInfoBanner
+        title="Platform Settings"
+        description="Manage global platform configuration values such as delivery charges, platform fee, and feature flags. Changes take effect immediately on checkout and cart calculations."
+        tips={[
+          "The Delivery & Charges quick-edit panel lets you update the three most common settings without opening the full settings modal.",
+          "free_delivery_limit: orders at or above this amount (₹) get free delivery — commonly set to ₹499 or ₹999.",
+          "delivery_charge: the fixed charge added to orders below the free delivery threshold.",
+          "platform_fee: a fixed convenience fee added to every order regardless of cart size.",
+          "The key field (e.g. 'delivery_charge') must match what the backend expects — do not rename existing keys.",
+          "Use type 'number' for numeric values, 'string' for text, 'boolean' for true/false flags, and 'json' for complex config objects.",
+        ]}
+      />
+
       {/* DELIVERY QUICK-EDIT CARD */}
       <div className="bg-white border border-emerald-100 rounded-xl p-5">
         <h3 className="text-base font-semibold text-gray-800 mb-1">Delivery & Charges</h3>
@@ -437,51 +451,42 @@ export default function AdminSettingsPage() {
             value={form.key}
             disabled={mode !== 'create'}
             placeholder="e.g. delivery_charge, platform_fee, free_delivery_limit"
-            onChange={v =>
-              setForm({ ...form, key: v })
-            }
+            onChange={v => setForm({ ...form, key: v })}
+            infoProps={{ label: 'Key', what: 'The unique identifier for this setting used by the backend.', why: 'Must match exactly what the backend looks up — do not change existing keys.', example: 'delivery_charge' }}
           />
-
 
           <Field
             label="Value"
             value={form.value}
             disabled={mode === 'view'}
             placeholder="e.g. 49 (the actual value for this setting)"
-            onChange={v =>
-              setForm({ ...form, value: v })
-            }
+            onChange={v => setForm({ ...form, value: v })}
+            infoProps={{ label: 'Value', what: 'The actual value stored for this setting.', why: 'This is what the backend reads when calculating charges or toggling features.', example: '49 (for delivery_charge of ₹49)' }}
           />
-
 
           <SelectField
             label="Type"
             value={form.type}
             disabled={mode === 'view'}
-            onChange={v =>
-              setForm({ ...form, type: v })
-            }
+            onChange={v => setForm({ ...form, type: v })}
+            infoProps={{ label: 'Type', what: "The data type of the value: number, string, boolean, or JSON.", why: "Determines how the backend parses and validates the value.", example: "number (for charges), boolean (for feature flags)" }}
           />
-
 
           <Field
             label="Description"
             value={form.description}
             disabled={mode === 'view'}
             placeholder="e.g. Flat delivery charge added to orders below free delivery limit"
-            onChange={v =>
-              setForm({ ...form, description: v })
-            }
+            onChange={v => setForm({ ...form, description: v })}
+            infoProps={{ label: 'Description', what: 'A human-readable note explaining what this setting does.', why: 'Helps team members understand a setting without checking the code.', example: 'Flat delivery charge added to orders below the free delivery threshold' }}
           />
-
 
           <ToggleField
             label="Active"
             value={form.is_active}
             disabled={mode === 'view'}
-            onChange={v =>
-              setForm({ ...form, is_active: v })
-            }
+            onChange={v => setForm({ ...form, is_active: v })}
+            infoProps={{ label: 'Active', what: 'Whether this setting is currently enabled and used by the platform.', why: 'Inactive settings are ignored by the backend — use this to temporarily disable a config.', example: 'Checked = the setting is live and applied to orders' }}
           />
 
         </div>
@@ -497,14 +502,15 @@ export default function AdminSettingsPage() {
    SMALL FIELDS
 ===================================================== */
 
-function Field({ label, value, onChange, disabled, placeholder }: any) {
+function Field({ label, value, onChange, disabled, placeholder, infoProps }: any) {
 
   return (
 
     <div className="space-y-1">
 
-      <label className="text-sm font-medium">
+      <label className="text-sm font-medium flex items-center gap-1">
         {label}
+        {infoProps && <FieldInfo {...infoProps} />}
       </label>
 
       <input
@@ -524,14 +530,15 @@ function Field({ label, value, onChange, disabled, placeholder }: any) {
 }
 
 
-function SelectField({ label, value, onChange, disabled }: any) {
+function SelectField({ label, value, onChange, disabled, infoProps }: any) {
 
   return (
 
     <div className="space-y-1">
 
-      <label className="text-sm font-medium">
+      <label className="text-sm font-medium flex items-center gap-1">
         {label}
+        {infoProps && <FieldInfo {...infoProps} />}
       </label>
 
       <select
@@ -556,7 +563,7 @@ function SelectField({ label, value, onChange, disabled }: any) {
 }
 
 
-function ToggleField({ label, value, onChange, disabled }: any) {
+function ToggleField({ label, value, onChange, disabled, infoProps }: any) {
 
   return (
 
@@ -569,7 +576,10 @@ function ToggleField({ label, value, onChange, disabled }: any) {
         onChange={e => onChange(e.target.checked)}
       />
 
-      <span className="text-sm">{label}</span>
+      <span className="text-sm flex items-center gap-1">
+        {label}
+        {infoProps && <FieldInfo {...infoProps} />}
+      </span>
 
     </div>
   )

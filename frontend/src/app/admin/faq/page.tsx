@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Plus, Pencil, Trash2, HelpCircle, ChevronDown, ChevronUp, ToggleLeft, ToggleRight } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 interface FAQ {
   id: number
@@ -107,6 +108,18 @@ export default function AdminFAQPage() {
           <Plus size={16} /> Add FAQ
         </button>
       </div>
+      <PageInfoBanner
+        title="FAQ Management"
+        description="Manage frequently asked questions shown on the /faq page. FAQs are grouped by category and displayed as an accordion. Active FAQs are immediately visible to customers."
+        tips={[
+          "Use the Category field to group related questions — categories appear as headings on the FAQ page.",
+          "Lower sort order numbers appear first within each category group.",
+          "Toggle the active/inactive switch on each FAQ to quickly hide or show it without deleting.",
+          "Write answers in plain text — line breaks are preserved in the accordion display.",
+          "Common categories: General, Orders & Shipping, Returns & Refunds, Payment, Products & Quality.",
+          "Keep questions phrased exactly as customers ask them — this helps with SEO and trust.",
+        ]}
+      />
 
       {loading ? (
         <div className="space-y-3">
@@ -170,7 +183,7 @@ export default function AdminFAQPage() {
             </div>
             <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Category</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1"><LabelWithInfo label="Category" what="The group this FAQ belongs to — used as a heading on the /faq page." why="Grouping questions by topic helps customers quickly find the answer they need." example="Orders & Shipping, Returns & Refunds, Payment, Products & Quality" /></label>
                 <select
                   value={form.category}
                   onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
@@ -180,7 +193,7 @@ export default function AdminFAQPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Question *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1"><LabelWithInfo label="Question *" required what="The customer-facing question shown as the accordion title." why="Phrasing it as customers ask it helps with SEO and trust — use natural language." example="What is your return policy?" note="Write it exactly as a customer would type it into a search box." /></label>
                 <input
                   value={form.question}
                   onChange={e => setForm(f => ({ ...f, question: e.target.value }))}
@@ -189,7 +202,7 @@ export default function AdminFAQPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Answer *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1"><LabelWithInfo label="Answer *" required what="The detailed answer shown when a customer expands this FAQ." why="Clear, complete answers reduce support tickets and build customer confidence." example="We accept returns within 7 days of delivery. The product must be unused and in original packaging. Contact support@oroganix.com to initiate a return." /></label>
                 <textarea
                   value={form.answer}
                   onChange={e => setForm(f => ({ ...f, answer: e.target.value }))}
@@ -200,7 +213,7 @@ export default function AdminFAQPage() {
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Sort Order</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1"><LabelWithInfo label="Sort Order" what="The display position of this FAQ within its category (lower = appears first)." why="Put the most common questions at the top so customers find answers faster." example="0 (first in category), 1, 2, 10 (last)" /></label>
                   <input
                     type="number"
                     value={form.sort_order}
@@ -210,15 +223,18 @@ export default function AdminFAQPage() {
                   />
                 </div>
                 <div className="flex items-end pb-0.5">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.is_active}
-                      onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
-                      className="w-4 h-4 accent-green-600"
-                    />
-                    <span className="text-sm text-gray-700">Active (visible on site)</span>
-                  </label>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1"><LabelWithInfo label="Active" what="Whether this FAQ is visible to customers on the /faq page." why="Inactive FAQs are hidden but saved — useful for seasonal or temporary questions." example="Checked = visible on site; unchecked = hidden from customers" /></label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.is_active}
+                        onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
+                        className="w-4 h-4 accent-green-600"
+                      />
+                      <span className="text-sm text-gray-700">Active (visible on site)</span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>

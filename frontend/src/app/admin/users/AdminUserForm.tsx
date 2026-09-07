@@ -5,6 +5,7 @@ import axios from "@/lib/axios"
 import toast from "react-hot-toast"
 import { useAuth } from "@/context/auth-context"
 import { Shield, User } from "lucide-react"
+import { FieldInfo } from "@/components/admin/FieldInfo"
 
 type Mode = "create" | "edit" | "view"
 
@@ -172,7 +173,7 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <Field label="Full Name" error={errors.name}>
+        <Field label="Full Name" error={errors.name} infoProps={{ what: "The user's full display name shown on orders and the admin panel.", why: "Used on receipts, support tickets, and admin views — should match the customer's real name.", example: "Rajesh Kumar" }}>
           <input
             name="name" value={form.name} onChange={handleChange}
             disabled={isView} placeholder="e.g. Rajesh Kumar"
@@ -180,7 +181,7 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
           />
         </Field>
 
-        <Field label="Email" error={errors.email}>
+        <Field label="Email" error={errors.email} infoProps={{ what: "The user's email address used for login and order notifications.", why: "Primary account identifier — cannot be changed after creation.", example: "rajesh@example.com", note: "Email cannot be changed after the account is created." }}>
           <input
             name="email" type="email" value={form.email} onChange={handleChange}
             disabled={isView || isEdit} placeholder="e.g. rajesh@example.com"
@@ -188,7 +189,7 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
           />
         </Field>
 
-        <Field label="Phone" error={errors.phone}>
+        <Field label="Phone" error={errors.phone} infoProps={{ what: "Optional mobile number for order delivery and OTP verification.", why: "Used for SMS notifications, delivery coordination, and COD verification.", example: "+91 98765 43210" }}>
           <input
             name="phone" value={form.phone} onChange={handleChange}
             disabled={isView} placeholder="e.g. +91 98765 43210"
@@ -198,7 +199,7 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
 
         {/* Password — create mode only */}
         {isCreate && (
-          <Field label="Password" error={errors.password}>
+          <Field label="Password" error={errors.password} infoProps={{ what: "The initial login password for this account.", why: "Minimum 6 characters — advise the user to change it after first login.", example: "Min6chars (then user resets via profile)", note: "For admin accounts, share this password securely." }}>
             <input
               name="password" type="password" value={form.password} onChange={handleChange}
               placeholder="Minimum 6 characters"
@@ -211,7 +212,7 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
 
       {/* ── Account Type Toggle ── */}
       <div className="space-y-3">
-        <label className="text-sm font-semibold text-gray-700">Account Type</label>
+        <label className="text-sm font-semibold text-gray-700 flex items-center gap-1">Account Type <FieldInfo what="Whether this is a staff/admin account or a regular customer account." why="Admin accounts get access to the admin panel; customers can only shop." example="Admin Account → assign to a department; Customer Account → normal shopper" /></label>
         <div className="grid grid-cols-2 gap-3">
           {/* Admin Account */}
           <button
@@ -368,7 +369,10 @@ export default function AdminUserForm({ mode, initialData, onSuccess }: Props) {
           disabled={isView}
           className="w-4 h-4"
         />
-        <label className="text-sm font-medium">Verified Account</label>
+        <label className="text-sm font-medium flex items-center gap-1">
+          Verified Account
+          <FieldInfo what="Marks the account as email-verified and allowed to log in." why="Unverified accounts cannot log in — manually verify here if the user's email bounce or OTP failed." example="Check to grant immediate login access without email verification" />
+        </label>
       </div>
 
       {!isView && (
@@ -396,10 +400,13 @@ function inputCls(error: boolean) {
   return `w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 ${error ? "border-red-500" : "border-gray-300"}`
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function Field({ label, error, children, infoProps }: { label: string; error?: string; children: React.ReactNode; infoProps?: any }) {
   return (
     <div className="space-y-1">
-      <label className="text-sm font-medium">{label}</label>
+      <label className="text-sm font-medium flex items-center gap-1">
+        {label}
+        {infoProps && <FieldInfo {...infoProps} />}
+      </label>
       {children}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

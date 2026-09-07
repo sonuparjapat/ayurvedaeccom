@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import AppModal from '@/components/modal/AppModal'
 import DynamicTable from '@/components/table/table'
 import { Loader2, Plus, Search, User, X } from 'lucide-react'
+import { LabelWithInfo, PageInfoBanner } from '@/components/admin/FieldInfo'
 
 interface Coupon {
   id: number
@@ -241,6 +242,20 @@ export default function AdminCoupons() {
     <div className="min-h-screen">
       <div className="w-full px-4 sm:px-6 py-8 space-y-8">
 
+        {/* PAGE INFO BANNER */}
+        <PageInfoBanner
+          title="How Coupon Management Works"
+          description="Coupons give customers a discount code they enter at checkout. You can create flat (₹ off) or percentage (% off) coupons, set usage limits, date ranges, and optionally restrict a coupon to one specific user."
+          tips={[
+            'Flat coupons deduct a fixed ₹ amount. Percent coupons deduct a % of the cart total.',
+            'Set Max Discount to cap how much a % coupon can save — e.g. 20% off but max ₹200.',
+            'Set Min Order Amount so a coupon only works when the cart exceeds a threshold.',
+            'User-Specific coupons are private offers visible only to that one customer.',
+            'Total Usage Limit = 0 means unlimited uses across all customers.',
+            'Uses per User = 1 means each customer can only use the coupon once.',
+          ]}
+        />
+
         {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -335,11 +350,11 @@ export default function AdminCoupons() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Coupon Code *</label>
+                <label className={labelCls}><LabelWithInfo label="Coupon Code" required what="The code customers type at checkout to get a discount." why="Must be unique. Auto-converts to uppercase. Short and memorable codes work best." example="SAVE20 or FLAT100" /></label>
                 <input value={form.code} onChange={e => set('code', e.target.value.toUpperCase())} maxLength={30} placeholder="SAVE20" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Type *</label>
+                <label className={labelCls}><LabelWithInfo label="Type" required what="Choose how the discount is calculated." why="Flat deducts a fixed ₹ amount. Percent deducts a % of the cart total." example="flat → ₹50 off  |  percent → 20% off" /></label>
                 <select value={form.type} onChange={e => set('type', e.target.value)} className={inputCls}>
                   <option value="flat">Flat (₹)</option>
                   <option value="percent">Percent (%)</option>
@@ -349,33 +364,33 @@ export default function AdminCoupons() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Value * {form.type === 'percent' ? '(%)' : '(₹)'}</label>
+                <label className={labelCls}><LabelWithInfo label={`Discount Value ${form.type === 'percent' ? '(%)' : '(₹)'}`} required what={form.type === 'percent' ? 'Percentage to deduct from the cart total.' : 'Fixed rupee amount to deduct from the cart.'} why={form.type === 'percent' ? 'Pair with Max Discount to cap how much a customer can save.' : 'Exact amount saved — simple and predictable.'} example={form.type === 'percent' ? '20 (means 20% off)' : '100 (means ₹100 off)'} /></label>
                 <input type="number" min={0} value={form.value} onChange={e => set('value', e.target.value)} className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Min Order Amount (₹)</label>
+                <label className={labelCls}><LabelWithInfo label="Min Order Amount (₹)" what="Minimum cart value required before this coupon can be applied." why="Encourages larger orders. Customers with smaller carts see a message to add more." example="500 (coupon works only on ₹500+ orders)" note="Set to 0 for no minimum." /></label>
                 <input type="number" min={0} value={form.min_order} onChange={e => set('min_order', e.target.value)} className={inputCls} placeholder="0 = no minimum" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Max Discount (₹) <span className="normal-case text-slate-500 font-normal">(0 = unlimited)</span></label>
+                <label className={labelCls}><LabelWithInfo label="Max Discount (₹)" what="Maximum ₹ amount a percentage coupon can save." why="Prevents heavy losses on large orders. E.g. 20% off but capped at ₹200." example="200 (20% off ₹2000 order = ₹400 → capped at ₹200)" note="Only used for percent-type coupons. Set 0 for no cap." /></label>
                 <input type="number" min={0} value={form.max_discount} onChange={e => set('max_discount', e.target.value)} className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Total Usage Limit <span className="normal-case text-slate-500 font-normal">(0 = unlimited)</span></label>
+                <label className={labelCls}><LabelWithInfo label="Total Usage Limit" what="Maximum number of times this coupon can be used across ALL customers." why="Controls your total discount liability. Once the limit is hit, the coupon auto-deactivates." example="100 (first 100 orders get the discount)" note="Set to 0 for unlimited uses." /></label>
                 <input type="number" min={0} value={form.usage_limit} onChange={e => set('usage_limit', e.target.value)} className={inputCls} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Uses per User</label>
+                <label className={labelCls}><LabelWithInfo label="Uses per User" what="How many times a single customer can use this coupon." why="Set to 1 to prevent repeat use by the same person." example="1 (each customer can use it once only)" /></label>
                 <input type="number" min={1} value={form.usage_per_user} onChange={e => set('usage_per_user', e.target.value)} className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Status</label>
+                <label className={labelCls}><LabelWithInfo label="Status" what="Whether this coupon is currently usable by customers." why="Inactive coupons can still be found in admin but cannot be applied at checkout." example="Active = usable  |  Inactive = disabled" /></label>
                 <select value={form.is_active ? 'true' : 'false'} onChange={e => set('is_active', e.target.value === 'true')} className={inputCls}>
                   <option value="true">Active</option>
                   <option value="false">Inactive</option>
@@ -385,17 +400,17 @@ export default function AdminCoupons() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Valid From</label>
+                <label className={labelCls}><LabelWithInfo label="Valid From" what="Date from which the coupon becomes usable." why="Schedule coupons for future campaigns — they won't work before this date." example="2026-09-15 (Dussehra sale start)" note="Leave blank for no start restriction." /></label>
                 <input type="date" value={form.valid_from || ''} onChange={e => set('valid_from', e.target.value || null)} className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Valid To</label>
+                <label className={labelCls}><LabelWithInfo label="Valid To" what="Expiry date after which the coupon stops working automatically." why="Creates urgency. Coupon auto-deactivates at midnight on this date." example="2026-09-20 (sale ends)" note="Leave blank for no expiry." /></label>
                 <input type="date" value={form.valid_to || ''} onChange={e => set('valid_to', e.target.value || null)} className={inputCls} />
               </div>
             </div>
 
             <div>
-              <label className={labelCls}>Description</label>
+              <label className={labelCls}><LabelWithInfo label="Description" what="Internal note about this coupon's purpose. Not shown to customers." why="Helps you and your team remember what campaign or context this coupon is for." example="Dussehra 2026 — 20% off for newsletter subscribers" /></label>
               <textarea rows={2} value={form.description || ''} onChange={e => set('description', e.target.value)} placeholder="Get 20% off on orders above ₹500" className={`${inputCls} resize-none`} />
             </div>
           </div>

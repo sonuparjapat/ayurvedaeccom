@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Star, Check, X, Trash2, Filter, MessageSquare, Send, ChevronDown, ChevronUp } from 'lucide-react'
+import { PageInfoBanner, FieldInfo } from '@/components/admin/FieldInfo'
 
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<any[]>([])
@@ -75,6 +76,18 @@ export default function AdminReviewsPage() {
           <Star className="text-amber-400 fill-amber-400" size={22} /> Reviews Moderation
         </h1>
         <p className="text-gray-500 text-sm mt-1">Approve, reject, reply to, or delete customer reviews</p>
+        <PageInfoBanner
+          title="Reviews Moderation"
+          description="Moderate customer product reviews — approve, reject, or delete them, and respond on behalf of the brand. Only approved reviews appear on product pages."
+          tips={[
+            "New reviews are in 'pending' status — approve them to make them visible on the product page.",
+            "Rejected reviews are hidden from customers but kept in the database for records.",
+            "Replying to a review posts an official brand response visible below the customer's review.",
+            "Use the filter buttons (All / Approved / Pending / Rejected) to focus on items needing moderation.",
+            "Deleting a review is permanent and cannot be undone — prefer rejecting if you might need it later.",
+            "Reviews with customer photos show thumbnail images below the comment text.",
+          ]}
+        />
       </div>
 
       {/* FILTERS */}
@@ -149,6 +162,10 @@ export default function AdminReviewsPage() {
                   {/* Reply input */}
                   {replyingId === r.id && (
                     <div className="mt-3 space-y-2">
+                      <label className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+                        Admin Reply
+                        <FieldInfo what="Your official brand response shown below the customer review." why="Responding to reviews (especially negative ones) shows professionalism and builds trust with future buyers." example="Thank you for your feedback! We're sorry to hear about your experience. Please contact support@oroganix.com and we'll make it right." />
+                      </label>
                       <textarea
                         className="w-full border border-blue-200 rounded-xl p-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
                         rows={3}

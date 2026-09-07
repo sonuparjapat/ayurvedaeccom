@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import AppModal from '@/components/modal/AppModal'
 import DynamicTable from '@/components/table/table'
 import { Loader2, Plus, Search, ArrowUp, ArrowDown } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 interface Banner {
   id: number
@@ -220,6 +221,18 @@ export default function AdminBanners() {
           <div>
             <h1 className="text-xl md:text-3xl font-bold">Banner Management</h1>
             <p className="text-slate-400 text-sm mt-1">Manage hero carousel banners for home page</p>
+            <PageInfoBanner
+              title="Banner Management"
+              description="Banners appear as slides in the hero carousel on the home page (both web and mobile app). Each banner has a gradient background, optional image overlay, a title, and a call-to-action button."
+              tips={[
+                "Use the ↑ ↓ arrows in the table to reorder banners — Sort Order controls the sequence in the carousel.",
+                "Set a banner to 'Hidden' to keep it saved but temporarily remove it from the live site.",
+                "Gradient colors (Background Color 1 & 2) create a nice look even without a photo — great for seasonal campaigns.",
+                "The Tag/Label is a small badge shown above the title (e.g. 'NEW ARRIVAL' or 'SALE') — keep it under 15 characters.",
+                "CTA Link should be a relative URL like /products?category=12 or /flash-sales to drive traffic to the right page.",
+                "Images overlay the gradient — use a high-quality landscape photo (1200×400px recommended) for best results.",
+              ]}
+            />
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative w-full sm:w-auto">
@@ -284,27 +297,27 @@ export default function AdminBanners() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Tag / Label</label>
+                <label className={labelCls}><LabelWithInfo label="Tag / Label" what="A small badge shown above the banner title (e.g. NEW ARRIVAL, SALE)." why="Draws attention to the campaign type and helps customers quickly scan the carousel." example="NEW ARRIVAL" /></label>
                 <input value={form.tag} onChange={e => set('tag', e.target.value)} maxLength={60} placeholder="NEW ARRIVAL" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Sort Order</label>
+                <label className={labelCls}><LabelWithInfo label="Sort Order" what="Numeric position of this banner in the carousel." why="Lower numbers appear first — 0 is the lead slide customers see first." example="0 (lead slide), 1 (second slide)" /></label>
                 <input type="number" min={0} value={form.sort_order} onChange={e => set('sort_order', e.target.value)} placeholder="e.g. 0 (lower = shows first in carousel)" className={inputCls} />
               </div>
             </div>
 
             <div>
-              <label className={labelCls}>Title *</label>
+              <label className={labelCls}><LabelWithInfo label="Title" required what="The main heading shown on the banner slide." why="First text customers read — must convey the campaign value quickly." example="Premium Ayurvedic Products" /></label>
               <input value={form.title} onChange={e => set('title', e.target.value)} maxLength={200} placeholder="Premium Ayurvedic Products" className={inputCls} />
             </div>
 
             <div>
-              <label className={labelCls}>Subtitle</label>
+              <label className={labelCls}><LabelWithInfo label="Subtitle" what="A secondary line below the title giving more context." why="Optional but helps communicate the offer or brand promise concisely." example="Discover nature's healing power" /></label>
               <input value={form.subtitle} onChange={e => set('subtitle', e.target.value)} placeholder="Discover nature's healing power" className={inputCls} />
             </div>
 
             <div>
-              <label className={labelCls}>Banner Image</label>
+              <label className={labelCls}><LabelWithInfo label="Banner Image" what="An optional photo that overlays the gradient background." why="A real product or lifestyle photo makes banners more engaging and trustworthy." example="Upload a JPEG of your flagship product or use a CDN URL" /></label>
               <div className="flex gap-2 mb-2">
                 <button type="button" onClick={() => setImageMode('upload')}
                   className={`px-3 py-1 rounded-lg text-xs font-medium ${imageMode === 'upload' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'}`}>Upload File</button>
@@ -331,14 +344,14 @@ export default function AdminBanners() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Background Color 1</label>
+                <label className={labelCls}><LabelWithInfo label="Background Color 1" what="The start colour of the banner's left-to-right gradient." why="The gradient shows behind the text (and behind any image overlay)." example="#1a3a22 (dark forest green)" /></label>
                 <div className="flex gap-2 mt-1">
                   <input type="color" value={form.bg_color1} onChange={e => set('bg_color1', e.target.value)} className="w-10 h-9 rounded cursor-pointer border border-slate-700 bg-transparent" />
                   <input value={form.bg_color1} onChange={e => set('bg_color1', e.target.value)} className={`${inputCls} mt-0 flex-1`} />
                 </div>
               </div>
               <div>
-                <label className={labelCls}>Background Color 2</label>
+                <label className={labelCls}><LabelWithInfo label="Background Color 2" what="The end colour of the banner's left-to-right gradient." why="Creates a smooth gradient effect from Color 1 to Color 2 across the banner." example="#0d1f15 (very dark green)" /></label>
                 <div className="flex gap-2 mt-1">
                   <input type="color" value={form.bg_color2} onChange={e => set('bg_color2', e.target.value)} className="w-10 h-9 rounded cursor-pointer border border-slate-700 bg-transparent" />
                   <input value={form.bg_color2} onChange={e => set('bg_color2', e.target.value)} className={`${inputCls} mt-0 flex-1`} />
@@ -348,17 +361,17 @@ export default function AdminBanners() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>CTA Button Text</label>
+                <label className={labelCls}><LabelWithInfo label="CTA Button Text" what="The label on the call-to-action button shown on the banner." why="A strong CTA drives clicks to your products or offers." example="Shop Now" /></label>
                 <input value={form.cta_text} onChange={e => set('cta_text', e.target.value)} maxLength={80} placeholder="e.g. Shop Now, Explore, Buy Now" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>CTA Link</label>
+                <label className={labelCls}><LabelWithInfo label="CTA Link" what="The URL the CTA button leads to when clicked." why="Directs customers to the right landing page for this campaign." example="/products?category=5 or /flash-sales" /></label>
                 <input value={form.cta_link} onChange={e => set('cta_link', e.target.value)} maxLength={200} placeholder="/products" className={inputCls} />
               </div>
             </div>
 
             <div>
-              <label className={labelCls}>Status</label>
+              <label className={labelCls}><LabelWithInfo label="Status" what="Whether this banner is currently visible in the carousel." why="Set to Hidden to temporarily remove a banner without deleting it." example="Active (live) or Hidden (draft/paused)" /></label>
               <select value={form.is_active ? 'true' : 'false'} onChange={e => set('is_active', e.target.value === 'true')} className={inputCls}>
                 <option value="true">Active (visible)</option>
                 <option value="false">Hidden</option>

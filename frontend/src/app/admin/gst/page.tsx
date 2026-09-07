@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
 import { Download, RefreshCw, TrendingUp, FileText, Package } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 const FY_OPTIONS = Array.from({ length: 5 }, (_, i) => {
   const y = new Date().getFullYear() - i
@@ -79,6 +80,18 @@ export default function GstPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">GST Reports</h1>
           <p className="text-sm text-gray-500 mt-1">Track tax collected, generate GSTR-1 exports for government filing</p>
+          <PageInfoBanner
+            title="GST Reports"
+            description="View month-wise and HSN-wise GST breakdowns for the selected financial year. Export GSTR-1 compatible CSV files to upload on the GST portal for government compliance filing."
+            tips={[
+              "Select the financial year from the dropdown to view data for that year (April to March).",
+              "Monthly Breakdown shows CGST, SGST, and IGST collected each month — use this for GSTR-3B reconciliation.",
+              "HSN Summary (Table 12) is required in GSTR-1 for businesses with turnover above ₹5 crore.",
+              "Invoice-wise export (B2C) covers all orders below ₹2.5 lakh — upload under GSTR-1 B2C (Others).",
+              "File GSTR-1 by the 11th of the following month for monthly filers.",
+              "IGST applies to inter-state orders; CGST+SGST apply to orders within the same state.",
+            ]}
+          />
         </div>
         <div className="flex items-center gap-3">
           <select
@@ -208,21 +221,21 @@ export default function GstPage() {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">From Date</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="From Date" what="Start date of the period to include in the GSTR-1 export." why="GSTR-1 is filed monthly or quarterly — set the start of your filing period." example="2026-04-01 (start of April)" /></label>
             <input
               type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">To Date</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="To Date" what="End date of the period to include in the GSTR-1 export." why="GSTR-1 is filed monthly or quarterly — set the end of your filing period." example="2026-04-30 (end of April)" /></label>
             <input
               type="date" value={exportTo} onChange={e => setExportTo(e.target.value)}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Type</label>
+            <label className="text-xs font-medium text-gray-600 block mb-1"><LabelWithInfo label="Type" what="The GSTR-1 table format to export." why="Invoice-wise covers B2C sales; HSN summary is Table 12 required for turnover above ₹5 Cr." example="Invoice-wise (B2C) for most Ayurvedic eCommerce stores" /></label>
             <select
               value={exportType} onChange={e => setExportType(e.target.value as any)}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { MessageSquare, Send, RefreshCw, ChevronDown, Search, Filter, Bell } from 'lucide-react'
+import { PageInfoBanner, FieldInfo } from '@/components/admin/FieldInfo'
 import toast from 'react-hot-toast'
 import api from '@/lib/axios'
 
@@ -170,6 +171,18 @@ export default function AdminSupportPage() {
       <div className={`${selected ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0 bg-white border-r flex-col`}>
         {/* Header */}
         <div className="p-4 border-b">
+          <PageInfoBanner
+            title="Support Tickets"
+            description="Manage customer support tickets in real-time. Reply to customer messages, change ticket status and priority, and filter by category to handle them efficiently."
+            tips={[
+              "New tickets arrive via real-time WebSocket — you'll see a notification badge when a new ticket comes in.",
+              "Click a ticket in the left panel to open the conversation and reply.",
+              "Use the Status dropdown to move tickets: Open → In Progress → Resolved → Closed.",
+              "Priority helps you triage — set Urgent for payment issues or delivery failures.",
+              "Closed tickets cannot receive new replies — keep them open if follow-up might be needed.",
+              "Use the search bar (press Enter) to find tickets by subject or customer name.",
+            ]}
+          />
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-bold text-gray-800 flex items-center gap-2">
               <MessageSquare size={18} className="text-green-600" />
@@ -276,23 +289,29 @@ export default function AdminSupportPage() {
                 </div>
                 {/* Quick Update — wraps on mobile */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={ticketStatus}
-                    onChange={e => setTicketStatus(e.target.value)}
-                    className="flex-1 min-w-30 border border-gray-200 rounded-lg text-sm px-2 py-1.5 focus:outline-none"
-                  >
-                    {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                  </select>
-                  <select
-                    value={ticketPriority}
-                    onChange={e => setTicketPriority(e.target.value)}
-                    className="flex-1 min-w-25 border border-gray-200 rounded-lg text-sm px-2 py-1.5 focus:outline-none"
-                  >
+                  <div className="flex-1 min-w-30">
+                    <label className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">Status <FieldInfo what="Current workflow state of this support ticket." why="Helps the team track progress — Resolved means the issue is fixed, Closed means the ticket is archived." example="in_progress (being worked on), resolved (issue fixed)" /></label>
+                    <select
+                      value={ticketStatus}
+                      onChange={e => setTicketStatus(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg text-sm px-2 py-1.5 focus:outline-none"
+                    >
+                      {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-25">
+                    <label className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">Priority <FieldInfo what="The urgency level of this support ticket." why="Higher priority tickets should be addressed first — urgent items affect payment or delivery." example="urgent (payment failure), high (order not received), low (general query)" /></label>
+                    <select
+                      value={ticketPriority}
+                      onChange={e => setTicketPriority(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg text-sm px-2 py-1.5 focus:outline-none"
+                    >
                     {priorityOptions.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                    </select>
+                  </div>
                   <button
                     onClick={updateTicket}
-                    className="bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-green-700 whitespace-nowrap"
+                    className="bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-green-700 whitespace-nowrap self-end"
                   >
                     Update
                   </button>
@@ -326,14 +345,20 @@ export default function AdminSupportPage() {
                 <p className="text-sm text-gray-400 text-center py-1">This ticket is closed</p>
               ) : (
                 <form onSubmit={sendReply} className="flex items-end gap-3">
-                  <textarea
-                    value={reply}
-                    onChange={e => setReply(e.target.value)}
-                    placeholder="Type your response to the customer..."
-                    rows={2}
-                    className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(e) } }}
-                  />
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">
+                      Reply
+                      <FieldInfo what="Your support team's response shown in the customer's ticket thread." why="A clear, helpful response resolves issues faster and improves customer satisfaction." example="Hi! Your order #1234 was shipped via Delhivery on 5 Sep. Tracking: DL987654321. Expected delivery: 8 Sep." />
+                    </label>
+                    <textarea
+                      value={reply}
+                      onChange={e => setReply(e.target.value)}
+                      placeholder="Type your response to the customer..."
+                      rows={2}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(e) } }}
+                    />
+                  </div>
                   <button
                     type="submit"
                     disabled={sending || !reply.trim()}

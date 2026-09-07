@@ -7,6 +7,7 @@ import {
   RotateCcw, CheckCircle, XCircle, DollarSign, Package,
   User, Search, RefreshCw, Eye, Truck,
 } from 'lucide-react'
+import { PageInfoBanner, FieldInfo } from '@/components/admin/FieldInfo'
 import { Button } from '@/components/ui/button'
 import AppModal from '@/components/modal/AppModal'
 
@@ -120,6 +121,18 @@ export default function AdminReturnsPage() {
             <RotateCcw className="text-orange-500" size={22} /> Returns Management
           </h1>
           <p className="text-gray-500 text-sm mt-1">Review and process customer return requests</p>
+          <PageInfoBanner
+            title="Returns Management"
+            description="Review and process customer return requests. You can approve returns (crediting wallet or issuing Razorpay refund), send replacement items, or reject invalid requests with a reason."
+            tips={[
+              "'Return Requested' (status 7) needs your action — approve or reject promptly to maintain customer trust.",
+              "Wallet credit refunds are instant; Razorpay bank refunds take 5–7 business days to reach the customer.",
+              "If the customer wants a replacement, use the 'Send Replacement' button and optionally add a tracking number.",
+              "Rejection requires a written reason — this is shown to the customer in their app and email.",
+              "The Dispatch Replacement modal lets you log the tracking number for the replacement shipment.",
+              "Use the filter buttons (Requested / Refund Initiated / Refunded) to focus on items needing action.",
+            ]}
+          />
         </div>
         <Button variant="outline" onClick={load} className="gap-2">
           <RefreshCw size={15} /> Refresh
@@ -370,12 +383,18 @@ export default function AdminReturnsPage() {
       <AppModal open={dispatchOpen} onClose={() => { setDispatchOpen(false); setDispatchTracking('') }} title="Dispatch Replacement">
         <div className="space-y-4">
           <p className="text-sm text-gray-600">Optionally enter a tracking number for the replacement shipment. The customer will be notified via email and app notification.</p>
-          <input
-            className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            placeholder="Tracking number (optional)"
-            value={dispatchTracking}
-            onChange={e => setDispatchTracking(e.target.value)}
-          />
+          <div>
+            <label className="text-xs font-semibold text-gray-500 flex items-center gap-1 mb-1">
+              Tracking Number (optional)
+              <FieldInfo what="The AWB or tracking number for the replacement shipment courier." why="Shown to the customer so they can track their replacement package." example="DL1234567890 (Delhivery AWB)" />
+            </label>
+            <input
+              className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              placeholder="Tracking number (optional)"
+              value={dispatchTracking}
+              onChange={e => setDispatchTracking(e.target.value)}
+            />
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => { setDispatchOpen(false); setDispatchTracking('') }}>Cancel</Button>
             <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 gap-2" disabled={processing}
@@ -390,13 +409,19 @@ export default function AdminReturnsPage() {
       <AppModal open={rejectOpen} onClose={() => setRejectOpen(false)} title="Reject Return Request">
         <div className="space-y-4">
           <p className="text-sm text-gray-600">Please provide a reason for rejecting this return request. This will be visible to the customer.</p>
-          <textarea
-            className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
-            rows={3}
-            placeholder="e.g. Product shows signs of use beyond normal trial period"
-            value={rejectReason}
-            onChange={e => setRejectReason(e.target.value)}
-          />
+          <div>
+            <label className="text-xs font-semibold text-gray-500 flex items-center gap-1 mb-1">
+              Rejection Reason
+              <FieldInfo what="A clear explanation for why the return request is being rejected." why="Shown to the customer in the app and email — helps them understand and reduces disputes." example="Product shows signs of use beyond the normal trial period" note="Be professional and factual — this message is customer-facing." />
+            </label>
+            <textarea
+              className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+              rows={3}
+              placeholder="e.g. Product shows signs of use beyond normal trial period"
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+            />
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setRejectOpen(false)}>Cancel</Button>
             <Button className="flex-1 bg-red-600 hover:bg-red-700" disabled={processing} onClick={() => reject(selected?.id)}>

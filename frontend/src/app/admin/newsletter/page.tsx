@@ -7,6 +7,7 @@ import {
   Mail, Users, Trash2, Download, RefreshCw, CheckCircle, XCircle,
   Search, Send, Tag, Megaphone, ChevronDown, ChevronUp, Eye, X,
 } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 type CampaignType = 'custom' | 'coupon'
 
@@ -128,6 +129,7 @@ export default function AdminNewsletterPage() {
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
+
             <button
               onClick={() => setShowCampaign(v => !v)}
               className="flex items-center gap-2 bg-white text-emerald-700 font-semibold text-sm px-4 py-2 rounded-xl transition hover:bg-emerald-50 shadow"
@@ -144,6 +146,19 @@ export default function AdminNewsletterPage() {
           </div>
         </div>
       </div>
+
+      <PageInfoBanner
+        title="Newsletter"
+        description="Manage email subscribers and send broadcast campaigns. Use Custom Message for general announcements or Coupon Campaign to send a discount code to all active subscribers at once."
+        tips={[
+          "Only 'active' subscribers receive campaigns — unsubscribed users are automatically excluded.",
+          "Custom Message campaigns: write subject, heading, body text, and optionally add a CTA button.",
+          "Coupon Campaign: the system emails a discount code with the offer details — no manual design needed.",
+          "Export CSV to get a full list of subscribers for use in external tools like Mailchimp.",
+          "Subject line is the most important factor for open rate — keep it under 60 characters.",
+          "Campaigns are sent immediately on clicking Send — there is no scheduled send feature yet.",
+        ]}
+      />
 
       {/* ── Send Campaign Panel ── */}
       {showCampaign && (

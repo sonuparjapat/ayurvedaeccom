@@ -8,6 +8,7 @@ import {
   CheckCircle2, XCircle, UploadCloud, Download,
   FileSpreadsheet, AlertTriangle, ChevronRight, X,
 } from 'lucide-react'
+import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
 interface Pincode {
   id: number
@@ -267,6 +268,18 @@ export default function AdminPincodesPage() {
             <div>
               <h1 className="text-2xl font-bold text-white">Serviceable Pincodes</h1>
               <p className="text-emerald-100 text-sm mt-0.5">Manage delivery coverage — unlisted pincodes get a generic 6-day estimate</p>
+              <PageInfoBanner
+                title="Serviceable Pincodes"
+                description="Control which pin codes your store delivers to and how many days it takes. Pincodes not in this list still show a generic 6-day delivery estimate — add them here for accurate ETAs."
+                tips={[
+                  "Each pincode can have its own delivery_days — metropolitan areas (Mumbai, Delhi) might be 2 days; remote areas 7+ days.",
+                  "Inactive pincodes are hidden from the storefront — use this to temporarily suspend a zone without deleting it.",
+                  "COD Available controls whether cash-on-delivery is offered at that pincode — disable for high-risk zones.",
+                  "Use Bulk Upload to add hundreds of pincodes at once via CSV — download the template first.",
+                  "The CSV template validates each row before upload — invalid rows are shown in red and skipped.",
+                  "Existing pincodes are updated (not duplicated) during bulk upload based on the pincode number.",
+                ]}
+              />
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -452,7 +465,7 @@ export default function AdminPincodesPage() {
               <>
                 <div className="p-6 space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Pincode * (6 digits)</label>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5"><LabelWithInfo label="Pincode * (6 digits)" required what="The 6-digit India Post pincode to add to the serviceable zones." why="Customers entering this pincode during checkout will see this delivery timeline." example="400001 (Mumbai Central)" note="Cannot be changed after creation — delete and re-add if wrong." /></label>
                     <input
                       value={form.pincode}
                       onChange={e => set('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -464,28 +477,28 @@ export default function AdminPincodesPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">City *</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5"><LabelWithInfo label="City *" required what="The city name for this pincode shown in delivery estimates." why="Displayed in the cart and order confirmation so customers know their delivery location is recognized." example="Mumbai" /></label>
                       <input value={form.city} onChange={e => set('city', e.target.value)} placeholder="Mumbai" className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">State</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5"><LabelWithInfo label="State" what="The state name for this pincode." why="Used for GST calculations (IGST vs CGST+SGST) based on whether delivery is intra-state or inter-state." example="Maharashtra" /></label>
                       <input value={form.state} onChange={e => set('state', e.target.value)} placeholder="Maharashtra" className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Delivery Days</label>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5"><LabelWithInfo label="Delivery Days" what="Estimated number of working days for delivery to this pincode." why="Shown to the customer on the product page and cart as 'Estimated delivery in X days'." example="3 (metro cities), 5 (tier-2), 7 (remote)" /></label>
                     <input type="number" value={form.delivery_days} onChange={e => set('delivery_days', e.target.value)} min={1} max={30} placeholder="3" className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" />
                   </div>
                   <div className="flex gap-6">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Status</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5"><LabelWithInfo label="Status" what="Whether deliveries to this pincode are currently active." why="Inactive pincodes are hidden from delivery estimates — use to suspend a zone temporarily." example="Checked = accepting orders for this pincode" /></label>
                       <label className="inline-flex items-center gap-2.5 cursor-pointer">
                         <input type="checkbox" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
                         <span className="text-sm text-gray-700 font-medium">Active</span>
                       </label>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">COD Available</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5"><LabelWithInfo label="COD Available" what="Whether cash-on-delivery payment is offered for orders to this pincode." why="Some remote or high-return zones may have COD disabled to reduce fraud losses." example="Checked = customers can pay cash at doorstep" /></label>
                       <label className="inline-flex items-center gap-2.5 cursor-pointer">
                         <input type="checkbox" checked={(form as any).cod_available !== false} onChange={e => set('cod_available', e.target.checked)} className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
                         <span className="text-sm text-gray-700 font-medium">Cash on Delivery allowed</span>

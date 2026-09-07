@@ -22,6 +22,7 @@ import {
   Clock,
   ListChecks,
 } from 'lucide-react'
+import { PageInfoBanner } from '@/components/admin/FieldInfo'
 
 import toast from 'react-hot-toast'
 
@@ -797,6 +798,19 @@ const generateInvoice = async () => {
               <p className="text-gray-600 mt-2">
                 Manage and track all customer orders
               </p>
+
+              <PageInfoBanner
+                title="Orders Management"
+                description="View, filter, and manage all customer orders in real time. Update order statuses, add tracking information, generate invoices, and process refunds from this page."
+                tips={[
+                  "Real-time: new orders appear instantly via WebSocket — you'll see a green 'NEW' badge on fresh orders.",
+                  "Use the bulk status selector to update multiple orders at once (e.g. mark 10 orders as 'Shipped' together).",
+                  "Click the Edit (pencil) icon to change an order status. Click the Truck icon to add courier tracking details.",
+                  "Use the Timeline (clock) icon to see the full status history of an order with timestamps and who changed it.",
+                  "For COD orders in 'Out for Delivery' status, use the OTP button to generate a delivery verification code.",
+                  "Cancelled paid orders can be refunded via Razorpay — the Refund button appears automatically when eligible.",
+                ]}
+              />
 
             </div>
 

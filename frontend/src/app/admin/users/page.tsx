@@ -14,6 +14,7 @@ import {
   Loader2,
   User,
 } from "lucide-react"
+import { PageInfoBanner } from "@/components/admin/FieldInfo"
 
 
 
@@ -147,6 +148,19 @@ export default function AdminUsers() {
           <p className="text-sm text-gray-500">
             Manage platform users
           </p>
+
+          <PageInfoBanner
+            title="User Management"
+            description="Manage all customer and admin accounts on the platform. Create new admin users, assign them to departments, and manage customer accounts including their verification status."
+            tips={[
+              "Role 1 = Super Admin (full access), Role 2 = Admin (department-based permissions), Role 3 = Customer.",
+              "Admin accounts must be assigned to a department — departments define what pages and actions that admin can access.",
+              "Verified accounts can log in and place orders. Unverified accounts cannot log in until manually verified here.",
+              "You cannot change an email after creation — create a new account if the email needs to change.",
+              "Deleting a user is permanent and removes all their data including orders and addresses.",
+              "Use the search bar to find users by name or email quickly.",
+            ]}
+          />
 
         </div>
 
