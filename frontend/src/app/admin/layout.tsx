@@ -46,6 +46,7 @@ import {
   Gift,
   Trophy,
   Sparkles,
+  Hash,
 } from 'lucide-react'
 import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
@@ -396,6 +397,10 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/pincodes" icon={<List size={18} />} perm="settings.manage">
             Pincodes
+          </MenuItem>
+
+          <MenuItem href="/admin/hsn-codes" icon={<Hash size={18} />} perm="settings.manage">
+            HSN Codes
           </MenuItem>
 
           <MenuItem href="/admin/stock-notifications" icon={<Bell size={18} />} perm="products.view">
