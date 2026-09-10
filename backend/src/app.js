@@ -40,6 +40,12 @@ const quizRoutes = require('./modules/quiz/quiz.routes');
 const giftCardRoutes = require('./modules/giftcards/giftcard.routes');
 const gamesRoutes = require('./modules/games/games.routes');
 
+/* ================= STARTUP GUARD ================= */
+if (!process.env.JWT_SECRET) {
+  console.error('[FATAL] JWT_SECRET environment variable is not set. Refusing to start.')
+  process.exit(1)
+}
+
 const app = express();
 
 /* ================= COMPRESSION ================= */
@@ -145,7 +151,7 @@ app.use("/api/shop", productRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/orders", orderLimiter, orderRoutes);
 app.use("/api/tracking", trackingRoutes);
-app.use("/api/users", userAuthRoutes)
+app.use("/api/users", authLimiter, userAuthRoutes)
 app.use("/api/cart", cartRoutes);
 app.use("/api/company",companyRoutes)
 app.use('/api',routedapis)

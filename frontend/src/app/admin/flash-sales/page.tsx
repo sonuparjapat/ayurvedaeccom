@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
-import { Plus, Edit, Trash2, Zap, Clock, Package } from 'lucide-react'
+import { Plus, Edit, Trash2, Zap, Clock, Package, Upload } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { PageInfoBanner, LabelWithInfo } from '@/components/admin/FieldInfo'
 
@@ -138,7 +139,12 @@ export default function FlashSalesPage() {
             ]}
           />
         </div>
-        <Button onClick={openCreate} className="bg-amber-500 hover:bg-amber-600 gap-2"><Plus size={16} /> New Flash Sale</Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/admin/flash-sales/bulk-create" className="flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 font-semibold text-sm hover:bg-amber-50 transition bg-white">
+            <Upload size={14} /> Bulk Create
+          </Link>
+          <Button onClick={openCreate} className="bg-amber-500 hover:bg-amber-600 gap-2"><Plus size={16} /> New Flash Sale</Button>
+        </div>
       </div>
 
       {/* LIST */}

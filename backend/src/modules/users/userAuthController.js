@@ -9,6 +9,11 @@ const axios = require("axios")
 const mailer = require("../../config/mail")
 const { sendOTP: sendOTPSms } = require('../../services/sms')
 
+/* ── HMAC-SHA256 OTP hash (brute-force safe even with a DB dump — key = JWT_SECRET) ── */
+function hashOtp(otp) {
+  return crypto.createHmac('sha256', process.env.JWT_SECRET).update(String(otp)).digest('hex')
+}
+
 
 
 exports.userRegister = async (req, res) => {
@@ -127,13 +132,14 @@ exports.userRegister = async (req, res) => {
         password,
         role,
         verification_token,
+        verification_token_expiry,
         is_verified,
         referral_code,
         created_at,
         updated_at
       )
       VALUES
-      ($1,$2,$3,$4,3,$5,false,$6,NOW(),NOW())
+      ($1,$2,$3,$4,3,$5,NOW() + INTERVAL '24 hours',false,$6,NOW(),NOW())
       RETURNING id
       `,
       [
@@ -476,7 +482,8 @@ exports.verifyEmail = async (req, res) => {
       SELECT
         id,
         email,
-        is_verified
+        is_verified,
+        verification_token_expiry
       FROM users
       WHERE verification_token = $1
       LIMIT 1
@@ -493,6 +500,19 @@ exports.verifyEmail = async (req, res) => {
     }
 
     const user = result.rows[0];
+
+    /* ================= TOKEN EXPIRY CHECK ================= */
+
+    if (
+      user.verification_token_expiry &&
+      new Date(user.verification_token_expiry) < new Date()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This verification link has expired. Please request a new one."
+      });
+    }
 
     /* ================= ALREADY VERIFIED ================= */
 
@@ -750,7 +770,7 @@ if (attempts >= 3) {
   WHERE id = $3
   `,
   [
-    otp,
+    hashOtp(otp),
     attempts + 1,
     user.id
   ]
@@ -894,7 +914,7 @@ exports.verifyLoginOtp = async (req, res) => {
       });
     }
 
-    if (String(user.otp_code) !== String(otp)) {
+    if (hashOtp(otp) !== user.otp_code) {
       return res.status(400).json({
         success: false,
         message:
@@ -1104,7 +1124,7 @@ if (attempts >= 3) {
   WHERE id = $3
   `,
   [
-    otp,
+    hashOtp(otp),
     attempts + 1,
     user.id
   ]
@@ -1223,10 +1243,7 @@ exports.verifyMobileOtp = async (req, res) => {
       });
     }
 
-    if (
-      String(user.otp_code) !==
-      String(otp)
-    ) {
+    if (hashOtp(otp) !== user.otp_code) {
       return res.status(400).json({
         success: false,
         message:
@@ -1381,6 +1398,7 @@ exports.resendVerification = async (req, res) => {
       UPDATE users
       SET
         verification_token = $1,
+        verification_token_expiry = NOW() + INTERVAL '24 hours',
         updated_at = NOW()
       WHERE id = $2
       `,
@@ -1620,7 +1638,7 @@ exports.googleLogin = async (req, res) => {
     // ── Step 5: Issue your own JWT ──
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'secret',
+      process.env.JWT_SECRET,
       { expiresIn: '30d' }
     )
 
@@ -1682,7 +1700,7 @@ exports.googleLoginUserinfo = async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'secret',
+      process.env.JWT_SECRET,
       { expiresIn: '30d' }
     )
 

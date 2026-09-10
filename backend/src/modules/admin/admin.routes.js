@@ -216,10 +216,15 @@ router.get('/orders/:id/timeline', auth, admin, controller.getOrderTimeline)
 router.get('/export/orders', auth, admin, controller.exportOrdersCSV)
 router.get('/export/users', auth, admin, controller.exportUsersCSV)
 router.get('/export/products', auth, admin, controller.exportProductsCSV)
+router.get('/export/coupons', auth, admin, controller.exportCouponsCSV)
 
 /* ─── BULK COUPON CREATE ─── */
 router.get('/coupons/bulk-template', auth, admin, bulkController.downloadCouponTemplate)
 router.post('/coupons/bulk-create', auth, admin, bulkController.uploadBulkFiles, bulkController.bulkCouponCreate)
+
+/* ─── BULK FLASH SALE CREATE ─── */
+router.get('/flash-sales/bulk-template', auth, admin, bulkController.downloadFlashSaleTemplate)
+router.post('/flash-sales/bulk-create', auth, admin, bulkController.uploadBulkFiles, bulkController.bulkFlashSaleCreate)
 
 /* ─── REVIEWS MODERATION ─── */
 router.get('/reviews', auth, admin, controller.adminListReviews)

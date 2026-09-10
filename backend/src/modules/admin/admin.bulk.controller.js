@@ -897,6 +897,54 @@ exports.getJobs = async (
   }
 }
 
+// ─── BULK FLASH SALE CREATE ────────────────────────────────────────────────
+
+exports.downloadFlashSaleTemplate = (req, res) => {
+  const csv =
+`title,discount_type,discount_value,starts_at,ends_at,description,max_uses,is_active
+Diwali Flash Sale,percent,20,2025-10-20 10:00,2025-10-20 22:00,20% off site-wide for Diwali,500,true
+Summer Special,flat,100,2025-05-01 09:00,2025-05-01 21:00,Flat ₹100 off all orders,,true
+Weekend Offer,percent,15,2025-06-07 00:00,2025-06-08 23:59,15% off this weekend,200,false`
+
+  res.setHeader('Content-Type', 'text/csv')
+  res.setHeader('Content-Disposition', 'attachment; filename=bulk-flash-sales-template.csv')
+  return res.send(csv)
+}
+
+exports.bulkFlashSaleCreate = async (req, res) => {
+  try {
+    if (!req.files?.file?.[0]) {
+      return res.status(400).json({ success: false, message: 'CSV file required' })
+    }
+
+    const csvFile = req.files.file[0]
+    const stamp = Date.now() + '-' + Math.round(Math.random() * 100000)
+
+    const csvPath = await uploadTempFileToAWS(
+      csvFile.buffer,
+      `${stamp}-flash-sales.csv`,
+      'text/csv'
+    )
+
+    const job = await createJob({
+      jobType: 'bulk_flash_sale',
+      payload: { csvPath },
+      userId: req.user?.id || null,
+    })
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bulk flash sale creation queued successfully',
+      data: { jobId: job.id, status: job.status },
+    })
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: 'Bulk flash sale creation failed',
+    })
+  }
+}
+
 // ─── BULK COUPON CREATE ────────────────────────────────────────────────────
 
 exports.downloadCouponTemplate = (req, res) => {

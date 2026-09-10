@@ -2,6 +2,36 @@
 
 ---
 
+## Category Tree View — Verification (2026-09-10)
+
+### Tree display
+1. Go to `/admin/categories`.
+2. **Expected**: categories appear in a tree table — root categories as bold rows, with a ▶ expand button when they have children.
+3. Click ▶ on a root category — **Expected**: children appear indented below it with `└─` connectors.
+4. Click ▼ — **Expected**: children collapse.
+5. Click **Expand All** — **Expected**: entire tree expands. Click **Collapse All** — **Expected**: entire tree collapses.
+6. **Expected**: each row shows a Level badge (Root = green, Sub = blue, Nested = purple) and the Parent column shows the parent's name (or `—` for roots).
+
+### Search
+1. Type a category name in the search box.
+2. **Expected**: tree filters to show only matching branches. Parent rows that contain a matching child are also shown. Tree auto-expands to show matches.
+3. Clear the search — **Expected**: full tree restores.
+
+### Add category
+1. Click **Add Category**.
+2. **Expected**: Parent Category selector shows groups (`📁 Root Name`) with children indented underneath.
+3. Select a parent, fill name, save — **Expected**: new category appears correctly indented under its parent in the tree.
+
+### Edit category
+1. Click **Edit** on any row.
+2. **Expected**: modal opens pre-filled. Parent selector shows the correct parent selected.
+3. Change the parent — **Expected**: after save, category moves to the correct position in the tree.
+
+### Delete category
+1. Click **Delete** — confirm. **Expected**: category removed from tree. If it had children, verify children are still present (or removed depending on backend cascade).
+
+---
+
 ## Admin Field Info System — Verification (2026-09-07)
 
 ### PageInfoBanner
@@ -2104,3 +2134,77 @@ curl http://localhost:5000/api/admin/coupons/bulk-template \
   -H "Cookie: token=<admin_token>" -o template.csv
 # Expected: CSV with 3 example rows downloads
 ```
+
+---
+
+## Bulk & Export System — Further Additions (2026-09-10)
+
+### Export Coupons CSV
+1. Go to `Admin → Coupons`.
+2. **Expected**: an "Export CSV" button appears in the header row (before "Bulk Create").
+3. Click it.
+4. **Expected**: a `coupons_<timestamp>.csv` file downloads.
+5. Open the file — verify it has columns: `code, type, value, min_order, max_discount, usage_limit, usage_per_user, used_count, valid_from, valid_to, description, is_active, created_at`.
+6. Verify date columns are in `YYYY-MM-DD` format. Verify empty dates show as blank strings.
+
+```bash
+curl "http://localhost:5000/api/admin/export/coupons" \
+  -H "Cookie: token=<admin_token>" -o coupons.csv
+head -1 coupons.csv
+# Expected: code,type,value,min_order,max_discount,...
+```
+
+---
+
+### Job Result — Failed Row Drill-Down
+1. Submit any bulk job (coupons, stock, price) where some rows will fail (e.g., a duplicate coupon code).
+2. Wait for job to complete in the job tracker.
+3. **Expected**: if there are failed rows, the tracker shows a red button "X rows could not be processed — click to see details".
+4. Click the button.
+5. **Expected**: an inline table expands showing Row#, Identifier (code/sku/title), and Error columns.
+6. Click the button again.
+7. **Expected**: table collapses.
+
+---
+
+### Bulk Flash Sale Creation
+1. Go to `Admin → Flash Sales` — **Expected**: "Bulk Create" button appears next to "New Flash Sale".
+2. Click "Bulk Create" or go directly to `Admin → Flash Sales → Bulk Create`.
+3. **Expected**: page loads with amber/yellow theme, type reference cards (percent/flat), info panel, download template button.
+4. Click "Download Template" — **Expected**: CSV with 3 example rows downloads.
+5. Create a test CSV:
+```
+title,discount_type,discount_value,starts_at,ends_at,description,max_uses,is_active
+Test Sale,percent,15,2025-10-01 10:00,2025-10-01 22:00,15% off test,,true
+```
+6. Upload and click "Create Flash Sales".
+7. **Expected**: job queued, progress tracker appears.
+8. After job completes, go to `Admin → Flash Sales`.
+9. **Expected**: "Test Sale" appears in the list with discount_type=percent, discount_value=15.
+10. Click Edit on the created sale — **Expected**: no products yet (empty product list).
+
+### Bulk Flash Sale — Validation
+1. Upload: `title,discount_type,discount_value,starts_at,ends_at\n,percent,15,2025-10-01,2025-10-02` (blank title)
+2. **Expected**: row fails with "title is required".
+3. Upload row with `discount_type=bonus` — **Expected**: fails with "discount_type must be percent or flat".
+4. Upload row with `ends_at` before `starts_at` — **Expected**: fails with "ends_at must be after starts_at".
+5. Upload row with `discount_type=percent,discount_value=150` — **Expected**: fails with "percent discount_value cannot exceed 100".
+
+```bash
+curl -X POST http://localhost:5000/api/admin/flash-sales/bulk-create \
+  -H "Cookie: token=<admin_token>" \
+  -F "file=@test-flash-sales.csv"
+# Expected: { success: true, data: { jobId: N, status: 'pending' } }
+
+curl http://localhost:5000/api/admin/flash-sales/bulk-template \
+  -H "Cookie: token=<admin_token>" -o flash-template.csv
+# Expected: CSV with 3 example rows downloads
+```
+
+---
+
+### Pincode Preview — COD Column
+1. Go to `Admin → Pincodes`, click "Bulk Upload".
+2. Upload a CSV that includes a `cod_available` column.
+3. **Expected**: the preview table shows a "COD" column with the values from your CSV (true/false).
+4. Previously this column was missing from the preview (though it was still processed correctly).

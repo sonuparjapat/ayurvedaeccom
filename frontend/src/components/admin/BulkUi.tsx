@@ -218,6 +218,7 @@ export function BulkJobStatus({ jobId, onDone }: { jobId: number; onDone?: (resu
   const [status, setStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending')
   const [result, setResult] = useState<any>(null)
   const [errorText, setErrorText] = useState<string | null>(null)
+  const [showFailedRows, setShowFailedRows] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -288,7 +289,7 @@ export function BulkJobStatus({ jobId, onDone }: { jobId: number; onDone?: (resu
       {status === 'completed' && result?.summary && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10, marginTop: 14 }}>
           {[
-            { label: 'Updated', value: result.summary.updated ?? result.summary.imported ?? 0, color: '#059669' },
+            { label: 'Processed', value: result.summary.updated ?? result.summary.created ?? result.summary.imported ?? 0, color: '#059669' },
             { label: 'Failed rows', value: result.summary.failed ?? 0, color: result.summary.failed > 0 ? '#dc2626' : '#374151' },
             { label: 'Total rows', value: result.summary.total ?? 0, color: '#374151' },
           ].map(s => (
@@ -300,15 +301,43 @@ export function BulkJobStatus({ jobId, onDone }: { jobId: number; onDone?: (resu
         </div>
       )}
 
-      {/* Failed rows download */}
+      {/* Failed rows — inline expandable list */}
       {status === 'completed' && result?.failed?.length > 0 && (
-        <div style={{ marginTop: 12, padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fca5a5' }}>
-          <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600, color: '#991b1b' }}>
-            {result.failed.length} rows could not be processed — check below for the reason.
-          </p>
-          <p style={{ margin: 0, fontSize: 12, color: '#dc2626' }}>
-            Go to <strong>Logs → Bulk Jobs</strong> to download the failed rows CSV.
-          </p>
+        <div style={{ marginTop: 12, background: '#fef2f2', borderRadius: 10, border: '1px solid #fca5a5', overflow: 'hidden' }}>
+          <button
+            onClick={() => setShowFailedRows(v => !v)}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#991b1b' }}>
+              {result.failed.length} row{result.failed.length !== 1 ? 's' : ''} could not be processed — click to {showFailedRows ? 'hide' : 'see'} details
+            </span>
+            <span style={{ fontSize: 12, color: '#dc2626', fontWeight: 700 }}>{showFailedRows ? '▲' : '▼'}</span>
+          </button>
+          {showFailedRows && (
+            <div style={{ borderTop: '1px solid #fca5a5', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: '#fee2e2' }}>
+                    <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 700, color: '#7f1d1d', whiteSpace: 'nowrap' }}>Row</th>
+                    <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 700, color: '#7f1d1d', whiteSpace: 'nowrap' }}>Identifier</th>
+                    <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 700, color: '#7f1d1d' }}>Error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.failed.map((f: any, i: number) => {
+                    const idKey = Object.keys(f).find(k => k !== 'row' && k !== 'error')
+                    return (
+                      <tr key={i} style={{ borderTop: '1px solid #fecaca', background: i % 2 === 0 ? '#fff' : '#fef2f2' }}>
+                        <td style={{ padding: '5px 12px', fontFamily: 'monospace', color: '#9f1239', fontWeight: 600, whiteSpace: 'nowrap' }}>#{f.row}</td>
+                        <td style={{ padding: '5px 12px', fontFamily: 'monospace', color: '#374151', whiteSpace: 'nowrap' }}>{idKey ? (f[idKey] || '—') : '—'}</td>
+                        <td style={{ padding: '5px 12px', color: '#dc2626' }}>{f.error}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

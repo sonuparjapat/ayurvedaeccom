@@ -2,6 +2,74 @@
 
 ---
 
+## Auth Security Hardening (2026-09-10)
+
+### Admin login — two-step flow (password → email OTP)
+`backend/src/modules/auth/auth.controller.js`
+
+Step 1: `POST /api/auth/login` — validates password, checks lockout, sends HMAC-SHA256 OTP to admin email, returns `{ requiresOtp: true }`. No JWT issued yet.
+
+Step 2: `POST /api/auth/verify-2fa` — validates OTP hash + expiry, issues httpOnly JWT cookie, logs `ADMIN_LOGIN_SUCCESS` to admin_logs, resets `login_attempts`, sets `last_login`.
+
+### Admin login — account lockout
+Same pattern as user login: 5 failed passwords → 15-minute lockout via `login_attempts` + `locked_until` columns (already existed on `users` table). Every failure is logged with `ADMIN_LOGIN_FAILED`.
+
+### OTP hashing
+All OTPs (email OTP login, mobile OTP login, admin 2FA) are now stored as `HMAC-SHA256(otp, JWT_SECRET)` instead of plaintext. Comparison: `hashOtp(input) === stored_hash`. This means a DB dump alone cannot reverse the OTPs — an attacker also needs `JWT_SECRET`.
+
+### Verification token expiry
+New column: `users.verification_token_expiry TIMESTAMPTZ` (migration `002_auth_security.sql`).
+Set to `NOW() + 24 hours` in `userRegister` and `resendVerification`. Checked in `verifyEmail` — expired links return a clear error with instructions to resend.
+
+### JWT_SECRET guard
+Both `auth.controller.js` and `app.js` now call `process.exit(1)` at startup if `JWT_SECRET` is not set. The `|| 'secret'` fallback in `googleLogin` / `googleLoginUserinfo` has been removed.
+
+### Rate limiter on /api/users
+`authLimiter` (50 req / 15 min per IP) is now applied to `/api/users` in `app.js`, closing the gap where user auth endpoints had no IP-level throttle.
+
+### Frontend — admin login
+`frontend/src/app/adminauth/page.tsx` — now two-step:
+1. Email + password form → on `requiresOtp: true` response → transition to OTP step
+2. Six individual digit boxes with auto-advance, backspace navigation, and paste support
+
+---
+
+## Category Tree View (2026-09-10)
+
+### File changed
+`frontend/src/app/admin/categories/page.tsx` — full rewrite (no backend changes).
+
+### Key additions
+
+**`buildTree(cats: Category[]): CategoryNode[]`**
+Converts the flat `/categories?limit=500` response into a nested tree. Uses a `Map<id, node>` pass then a parent-link pass. Orphaned nodes (parent_id pointing to a non-existent id) fall back to roots. Sorts each level by `sort_order` then `name`.
+
+**`filterTree(nodes, q)`**
+Recursively filters the tree by name substring. A parent matches if itself OR any descendant matches, so the tree stays structurally coherent during search.
+
+**`TreeRow` component**
+Recursive table-row renderer. Props: `node`, `depth` (0 = root), `expanded` (Set<number>), `onToggle`, `onEdit`, `onDelete`, `allCats`.
+- Renders a `<ChevronRight/Down>` toggle button only when `node.children.length > 0`.
+- Indentation: `paddingLeft: depth * 24` + `└─` connector drawn with monospace characters.
+- Children rendered immediately after the parent `<tr>` — no wrapper element needed because the table tbody is flat.
+
+**`ParentSelect` component**
+Renders `<optgroup>` per root category with children listed inside. Supports 3 levels (root → child → grandchild). Excludes `excludeId` (the currently-edited category) to prevent self-referencing.
+
+**Expanded state**
+On load, all root categories (those with `parent_id == null`) are auto-expanded. Toggle per node stored in `Set<number>`. "Expand All" / "Collapse All" buttons set the full set or empty set.
+
+### Data flow
+```
+GET /categories?limit=500
+  → allCategories (flat Category[])
+  → buildTree() → CategoryNode[] tree (memoized)
+  → filterTree(tree, search) → filtered tree (memoized)
+  → rendered via recursive TreeRow components in one <tbody>
+```
+
+---
+
 ## Admin Field Info System (2026-09-07)
 
 ### Overview
@@ -2111,3 +2179,58 @@ POST /api/admin/coupons/bulk-create     → uploadBulkFiles + bulkCouponCreate
 - Duplicate detection: `err.code === '23505'` → friendly "Duplicate code — already exists" message
 - Inserts with `UPPER($1)` for code — case-insensitive
 - Returns `{ created, failed, total }` — same pattern as all other bulk processors
+
+---
+
+## Bulk & Export System — Further Additions (2026-09-10)
+
+### Coupon Export (`exportCouponsCSV`)
+
+**Backend**: `admin.controller.js` → `exports.exportCouponsCSV`
+**Route**: `GET /api/admin/export/coupons`
+**Frontend button**: `frontend/src/app/admin/coupons/page.tsx` — `exportCoupons()` function uses `responseType: 'blob'` and triggers a download
+
+Queries the `coupons` table, serializes all rows to CSV with 13 columns:
+`code, type, value, min_order, max_discount, usage_limit, usage_per_user, used_count, valid_from, valid_to, description, is_active, created_at`
+
+Date fields use `.toISOString().slice(0, 10)` → YYYY-MM-DD. All values quoted with `"` and inner quotes doubled.
+
+---
+
+### Bulk Flash Sale Creation
+
+**Processor**: `backend/src/services/processBulkFlashSaleJob.js`
+**Job type**: `bulk_flash_sale`
+**Routes**:
+```
+GET  /api/admin/flash-sales/bulk-template   → downloadFlashSaleTemplate
+POST /api/admin/flash-sales/bulk-create     → uploadBulkFiles + bulkFlashSaleCreate
+```
+**Frontend page**: `frontend/src/app/admin/flash-sales/bulk-create/page.tsx`
+**Sidebar**: Added "Bulk Flash Sales" MenuItem under Flash Sales in `frontend/src/app/admin/layout.tsx`
+**Flash Sales page**: "Bulk Create" Link button added next to "New Flash Sale"
+
+**Processor logic**:
+- CSV columns: `title` (required), `discount_type` (percent/flat, default percent), `discount_value` (required, >0, ≤100 for percent), `starts_at` (required, parseable date), `ends_at` (required, after starts_at), `description`, `max_uses`, `is_active`
+- Each row inserts one flash sale with no products — products added via normal edit UI
+- `is_active` defaults true; only string `'false'` sets it false
+- `max_uses`: blank/0 → null (unlimited)
+- Returns `{ summary: { created, failed, total }, failed: [{row, title, error}] }`
+
+---
+
+### BulkJobStatus — Inline Failed Row Drill-Down
+
+**File**: `frontend/src/components/admin/BulkUi.tsx` → `BulkJobStatus`
+
+When a completed job has `result.failed.length > 0`, the component now renders an expandable button showing all failed rows in a table. Replaces the previous "Go to Logs" message.
+
+- `showFailedRows` state controls collapse/expand
+- Renders `row`, the first non-row/non-error key as "Identifier" (handles sku, code, title generically), and `error`
+- `summary.updated` label renamed to `summary.processed` — also reads `summary.created` and `summary.imported` for processors that use different keys
+
+---
+
+### Pincode Preview — COD Column
+
+`frontend/src/app/admin/pincodes/page.tsx` bulk upload modal table: added `cod_available` column header + data cell so the value is visible before submission.

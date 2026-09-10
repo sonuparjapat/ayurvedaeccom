@@ -40,6 +40,9 @@ require('../services/processBulkUploadJob')
 const processBulkCouponJob =
 require('../services/processBulkCouponJob')
 
+const processBulkFlashSaleJob =
+require('../services/processBulkFlashSaleJob')
+
 let running = false
 
 async function runWorker() {
@@ -150,6 +153,14 @@ async function runWorker() {
       ) {
         output =
           await processBulkCouponJob(job)
+      }
+
+      else if (
+        job.job_type ===
+        'bulk_flash_sale'
+      ) {
+        output =
+          await processBulkFlashSaleJob(job)
       }
 
       else {

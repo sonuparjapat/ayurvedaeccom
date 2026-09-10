@@ -636,6 +636,7 @@ export default function AdminPincodesPage() {
                                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">State</th>
                                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Days</th>
                                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Active</th>
+                                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">COD</th>
                                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                               </tr>
                             </thead>
@@ -648,6 +649,7 @@ export default function AdminPincodesPage() {
                                   <td className="px-3 py-2 text-gray-500">{r.state || '—'}</td>
                                   <td className="px-3 py-2 text-gray-700">{r.delivery_days || '3'}</td>
                                   <td className="px-3 py-2 text-gray-700">{r.is_active || 'true'}</td>
+                                  <td className="px-3 py-2 text-gray-700">{r.cod_available || 'true'}</td>
                                   <td className="px-3 py-2">
                                     {r._valid ? (
                                       <span className="inline-flex items-center gap-1 text-green-700 font-semibold">

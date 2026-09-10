@@ -2,6 +2,38 @@
 
 ---
 
+## Admin — Login Security (2026-09-10)
+
+Admin login is now two-step:
+
+1. **Enter email + password** — same as before.
+2. **Enter the 6-digit OTP** sent to your admin email — type each digit into the individual boxes, or paste the code directly.
+
+The OTP is valid for **10 minutes**. After 5 wrong passwords your account is locked for 15 minutes. Every login attempt (success and failure) is recorded in the admin audit log.
+
+---
+
+## Admin — Category Tree View (2026-09-10)
+
+The Categories page now shows categories as a **visual tree** instead of a flat list.
+
+### What changed
+- **Root categories** appear as bold rows. Click the **▶** arrow to expand and see their sub-categories.
+- **Sub-categories** are indented under their parent with a `└─` connector line.
+- **Nested categories** (level 3) are indented further.
+- Each row shows a **Level badge**: Root (green), Sub (blue), or Nested (purple).
+- The **Parent** column shows the parent's name so you always know where a category belongs.
+- All root categories are **expanded by default** when the page loads.
+- Use **Expand All / Collapse All** buttons to show or hide the whole tree at once.
+- Searching filters the tree and auto-expands matching branches.
+
+### Parent selector (Add / Edit modal)
+- The parent selector now uses **grouped options** — each root category is a section header (`📁 Category Name`), with its children listed underneath.
+- Grandchildren are shown indented under their parent.
+- Select **None (Top Level)** to make a category a root.
+
+---
+
 ## Admin Panel — Field Info System (2026-09-07)
 
 Every admin page now has two built-in help features:
@@ -1083,3 +1115,49 @@ Go to `Admin → Coupons → Bulk Create` to create multiple discount coupons at
 - Duplicate codes are skipped — existing coupons are never overwritten.
 - The job runs in the background — track progress on the Jobs page.
 - Download the CSV template from the page for a ready-to-fill example.
+
+---
+
+## Admin — Bulk & Export Improvements (2026-09-10)
+
+### Export All Coupons to CSV
+
+From `Admin → Coupons`, click the **"Export CSV"** button to download all coupons as a CSV file. The file includes every coupon's code, type, value, limits, dates, description, and active status. You can use this to audit coupons in a spreadsheet or back them up before making bulk changes.
+
+---
+
+### Job Result — Failed Row Details
+
+When a bulk job (stock, price, images, coupons, flash sales) finishes with some failed rows, the job tracker now shows an expandable **"X rows could not be processed"** section. Click it to see a table listing:
+- **Row number** — which CSV row failed
+- **Identifier** — the SKU, coupon code, or title of that row
+- **Error** — exactly what went wrong
+
+Previously this just said "Go to Logs". Now you can see all errors inline without leaving the page.
+
+---
+
+### Bulk Flash Sale Creation
+
+Go to `Admin → Flash Sales → Bulk Create` to create multiple flash sales from a single CSV file.
+
+**CSV columns**:
+
+| Column | Required | Description |
+|---|---|---|
+| `title` | Yes | Name of the flash sale shown to customers |
+| `discount_type` | Yes | `percent` (% off) or `flat` (₹ off) |
+| `discount_value` | Yes | Amount — for percent, must be 1–100 |
+| `starts_at` | Yes | Start date-time in `YYYY-MM-DD HH:MM` format |
+| `ends_at` | Yes | End date-time — must be after starts_at |
+| `description` | No | Short description shown on the sale banner |
+| `max_uses` | No | Max total activations. Blank = unlimited |
+| `is_active` | No | `true` or `false`. Default `true` |
+
+**Important**: Flash sales created this way have no products initially. After creation, open each sale via `Admin → Flash Sales → Edit` to add products, set stock limits, and configure individual special prices.
+
+---
+
+### Pincode Bulk Upload — COD Column Added
+
+The CSV preview table in `Admin → Pincodes → Bulk Upload` now shows the `cod_available` column alongside the other columns, so you can verify COD settings for each row before submitting.

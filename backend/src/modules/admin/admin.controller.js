@@ -2573,6 +2573,35 @@ exports.exportProductsCSV = async (req, res) => {
   }
 }
 
+exports.exportCouponsCSV = async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT code, type, value, min_order, max_discount, usage_limit, usage_per_user,
+              used_count, valid_from, valid_to, description, is_active, created_at
+       FROM coupons ORDER BY id ASC`
+    )
+    const headers = [
+      'code','type','value','min_order','max_discount','usage_limit','usage_per_user',
+      'used_count','valid_from','valid_to','description','is_active','created_at',
+    ]
+    const rows = r.rows.map(c => [
+      c.code, c.type, c.value, c.min_order, c.max_discount, c.usage_limit, c.usage_per_user,
+      c.used_count,
+      c.valid_from ? new Date(c.valid_from).toISOString().slice(0, 10) : '',
+      c.valid_to   ? new Date(c.valid_to).toISOString().slice(0, 10)   : '',
+      c.description || '', c.is_active,
+      new Date(c.created_at).toISOString().slice(0, 10),
+    ])
+    const csv = [headers, ...rows].map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="coupons_${Date.now()}.csv"`)
+    res.send(csv)
+  } catch (err) {
+    console.error('[exportCouponsCSV]', err)
+    res.status(500).json({ message: 'Export failed' })
+  }
+}
+
 /* ─── REVIEWS MODERATION ─── */
 exports.adminListReviews = async (req, res) => {
   try {

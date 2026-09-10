@@ -164,6 +164,7 @@ export default function AdminLayout({
     { label: 'Support Tickets', href: '/admin/support', emoji: '💬' },
     { label: 'Banners', href: '/admin/banners', emoji: '🖼️' },
     { label: 'Flash Sales', href: '/admin/flash-sales', emoji: '⚡' },
+    { label: 'Bulk Flash Sales', href: '/admin/flash-sales/bulk-create', emoji: '⚡' },
     { label: 'Newsletter', href: '/admin/newsletter', emoji: '📧' },
     { label: 'Reviews', href: '/admin/reviews', emoji: '⭐' },
     { label: 'Settings', href: '/admin/settings', emoji: '⚙️' },
@@ -423,6 +424,9 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/flash-sales" icon={<Zap size={18} />} perm="flash_sales.manage">
             Flash Sales
+          </MenuItem>
+          <MenuItem href="/admin/flash-sales/bulk-create" icon={<Zap size={18} />} perm="flash_sales.manage">
+            Bulk Flash Sales
           </MenuItem>
 
           <MenuItem href="/admin/bundles" icon={<Package size={18} />} perm="products.create">
