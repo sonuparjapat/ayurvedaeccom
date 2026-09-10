@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
 import { Eye, EyeOff, AlertCircle, CheckCircle, Lock, Mail, Leaf, ArrowRight, Shield, Sparkles } from 'lucide-react'
 
 export default function UserLogin() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login, settings } = useAuth()
   const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_delivery_limit')?.value||500)
   const [formData, setFormData] = useState({ email: '', password: '' })
@@ -15,6 +16,21 @@ export default function UserLogin() {
   const [showPass, setShowPass] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  /* Handle redirect from email unlock link */
+  useEffect(() => {
+    const unlocked = searchParams.get('unlocked')
+    const unlockError = searchParams.get('unlock_error')
+    if (unlocked === 'true') {
+      setSuccess('Your account has been unlocked. You can now sign in.')
+    } else if (unlockError === 'invalid') {
+      setError('This unlock link is invalid. Please request a new one by attempting to log in.')
+    } else if (unlockError === 'expired') {
+      setError('This unlock link has expired. Your account may have already been auto-unlocked — please try signing in.')
+    } else if (unlockError === 'server') {
+      setError('Something went wrong. Please try again or contact support.')
+    }
+  }, [])
 
   const validate = () => {
     if (!formData.email) return 'Email required'

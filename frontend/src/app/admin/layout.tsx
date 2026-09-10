@@ -27,6 +27,7 @@ import {
   Wallet,
   MessageSquare,
   Download,
+  ShieldAlert,
   BookOpen,
   Code2,
   RotateCcw,
@@ -179,6 +180,7 @@ export default function AdminLayout({
     { label: 'Reward Logs', href: '/admin/reward-logs', emoji: '🏆' },
     { label: 'Gift Cards', href: '/admin/gift-cards', emoji: '🎁' },
     { label: 'Sales Reports', href: '/admin/reports', emoji: '📊' },
+    { label: 'IP Security', href: '/admin/security', emoji: '🛡️' },
   ]
 
 
@@ -475,6 +477,10 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/reward-logs" icon={<Trophy size={18} />} perm="analytics.view">
             Reward Logs
+          </MenuItem>
+
+          <MenuItem href="/admin/security" icon={<ShieldAlert size={18} />} perm="analytics.view">
+            IP Security
           </MenuItem>
 
           <div className="pt-3 pb-1 px-3 flex items-center gap-2">

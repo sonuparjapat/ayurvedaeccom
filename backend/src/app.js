@@ -58,7 +58,9 @@ app.use(helmet({
 }));
 app.set('trust proxy', 1);
 
-/* ================= RATE LIMITING ================= */
+/* ================= RATE LIMITING + IP BLOCKING ================= */
+const { checkIpBlock, recordViolation } = require('./utils/ipBlocker');
+
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 2000,
@@ -67,12 +69,20 @@ const globalLimiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later.' },
 });
 
+/* Auth limiter: records a violation → escalating DB-persistent IP ban on every trigger */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Too many login attempts, please try again in 15 minutes.' },
+  handler: async (req, res) => {
+    const ip = req.ip || 'unknown';
+    await recordViolation(ip, 'auth_rate_limit');
+    res.status(429).json({
+      success: false,
+      message: 'Too many login attempts. Your IP has been temporarily blocked.',
+    });
+  },
 });
 
 const orderLimiter = rateLimit({
@@ -142,7 +152,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/', sitemapRoutes);
 
-app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/auth",  checkIpBlock, authLimiter, authRoutes);
 app.use("/api/admin/settings", settingRoutes);
 app.use("/api/admin", adminRoutes);
 
@@ -151,7 +161,7 @@ app.use("/api/shop", productRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/orders", orderLimiter, orderRoutes);
 app.use("/api/tracking", trackingRoutes);
-app.use("/api/users", authLimiter, userAuthRoutes)
+app.use("/api/users", checkIpBlock, authLimiter, userAuthRoutes)
 app.use("/api/cart", cartRoutes);
 app.use("/api/company",companyRoutes)
 app.use('/api',routedapis)

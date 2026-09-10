@@ -67,6 +67,7 @@ router.post('/send-login-otp',controller.sendLoginOtp)
 router.post('/verify-login-otp',controller.verifyLoginOtp)
 router.post("/forgot-password", controller.forgotPassword);
 router.post('/reset-password',controller.resetPassword)
+router.get('/unlock-account', controller.unlockAccount)   // email link — public, no auth
 // ========================export data =======================
 router.get("/export", auth, exportData);
 /* ================= CURRENT USER ================= */

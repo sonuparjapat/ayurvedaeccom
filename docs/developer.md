@@ -2,6 +2,45 @@
 
 ---
 
+## IP Blocking System (2026-09-10)
+
+### Attack vectors addressed
+- **IP rotation** — an attacker using 100 VPNs each making 49 requests (under the rate limit) is now blocked on the first IP that crosses the threshold; repeated violations from the same IP escalate.
+- **Repeat offenders** — previously the 15-min window reset silently. Now each violation is stored in PostgreSQL (`ip_blocks` table) and survives server restarts.
+- **Account enumeration via OTP** — `sendLoginOtp` and `sendMobileOtp` now return a privacy-safe generic response whether the email/phone exists or not.
+
+### Architecture
+**`backend/src/utils/ipBlocker.js`** — core module:
+- `checkIpBlock(req, res, next)` — middleware; hits DB on every auth request, rejects blocked IPs before they even reach the rate limiter.
+- `recordViolation(ip, reason)` — called by the rate limiter's `handler` when a limit is exceeded; upserts `ip_blocks` with escalating duration.
+- `listBlocks / unblockIp / manualBlock` — admin helpers used by controller endpoints.
+
+**Escalation ladder:**
+| Violation count | Block duration |
+|-----------------|---------------|
+| 1–2             | 1 hour        |
+| 3–5             | 24 hours      |
+| 6+              | 7 days        |
+
+### Route-level wiring (`app.js`)
+```
+/api/auth  → checkIpBlock → authLimiter (handler: recordViolation) → routes
+/api/users → checkIpBlock → authLimiter (handler: recordViolation) → routes
+```
+
+### DB migration
+`backend/src/migrations/003_ip_blocks.sql` — `ip_blocks` table (already applied).
+
+### Admin API
+- `GET  /api/admin/security/ip-blocks?active=true` — list blocks
+- `POST /api/admin/security/ip-blocks/block` — `{ ip, hours, reason }` — manual block
+- `DELETE /api/admin/security/ip-blocks/:ip` — unblock
+
+### Frontend
+`frontend/src/app/admin/security/page.tsx` — table of active/all blocks, manual block form, unblock button. Accessible via sidebar "IP Security".
+
+---
+
 ## Auth Security Hardening (2026-09-10)
 
 ### Admin login — two-step flow (password → email OTP)

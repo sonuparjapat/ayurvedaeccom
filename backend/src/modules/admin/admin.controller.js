@@ -2573,6 +2573,48 @@ exports.exportProductsCSV = async (req, res) => {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   IP BLOCK MANAGEMENT
+───────────────────────────────────────────────────────────────────────────── */
+const ipBlocker = require('../../utils/ipBlocker')
+
+exports.listIpBlocks = async (req, res) => {
+  try {
+    const activeOnly = req.query.active !== 'false'
+    const limit  = Math.min(parseInt(req.query.limit  || 100), 200)
+    const offset = parseInt(req.query.offset || 0)
+    const rows = await ipBlocker.listBlocks({ activeOnly, limit, offset })
+    res.json({ success: true, data: rows })
+  } catch (err) {
+    console.error('[listIpBlocks]', err)
+    res.status(500).json({ success: false, message: 'Failed to load IP blocks' })
+  }
+}
+
+exports.unblockIp = async (req, res) => {
+  try {
+    const { ip } = req.params
+    if (!ip) return res.status(400).json({ success: false, message: 'IP required' })
+    await ipBlocker.unblockIp(ip)
+    res.json({ success: true, message: `${ip} unblocked` })
+  } catch (err) {
+    console.error('[unblockIp]', err)
+    res.status(500).json({ success: false, message: 'Failed to unblock IP' })
+  }
+}
+
+exports.manualBlockIp = async (req, res) => {
+  try {
+    const { ip, hours = 24, reason = 'manual_admin_block' } = req.body
+    if (!ip) return res.status(400).json({ success: false, message: 'IP required' })
+    await ipBlocker.manualBlock(ip, Number(hours), reason)
+    res.json({ success: true, message: `${ip} blocked for ${hours}h` })
+  } catch (err) {
+    console.error('[manualBlockIp]', err)
+    res.status(500).json({ success: false, message: 'Failed to block IP' })
+  }
+}
+
 exports.exportCouponsCSV = async (req, res) => {
   try {
     const r = await pool.query(

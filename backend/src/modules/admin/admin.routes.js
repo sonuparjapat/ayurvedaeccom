@@ -218,6 +218,11 @@ router.get('/export/users', auth, admin, controller.exportUsersCSV)
 router.get('/export/products', auth, admin, controller.exportProductsCSV)
 router.get('/export/coupons', auth, admin, controller.exportCouponsCSV)
 
+/* ─── IP BLOCK MANAGEMENT ─── */
+router.get('/security/ip-blocks',       auth, admin, controller.listIpBlocks)
+router.post('/security/ip-blocks/block', auth, admin, controller.manualBlockIp)
+router.delete('/security/ip-blocks/:ip', auth, admin, controller.unblockIp)
+
 /* ─── BULK COUPON CREATE ─── */
 router.get('/coupons/bulk-template', auth, admin, bulkController.downloadCouponTemplate)
 router.post('/coupons/bulk-create', auth, admin, bulkController.uploadBulkFiles, bulkController.bulkCouponCreate)

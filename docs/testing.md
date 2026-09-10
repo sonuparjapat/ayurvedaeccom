@@ -2,6 +2,59 @@
 
 ---
 
+## IP Blocking System — Verification (2026-09-10)
+
+### Auto-block on rate limit
+1. Send 51 POST requests to `/api/auth/login` from the same IP within 15 minutes.
+2. **Expected**: 51st request returns 429 and the `ip_blocks` table now has a row for that IP with `blocked_until = NOW() + 1 hour`.
+3. Send 1 more request → **Expected**: 403 "Access temporarily blocked" (from `checkIpBlock` middleware, before hitting the rate limiter).
+
+### Escalation
+1. Trigger the rate limit 3 more times (clearing the rate limiter window between each, or from different ports) → **Expected**: `violation_count` in `ip_blocks` increments; `blocked_until` extends to 24h at count 3.
+
+### Admin unblock
+1. Go to `/admin/security` → **Expected**: blocked IP appears in table with time remaining.
+2. Click Unblock → **Expected**: row's `blocked_until` set to past, IP can make requests again.
+
+### Manual block
+1. Enter an IP + hours in the manual block form → **Expected**: IP appears in table, any request from that IP to `/api/auth` or `/api/users` returns 403.
+
+### Account enumeration fix
+1. POST `/api/users/send-otp` with an email that does NOT exist → **Expected**: HTTP 200 with generic "If your account exists..." message (NOT 404).
+2. POST `/api/users/send-mobile-otp` with a phone that does NOT exist → **Expected**: same generic 200 response.
+
+---
+
+## Auth Security Hardening — Verification (2026-09-10)
+
+### Admin 2FA login
+1. Go to `/adminauth`. Enter valid admin email + password → **Expected**: no JWT cookie, response `requiresOtp: true`, page transitions to OTP step.
+2. Check admin email inbox → **Expected**: 6-digit OTP code received.
+3. Enter correct OTP → **Expected**: JWT cookie set, redirect to `/admin/dashboard`.
+4. Enter wrong OTP → **Expected**: error message, digits cleared.
+5. Let OTP expire (>10 min) then submit → **Expected**: "OTP has expired" error.
+
+### Admin account lockout
+1. Enter wrong password 5 times → **Expected**: "Account locked for 15 minutes" message.
+2. Check admin_logs table → **Expected**: `ADMIN_LOGIN_FAILED` entries for each attempt.
+3. Wait 15 min and try again → **Expected**: login works again.
+
+### User auth rate limiting
+1. Send >50 login requests in 15 minutes from same IP to `POST /api/users/login` → **Expected**: 429 "Too many login attempts" response.
+
+### OTP hashing
+1. After requesting an OTP (email or mobile), check `users.otp_code` in DB → **Expected**: a 64-character hex string (HMAC-SHA256), NOT the 6-digit code.
+
+### Verification token expiry
+1. Register a new user → check `users.verification_token_expiry` → **Expected**: set to ~24h from now.
+2. Manually set `verification_token_expiry = NOW() - INTERVAL '1 hour'` in DB → try the verification link → **Expected**: "verification link has expired" error.
+3. Use resend verification → **Expected**: new `verification_token_expiry` set to 24h from now.
+
+### JWT_SECRET startup guard
+1. Temporarily unset `JWT_SECRET` in `.env`, restart server → **Expected**: server exits immediately with `[FATAL] JWT_SECRET environment variable is not set`.
+
+---
+
 ## Category Tree View — Verification (2026-09-10)
 
 ### Tree display

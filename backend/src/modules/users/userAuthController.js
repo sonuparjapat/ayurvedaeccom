@@ -245,6 +245,79 @@ exports.userRegister = async (req, res) => {
 };
 
 
+/* ── Lock notification emails ── */
+async function _sendWarningEmail(user) {
+  await mailer.sendTransacEmail({
+    sender: { email: process.env.MAIL_FROM, name: process.env.APP_NAME },
+    to: [{ email: user.email }],
+    subject: `Security alert — failed login attempts on your ${process.env.APP_NAME} account`,
+    htmlContent: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px;">
+        <div style="background:#1a3a2a;padding:20px;border-radius:8px;text-align:center;margin-bottom:20px;">
+          <h2 style="color:#fff;margin:0;font-size:18px;">⚠️ Login Alert — ${process.env.APP_NAME}</h2>
+        </div>
+        <p style="color:#374151;font-size:14px;">Hi <strong>${user.name}</strong>,</p>
+        <p style="color:#374151;font-size:14px;">We detected <strong>3 failed login attempts</strong> on your account just now.</p>
+        <p style="color:#374151;font-size:14px;">If this was you — maybe a forgotten password — you have <strong>2 more attempts</strong> before your account is temporarily locked.</p>
+        <p style="color:#374151;font-size:14px;">If this wasn't you, someone may be trying to access your account. We recommend <a href="${process.env.FRONTEND_URL}/forgot-password" style="color:#059669;">resetting your password</a> immediately.</p>
+        <p style="color:#9ca3af;font-size:11px;margin-top:24px;">This email was sent automatically. Do not reply to this email.</p>
+      </div>`
+  });
+}
+
+async function _sendSoftLockEmail(user, unlockToken) {
+  const unlockLink = `${process.env.BACKEND_URL || process.env.FRONTEND_URL?.replace(':3000', ':5000')}/api/users/unlock-account?token=${unlockToken}`;
+  await mailer.sendTransacEmail({
+    sender: { email: process.env.MAIL_FROM, name: process.env.APP_NAME },
+    to: [{ email: user.email }],
+    subject: `Your ${process.env.APP_NAME} account has been temporarily locked`,
+    htmlContent: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px;">
+        <div style="background:#92400e;padding:20px;border-radius:8px;text-align:center;margin-bottom:20px;">
+          <h2 style="color:#fff;margin:0;font-size:18px;">🔒 Account Temporarily Locked</h2>
+        </div>
+        <p style="color:#374151;font-size:14px;">Hi <strong>${user.name}</strong>,</p>
+        <p style="color:#374151;font-size:14px;">Your account has been <strong>temporarily locked for 30 minutes</strong> after 5 failed login attempts.</p>
+        <p style="color:#374151;font-size:14px;">Your account will automatically unlock after 30 minutes. Or click the button below to unlock it immediately:</p>
+        <div style="text-align:center;margin:28px 0;">
+          <a href="${unlockLink}" style="display:inline-block;background:#059669;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:15px;font-weight:700;">Unlock My Account →</a>
+        </div>
+        <p style="color:#6b7280;font-size:12px;">This unlock link is valid for 24 hours and can only be used once.</p>
+        <p style="color:#ef4444;font-size:12px;margin-top:12px;"><strong>If this wasn't you</strong>, your account is safe for now. Please <a href="${process.env.FRONTEND_URL}/forgot-password" style="color:#ef4444;">reset your password</a> after unlocking.</p>
+        <p style="color:#9ca3af;font-size:11px;margin-top:24px;">Do not reply to this email.</p>
+      </div>`
+  });
+}
+
+async function _sendHardLockEmail(user, unlockToken) {
+  const unlockLink = `${process.env.BACKEND_URL || process.env.FRONTEND_URL?.replace(':3000', ':5000')}/api/users/unlock-account?token=${unlockToken}`;
+  await mailer.sendTransacEmail({
+    sender: { email: process.env.MAIL_FROM, name: process.env.APP_NAME },
+    to: [{ email: user.email }],
+    subject: `Important: Your ${process.env.APP_NAME} account has been locked`,
+    htmlContent: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px;">
+        <div style="background:#991b1b;padding:20px;border-radius:8px;text-align:center;margin-bottom:20px;">
+          <h2 style="color:#fff;margin:0;font-size:18px;">🚨 Account Locked</h2>
+        </div>
+        <p style="color:#374151;font-size:14px;">Hi <strong>${user.name}</strong>,</p>
+        <p style="color:#374151;font-size:14px;">Your account has been <strong>locked</strong> due to repeated failed login attempts. This is a security measure to protect your account.</p>
+        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:16px;margin:20px 0;">
+          <p style="color:#991b1b;font-size:13px;font-weight:700;margin:0 0 6px;">Two ways to unlock your account:</p>
+          <ol style="color:#374151;font-size:13px;margin:0;padding-left:18px;line-height:2;">
+            <li><strong>Click the unlock button below</strong> — unlocks immediately (link valid 24h, single use)</li>
+            <li><strong>Wait up to 24 hours</strong> — your account unlocks automatically</li>
+          </ol>
+        </div>
+        <div style="text-align:center;margin:28px 0;">
+          <a href="${unlockLink}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:15px;font-weight:700;">Unlock My Account →</a>
+        </div>
+        <p style="color:#ef4444;font-size:12px;margin-top:12px;"><strong>If this wasn't you</strong>, please <a href="${process.env.FRONTEND_URL}/forgot-password" style="color:#ef4444;">reset your password immediately</a> after unlocking.</p>
+        <p style="color:#9ca3af;font-size:11px;margin-top:24px;">Do not reply to this email.</p>
+      </div>`
+  });
+}
+
 exports.userLogin = async (req, res) => {
   try {
 
@@ -255,8 +328,7 @@ exports.userLogin = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message:
-          "Please enter your email address and password."
+        message: "Please enter your email address and password."
       });
     }
 
@@ -265,40 +337,18 @@ exports.userLogin = async (req, res) => {
     /* ================= GET USER ================= */
 
     const result = await pool.query(
-      `
-      SELECT
-        u.id,
-        u.role,
-        u.name,
-        u.email,
-        u.password,
-        u.phone,
-        u.is_verified,
-        u.is_active,
-        u.login_attempts,
-        u.locked_until,
-
-        COALESCE(
-          (
-            SELECT SUM(quantity)
-            FROM cart
-            WHERE user_id = u.id
-          ),
-          0
-        ) AS cart_count
-
-      FROM users u
-      WHERE u.email = $1
-      LIMIT 1
-      `,
+      `SELECT u.id, u.role, u.name, u.email, u.password, u.phone,
+              u.is_verified, u.is_active, u.login_attempts, u.locked_until,
+              u.lock_type,
+              COALESCE((SELECT SUM(quantity) FROM cart WHERE user_id = u.id), 0) AS cart_count
+       FROM users u WHERE u.email = $1 LIMIT 1`,
       [cleanEmail]
     );
 
     if (!result.rowCount) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid email address or password."
+        message: "Invalid email address or password."
       });
     }
 
@@ -309,22 +359,40 @@ exports.userLogin = async (req, res) => {
     if (!user.is_active) {
       return res.status(403).json({
         success: false,
-        message:
-          "Your account is currently inactive."
+        message: "Your account is currently inactive."
       });
     }
 
     /* ================= LOCK CHECK ================= */
 
-    if (
-      user.locked_until &&
-      new Date(user.locked_until) > new Date()
-    ) {
+    const lockedUntil = user.locked_until ? new Date(user.locked_until) : null;
+    const isLocked = lockedUntil && lockedUntil > new Date();
+
+    if (isLocked) {
+      if (user.lock_type === 'hard') {
+        return res.status(423).json({
+          success: false,
+          message: "Your account has been locked due to repeated failed login attempts. Check your email for an unlock link, or wait up to 24 hours for automatic unlock.",
+          lockType: 'hard',
+        });
+      }
+      const diffMin = Math.ceil((lockedUntil - Date.now()) / 60000);
       return res.status(423).json({
         success: false,
-        message:
-          "Your account is temporarily locked. Please try again later."
+        message: `Your account is temporarily locked. Please try again in ${diffMin} minute${diffMin === 1 ? '' : 's'}, or check your email to unlock immediately.`,
+        lockType: 'soft',
+        minutesLeft: diffMin,
       });
+    }
+
+    /* ── Soft lock expired → grant 2 extra attempts ── */
+    if (user.lock_type === 'soft' && lockedUntil && lockedUntil <= new Date()) {
+      await pool.query(
+        `UPDATE users SET login_attempts = 3, locked_until = NULL, updated_at = NOW() WHERE id = $1`,
+        [user.id]
+      );
+      user.login_attempts = 3;
+      /* keep lock_type = 'soft' in memory so next 2 failures trigger hard lock */
     }
 
     /* ================= EMAIL VERIFIED ================= */
@@ -332,8 +400,7 @@ exports.userLogin = async (req, res) => {
     if (!user.is_verified) {
       return res.status(403).json({
         success: false,
-        message:
-          "Please verify your email address before logging in."
+        message: "Please verify your email address before logging in."
       });
     }
 
@@ -342,67 +409,90 @@ exports.userLogin = async (req, res) => {
     if (Number(user.role) !== 3) {
       return res.status(403).json({
         success: false,
-        message:
-          "This account is not eligible for customer login."
+        message: "This account is not eligible for customer login."
       });
     }
 
     /* ================= PASSWORD MATCH ================= */
 
-    const match = await bcrypt.compare(
-      password,
-      user.password
-    );
+    const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
+      const attempts = Number(user.login_attempts || 0) + 1;
 
-      const attempts =
-        Number(user.login_attempts || 0) + 1;
-
-      if (attempts >= 5) {
+      /* ── 3 failed attempts — send warning email (first time only) ── */
+      if (attempts === 3 && !user.lock_type) {
         await pool.query(
-          `
-          UPDATE users
-          SET
-            login_attempts = $1,
-            locked_until = NOW() + INTERVAL '15 minutes',
-            updated_at = NOW()
-          WHERE id = $2
-          `,
+          `UPDATE users SET login_attempts = $1, updated_at = NOW() WHERE id = $2`,
           [attempts, user.id]
         );
-      } else {
-        await pool.query(
-          `
-          UPDATE users
-          SET
-            login_attempts = $1,
-            updated_at = NOW()
-          WHERE id = $2
-          `,
-          [attempts, user.id]
-        );
+        _sendWarningEmail(user).catch(() => {});
+        return res.status(400).json({
+          success: false,
+          message: "Invalid email address or password. This is your 3rd failed attempt — please double-check your password.",
+        });
       }
 
+      /* ── 5 failed attempts — lock ── */
+      if (attempts >= 5) {
+        const unlockToken  = crypto.randomBytes(32).toString('hex');
+        const unlockExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
+        if (user.lock_type === 'soft') {
+          /* Second wave of failures → HARD LOCK (24h) */
+          await pool.query(
+            `UPDATE users
+             SET login_attempts = $1, lock_type = 'hard',
+                 locked_until = NOW() + INTERVAL '24 hours',
+                 unlock_token = $2, unlock_token_expiry = $3, updated_at = NOW()
+             WHERE id = $4`,
+            [attempts, unlockToken, unlockExpiry, user.id]
+          );
+          _sendHardLockEmail(user, unlockToken).catch(() => {});
+          return res.status(423).json({
+            success: false,
+            message: "Your account has been locked due to too many failed attempts. An unlock link has been sent to your email. You can also wait 24 hours for automatic unlock.",
+            lockType: 'hard',
+          });
+        } else {
+          /* First lockout → SOFT LOCK (30 min) */
+          await pool.query(
+            `UPDATE users
+             SET login_attempts = $1, lock_type = 'soft',
+                 locked_until = NOW() + INTERVAL '30 minutes',
+                 unlock_token = $2, unlock_token_expiry = $3, updated_at = NOW()
+             WHERE id = $4`,
+            [attempts, unlockToken, unlockExpiry, user.id]
+          );
+          _sendSoftLockEmail(user, unlockToken).catch(() => {});
+          return res.status(423).json({
+            success: false,
+            message: "Your account has been temporarily locked for 30 minutes. An email with an unlock link has been sent to your inbox.",
+            lockType: 'soft',
+          });
+        }
+      }
+
+      /* ── Other failures — just increment ── */
+      await pool.query(
+        `UPDATE users SET login_attempts = $1, updated_at = NOW() WHERE id = $2`,
+        [attempts, user.id]
+      );
+      const remaining = 5 - attempts;
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid email address or password."
+        message: `Invalid email address or password. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before your account is locked.`,
       });
     }
 
-    /* ================= SUCCESS RESET ================= */
+    /* ================= SUCCESS — FULL RESET ================= */
 
     await pool.query(
-      `
-      UPDATE users
-      SET
-        login_attempts = 0,
-        locked_until = NULL,
-        last_login = NOW(),
-        updated_at = NOW()
-      WHERE id = $1
-      `,
+      `UPDATE users
+       SET login_attempts = 0, locked_until = NULL, lock_type = NULL,
+           unlock_token = NULL, unlock_token_expiry = NULL,
+           last_login = NOW(), updated_at = NOW()
+       WHERE id = $1`,
       [user.id]
     );
 
@@ -700,34 +790,17 @@ exports.sendLoginOtp = async (req, res) => {
       [clean]
     );
 
-    if (!result.rowCount) {
+    if (!result.rowCount || Number(result.rows[0].role) !== 3 || !result.rows[0].is_verified) {
       await client.query('ROLLBACK');
-      return res.status(404).json({
-        success: false,
-        message:
-          "No account found with this email address."
+      /* Privacy-safe: never reveal whether the email is registered */
+      return res.status(200).json({
+        success: true,
+        message: "If your account exists and is verified, an OTP has been sent to your email."
       });
     }
 
     const user = result.rows[0];
 
-    if (Number(user.role) !== 3) {
-      await client.query('ROLLBACK');
-      return res.status(403).json({
-        success: false,
-        message:
-          "Invalid customer account."
-      });
-    }
-
-    if (!user.is_verified) {
-      await client.query('ROLLBACK');
-      return res.status(403).json({
-        success: false,
-        message:
-          "Please verify your email address first."
-      });
-    }
 const lastUpdated =
   new Date(user.updated_at);
 
@@ -1056,10 +1129,10 @@ FOR UPDATE
 
     if (!result.rowCount) {
       await client.query('ROLLBACK');
-      return res.status(404).json({
-        success: false,
-        message:
-          "No account found with this mobile number."
+      /* Privacy-safe: don't reveal if this phone number is registered */
+      return res.status(200).json({
+        success: true,
+        message: "If your account exists, an OTP has been sent to your mobile number."
       });
     }
 
@@ -1727,6 +1800,72 @@ exports.logout = async (req, res) => {
 
   res.json({ message: "Logged out" })
 }
+
+/* ── Email-based account unlock ── */
+exports.unlockAccount = async (req, res) => {
+  const { token } = req.query
+  const loginUrl = `${process.env.FRONTEND_URL}/login`
+
+  if (!token) {
+    return res.redirect(`${loginUrl}?unlock_error=invalid`)
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT id, name, email, unlock_token_expiry
+       FROM users
+       WHERE unlock_token = $1
+       LIMIT 1`,
+      [token]
+    )
+
+    if (!result.rowCount) {
+      return res.redirect(`${loginUrl}?unlock_error=invalid`)
+    }
+
+    const user = result.rows[0]
+
+    if (!user.unlock_token_expiry || new Date(user.unlock_token_expiry) < new Date()) {
+      return res.redirect(`${loginUrl}?unlock_error=expired`)
+    }
+
+    /* Unlock the account — single use: clear token immediately */
+    await pool.query(
+      `UPDATE users
+       SET lock_type = NULL, locked_until = NULL, login_attempts = 0,
+           unlock_token = NULL, unlock_token_expiry = NULL, updated_at = NOW()
+       WHERE id = $1`,
+      [user.id]
+    )
+
+    /* Confirmation email */
+    mailer.sendTransacEmail({
+      sender: { email: process.env.MAIL_FROM, name: process.env.APP_NAME },
+      to: [{ email: user.email }],
+      subject: `Your ${process.env.APP_NAME} account has been unlocked`,
+      htmlContent: `
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px;">
+          <div style="background:#064e3b;padding:20px;border-radius:8px;text-align:center;margin-bottom:20px;">
+            <h2 style="color:#fff;margin:0;font-size:18px;">✅ Account Unlocked</h2>
+          </div>
+          <p style="color:#374151;font-size:14px;">Hi <strong>${user.name}</strong>,</p>
+          <p style="color:#374151;font-size:14px;">Your account has been <strong>successfully unlocked</strong>. You can now sign in.</p>
+          <div style="text-align:center;margin:28px 0;">
+            <a href="${loginUrl}" style="display:inline-block;background:#059669;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:15px;font-weight:700;">Sign In →</a>
+          </div>
+          <p style="color:#ef4444;font-size:12px;">If you did not request this unlock, please <a href="${process.env.FRONTEND_URL}/forgot-password" style="color:#ef4444;">change your password immediately</a>.</p>
+          <p style="color:#9ca3af;font-size:11px;margin-top:24px;">Do not reply to this email.</p>
+        </div>`
+    }).catch(() => {})
+
+    return res.redirect(`${loginUrl}?unlocked=true`)
+
+  } catch (err) {
+    console.error('[unlockAccount]', err)
+    return res.redirect(`${loginUrl}?unlock_error=server`)
+  }
+}
+
 exports.getMe = async (req, res) => {
 
   try {

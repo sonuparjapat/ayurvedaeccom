@@ -6,12 +6,14 @@ const { initSocket } = require("./socket");
 const initDB = require("./database/init");
 const startJobs = require("./jobs");
 const startWorker = require('./workers/jobWorker');
+const startAccountUnlockWorker = require('./workers/accountUnlockWorker');
 
 const PORT = process.env.PORT || 5000;
 
 (async () => {
   await initDB();
   startWorker();
+  startAccountUnlockWorker();
   startJobs();
 
   const httpServer = http.createServer(app);

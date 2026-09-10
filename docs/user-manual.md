@@ -2,6 +2,43 @@
 
 ---
 
+## Admin — IP Security (2026-09-10)
+
+Go to **Admin → IP Security** to see all blocked IPs.
+
+- **Red IPs** are currently blocked with time remaining shown.
+- **Violation count** shows how many times this IP has triggered the rate limit. Higher counts = longer blocks (1h → 24h → 7 days).
+- Click **Unblock** to immediately lift a block.
+- Use the **Block IP manually** form to block any IP for a custom number of hours.
+- Toggle **Active blocks only** to see the full history.
+
+Blocks are created automatically — you do not need to manage this daily. It is most useful when you see unusual activity in order to check if an IP is already blocked or to manually block a suspicious one.
+
+---
+
+## Account Lockout & Auto-Unlock (2026-09-10)
+
+### What happens when you enter a wrong password
+
+| Attempts | What happens |
+|----------|-------------|
+| 3 wrong  | Warning email sent — "We noticed 3 failed login attempts" |
+| 5 wrong  | Account **soft-locked for 30 minutes** + unlock email sent |
+| 30 min later | 2 more chances given automatically |
+| 2 more fail | Account **hard-locked for 24 hours** + new unlock email sent |
+| 24 hours | Account automatically unlocked by the system |
+
+### How to unlock your account via email
+When your account is locked, you will receive an email with an **Unlock My Account** button. Click it — your account unlocks immediately and you can sign in again. The link:
+- Works only once (expires after use)
+- Expires after 24 hours
+- Triggers a confirmation email when used
+
+### Auto-unlock
+Even if you don't click the email link, the system automatically unlocks your account after 24 hours and sends you a notification email.
+
+---
+
 ## Admin — Login Security (2026-09-10)
 
 Admin login is now two-step:
