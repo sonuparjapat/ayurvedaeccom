@@ -41,6 +41,65 @@
 
 ---
 
+## Progressive Account Lockout (2026-09-14)
+
+### Design goals
+- Protect against brute-force without permanently locking out legitimate users who forgot their password.
+- Every lock state sends an email so the user knows what happened and how to recover.
+- No external dependencies — cron runs via `setInterval` in the Node process itself.
+
+### Lockout state machine
+
+| Attempt # | Action | DB state |
+|-----------|--------|----------|
+| 3rd wrong password | Warning email sent | `login_attempts=3` |
+| 5th wrong password | **Soft lock** 30 min + email with unlock link | `lock_type='soft'`, `locked_until=NOW()+30min`, `unlock_token`, `unlock_token_expiry` |
+| Soft lock expires | 2 bonus attempts granted automatically on next login | `login_attempts` reset to 3 in DB |
+| 2 more failures after soft lock | **Hard lock** 24h + email with unlock link | `lock_type='hard'`, `locked_until=NOW()+24h`, new `unlock_token` |
+| 24h passes | Cron auto-unlocks, confirmation email sent | all lock columns → NULL |
+| User clicks email link | Instant unlock, link invalidated | all lock columns → NULL |
+
+### New DB columns (migration `004_account_lockout.sql`)
+```sql
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS lock_type             VARCHAR(10),     -- 'soft' | 'hard' | NULL
+  ADD COLUMN IF NOT EXISTS unlock_token          VARCHAR(64),
+  ADD COLUMN IF NOT EXISTS unlock_token_expiry   TIMESTAMPTZ;
+```
+
+### Key files
+
+**`backend/src/modules/users/userAuthController.js`**
+- `_sendWarningEmail(user)` — fires at 3rd failure
+- `_sendSoftLockEmail(user, unlockToken)` — fires at 5th failure (soft lock)
+- `_sendHardLockEmail(user, unlockToken)` — fires at 7th failure (hard lock)
+- `unlockAccount(req, res)` — `GET /api/users/unlock-account?token=…`; single-use, 24h expiry, redirects to `${FRONTEND_URL}/login?unlocked=true`; redirects to `?unlock_error=invalid|expired|server` on failure.
+
+**`backend/src/workers/accountUnlockWorker.js`**  
+- Runs `unlockExpiredAccounts()` on startup and every 60 minutes via `setInterval`.
+- Finds all `lock_type='hard' AND locked_until <= NOW()` rows, resets them, sends auto-unlock confirmation email.
+- Started in `server.js`: `startAccountUnlockWorker()`.
+
+**`frontend/src/app/login/page.tsx`**
+- Reads `?unlocked=true` → shows success banner "Your account has been unlocked."
+- Reads `?unlock_error=invalid|expired|server` → shows appropriate error message.
+- Uses `useSearchParams` from `next/navigation`.
+
+### Unlock token details
+- `crypto.randomBytes(32).toString('hex')` — 64-char hex, stored in `users.unlock_token`.
+- Expires in 24h (`unlock_token_expiry`).
+- Single-use: cleared from DB the moment it is consumed. A second click on the same link gets "invalid" error.
+- Not strictly necessary after 24h (cron unlocks anyway), but provided as an immediate path for the user.
+
+### Email links
+The unlock link in the email points to the **backend** URL:
+```
+GET ${BACKEND_URL}/api/users/unlock-account?token=<hex>
+```
+The backend validates, unlocks, and HTTP-redirects the browser to the frontend. Ensure `BACKEND_URL` and `FRONTEND_URL` are set correctly in `.env`.
+
+---
+
 ## Auth Security Hardening (2026-09-10)
 
 ### Admin login — two-step flow (password → email OTP)

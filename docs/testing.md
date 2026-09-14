@@ -25,6 +25,67 @@
 
 ---
 
+## Progressive Account Lockout — Verification (2026-09-14)
+
+### Setup
+All tests below require a test user whose `login_attempts`, `locked_until`, `lock_type`, `unlock_token`, `unlock_token_expiry` are NULL (fresh state). Use `UPDATE users SET login_attempts=0, locked_until=NULL, lock_type=NULL, unlock_token=NULL, unlock_token_expiry=NULL WHERE email='<test@email>'`.
+
+---
+
+### 1 — Warning email at 3 failures
+1. Attempt login with wrong password 3 times.
+2. **Expected response**: `{ success: false, message: 'Invalid email or password. 2 more attempts before your account is temporarily locked.' }` (exact count varies by attempt).
+3. **Expected email**: "We noticed 3 failed login attempts on your account" email received at the registered address.
+4. Check DB: `login_attempts = 3`, `lock_type = NULL`.
+
+### 2 — Soft lock at 5 failures
+1. Continue with 2 more wrong passwords (total = 5).
+2. **Expected response**: `{ success: false, message: 'Account temporarily locked for 30 minutes. Check your email for an unlock link.' }`.
+3. **Expected email**: "Account Temporarily Locked" email with an **Unlock My Account** button.
+4. Check DB: `lock_type = 'soft'`, `locked_until ≈ NOW()+30min`, `unlock_token` is a 64-char hex string, `unlock_token_expiry ≈ NOW()+24h`.
+5. Try another login attempt immediately → **Expected**: "Account temporarily locked for X minutes" message (shows minutes remaining).
+
+### 3 — Soft lock expiry gives 2 bonus attempts
+1. Manually set `locked_until = NOW() - INTERVAL '1 minute'` in DB (simulate 30 min passing).
+2. Attempt login with wrong password.
+3. **Expected**: login_attempts resets to 3 in DB (not 0), and the response is the "2 more attempts" warning message.
+4. One more wrong password → count becomes 4 → response shows "1 more attempt".
+
+### 4 — Hard lock after 2 failures post-soft-lock
+1. With `login_attempts=5` (or `lock_type='soft'` and attempts near limit): attempt 2 more wrong passwords.
+2. **Expected response**: `{ success: false, message: 'Account locked for 24 hours due to repeated failed attempts. Check your email for an unlock link.' }`.
+3. **Expected email**: "Account Hard Locked — 24 Hours" email with a new **Unlock My Account** button.
+4. Check DB: `lock_type = 'hard'`, `locked_until ≈ NOW()+24h`, new `unlock_token`.
+5. Any further login attempt → **Expected**: "Account is locked for 24 hours. Please use the unlock link in your email."
+
+### 5 — Unlock via email link (single-use)
+1. Copy the unlock link from the hard-lock email (format: `http://localhost:5000/api/users/unlock-account?token=<hex>`).
+2. Open in browser → **Expected**: browser redirects to `http://localhost:3000/login?unlocked=true`.
+3. **Expected UI**: green success banner "Your account has been unlocked. You can now sign in."
+4. Check DB: all lock columns are NULL.
+5. Try the same link again → **Expected**: redirects to `?unlock_error=invalid`.
+6. **Expected UI**: red error "This unlock link is invalid or has already been used."
+
+### 6 — Unlock link expiry
+1. After receiving a hard-lock email, manually set `unlock_token_expiry = NOW() - INTERVAL '1 hour'` in DB.
+2. Click the link → **Expected**: redirects to `?unlock_error=expired`.
+3. **Expected UI**: "This unlock link has expired. Your account will be automatically unlocked within 24 hours."
+
+### 7 — Cron auto-unlock
+1. Set a user to hard-locked: `UPDATE users SET lock_type='hard', locked_until=NOW()-INTERVAL '1 minute' WHERE email='<test@email>'`.
+2. Wait for the cron to run (up to 60 min), OR restart the server (cron runs once on startup).
+3. **Expected**: DB row reset — all lock columns NULL.
+4. **Expected email**: "Account Auto-Unlocked" confirmation email received.
+5. Check server logs: `[AccountUnlock Cron] Auto-unlocked 1 account(s)`.
+
+### 8 — Successful login resets all lock state
+1. Soft-lock a user (at `login_attempts=5`).
+2. Wait for soft lock to expire, then log in with the **correct** password.
+3. **Expected**: login succeeds, JWT cookie set.
+4. Check DB: `login_attempts=0`, `locked_until=NULL`, `lock_type=NULL`, `unlock_token=NULL`.
+
+---
+
 ## Auth Security Hardening — Verification (2026-09-10)
 
 ### Admin 2FA login
