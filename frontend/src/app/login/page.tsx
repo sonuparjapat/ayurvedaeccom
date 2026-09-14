@@ -1,23 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
 import { Eye, EyeOff, AlertCircle, CheckCircle, Lock, Mail, Leaf, ArrowRight, Shield, Sparkles } from 'lucide-react'
 
-export default function UserLogin() {
-  const router = useRouter()
+/* Isolated so Next.js can wrap it in Suspense — useSearchParams() requires this */
+function UnlockNotice({ setError, setSuccess }: { setError: (s: string) => void; setSuccess: (s: string) => void }) {
   const searchParams = useSearchParams()
-  const { login, settings } = useAuth()
-  const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_delivery_limit')?.value||500)
-  const [formData, setFormData] = useState({ email: '', password: '' })
-  const [loading, setLoading] = useState(false)
-  const [showPass, setShowPass] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-
-  /* Handle redirect from email unlock link */
   useEffect(() => {
     const unlocked = searchParams.get('unlocked')
     const unlockError = searchParams.get('unlock_error')
@@ -30,7 +21,19 @@ export default function UserLogin() {
     } else if (unlockError === 'server') {
       setError('Something went wrong. Please try again or contact support.')
     }
-  }, [])
+  }, [searchParams, setError, setSuccess])
+  return null
+}
+
+export default function UserLogin() {
+  const router = useRouter()
+  const { login, settings } = useAuth()
+  const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_delivery_limit')?.value||500)
+  const [formData, setFormData] = useState({ email: '', password: '' })
+  const [loading, setLoading] = useState(false)
+  const [showPass, setShowPass] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   const validate = () => {
     if (!formData.email) return 'Email required'
@@ -326,6 +329,10 @@ export default function UserLogin() {
 
             <div className="login-card-title">Welcome back</div>
             <div className="login-card-sub">Sign in to your Oroganix account</div>
+
+            <Suspense fallback={null}>
+              <UnlockNotice setError={setError} setSuccess={setSuccess} />
+            </Suspense>
 
             {/* Alerts */}
             {success && (
