@@ -10,7 +10,6 @@ import PageTracker from "@/components/analytics/PageTracker";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CompareBar } from "@/components/compare/CompareBar"
 import { AyushDisclaimer } from "@/components/layout/AyushDisclaimer"
-import { CustomCursor } from "@/components/ui/custom-cursor"
 import { ScrollProgress } from "@/components/ui/scroll-progress"
 import { BackToTop } from "@/components/ui/back-to-top";
 
@@ -114,7 +113,6 @@ export default function RootLayout({
           className={`${inter.variable} font-sans antialiased bg-background text-foreground relative z-0`}
         >
           <ScrollProgress />
-          <CustomCursor />
           <PageTracker />
           <AyushDisclaimer />
           <ErrorBoundary>
