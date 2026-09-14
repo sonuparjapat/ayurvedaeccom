@@ -30,20 +30,16 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8 || !/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
       return res.status(400).json({
-        message: "Password too short",
+        message: "New password must be at least 8 characters and contain at least one letter and one number.",
       });
     }
 
     const hash = await bcrypt.hash(newPassword, 12);
 
     await pool.query(
-      `
-      UPDATE users
-      SET password=$1, updated_at=NOW()
-      WHERE id=$2
-      `,
+      `UPDATE users SET password=$1, password_changed_at=NOW(), updated_at=NOW() WHERE id=$2`,
       [hash, userId]
     );
 
@@ -508,5 +504,68 @@ exports.getReferralStats = async (req, res) => {
   } catch (err) {
     console.error('[REFERRAL STATS]', err)
     res.status(500).json({ success: false, referrals: [], total: 0, earned: 0 })
+  }
+}
+
+/* ── Session management ── */
+const { listSessions, revokeSession: revokeSessionSvc, revokeOtherSessions: revokeOtherSessionsSvc } = require('../../utils/sessionService')
+
+exports.getSessions = async (req, res) => {
+  try {
+    const sessions = await listSessions(req.user.id)
+    const currentId = req.user.sessionId || null
+    res.json({ success: true, sessions: sessions.map(s => ({ ...s, is_current: s.id === currentId })) })
+  } catch (err) {
+    console.error('[getSessions]', err)
+    res.status(500).json({ success: false, message: 'Failed to load sessions' })
+  }
+}
+
+exports.revokeSession = async (req, res) => {
+  try {
+    const { id } = req.params
+    if (id === req.user.sessionId) {
+      return res.status(400).json({ success: false, message: 'Cannot revoke your current session. Use logout instead.' })
+    }
+    const ok = await revokeSessionSvc(id, req.user.id)
+    if (!ok) return res.status(404).json({ success: false, message: 'Session not found' })
+    res.json({ success: true, message: 'Session revoked' })
+  } catch (err) {
+    console.error('[revokeSession]', err)
+    res.status(500).json({ success: false, message: 'Failed to revoke session' })
+  }
+}
+
+exports.revokeOtherSessions = async (req, res) => {
+  try {
+    const currentId = req.user.sessionId
+    if (!currentId) return res.status(400).json({ success: false, message: 'Current session not trackable (legacy token)' })
+    const count = await revokeOtherSessionsSvc(req.user.id, currentId)
+    res.json({ success: true, message: `${count} other session(s) signed out` })
+  } catch (err) {
+    console.error('[revokeOtherSessions]', err)
+    res.status(500).json({ success: false, message: 'Failed to revoke sessions' })
+  }
+}
+
+/* ── Optional 2FA toggle ── */
+exports.toggle2FA = async (req, res) => {
+  try {
+    const { enabled } = req.body
+    if (typeof enabled !== 'boolean') return res.status(400).json({ success: false, message: 'enabled must be boolean' })
+    await pool.query('UPDATE users SET two_fa_enabled = $1, updated_at = NOW() WHERE id = $2', [enabled, req.user.id])
+    res.json({ success: true, message: `Two-factor authentication ${enabled ? 'enabled' : 'disabled'}`, two_fa_enabled: enabled })
+  } catch (err) {
+    console.error('[toggle2FA]', err)
+    res.status(500).json({ success: false, message: 'Failed to update 2FA setting' })
+  }
+}
+
+exports.get2FAStatus = async (req, res) => {
+  try {
+    const r = await pool.query('SELECT two_fa_enabled FROM users WHERE id = $1', [req.user.id])
+    res.json({ success: true, two_fa_enabled: r.rows[0]?.two_fa_enabled ?? false })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to get 2FA status' })
   }
 }

@@ -41,6 +41,61 @@
 
 ---
 
+## Security Hardening — Full Stack (2026-09-14)
+
+### New: Security Event Audit Log (`security_events` table)
+
+Every security-relevant action is now written to `security_events` (migration runs automatically on server start via `runSafeColumnMigrations`).
+
+**Logged event types:**
+
+| Event type | When fired |
+|---|---|
+| `login_success` / `login_failed` | User login attempt |
+| `logout` | User/admin logout |
+| `new_ip_login` | Login from a previously-unseen IP — email alert sent |
+| `account_warned` | 3rd consecutive failed login (warning email) |
+| `account_soft_locked` | 5th failure — 30-min soft lock |
+| `account_hard_locked` | 7th failure (or 2nd after soft) — 24h hard lock |
+| `account_unlocked_email` / `account_unlocked_cron` | Account unlocked via email link or auto-cron |
+| `otp_requested` / `otp_verified` / `otp_failed` | OTP lifecycle |
+| `password_reset_requested` / `password_reset_completed` | Password reset flow |
+| `password_changed` | In-account password change |
+| `user_registered` | New registration |
+| `admin_login_failed` / `admin_2fa_verified` / `admin_logout` | Admin auth events |
+| `ip_blocked` | IP blocked by rate limiter |
+
+**Key file:** `backend/src/utils/securityLogger.js`
+- `SEC` — constant map of all event type strings
+- `logSecurityEvent({ userId, eventType, email, ip, userAgent, metadata })` — async, never throws, fire-and-forget
+- `checkNewIpLogin({ user, ip, userAgent })` — compares to `users.last_login_ip`; sends email alert on mismatch
+- `getSecurityEvents / countSecurityEvents` — used by admin API
+
+**New-IP detection flow:**
+1. On successful login, `checkNewIpLogin()` fires before `last_login_ip` is updated in DB
+2. If `ip !== user.last_login_ip` and `last_login_ip` is not null → sends "New sign-in detected" email with IP, device, and timestamp + a "Secure My Account" link to `/forgot-password`
+3. `users.last_login_ip` updated via the existing `UPDATE … SET last_login_ip=$2` in `userLogin`
+
+**Admin API:** `GET /api/admin/security/events?event_type=&ip=&page=&limit=`
+
+**Admin UI:** `/admin/security` — two tabs: **Security Events** (default) + **IP Blocks**. Security Events tab has event-type filter, IP filter, email/name filter, paginated table with color-coded event badges.
+
+### New: HPP (HTTP Parameter Pollution prevention)
+`npm install hpp` — added to `app.js` after body parsers. Prevents `?role=admin&role=user` type attacks where a duplicate query param could confuse middleware.
+
+### New: Response Field Sanitizer
+A custom middleware in `app.js` wraps `res.json()` and strips the following fields from every outgoing response body, recursively:
+
+```
+password, otp_code, reset_token, verification_token, unlock_token,
+otp_expiry, reset_token_expiry, unlock_token_expiry, verification_token_expiry,
+otp_type, otp_attempts
+```
+
+This is a last-line-of-defence: even if a controller accidentally returns a full user row, sensitive columns never reach the client.
+
+---
+
 ## Progressive Account Lockout (2026-09-14)
 
 ### Design goals
@@ -2332,3 +2387,139 @@ When a completed job has `result.failed.length > 0`, the component now renders a
 ### Pincode Preview — COD Column
 
 `frontend/src/app/admin/pincodes/page.tsx` bulk upload modal table: added `cod_available` column header + data cell so the value is visible before submission.
+
+---
+
+## Security Hardening — Phase 2 (2026-09-14)
+
+### 1. JWT Invalidation on Password Change
+
+**Files**: `backend/src/middlewares/auth.js`, `backend/src/modules/users/userAuthController.js`, `backend/src/modules/users/userController.js`, `backend/src/database/init.js`
+
+**Migration 006**: Added `password_changed_at TIMESTAMPTZ DEFAULT NULL` to `users` table.
+
+**Behaviour**: Every time a user resets or changes their password, the column is set to `NOW()`. The `auth` and `optionalAuth` middlewares now query the DB for this column after verifying the JWT signature. If `password_changed_at > token.iat`, the request is rejected with HTTP 401 and `code: "PASSWORD_CHANGED"`.
+
+**Performance**: One indexed SELECT by PK per authenticated request (~1–2ms). Acceptable given the security benefit.
+
+**Also fixed**: `changePassword` previously accepted 6-char passwords. Now enforces the same rules as registration and password reset (8+ chars, letter + number).
+
+---
+
+### 2. Input Sanitization Middleware
+
+**File**: `backend/src/middlewares/sanitize.js`
+
+Registered globally after body parsers in `app.js`. Recursively walks `req.body` and `req.query`, applying to every string:
+- `String.trim()`
+- Strips `<script>` blocks and their content
+- Strips `<iframe>`, `<object>`, `<embed>` blocks
+- Removes inline event handlers (`onclick=`, `onload=`, etc.)
+- Removes `javascript:` and `vbscript:` URI schemes
+- Removes `data:text/html` XSS vectors
+
+Fields in `SKIP_KEYS` (passwords, tokens, OTP codes) are passed through untouched.
+
+Unlike full HTML encoding, this approach strips only dangerous patterns — allowing legitimate HTML in admin content (product descriptions, blog posts) while blocking all script-execution vectors.
+
+---
+
+### 3. Security Events Cleanup Cron (90-day retention)
+
+**File**: `backend/src/workers/securityCleanupWorker.js`
+
+Started in `server.js` alongside the existing workers. Runs once at startup then every 24 hours. Deletes all `security_events` rows older than 90 days. A single `DELETE WHERE created_at < NOW() - INTERVAL '90 days'` per run.
+
+---
+
+### 4. Admin Hard-Lock Alert Email
+
+**File**: `backend/src/workers/securityCleanupWorker.js` — `alertAdminOnHardLock(userId, email, ip)`
+
+Called (fire-and-forget) when any user account is hard-locked in `userAuthController.js`. Sends an HTML email to `process.env.ADMIN_ALERT_EMAIL` (falls back to `MAIL_FROM`). The email shows user ID, email, attacking IP, and timestamp.
+
+---
+
+### 5. Distributed Brute-Force Detection
+
+**File**: `backend/src/utils/securityLogger.js` — `checkDistributedBruteForce({ email, ip })`
+
+Called after every `login_failed` event (1st–3rd attempt paths). Queries `security_events` for the past hour:
+- Counts total `login_failed` events for this email
+- Counts distinct IPs in those events
+- If ≥20 failures AND ≥3 distinct IPs → sends admin alert
+
+De-duped: checks for an existing `distributed_brute_force` event in the last hour before sending, so admin receives at most one alert per email per hour.
+
+New event type: `SEC.DISTRIBUTED_BRUTE_FORCE = 'distributed_brute_force'`.
+
+---
+
+### 6. Content Security Policy (CSP)
+
+**Backend** (`backend/src/app.js`): Helmet CSP enabled with `default-src 'none'`, `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'none'` — appropriate for a pure JSON API.
+
+**Frontend** (`frontend/next.config.ts`): Full CSP added to the `'/(.*)'` headers rule:
+- `script-src`: allows `'self'`, `'unsafe-inline'`, `'unsafe-eval'` (required by Next.js), Razorpay, Google
+- `img-src`: allows Cloudinary, S3/CloudFront, Google user content
+- `connect-src`: allows API backend, Razorpay API, Google OAuth
+- `frame-src`: allows Razorpay checkout, Google OAuth
+- `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`
+- `upgrade-insecure-requests`
+
+Also upgraded `X-Frame-Options` from `SAMEORIGIN` to `DENY`, and added `X-XSS-Protection` and `Strict-Transport-Security` headers.
+
+---
+
+### 7. Request ID Middleware
+
+**File**: `backend/src/middlewares/requestId.js`
+
+Registered at the very top of the Express middleware chain (before compression). Assigns `req.id` to a UUID (honoring `X-Request-Id` from reverse proxies) and echoes it back as `X-Request-Id` in the response. Also included in global error handler JSON response as `requestId` for client-side error reporting.
+
+---
+
+## Security Hardening — Phase 3 (2026-09-14)
+
+### Item 8 — Active Session Tracking + Revoke (complete)
+- `user_sessions` table: UUID PK, user_id FK, ip, user_agent, device_label, created_at, revoked, revoked_at
+- `backend/src/utils/sessionService.js`: createSession, listSessions, revokeSession, revokeOtherSessions, revokeAllSessions
+- JWT payload now includes `sessionId` for all login flows (password, OTP, Google, admin)
+- `backend/src/middlewares/auth.js`: LEFT JOINs user_sessions in single query to check revocation + password change
+- Logout revokes the session in DB (`revokeSession(sessionId, userId)`)
+- API: `GET /api/users/sessions`, `DELETE /api/users/sessions/:id`, `DELETE /api/users/sessions/revoke-others`
+- Frontend: Active Sessions panel in Account Security card (device label, IP, sign-out buttons)
+
+### Item 10 — File Upload MIME Type Validation
+- `backend/src/middlewares/validateFileMagic.js`: checks actual magic bytes (JPEG: FF D8 FF; PNG: 89 50 4E 47; WebP: RIFF????WEBP)
+- `backend/src/config/multer.js` wraps all upload methods (single/array/fields) with magic-byte check via `chain()` helper
+- Applies to all image upload routes automatically; HSN (CSV) and bulk upload (CSV/ZIP) use their own multer instances — unaffected
+
+### Item 11 — Optional 2FA for Users (email OTP)
+- `two_fa_enabled BOOLEAN` already added in migration 008
+- `GET /api/users/2fa-status`, `PUT /api/users/toggle-2fa` — enable/disable per user
+- Login flow: if `two_fa_enabled`, returns `{ twoFaRequired: true }` instead of JWT; sends 6-digit HMAC-hashed OTP to email with `otp_type = '2fa_login'`
+- `POST /api/users/verify-2fa` — validates OTP, issues JWT + creates session
+- Frontend: toggle switch in Security card (AccountContent.tsx)
+
+### Item 12 — Weekly Security Digest Email
+- `securityCleanupWorker.js`: `scheduleWeeklyDigest()` fires every Monday 8 AM
+- Queries `security_events` for last 7 days: logins, unique users, logouts, failures, lockouts, new-IP logins, IPs blocked, distributed BF alerts
+- Sends styled HTML table to `ADMIN_ALERT_EMAIL`
+
+### Mobile App Updates (2026-09-14)
+
+**auth/index.tsx**
+- Added `twoFa` mode type; `HEADINGS` map updated with 2FA entry
+- `handleLogin` now checks for `twoFaRequired: true` in response → switches to `twoFa` mode
+- `handleVerify2FA` calls `POST /api/users/verify-2fa`, stores token, completes login
+- Tab bar hidden in `twoFa` mode
+- `handleRegister` now validates: min 8 chars, at least one letter, one number (mirrors backend)
+
+**account/index.tsx**
+- Fixed password strength validation: min 8 chars + letter + number (was 6)
+- Added Sessions + 2FA state: `sessions`, `sessionsLoading`, `revokingId`, `twoFaEnabled`, `twoFaLoading`, `showSecurityModal`
+- `loadSessions()` / `load2FAStatus()` called on screen focus
+- `handleRevokeSession()` / `handleToggle2FA()` call respective API endpoints
+- Security modal: change-password shortcut, 2FA toggle, active sessions list with revoke buttons
+- "🛡️ Security" quick link added to Quick Access list

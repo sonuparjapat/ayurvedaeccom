@@ -1,6 +1,26 @@
 import type { NextConfig } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com'
+const SITE_URL   = process.env.NEXT_PUBLIC_SITE_URL   || 'https://oroganix.com'
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.oroganix.com'
+
+const csp = [
+  `default-src 'self'`,
+  // Next.js App Router requires unsafe-inline for its hydration scripts
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://accounts.google.com`,
+  `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+  `font-src 'self' https://fonts.gstatic.com data:`,
+  // Product images live on Cloudinary / S3; Google profile pictures from OAuth
+  `img-src 'self' data: blob: https://*.cloudinary.com https://*.amazonaws.com https://*.googleusercontent.com https://lh3.googleusercontent.com`,
+  // API calls + third-party services
+  `connect-src 'self' ${BACKEND_URL} https://api.razorpay.com https://accounts.google.com https://oauth2.googleapis.com`,
+  // Razorpay and Google OAuth open in iframes during checkout / sign-in
+  `frame-src https://checkout.razorpay.com https://accounts.google.com https://api.razorpay.com`,
+  `object-src 'none'`,
+  `base-uri 'self'`,
+  `form-action 'self'`,
+  `frame-ancestors 'none'`,
+  `upgrade-insecure-requests`,
+].join('; ')
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -60,10 +80,13 @@ const nextConfig: NextConfig = {
         // Security + performance headers on all pages
         source: '/(.*)',
         headers: [
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+          { key: 'Content-Security-Policy',  value: csp },
+          { key: 'X-Content-Type-Options',    value: 'nosniff' },
+          { key: 'X-Frame-Options',           value: 'DENY' },
+          { key: 'X-XSS-Protection',          value: '1; mode=block' },
+          { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(self)' },
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
         ],
       },
     ]

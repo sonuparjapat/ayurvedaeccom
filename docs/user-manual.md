@@ -1198,3 +1198,62 @@ Go to `Admin → Flash Sales → Bulk Create` to create multiple flash sales fro
 ### Pincode Bulk Upload — COD Column Added
 
 The CSV preview table in `Admin → Pincodes → Bulk Upload` now shows the `cod_available` column alongside the other columns, so you can verify COD settings for each row before submitting.
+
+---
+
+## Account Security Features (2026-09-14)
+
+### Stronger Password Requirements
+
+When creating an account or changing your password, your password must now:
+- Be **at least 8 characters** long
+- Contain **at least one letter** (A–Z or a–z)
+- Contain **at least one number** (0–9)
+
+This applies to registration, the "Change Password" form in your account, and the password reset flow.
+
+---
+
+### Two-Factor Authentication (2FA)
+
+Two-factor authentication adds an extra layer of security. When enabled, you must enter a 6-digit code sent to your email every time you log in with your password.
+
+**To enable 2FA (Web):**
+1. Go to **My Account → Profile tab → Security card**
+2. Toggle the **Two-Factor Authentication** switch to ON
+3. Next time you log in with your email + password, you'll receive a verification code by email
+4. Enter the code on the verification screen to complete sign-in
+
+**To enable 2FA (Mobile App):**
+1. Go to **Account → Security** (shield icon in Quick Access)
+2. Toggle the **Two-Factor Authentication** switch
+3. Same flow applies on next login
+
+**To disable 2FA:** Toggle the switch back to OFF in the same Security section.
+
+> **Note:** OTP login (email OTP tab) and Google Sign-In bypass 2FA — only password login triggers the 2FA check.
+
+---
+
+### Active Sessions
+
+You can see every device and browser currently signed in to your account, and sign out any of them remotely.
+
+**Web (My Account → Profile → Security card → Active Sessions):**
+- Each row shows the device type, IP address, and login time
+- Your current session is marked **"Current"**
+- Click **Sign out** on any other session to revoke it immediately
+- Click **Sign out others** to revoke all sessions except your current one
+
+**Mobile (Account → Security → Active Sessions):**
+- Same information in a bottom-sheet modal
+- Tap **Sign out** next to any session to revoke it
+
+Revoking a session signs out that device immediately — the next API request from that device returns "session has been signed out".
+
+---
+
+### Request Tracing
+
+Every API response now includes an `X-Request-Id` header. If you report an issue to support, providing this ID helps trace exactly what happened on the server.
+

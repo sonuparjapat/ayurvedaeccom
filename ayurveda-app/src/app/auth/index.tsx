@@ -39,7 +39,7 @@ if (GoogleSignin) {
 const LOGO_LOCAL = require('@/assets/images/oroganix-logo.png')
 
 Dimensions.get('window')
-type Mode = 'login' | 'register' | 'otp' | 'mobileOtp' | 'forgot' | 'verifySent'
+type Mode = 'login' | 'register' | 'otp' | 'mobileOtp' | 'forgot' | 'verifySent' | 'twoFa'
 
 // ─── FIELD COMPONENT ─────────────────────────────────────────────────────────
 function Field({ label, emoji, rightSlot, ...props }: any) {
@@ -127,6 +127,8 @@ export default function AuthScreen() {
   const [otpForm, setOtpForm] = useState({ identifier: '', otp: '' })
   const [mobileForm, setMobileForm] = useState({ phone: '', otp: '' })
   const [forgotEmail, setForgotEmail] = useState('')
+  const [twoFaEmail, setTwoFaEmail] = useState('')
+  const [twoFaCode, setTwoFaCode] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
   const [biometricAvailable, setBiometricAvailable] = useState(false)
   const [biometricEnabled, setBiometricEnabled] = useState(false)
@@ -271,6 +273,16 @@ export default function AuthScreen() {
     setLoading(true)
     try {
       const res = await api.post('/users/login', loginForm)
+
+      /* 2FA gate */
+      if (res.data?.twoFaRequired) {
+        setTwoFaEmail(loginForm.email)
+        setTwoFaCode('')
+        setMode('twoFa')
+        toast.success('Check your email for a verification code')
+        return
+      }
+
       const token = res.data?.token
       if (token) await AsyncStorage.setItem('auth_token', token)
 
@@ -301,8 +313,24 @@ export default function AuthScreen() {
     } finally { setLoading(false) }
   }
 
+  const handleVerify2FA = async () => {
+    if (!twoFaCode.trim()) { toast.warning('Enter the verification code'); return }
+    setLoading(true)
+    try {
+      const res = await api.post('/users/verify-2fa', { email: twoFaEmail, otp_code: twoFaCode.trim() })
+      const token = res.data?.token
+      if (token) await AsyncStorage.setItem('auth_token', token)
+      await afterLogin(res.data.user)
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Verification failed')
+    } finally { setLoading(false) }
+  }
+
   const handleRegister = async () => {
     if (!regForm.name || !regForm.email || !regForm.password) { toast.warning('Please fill all required fields'); return }
+    if (regForm.password.length < 8 || !/[A-Za-z]/.test(regForm.password) || !/[0-9]/.test(regForm.password)) {
+      toast.warning('Password must be at least 8 characters with a letter and a number'); return
+    }
     setLoading(true)
     try {
       await api.post('/users/register', regForm)
@@ -369,6 +397,7 @@ export default function AuthScreen() {
     mobileOtp:  { title: 'Mobile Login 📱', sub: 'Sign in with your phone number' },
     forgot:     { title: 'Reset Password 🔒', sub: "We'll send a secure reset link" },
     verifySent: { title: 'Check Inbox 📬', sub: 'Verification email has been sent' },
+    twoFa:      { title: 'Verify Identity 🛡️', sub: 'Enter the code sent to your email' },
   }
 
   const h = HEADINGS[mode]
@@ -407,7 +436,7 @@ export default function AuthScreen() {
             </Animated.View>
 
             {/* Mode tabs */}
-            {!['forgot', 'verifySent'].includes(mode) && (
+            {!['forgot', 'verifySent', 'twoFa'].includes(mode) && (
               <Animated.View entering={FadeInDown.delay(160)}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
                   {TAB_MODES.map(t => (
@@ -606,6 +635,33 @@ export default function AuthScreen() {
                   <SecondaryBtn label="Use different email" onPress={() => setMode('register')} />
                 </View>
               </Animated.View>
+            )}
+
+            {/* ── TWO-FACTOR AUTHENTICATION ── */}
+            {mode === 'twoFa' && (
+              <>
+                <Animated.View entering={ZoomIn.springify()} style={{ alignItems: 'center', marginBottom: 20 }}>
+                  <LinearGradient colors={[Colors.mint, '#d1fae5']} style={ss.successOrb}>
+                    <Text style={{ fontSize: 44 }}>🛡️</Text>
+                  </LinearGradient>
+                  <Text style={ss.successTitle}>Verify Your Identity</Text>
+                  <Text style={[ss.successSub, { marginBottom: 0 }]}>
+                    A 6-digit code was sent to{'\n'}
+                    <Text style={{ color: Colors.forest, fontFamily: Fonts.bold }}>{twoFaEmail}</Text>
+                  </Text>
+                </Animated.View>
+                <Field
+                  label="Verification Code"
+                  placeholder="Enter 6-digit code"
+                  emoji="🔢"
+                  value={twoFaCode}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  onChangeText={(t: string) => setTwoFaCode(t.replace(/\D/g, ''))}
+                />
+                <PrimaryBtn label={loading ? 'Verifying...' : '✓  Verify & Sign In'} onPress={handleVerify2FA} disabled={loading || twoFaCode.length < 6} />
+                <SecondaryBtn label="← Back to Login" onPress={() => { setMode('login'); setTwoFaCode('') }} />
+              </>
             )}
 
           </Animated.View>

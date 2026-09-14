@@ -7,6 +7,7 @@ const initDB = require("./database/init");
 const startJobs = require("./jobs");
 const startWorker = require('./workers/jobWorker');
 const startAccountUnlockWorker = require('./workers/accountUnlockWorker');
+const { startSecurityCleanupWorker } = require('./workers/securityCleanupWorker');
 
 const PORT = process.env.PORT || 5000;
 
@@ -14,6 +15,7 @@ const PORT = process.env.PORT || 5000;
   await initDB();
   startWorker();
   startAccountUnlockWorker();
+  startSecurityCleanupWorker();
   startJobs();
 
   const httpServer = http.createServer(app);

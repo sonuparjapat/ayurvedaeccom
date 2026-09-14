@@ -1,30 +1,34 @@
 const multer = require("multer");
+const { validateFileMagic, validateFilesMagic } = require('../middlewares/validateFileMagic')
 
-// Store files in memory (RAM) for AWS upload
 const storage = multer.memoryStorage();
 
-const upload = multer({
-
+const _multer = multer({
   storage,
-
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10 MB
-  },
-
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
   fileFilter: (req, file, cb) => {
-
-    // Allow only images
-    if (
-      file.mimetype === "image/jpeg" ||
-      file.mimetype === "image/png" ||
-      file.mimetype === "image/webp"
-    ) {
-      cb(null, true);
-
+    if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      cb(null, true)
     } else {
-      cb(new Error("Only JPG, PNG, WEBP allowed"), false);
+      cb(new Error("Only JPG, PNG, WEBP allowed"), false)
     }
   },
-});
+})
 
-module.exports = upload;
+function chain(multerMiddleware, magicCheck) {
+  return function (req, res, next) {
+    multerMiddleware(req, res, (err) => {
+      if (err) return next(err)
+      magicCheck(req, res, next)
+    })
+  }
+}
+
+const upload = {
+  single: (field) => chain(_multer.single(field), validateFileMagic),
+  array:  (field, max) => chain(_multer.array(field, max), validateFilesMagic),
+  fields: (fields) => chain(_multer.fields(fields), validateFilesMagic),
+  none:   () => _multer.none(),
+}
+
+module.exports = upload

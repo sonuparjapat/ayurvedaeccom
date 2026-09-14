@@ -260,6 +260,14 @@ export default function AccountScreen() {
   const [editAddrForm, setEditAddrForm] = useState({ street: '', city: '', state: '', pincode: '', type: 'Home', email: '' })
   const [savingEditAddr, setSavingEditAddr] = useState(false)
 
+  // Sessions + 2FA
+  const [sessions, setSessions] = useState<any[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [revokingId, setRevokingId] = useState<string | null>(null)
+  const [twoFaEnabled, setTwoFaEnabled] = useState(false)
+  const [twoFaLoading, setTwoFaLoading] = useState(false)
+  const [showSecurityModal, setShowSecurityModal] = useState(false)
+
   // Location detection (shared for both add & edit modals)
   const [locating, setLocating] = useState(false)
 
@@ -297,6 +305,43 @@ export default function AccountScreen() {
   } | null>(null)
   const [walletData, setWalletData] = useState<{ balance: number; points: number } | null>(null)
 
+  const loadSessions = async () => {
+    setSessionsLoading(true)
+    try {
+      const r = await api.get('/users/sessions')
+      setSessions(r.data?.sessions || [])
+    } catch { } finally { setSessionsLoading(false) }
+  }
+
+  const load2FAStatus = async () => {
+    try {
+      const r = await api.get('/users/2fa-status')
+      setTwoFaEnabled(r.data?.two_fa_enabled ?? false)
+    } catch { }
+  }
+
+  const handleRevokeSession = async (id: string) => {
+    setRevokingId(id)
+    try {
+      await api.delete(`/users/sessions/${id}`)
+      setSessions(s => s.filter(x => x.id !== id))
+      toast.success('Session signed out')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to revoke')
+    } finally { setRevokingId(null) }
+  }
+
+  const handleToggle2FA = async () => {
+    setTwoFaLoading(true)
+    try {
+      const r = await api.put('/users/toggle-2fa', { enabled: !twoFaEnabled })
+      setTwoFaEnabled(r.data?.two_fa_enabled)
+      toast.success(r.data?.message)
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed')
+    } finally { setTwoFaLoading(false) }
+  }
+
   useFocusEffect(useCallback(() => {
     if (!user) return
     fetchOrders(1)
@@ -314,6 +359,8 @@ export default function AccountScreen() {
     api.get('/wallet').then(res => {
       setWalletData({ balance: Number(res.data?.wallet_balance ?? 0), points: Number(res.data?.loyalty_points ?? 0) })
     }).catch(() => {})
+    loadSessions()
+    load2FAStatus()
   }, [user?.id]))
 
   useEffect(() => {
@@ -423,7 +470,9 @@ export default function AccountScreen() {
   const changePassword = async () => {
     if (!pwdForm.oldPassword || !pwdForm.newPassword) { toast.warning('Fill all fields'); return }
     if (pwdForm.newPassword !== pwdForm.confirmPassword) { toast.warning('Passwords do not match'); return }
-    if (pwdForm.newPassword.length < 6) { toast.warning('Password must be at least 6 characters'); return }
+    if (pwdForm.newPassword.length < 8 || !/[A-Za-z]/.test(pwdForm.newPassword) || !/[0-9]/.test(pwdForm.newPassword)) {
+      toast.warning('Password must be at least 8 characters with a letter and a number'); return
+    }
     setSavingPwd(true)
     try {
       await api.put('/users/change-password', { oldPassword: pwdForm.oldPassword, newPassword: pwdForm.newPassword })
@@ -694,7 +743,8 @@ export default function AccountScreen() {
                 { emoji: '🔖', label: 'Saved Articles', sub: 'Your bookmarked posts', onPress: () => router.push('/blog/saved' as any), gradient: ['#b45309', '#92400e'] as [string, string] },
                 { emoji: '❓', label: 'FAQ', sub: 'Common questions answered', onPress: () => router.push('/faq' as any), gradient: ['#7c3aed', '#6d28d9'] as [string, string] },
                 { emoji: '💬', label: 'Support', sub: 'Raise a ticket or enquiry', onPress: () => router.push('/support' as any), gradient: ['#4f46e5', '#3730a3'] as [string, string] },
-                { emoji: '⚙️', label: 'Settings', sub: 'App preferences & security', onPress: () => router.push('/settings' as any), gradient: ['#374151', '#1f2937'] as [string, string] },
+                { emoji: '🛡️', label: 'Security', sub: 'Sessions, password & 2FA', onPress: () => { loadSessions(); load2FAStatus(); setShowSecurityModal(true) }, gradient: ['#1d4ed8', '#1e40af'] as [string, string] },
+                { emoji: '⚙️', label: 'Settings', sub: 'App preferences', onPress: () => router.push('/settings' as any), gradient: ['#374151', '#1f2937'] as [string, string] },
               ].map((l, i) => (
                 <TouchableOpacity key={i} onPress={l.onPress} style={ss.linkRow} activeOpacity={0.7}>
                   <LinearGradient colors={l.gradient} style={ss.linkIconWrap} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
@@ -950,7 +1000,7 @@ export default function AccountScreen() {
                 <View style={ms.pwdRow}>
                   <TextInput
                     style={[mf.input, { flex: 1, marginBottom: 0 }]}
-                    placeholder="New password (min 6 chars)"
+                    placeholder="New password (min 8 chars, letter + number)"
                     placeholderTextColor={Colors.textDim}
                     secureTextEntry={!showNew}
                     value={pwdForm.newPassword}
@@ -967,6 +1017,85 @@ export default function AccountScreen() {
                   <Text style={ms.confirmText}>{savingPwd ? 'Updating...' : '🔒  Update Password'}</Text>
                 </LinearGradient>
               </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── SECURITY MODAL ── */}
+      <Modal visible={showSecurityModal} animationType="slide" transparent statusBarTranslucent>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <Pressable style={ms.bg} onPress={() => setShowSecurityModal(false)} />
+          <View style={[ms.sheet, { paddingBottom: insets.bottom + 24, maxHeight: '90%' }]}>
+            <ScrollView keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
+              <View style={ms.handle} />
+              <Text style={ms.title}>🛡️  Security</Text>
+
+              {/* Change Password */}
+              <TouchableOpacity
+                onPress={() => { setShowSecurityModal(false); setTimeout(() => setShowChangePwd(true), 300) }}
+                style={{ flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: '#f9fafb', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb' }}
+              >
+                <Text style={{ fontSize: 20, marginRight: 10 }}>🔒</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: '#1a1a1a' }}>Change Password</Text>
+                  <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim }}>Update your account password</Text>
+                </View>
+                <Text style={{ color: Colors.textDim, fontSize: 18 }}>›</Text>
+              </TouchableOpacity>
+
+              {/* 2FA Toggle */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: '#f9fafb', borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                <Text style={{ fontSize: 20, marginRight: 10 }}>🔐</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: Fonts.bold, fontSize: 14, color: '#1a1a1a' }}>Two-Factor Authentication</Text>
+                  <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim }}>{twoFaEnabled ? 'Email OTP required on login' : 'Add an extra layer of security'}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleToggle2FA}
+                  disabled={twoFaLoading}
+                  style={{
+                    width: 44, height: 24, borderRadius: 12,
+                    backgroundColor: twoFaEnabled ? Colors.forest : '#d1d5db',
+                    justifyContent: 'center', paddingHorizontal: 2,
+                    opacity: twoFaLoading ? 0.5 : 1,
+                  }}
+                >
+                  <View style={{
+                    width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff',
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2,
+                    alignSelf: twoFaEnabled ? 'flex-end' : 'flex-start',
+                  }} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Active Sessions */}
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#374151', marginBottom: 8 }}>Active Sessions</Text>
+              {sessionsLoading ? (
+                <ActivityIndicator color={Colors.forest} style={{ marginVertical: 12 }} />
+              ) : sessions.length === 0 ? (
+                <Text style={{ fontFamily: Fonts.regular, fontSize: 13, color: Colors.textDim, textAlign: 'center', paddingVertical: 12 }}>No active sessions</Text>
+              ) : sessions.map((s: any) => (
+                <View key={s.id} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: s.is_current ? '#f0fdf4' : '#f9fafb', borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: s.is_current ? '#bbf7d0' : '#e5e7eb' }}>
+                  <Text style={{ fontSize: 20, marginRight: 10 }}>💻</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: '#1a1a1a' }}>
+                      {s.device_label || 'Unknown device'}{s.is_current ? '  ✅ Current' : ''}
+                    </Text>
+                    <Text style={{ fontFamily: Fonts.regular, fontSize: 11, color: Colors.textDim }}>{s.ip || 'Unknown IP'} · {new Date(s.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
+                  </View>
+                  {!s.is_current && (
+                    <TouchableOpacity
+                      onPress={() => handleRevokeSession(s.id)}
+                      disabled={revokingId === s.id}
+                      style={{ backgroundColor: '#fee2e2', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+                    >
+                      <Text style={{ fontFamily: Fonts.bold, fontSize: 11, color: '#dc2626' }}>{revokingId === s.id ? '...' : 'Sign out'}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+
             </ScrollView>
           </View>
         </KeyboardAvoidingView>

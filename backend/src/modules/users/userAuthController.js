@@ -8,6 +8,9 @@ const axios = require("axios")
 
 const mailer = require("../../config/mail")
 const { sendOTP: sendOTPSms } = require('../../services/sms')
+const { SEC, logSecurityEvent, checkNewIpLogin, checkDistributedBruteForce } = require('../../utils/securityLogger')
+const { alertAdminOnHardLock } = require('../../workers/securityCleanupWorker')
+const { createSession } = require('../../utils/sessionService')
 
 /* ── HMAC-SHA256 OTP hash (brute-force safe even with a DB dump — key = JWT_SECRET) ── */
 function hashOtp(otp) {
@@ -339,7 +342,7 @@ exports.userLogin = async (req, res) => {
     const result = await pool.query(
       `SELECT u.id, u.role, u.name, u.email, u.password, u.phone,
               u.is_verified, u.is_active, u.login_attempts, u.locked_until,
-              u.lock_type,
+              u.lock_type, u.last_login_ip, u.two_fa_enabled,
               COALESCE((SELECT SUM(quantity) FROM cart WHERE user_id = u.id), 0) AS cart_count
        FROM users u WHERE u.email = $1 LIMIT 1`,
       [cleanEmail]
@@ -420,6 +423,9 @@ exports.userLogin = async (req, res) => {
     if (!match) {
       const attempts = Number(user.login_attempts || 0) + 1;
 
+      const _ip  = req.ip || req.headers['x-forwarded-for'] || 'unknown'
+      const _ua  = req.headers['user-agent'] || ''
+
       /* ── 3 failed attempts — send warning email (first time only) ── */
       if (attempts === 3 && !user.lock_type) {
         await pool.query(
@@ -427,6 +433,8 @@ exports.userLogin = async (req, res) => {
           [attempts, user.id]
         );
         _sendWarningEmail(user).catch(() => {});
+        logSecurityEvent({ userId: user.id, eventType: SEC.ACCOUNT_WARNED, email: user.email, ip: _ip, userAgent: _ua, metadata: { attempts } })
+        checkDistributedBruteForce({ email: user.email, ip: _ip }).catch(() => {})
         return res.status(400).json({
           success: false,
           message: "Invalid email address or password. This is your 3rd failed attempt — please double-check your password.",
@@ -449,6 +457,8 @@ exports.userLogin = async (req, res) => {
             [attempts, unlockToken, unlockExpiry, user.id]
           );
           _sendHardLockEmail(user, unlockToken).catch(() => {});
+          logSecurityEvent({ userId: user.id, eventType: SEC.ACCOUNT_HARD_LOCKED, email: user.email, ip: _ip, userAgent: _ua, metadata: { attempts } })
+          alertAdminOnHardLock(user.id, user.email, _ip).catch(() => {})
           return res.status(423).json({
             success: false,
             message: "Your account has been locked due to too many failed attempts. An unlock link has been sent to your email. You can also wait 24 hours for automatic unlock.",
@@ -465,6 +475,7 @@ exports.userLogin = async (req, res) => {
             [attempts, unlockToken, unlockExpiry, user.id]
           );
           _sendSoftLockEmail(user, unlockToken).catch(() => {});
+          logSecurityEvent({ userId: user.id, eventType: SEC.ACCOUNT_SOFT_LOCKED, email: user.email, ip: _ip, userAgent: _ua, metadata: { attempts } })
           return res.status(423).json({
             success: false,
             message: "Your account has been temporarily locked for 30 minutes. An email with an unlock link has been sent to your inbox.",
@@ -478,6 +489,8 @@ exports.userLogin = async (req, res) => {
         `UPDATE users SET login_attempts = $1, updated_at = NOW() WHERE id = $2`,
         [attempts, user.id]
       );
+      logSecurityEvent({ userId: user.id, eventType: SEC.LOGIN_FAILED, email: user.email, ip: _ip, userAgent: _ua, metadata: { attempts } })
+      checkDistributedBruteForce({ email: user.email, ip: _ip }).catch(() => {})
       const remaining = 5 - attempts;
       return res.status(400).json({
         success: false,
@@ -487,21 +500,47 @@ exports.userLogin = async (req, res) => {
 
     /* ================= SUCCESS — FULL RESET ================= */
 
+    const _ip  = req.ip || req.headers['x-forwarded-for'] || 'unknown'
+    const _ua  = req.headers['user-agent'] || ''
+
+    // Fire new-IP detection before updating last_login_ip
+    checkNewIpLogin({ user, ip: _ip, userAgent: _ua }).catch(() => {})
+
     await pool.query(
       `UPDATE users
        SET login_attempts = 0, locked_until = NULL, lock_type = NULL,
            unlock_token = NULL, unlock_token_expiry = NULL,
-           last_login = NOW(), updated_at = NOW()
+           last_login = NOW(), last_login_ip = $2, updated_at = NOW()
        WHERE id = $1`,
-      [user.id]
+      [user.id, _ip]
     );
+    logSecurityEvent({ userId: user.id, eventType: SEC.LOGIN_SUCCESS, email: user.email, ip: _ip, userAgent: _ua })
+
+    /* ================= 2FA GATE ================= */
+    if (user.two_fa_enabled) {
+      const otp = String(Math.floor(100000 + Math.random() * 900000))
+      const hashed = hashOtp(otp)
+      await pool.query(
+        `UPDATE users SET otp_code=$1, otp_expiry=NOW()+INTERVAL '10 minutes', otp_type='2fa_login' WHERE id=$2`,
+        [hashed, user.id]
+      )
+      mailer.sendTransacEmail({
+        sender: { email: process.env.MAIL_FROM, name: process.env.APP_NAME },
+        to: [{ email: user.email }],
+        subject: `Your login verification code — ${process.env.APP_NAME}`,
+        htmlContent: `<p>Your one-time login code is: <strong>${otp}</strong></p><p>It expires in 10 minutes.</p>`,
+      }).catch(() => {})
+      return res.json({ success: true, twoFaRequired: true, message: 'A verification code has been sent to your email.' })
+    }
 
     /* ================= TOKEN ================= */
+    const sessionId = await createSession({ userId: user.id, ip: _ip, userAgent: _ua })
 
     const token = jwt.sign(
       {
         id: user.id,
-        role: user.role
+        role: user.role,
+        sessionId,
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
@@ -741,6 +780,7 @@ exports.forgotPassword = async (req, res) => {
       `
     });
 
+    logSecurityEvent({ userId: user.id, eventType: SEC.PASSWORD_RESET_REQUESTED, email: cleanEmail, ip: req.ip, userAgent: req.headers['user-agent'] })
     return res.status(200).json({
       success: true,
       message:
@@ -1024,11 +1064,13 @@ exports.verifyLoginOtp = async (req, res) => {
     );
 
     /* JWT */
+    const sessionId = await createSession({ userId: user.id, ip: req.ip, userAgent: req.headers['user-agent'] })
 
     const token = jwt.sign(
       {
         id: user.id,
-        role: user.role
+        role: user.role,
+        sessionId,
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
@@ -1594,12 +1636,14 @@ exports.resetPassword = async (req, res) => {
         reset_token_expiry = NULL,
         login_attempts = 0,
         locked_until = NULL,
+        password_changed_at = NOW(),
         updated_at = NOW()
       WHERE id = $2
       `,
       [hash, user.id]
     );
 
+    logSecurityEvent({ userId: user.id, eventType: SEC.PASSWORD_RESET_COMPLETED, ip: req.ip, userAgent: req.headers['user-agent'] })
     return res.status(200).json({
       success: true,
       message:
@@ -1709,8 +1753,9 @@ exports.googleLogin = async (req, res) => {
     }
 
     // ── Step 5: Issue your own JWT ──
+    const sessionId = await createSession({ userId: user.id, ip: req.ip, userAgent: req.headers['user-agent'] })
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: user.id, email: user.email, role: user.role, sessionId },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     )
@@ -1771,8 +1816,9 @@ exports.googleLoginUserinfo = async (req, res) => {
       user = result.rows[0]
     }
 
+    const sessionId2 = await createSession({ userId: user.id, ip: req.ip, userAgent: req.headers['user-agent'] })
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: user.id, email: user.email, role: user.role, sessionId: sessionId2 },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     )
@@ -1795,9 +1841,14 @@ exports.googleLoginUserinfo = async (req, res) => {
 }
 
 exports.logout = async (req, res) => {
-
+  const userId = req.user?.id || null
+  const sessionId = req.user?.sessionId || null
+  logSecurityEvent({ userId, eventType: SEC.LOGOUT, ip: req.ip, userAgent: req.headers['user-agent'] })
+  if (sessionId && userId) {
+    const { revokeSession } = require('../../utils/sessionService')
+    revokeSession(sessionId, userId).catch(() => {})
+  }
   res.clearCookie("token")
-
   res.json({ message: "Logged out" })
 }
 
@@ -1837,6 +1888,8 @@ exports.unlockAccount = async (req, res) => {
        WHERE id = $1`,
       [user.id]
     )
+
+    logSecurityEvent({ userId: user.id, eventType: SEC.ACCOUNT_UNLOCKED_EMAIL, email: user.email, ip: req.ip, userAgent: req.headers['user-agent'] })
 
     /* Confirmation email */
     mailer.sendTransacEmail({
@@ -1909,5 +1962,43 @@ exports.getMe = async (req, res) => {
     res.status(500).json({
       message:'Fetch user failed'
     })
+  }
+}
+/* ── 2FA login verification ── */
+exports.verify2FA = async (req, res) => {
+  try {
+    const { email, otp_code } = req.body
+    if (!email || !otp_code) return res.status(400).json({ success: false, message: 'Email and OTP are required' })
+
+    const r = await pool.query(
+      `SELECT id, name, email, phone, otp_code, otp_expiry, otp_type, role, is_verified, two_fa_enabled
+         FROM users WHERE email = $1 LIMIT 1`,
+      [email.trim().toLowerCase()]
+    )
+    const user = r.rows[0]
+    if (!user) return res.status(400).json({ success: false, message: 'Invalid or expired code' })
+
+    if (user.otp_type !== '2fa_login') return res.status(400).json({ success: false, message: 'No pending 2FA verification' })
+    if (!user.otp_expiry || new Date() > new Date(user.otp_expiry))
+      return res.status(400).json({ success: false, message: 'OTP has expired. Please log in again.' })
+
+    const hashedInput = hashOtp(otp_code)
+    if (user.otp_code !== hashedInput) return res.status(400).json({ success: false, message: 'Invalid OTP' })
+
+    await pool.query(`UPDATE users SET otp_code=NULL,otp_expiry=NULL,otp_type=NULL WHERE id=$1`, [user.id])
+
+    const ip = req.ip || 'unknown'
+    const ua = req.headers['user-agent'] || ''
+    const sessionId = await createSession({ userId: user.id, ip, userAgent: ua })
+    const token = jwt.sign({ id: user.id, role: user.role, sessionId }, process.env.JWT_SECRET, { expiresIn: '7d' })
+
+    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict', maxAge: 7 * 24 * 60 * 60 * 1000 })
+    logSecurityEvent({ userId: user.id, eventType: SEC.LOGIN, ip, userAgent: ua })
+    checkNewIpLogin({ user: { ...user, last_login_ip: null }, ip, userAgent: ua }).catch(() => {})
+
+    res.json({ success: true, message: 'Logged in', token, user: { id: user.id, name: user.name, email: user.email, role: user.role } })
+  } catch (err) {
+    console.error('[verify2FA]', err)
+    res.status(500).json({ success: false, message: 'Verification failed' })
   }
 }

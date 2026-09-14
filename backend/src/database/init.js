@@ -1670,6 +1670,45 @@ async function runSafeColumnMigrations() {
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS lock_type            VARCHAR(10)  DEFAULT NULL`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS unlock_token         VARCHAR(64)  DEFAULT NULL`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS unlock_token_expiry  TIMESTAMPTZ  DEFAULT NULL`,
+
+    // 005 — security event audit log (user-side equivalent of admin_logs)
+    `CREATE TABLE IF NOT EXISTS security_events (
+       id            SERIAL PRIMARY KEY,
+       user_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+       event_type    VARCHAR(60)  NOT NULL,
+       email         VARCHAR(150),
+       ip            VARCHAR(45),
+       user_agent    TEXT,
+       metadata      JSONB        DEFAULT '{}',
+       created_at    TIMESTAMPTZ  DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_sec_events_user    ON security_events(user_id, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_sec_events_type    ON security_events(event_type, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_sec_events_ip      ON security_events(ip, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_sec_events_created ON security_events(created_at DESC)`,
+
+    // 005b — track last known IP per user for new-IP detection
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_ip VARCHAR(45)`,
+
+    // 006 — JWT invalidation on password change
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ DEFAULT NULL`,
+
+    // 007 — active session tracking
+    `CREATE TABLE IF NOT EXISTS user_sessions (
+       id           UUID        PRIMARY KEY,
+       user_id      INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+       ip           VARCHAR(45),
+       user_agent   TEXT,
+       device_label VARCHAR(100),
+       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       revoked      BOOLEAN     NOT NULL DEFAULT FALSE,
+       revoked_at   TIMESTAMPTZ
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id, revoked)`,
+    `CREATE INDEX IF NOT EXISTS idx_user_sessions_created ON user_sessions(created_at DESC)`,
+
+    // 008 — optional 2FA per user
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS two_fa_enabled BOOLEAN NOT NULL DEFAULT FALSE`,
   ]
   for (const sql of migrations) {
     const c = await pool.connect()

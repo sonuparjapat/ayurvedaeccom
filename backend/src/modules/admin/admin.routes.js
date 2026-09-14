@@ -223,6 +223,9 @@ router.get('/security/ip-blocks',       auth, admin, controller.listIpBlocks)
 router.post('/security/ip-blocks/block', auth, admin, controller.manualBlockIp)
 router.delete('/security/ip-blocks/:ip', auth, admin, controller.unblockIp)
 
+/* ─── SECURITY EVENT LOG ─── */
+router.get('/security/events', auth, admin, controller.listSecurityEvents)
+
 /* ─── BULK COUPON CREATE ─── */
 router.get('/coupons/bulk-template', auth, admin, bulkController.downloadCouponTemplate)
 router.post('/coupons/bulk-create', auth, admin, bulkController.uploadBulkFiles, bulkController.bulkCouponCreate)

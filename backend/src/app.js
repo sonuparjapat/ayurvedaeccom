@@ -5,7 +5,30 @@ const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const hpp = require("hpp");
 const logger = require("./utils/logger");
+
+/* Strip sensitive fields from every JSON response body — last line of defence */
+const SENSITIVE_FIELDS = ['password', 'otp_code', 'reset_token', 'verification_token',
+  'unlock_token', 'otp_expiry', 'reset_token_expiry', 'unlock_token_expiry',
+  'verification_token_expiry', 'otp_type', 'otp_attempts']
+
+function stripSensitiveFields(obj) {
+  if (!obj || typeof obj !== 'object') return obj
+  if (Array.isArray(obj)) return obj.map(stripSensitiveFields)
+  const clean = {}
+  for (const [k, v] of Object.entries(obj)) {
+    if (SENSITIVE_FIELDS.includes(k)) continue
+    clean[k] = stripSensitiveFields(v)
+  }
+  return clean
+}
+
+function responseSanitizer(req, res, next) {
+  const originalJson = res.json.bind(res)
+  res.json = (data) => originalJson(stripSensitiveFields(data))
+  next()
+}
 
 // Patch console.error/warn so existing code auto-routes through Winston
 logger.patchConsole();
@@ -48,13 +71,25 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 
+/* ================= REQUEST ID ================= */
+const requestId = require('./middlewares/requestId')
+app.use(requestId)
+
 /* ================= COMPRESSION ================= */
 app.use(compression({ threshold: 1024 })); // compress responses > 1KB
 
 /* ================= SECURITY HEADERS ================= */
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      // This is a pure JSON API — block everything by default
+      defaultSrc:      ["'none'"],
+      frameAncestors:  ["'none'"],   // prevent the API from being embedded in an iframe
+      objectSrc:       ["'none'"],
+      baseUri:         ["'none'"],
+    },
+  },
 }));
 app.set('trust proxy', 1);
 
@@ -143,9 +178,18 @@ app.post(
 /* ================= MIDDLEWARE ================= */
 
 app.use(cookieParser());
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+/* HTTP Parameter Pollution — prevents ?role=admin&role=user attacks */
+app.use(hpp())
+
+/* Strip any sensitive DB fields that accidentally leak into API responses */
+app.use(responseSanitizer)
+
+/* Input sanitization — trim strings, strip XSS vectors from all request bodies */
+const sanitizeInputs = require('./middlewares/sanitize')
+app.use(sanitizeInputs)
 
 
 /* ================= ROUTES ================= */
@@ -194,11 +238,12 @@ app.use((req, res) => {
 /* ================= GLOBAL ERROR HANDLER ================= */
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error('[GlobalError]', err.stack || err.message || err);
+  console.error('[GlobalError]', { requestId: req.id, error: err.stack || err.message || err });
   const status = err.status || err.statusCode || 500;
   res.status(status).json({
     success: false,
     message: err.message || 'Internal server error',
+    requestId: req.id,
   });
 });
 

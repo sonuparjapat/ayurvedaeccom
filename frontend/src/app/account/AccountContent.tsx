@@ -48,6 +48,7 @@ import {
   RotateCcw,
   Pause,
   Play,
+  Monitor,
 } from 'lucide-react'
 
 import Link from 'next/link'
@@ -579,6 +580,63 @@ export default function AccountContent() {
   const [cancelCustomReason, setCancelCustomReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
 
+  /* ── Sessions + 2FA ── */
+  const [sessions, setSessions] = useState<any[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [revokingId, setRevokingId] = useState<string | null>(null)
+  const [revokeOthersLoading, setRevokeOthersLoading] = useState(false)
+  const [twoFaEnabled, setTwoFaEnabled] = useState(false)
+  const [twoFaLoading, setTwoFaLoading] = useState(false)
+
+  const loadSessions = async () => {
+    setSessionsLoading(true)
+    try {
+      const r = await axios.get('/users/sessions')
+      setSessions(r.data.sessions || [])
+    } catch { toast.error('Could not load sessions') }
+    finally { setSessionsLoading(false) }
+  }
+
+  const load2FAStatus = async () => {
+    try {
+      const r = await axios.get('/users/2fa-status')
+      setTwoFaEnabled(r.data.two_fa_enabled ?? false)
+    } catch {}
+  }
+
+  const handleRevokeSession = async (id: string) => {
+    setRevokingId(id)
+    try {
+      await axios.delete(`/users/sessions/${id}`)
+      setSessions(s => s.filter(x => x.id !== id))
+      toast.success('Session signed out')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to revoke session')
+    } finally { setRevokingId(null) }
+  }
+
+  const handleRevokeOthers = async () => {
+    setRevokeOthersLoading(true)
+    try {
+      const r = await axios.delete('/users/sessions/revoke-others')
+      toast.success(r.data.message || 'Other sessions signed out')
+      await loadSessions()
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed')
+    } finally { setRevokeOthersLoading(false) }
+  }
+
+  const handleToggle2FA = async () => {
+    setTwoFaLoading(true)
+    try {
+      const r = await axios.put('/users/toggle-2fa', { enabled: !twoFaEnabled })
+      setTwoFaEnabled(r.data.two_fa_enabled)
+      toast.success(r.data.message)
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to update 2FA')
+    } finally { setTwoFaLoading(false) }
+  }
+
   const statusCodeToLabel = (s: number) => {
     const map: Record<number, string> = { 0:'pending',1:'confirmed',2:'processing',3:'shipped',4:'out_for_delivery',5:'delivered',6:'cancelled',7:'return_requested',8:'returned',9:'refunded' }
     return map[s] || 'pending'
@@ -653,6 +711,10 @@ useEffect(() => {
 
       /* Referral stats */
       axios.get('/users/referral').then(r => { if (r.data?.success) setReferralStats(r.data) }).catch(() => {})
+
+      /* Sessions + 2FA */
+      loadSessions()
+      load2FAStatus()
 
       /* Settings */
       const setRes = await getSettings();
@@ -1250,24 +1312,91 @@ const handleSaveAddress = async (data: any) => {
                         <h2 className="font-bold text-gray-900">Security</h2>
                         <p className="text-xs text-gray-400 mt-0.5">Manage your account security</p>
                       </div>
-                      <div className="p-6 space-y-3">
-                        {[
-                          { icon: Lock, label: 'Change Password', sub: 'Last changed 3 months ago' },
-                          { icon: Shield, label: 'Two-Factor Authentication', sub: 'Add an extra layer of security' },
-                        ].map(({ icon: Icon, label, sub }) => (
-                          <div key={label} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/50 transition-all cursor-pointer group">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 bg-gray-100 group-hover:bg-emerald-100 rounded-lg transition-all">
-                                <Icon size={15} className="text-gray-500 group-hover:text-emerald-600 transition-all" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-semibold text-gray-800">{label}</p>
-                                <p className="text-xs text-gray-400">{sub}</p>
-                              </div>
+                      <div className="p-6 space-y-4">
+                        {/* Change Password row */}
+                        <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/50 transition-all cursor-pointer group">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-gray-100 group-hover:bg-emerald-100 rounded-lg transition-all">
+                              <Lock size={15} className="text-gray-500 group-hover:text-emerald-600 transition-all" />
                             </div>
-                            <ChevronRight size={16} className="text-gray-300 group-hover:text-emerald-500 transition-all" />
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800">Change Password</p>
+                              <p className="text-xs text-gray-400">Update your account password</p>
+                            </div>
                           </div>
-                        ))}
+                          <ChevronRight size={16} className="text-gray-300 group-hover:text-emerald-500 transition-all" />
+                        </div>
+
+                        {/* Two-Factor Authentication toggle */}
+                        <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${twoFaEnabled ? 'bg-emerald-100' : 'bg-gray-100'}`}>
+                              <Shield size={15} className={twoFaEnabled ? 'text-emerald-600' : 'text-gray-500'} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800">Two-Factor Authentication</p>
+                              <p className="text-xs text-gray-400">{twoFaEnabled ? 'Enabled — email OTP required on login' : 'Add an extra layer of security'}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={handleToggle2FA}
+                            disabled={twoFaLoading}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${twoFaEnabled ? 'bg-emerald-500' : 'bg-gray-200'} ${twoFaLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          >
+                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${twoFaEnabled ? 'translate-x-4' : 'translate-x-1'}`} />
+                          </button>
+                        </div>
+
+                        {/* Active Sessions */}
+                        <div className="rounded-xl border border-gray-100 overflow-hidden">
+                          <div className="flex items-center justify-between px-4 py-3 bg-gray-50/70 border-b border-gray-100">
+                            <div className="flex items-center gap-2">
+                              <Monitor size={14} className="text-gray-500" />
+                              <p className="text-sm font-semibold text-gray-800">Active Sessions</p>
+                              {sessions.length > 0 && <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">{sessions.length}</span>}
+                            </div>
+                            {sessions.length > 1 && (
+                              <button
+                                onClick={handleRevokeOthers}
+                                disabled={revokeOthersLoading}
+                                className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                              >
+                                {revokeOthersLoading ? 'Signing out...' : 'Sign out others'}
+                              </button>
+                            )}
+                          </div>
+                          <div className="divide-y divide-gray-50">
+                            {sessionsLoading ? (
+                              <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>
+                            ) : sessions.length === 0 ? (
+                              <p className="text-xs text-gray-400 text-center py-5">No active sessions found</p>
+                            ) : sessions.map((s: any) => (
+                              <div key={s.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center gap-3">
+                                  <div className={`p-1.5 rounded-lg ${s.is_current ? 'bg-emerald-100' : 'bg-gray-100'}`}>
+                                    <Monitor size={13} className={s.is_current ? 'text-emerald-600' : 'text-gray-400'} />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                                      {s.device_label || 'Unknown device'}
+                                      {s.is_current && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-bold">Current</span>}
+                                    </p>
+                                    <p className="text-[10px] text-gray-400">{s.ip || 'Unknown IP'} · {new Date(s.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                  </div>
+                                </div>
+                                {!s.is_current && (
+                                  <button
+                                    onClick={() => handleRevokeSession(s.id)}
+                                    disabled={revokingId === s.id}
+                                    className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-50"
+                                  >
+                                    {revokingId === s.id ? '...' : 'Sign out'}
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

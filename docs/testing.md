@@ -25,6 +25,36 @@
 
 ---
 
+## Security Hardening — Verification (2026-09-14)
+
+### Security Event Log
+
+1. Log in with a wrong password → check `security_events` table → **Expected**: row with `event_type='login_failed'`, correct `email`, `ip`, `user_agent`.
+2. Log in successfully → **Expected**: `event_type='login_success'` row; `users.last_login_ip` updated.
+3. Change `users.last_login_ip` to a different IP in DB, then log in from current IP → **Expected**: `event_type='new_ip_login'` row + "New sign-in detected" email sent.
+4. Request password reset → **Expected**: `event_type='password_reset_requested'` row.
+5. Complete password reset → **Expected**: `event_type='password_reset_completed'` row.
+6. Trigger account soft lock → **Expected**: `event_type='account_soft_locked'` row with `metadata.attempts`.
+7. Auto-unlock via cron → **Expected**: `event_type='account_unlocked_cron'` row.
+8. Admin login fail → **Expected**: `event_type='admin_login_failed'` in both `admin_logs` AND `security_events`.
+9. Admin login success (2FA) → **Expected**: `event_type='admin_2fa_verified'` row.
+
+### Admin Security Events UI
+1. Go to `/admin/security` → **Expected**: page opens on "Security Events" tab by default.
+2. Events table shows color-coded badges for each event type.
+3. Select "Login Failed" from event-type dropdown → **Expected**: table filters to only `login_failed` rows.
+4. Type a partial email in "User / Email" field → **Expected**: client-side filter narrows rows.
+5. Switch to "IP Blocks" tab → **Expected**: existing IP block management UI unchanged.
+
+### HPP Protection
+1. POST `/api/users/login?role=admin&role=user` (duplicate param attack) → **Expected**: request proceeds normally; only first `role` value is used; no crash or privilege escalation.
+
+### Response Sanitizer
+1. Log in successfully and inspect the JSON response body → **Expected**: no `password`, `otp_code`, `reset_token`, or any other sensitive field present, even if the controller queried the full user row.
+2. Check error responses from auth routes → **Expected**: same — no sensitive fields leak.
+
+---
+
 ## Progressive Account Lockout — Verification (2026-09-14)
 
 ### Setup
@@ -2322,3 +2352,149 @@ curl http://localhost:5000/api/admin/flash-sales/bulk-template \
 2. Upload a CSV that includes a `cod_available` column.
 3. **Expected**: the preview table shows a "COD" column with the values from your CSV (true/false).
 4. Previously this column was missing from the preview (though it was still processed correctly).
+
+---
+
+## Security Hardening Phase 2 — Verification (2026-09-14)
+
+### JWT Invalidation on Password Change
+
+1. Log in → capture the JWT cookie.
+2. Call `PUT /api/users/change-password` with valid `oldPassword` and strong `newPassword`.
+3. Using the OLD token, make an authenticated request (e.g. `GET /api/users/me`).
+4. **Expected**: `401 { message: "Session expired. Please log in again.", code: "PASSWORD_CHANGED" }`.
+5. Repeat with `POST /api/users/forgot-password` + `POST /api/users/reset-password` flow. Old token must be rejected.
+6. New token obtained after re-login must work.
+
+### Password Strength — changePassword
+
+```bash
+curl -X PUT http://localhost:5000/api/users/change-password \
+  -H "Cookie: token=<valid_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"oldPassword":"correct","newPassword":"short"}'
+# Expected 400 — password must be at least 8 chars with letter + number
+```
+
+### Input Sanitization
+
+1. Register with name `<script>alert(1)</script>` — expected: `<script>` tag stripped in stored value.
+2. POST review with `body { comment: "<img onerror='alert(1)' src=x>" }` — `onerror` event handler removed.
+3. Password field `"password": "abc<script>test</script>"` — **must arrive untouched** (password is in SKIP_KEYS).
+4. Query param `?q=<script>alert(1)</script>` — `<script>` stripped.
+
+### Security Events Cleanup Cron
+
+1. Manually insert a row: `INSERT INTO security_events (event_type, created_at) VALUES ('test', NOW() - INTERVAL '91 days')`.
+2. Restart the server (or wait for the 24h tick).
+3. **Expected**: that row is deleted; rows newer than 90 days remain.
+
+### Admin Hard-Lock Alert Email
+
+1. Attempt 10 failed logins against an existing account (triggering the hard-lock path).
+2. **Expected**: `ADMIN_ALERT_EMAIL` inbox receives "Account hard-locked" email with user email and attacking IP.
+
+### Distributed Brute-Force Detection
+
+1. Manually insert 20+ `login_failed` events for the same email from 3+ distinct IPs in the last hour.
+2. Trigger one more login failure for that email.
+3. **Expected**: `ADMIN_ALERT_EMAIL` receives "Distributed brute-force attack detected" email.
+4. Trigger another failure immediately — **Expected**: no second email (1-hour de-dup).
+
+### CSP Headers — Backend
+
+```bash
+curl -I http://localhost:5000/api/users/me
+# Expected: Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; ...
+```
+
+### CSP Headers — Frontend
+
+```bash
+curl -I https://oroganix.com/
+# Expected: Content-Security-Policy header containing object-src 'none', frame-ancestors 'none'
+# Expected: X-Frame-Options: DENY
+# Expected: Strict-Transport-Security header
+```
+
+### Request ID
+
+```bash
+curl -i http://localhost:5000/api/shop/products | grep x-request-id
+# Expected: x-request-id: <UUID>
+
+# With bad route:
+curl -i http://localhost:5000/api/nonexistent | grep x-request-id
+# Expected: x-request-id in both response header AND JSON body
+```
+
+---
+
+## Security Hardening Phase 3 — Verification (2026-09-14)
+
+### Item 8 — Active Sessions
+1. Log in → check JWT has `sessionId` field
+2. `GET /api/users/sessions` (with auth) → returns list with `is_current: true` for current session
+3. `DELETE /api/users/sessions/revoke-others` → all other sessions get `revoked=TRUE`; those tokens return 401 with `SESSION_REVOKED`
+4. `DELETE /api/users/sessions/:id` for current session → returns 400 "Cannot revoke your current session"
+5. Logout → session row is revoked; same token returns 401
+
+### Item 10 — MIME Type Magic Bytes
+1. Rename a `.html` file to `.jpg` and upload to any image endpoint → rejected with "Invalid file type"
+2. Upload a real `.jpg` → accepted
+3. Upload a real `.png` and `.webp` → accepted
+4. Upload a `.pdf` → rejected by multer fileFilter before magic check
+5. HSN CSV upload and bulk upload still work (use their own multer instances)
+
+### Item 11 — 2FA
+1. `PUT /api/users/toggle-2fa` `{ enabled: true }` → `two_fa_enabled = true`
+2. Log in with email+password → response: `{ twoFaRequired: true }` (no token)
+3. Check email for 6-digit OTP
+4. `POST /api/users/verify-2fa` `{ email, otp_code }` → returns JWT
+5. Wrong OTP → 400 "Invalid OTP"
+6. Expired OTP → 400 "OTP has expired"
+7. Toggle 2FA off → normal login works again
+8. `GET /api/users/2fa-status` → returns current state
+
+### Item 12 — Weekly Security Digest
+1. Check server logs on startup for "[SecurityDigest] Weekly digest scheduled"
+2. To test manually: call `sendWeeklySecurityDigest()` directly or temporarily set delay to 5s
+3. Email should arrive at `ADMIN_ALERT_EMAIL` with table showing last-7-day stats
+4. Verify fields: logins, unique users, logouts, failures, lockouts, new_ip_logins, ip_blocks, dist_bf
+
+---
+
+## Mobile App — Security Features Verification (2026-09-14)
+
+### 2FA Login Flow — Mobile
+1. Enable 2FA via Account → Security → toggle ON
+2. Log out, then log in with email + password → app switches to "Verify Identity" screen (no token yet)
+3. Check email for 6-digit OTP
+4. Enter code → app calls `POST /users/verify-2fa` → login completes, home screen loaded
+5. Wrong code → toast error "Invalid OTP"
+6. Back button on 2FA screen → returns to login
+7. Disable 2FA → normal login works again without OTP screen
+
+### Registration Password Strength — Mobile
+1. Try registering with password "abc12" (7 chars) → toast "Password must be at least 8 characters with a letter and a number"
+2. Try "abcdefgh" (no number) → same validation toast
+3. Try "12345678" (no letter) → same validation toast
+4. "abc12345" (8 chars, letter + number) → succeeds
+
+### Change Password — Mobile
+1. Try new password "pass12" (6 chars) → toast validation error
+2. Try "Password1" (8 chars, letter + number) → proceeds
+3. Verify old password field works and mismatch check works
+
+### Security Modal — Mobile
+1. Account tab → Quick Access → tap "🛡️ Security"
+2. Bottom sheet opens with: Change Password row, 2FA toggle, Active Sessions list
+3. Tap "Change Password" → security modal closes → change password modal opens
+4. 2FA toggle shows correct ON/OFF state; tap toggles and persists
+5. Sessions list shows current device with "Current" tag
+6. Tap "Sign out" on another session → that session revoked, row removed
+7. Revoked session's token returns 401 from any API call
+
+### Password Strength Fields — Mobile
+- Change password modal placeholder now reads "min 8 chars, letter + number" (not 6)
+

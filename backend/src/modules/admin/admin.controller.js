@@ -2615,6 +2615,23 @@ exports.manualBlockIp = async (req, res) => {
   }
 }
 
+/* ================= SECURITY EVENTS ================= */
+exports.listSecurityEvents = async (req, res) => {
+  try {
+    const { userId, event_type, ip, page = 1, limit = 50 } = req.query
+    const { getSecurityEvents, countSecurityEvents } = require('../../utils/securityLogger')
+    const offset = (Number(page) - 1) * Number(limit)
+    const [rows, total] = await Promise.all([
+      getSecurityEvents({ userId: userId ? Number(userId) : null, eventType: event_type || null, ip: ip || null, limit: Number(limit), offset }),
+      countSecurityEvents({ userId: userId ? Number(userId) : null, eventType: event_type || null, ip: ip || null }),
+    ])
+    res.json({ success: true, events: rows, total, page: Number(page), pages: Math.ceil(total / Number(limit)) })
+  } catch (err) {
+    console.error('[listSecurityEvents]', err)
+    res.status(500).json({ success: false, message: 'Failed to fetch security events' })
+  }
+}
+
 exports.exportCouponsCSV = async (req, res) => {
   try {
     const r = await pool.query(

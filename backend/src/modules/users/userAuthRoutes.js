@@ -76,4 +76,16 @@ router.get('/me',auth,controller.getMe)
 /* ================= REFERRAL STATS ================= */
 router.get('/referral', auth, usercontroller.getReferralStats)
 
+/* ================= ACTIVE SESSIONS ================= */
+router.get('/sessions', auth, usercontroller.getSessions)
+router.delete('/sessions/revoke-others', auth, usercontroller.revokeOtherSessions)
+router.delete('/sessions/:id', auth, usercontroller.revokeSession)
+
+/* ================= 2FA TOGGLE ================= */
+router.get('/2fa-status', auth, usercontroller.get2FAStatus)
+router.put('/toggle-2fa', auth, usercontroller.toggle2FA)
+
+/* ================= 2FA VERIFY LOGIN ================= */
+router.post('/verify-2fa', controller.verify2FA)
+
 module.exports = router

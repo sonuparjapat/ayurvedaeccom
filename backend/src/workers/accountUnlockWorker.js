@@ -1,5 +1,6 @@
 const pool   = require('../config/db')
 const mailer = require('../config/mail')
+const { SEC, logSecurityEvent } = require('../utils/securityLogger')
 
 /*
   Runs every hour.
@@ -20,8 +21,9 @@ async function unlockExpiredAccounts() {
 
     console.log(`[AccountUnlock Cron] Auto-unlocked ${r.rows.length} account(s)`)
 
-    /* Send confirmation email to each unlocked user (fire-and-forget) */
+    /* Log + send confirmation email to each unlocked user (fire-and-forget) */
     for (const user of r.rows) {
+      logSecurityEvent({ userId: user.id, eventType: SEC.ACCOUNT_UNLOCKED_CRON, email: user.email })
       mailer.sendTransacEmail({
         sender: { email: process.env.MAIL_FROM, name: process.env.APP_NAME },
         to: [{ email: user.email }],

@@ -4,6 +4,8 @@ const jwt    = require("jsonwebtoken")
 const crypto = require("crypto")
 const mailer = require("../../config/mail")
 const { addAdminLog } = require("../../utils/adminLogger")
+const { SEC, logSecurityEvent } = require("../../utils/securityLogger")
+const { createSession } = require("../../utils/sessionService")
 
 /* ── startup guard: crash fast if JWT_SECRET is missing ── */
 if (!process.env.JWT_SECRET) {
@@ -126,6 +128,7 @@ exports.login = async (req, res) => {
         details: { reason: 'wrong_password', attempts, email },
         ip,
       })
+      logSecurityEvent({ userId: user.id, eventType: SEC.ADMIN_LOGIN_FAILED, email, ip, userAgent: req.headers['user-agent'], metadata: { attempts } })
 
       const remaining = 5 - attempts
       const msg = attempts >= 5
@@ -249,9 +252,11 @@ exports.verifyAdmin2FA = async (req, res) => {
       details: { email },
       ip,
     })
+    logSecurityEvent({ userId: user.id, eventType: SEC.ADMIN_2FA_VERIFIED, email, ip, userAgent: req.headers['user-agent'] })
 
+    const sessionId = await createSession({ userId: user.id, ip, userAgent: req.headers['user-agent'] || '' })
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user.id, role: user.role, sessionId },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     )
@@ -276,6 +281,8 @@ exports.verifyAdmin2FA = async (req, res) => {
 
 // ======================== Logout ==========================================
 exports.logout = (req, res) => {
+  const userId = req.user?.id || null
+  logSecurityEvent({ userId, eventType: SEC.ADMIN_LOGOUT, ip: req.ip, userAgent: req.headers['user-agent'] })
   res.clearCookie("token")
   res.json({ success: true })
 }
