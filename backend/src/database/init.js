@@ -1651,6 +1651,25 @@ async function runSafeColumnMigrations() {
     // HSN snapshot on order_items (GST compliance — freeze HSN at purchase time)
     `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS hsn_code VARCHAR(30)`,
     `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS gst_percent NUMERIC(5,2)`,
+
+    // 002 — verification token expiry (24-hour email verification links)
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expiry TIMESTAMPTZ`,
+
+    // 003 — persistent IP block table
+    `CREATE TABLE IF NOT EXISTS ip_blocks (
+       ip               VARCHAR(45)   PRIMARY KEY,
+       blocked_until    TIMESTAMPTZ   NOT NULL,
+       violation_count  INT           NOT NULL DEFAULT 1,
+       reason           VARCHAR(100)  NOT NULL DEFAULT 'rate_limit_exceeded',
+       created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+       updated_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_ip_blocks_blocked_until ON ip_blocks(blocked_until)`,
+
+    // 004 — progressive account lockout columns
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS lock_type            VARCHAR(10)  DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS unlock_token         VARCHAR(64)  DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS unlock_token_expiry  TIMESTAMPTZ  DEFAULT NULL`,
   ]
   for (const sql of migrations) {
     const c = await pool.connect()
