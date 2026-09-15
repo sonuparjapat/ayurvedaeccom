@@ -87,4 +87,12 @@ router.get("/reviews/helpful-votes/:productId", auth, controller.getUserHelpfulV
 // Review flag/report
 router.post("/reviews/:id/flag", auth, controller.flagReview);
 
+// Frequently bought together
+router.get("/products/:id/bought-together", controller.getBoughtTogether);
+
+// Price drop alerts
+router.get("/products/:id/price-alert", optionalAuth, controller.getPriceAlertStatus);
+router.post("/products/:id/price-alert", auth, controller.setPriceAlert);
+router.delete("/products/:id/price-alert", auth, controller.removePriceAlert);
+
 module.exports = router;

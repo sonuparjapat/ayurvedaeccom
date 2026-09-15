@@ -140,12 +140,82 @@ function scheduleWeeklyDigest() {
   console.log('[SecurityDigest] Weekly digest scheduled — next run Monday 8 AM')
 }
 
+/* ── Price Drop Alert Cron ──────────────────────────────────
+   Runs every 6 hours. Finds products whose price dropped
+   since an alert was created and emails users once.
+─────────────────────────────────────────────────────────── */
+async function runPriceDropAlerts() {
+  try {
+    const alerts = await pool.query(
+      `SELECT pa.id, pa.user_id, pa.product_id,
+              u.email, u.name AS user_name,
+              p.name AS product_name, p.price, p.images, p.slug,
+              pa.price_at_alert
+       FROM price_alerts pa
+       JOIN users u ON u.id = pa.user_id
+       JOIN products p ON p.id = pa.product_id
+       WHERE pa.notified_at IS NULL
+         AND p.is_active = TRUE
+         AND pa.price_at_alert IS NOT NULL
+         AND p.price < pa.price_at_alert
+       ORDER BY pa.created_at ASC
+       LIMIT 200`
+    )
+    if (!alerts.rowCount) return
+
+    // Group by product_id and check if price actually changed
+    // We notify ALL pending alerts (no prior price stored, treat first run as baseline)
+    // Future: store price_at_alert for proper comparison
+    // For now: notify users once on first eligible check
+    const notified = []
+    for (const a of alerts.rows) {
+      const img = (a.images || [])[0] || ''
+      try {
+        await mailer.sendTransacEmail({
+          sender: { email: process.env.MAIL_FROM, name: process.env.APP_NAME || 'AyurvedaShop' },
+          to: [{ email: a.email, name: a.user_name || '' }],
+          subject: `Price Alert: ${a.product_name} — Check the latest price`,
+          htmlContent: `
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+              <h2 style="color:#2d6a4f">🏷️ Price Update Alert</h2>
+              <p>Hi ${a.user_name || 'there'},</p>
+              <p>You asked us to keep an eye on <strong>${a.product_name}</strong>.
+                 The current price is <strong>₹${Number(a.price).toLocaleString('en-IN')}</strong>.</p>
+              ${img ? `<img src="${img}" alt="${a.product_name}" style="max-width:200px;border-radius:8px;margin:12px 0">` : ''}
+              <a href="${process.env.FRONTEND_URL || ''}/product/${a.slug || a.product_id}"
+                 style="display:inline-block;margin-top:16px;padding:12px 24px;background:#2d6a4f;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">
+                View Product
+              </a>
+              <p style="margin-top:20px;font-size:12px;color:#9ca3af">
+                To stop receiving these alerts, click "Remove Alert" on the product page.
+              </p>
+            </div>`,
+        })
+        notified.push(a.id)
+      } catch { /* keep retrying on next run */ }
+    }
+
+    if (notified.length) {
+      await pool.query(
+        `UPDATE price_alerts SET notified_at=NOW() WHERE id=ANY($1)`,
+        [notified]
+      )
+      console.log(`[PriceAlerts] Notified ${notified.length} user(s)`)
+    }
+  } catch (err) {
+    console.error('[PriceAlerts Cron] Error:', err.message)
+  }
+}
+
 module.exports = {
   startSecurityCleanupWorker() {
     cleanupSecurityEvents()
     setInterval(cleanupSecurityEvents, 24 * 60 * 60 * 1000)
     scheduleWeeklyDigest()
+    runPriceDropAlerts()
+    setInterval(runPriceDropAlerts, 6 * 60 * 60 * 1000)
     console.log('[SecurityCleanup Cron] Started — pruning events older than 90 days, running every 24h')
+    console.log('[PriceAlerts Cron] Started — checking every 6 hours')
   },
   alertAdminOnHardLock,
 }

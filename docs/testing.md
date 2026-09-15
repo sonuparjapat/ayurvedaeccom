@@ -2498,3 +2498,77 @@ curl -i http://localhost:5000/api/nonexistent | grep x-request-id
 ### Password Strength Fields — Mobile
 - Change password modal placeholder now reads "min 8 chars, letter + number" (not 6)
 
+
+---
+
+## Phase 4 — User Interaction Features (2026-09-15)
+
+### Delivery Instructions
+
+**Web**
+1. Account → My Addresses → Add New Address → fill fields → enter delivery instructions (e.g. "Ring bell twice")
+2. Save → address card shows 📋 with the instruction text
+3. Edit address → instructions pre-populated → update and save → verify display
+4. Leave instructions blank → card shows no instruction row
+
+**Mobile**
+1. Account → Addresses → Add New → "Delivery Instructions" field at bottom of form
+2. Same save/edit/display verification as web
+
+**API**
+- `POST /api/users/address` with `delivery_instructions` → verify `SELECT delivery_instructions FROM user_addresses WHERE id=...`
+- `PUT /api/users/address/:id` → same DB verify
+
+---
+
+### Frequently Bought Together
+
+**Web**
+1. Navigate to product page for a product that exists in multiple orders with other items
+2. "Frequently Bought Together" section appears below "You May Also Like" with `+` separators
+3. Clicking a co-product card navigates to that product page
+4. If no co-purchase data, section hidden
+
+**Mobile**
+1. Same product page → FBT section rendered below Related Products
+2. Horizontal scroll with "+" between cards
+3. Tapping a card navigates to that product
+
+**API**
+- `GET /api/shop/products/:id/bought-together` → returns `{ success: true, data: [...] }` with up to 4 products
+- Test with a product that has no co-purchase history → returns empty `data: []`
+
+---
+
+### Price Drop Alert
+
+**Web**
+1. Product page (logged in) → below pincode check → "Alert Me When Price Drops" button
+2. Click → toast "We'll notify you when the price drops!" → button changes to 🔔 "Price Alert On"
+3. Click again → toast "Price alert removed" → button resets to 🔕
+4. Not logged in → click → toast "Please login to set a price alert"
+
+**Mobile**
+1. Product page → "Alert Me When Price Drops" button above trust pills
+2. Tap to toggle on/off with toast feedback
+3. Active state shows amber background with 🔔
+
+**API**
+- `POST /api/shop/products/:id/price-alert` → 201, `{ success: true }`
+- `DELETE /api/shop/products/:id/price-alert` → 200, `{ success: true }`
+- `GET /api/shop/products/:id/price-alert` → `{ active: true/false }`
+- Duplicate POST → no error (ON CONFLICT DO NOTHING)
+
+**Cron**
+- `runPriceDropAlerts()` runs every 6h; verify via console log `[PriceAlerts] Notified N user(s)`
+- After notification: `SELECT notified_at FROM price_alerts WHERE id=...` is no longer NULL
+
+---
+
+## System Architecture Diagram (2026-09-15)
+
+Visual reference for all flows being tested:
+
+**https://claude.ai/artifact/DoKqyJ5BVFKphd9HWqEdcx**
+
+Use the Auth Flow, Shopping Flow, and Security Stack tabs as reference when writing test cases for those areas.

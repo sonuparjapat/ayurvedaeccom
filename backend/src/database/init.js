@@ -1709,6 +1709,22 @@ async function runSafeColumnMigrations() {
 
     // 008 — optional 2FA per user
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS two_fa_enabled BOOLEAN NOT NULL DEFAULT FALSE`,
+
+    // 009 — delivery instructions on address
+    `ALTER TABLE user_addresses ADD COLUMN IF NOT EXISTS delivery_instructions TEXT`,
+
+    // 010 — price drop alerts
+    `CREATE TABLE IF NOT EXISTS price_alerts (
+       id             SERIAL PRIMARY KEY,
+       user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+       product_id     INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+       price_at_alert NUMERIC(10,2),
+       created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       notified_at    TIMESTAMPTZ,
+       UNIQUE(user_id, product_id)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_price_alerts_product ON price_alerts(product_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_price_alerts_user ON price_alerts(user_id)`,
   ]
   for (const sql of migrations) {
     const c = await pool.connect()

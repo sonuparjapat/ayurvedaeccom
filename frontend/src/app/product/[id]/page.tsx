@@ -156,6 +156,13 @@ export default function ProductDetailPage() {
   // Related products
   const [relatedProducts, setRelatedProducts] = useState<any[]>([])
 
+  // Frequently Bought Together
+  const [fbtProducts, setFbtProducts] = useState<any[]>([])
+
+  // Price drop alert
+  const [priceAlertActive, setPriceAlertActive] = useState(false)
+  const [priceAlertLoading, setPriceAlertLoading] = useState(false)
+
   // Bundles (Frequently Bought Together)
   const [bundles, setBundles] = useState<any[]>([])
   const [bundleLoading, setBundleLoading] = useState(false)
@@ -270,6 +277,8 @@ const handlepagechage=(page:number)=>{
     axios.get(`/shop/variants/${id}`).then((r) => setVariants(r.data?.variants || [])).catch(() => {})
     axios.get(`/shop/rating/${id}`).then((r) => setRatingBreakdown(r.data || null)).catch(() => {})
     axios.get(`/shop/related/${id}`).then((r) => setRelatedProducts(r.data?.products || [])).catch(() => {})
+    axios.get(`/shop/products/${id}/bought-together`).then((r) => setFbtProducts(r.data?.data || [])).catch(() => {})
+    axios.get(`/shop/products/${id}/price-alert`).then((r) => setPriceAlertActive(r.data?.active || false)).catch(() => {})
     setBundleLoading(true)
     axios.get(`/bundles/by-product/${id}`).then((r) => setBundles(r.data?.bundles || [])).catch(() => {}).finally(() => setBundleLoading(false))
     // Check flash sale
@@ -419,6 +428,26 @@ const handlepagechage=(page:number)=>{
     const toAdd = files.slice(0, remaining)
     setWImages(prev => [...prev, ...toAdd.map((f: any) => ({ file: f, preview: URL.createObjectURL(f) }))])
     e.target.value = ''
+  }
+
+  const togglePriceAlert = async () => {
+    if (!loginuserdata) { toast.error('Please login to set a price alert'); return }
+    setPriceAlertLoading(true)
+    try {
+      if (priceAlertActive) {
+        await axios.delete(`/shop/products/${id}/price-alert`)
+        setPriceAlertActive(false)
+        toast.success('Price alert removed')
+      } else {
+        await axios.post(`/shop/products/${id}/price-alert`)
+        setPriceAlertActive(true)
+        toast.success("We'll notify you when the price drops!")
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to update price alert')
+    } finally {
+      setPriceAlertLoading(false)
+    }
   }
 
   const submitNotifyMe = async () => {
@@ -1006,6 +1035,23 @@ const addToCart = async () => {
 
 
 
+              {/* PRICE DROP ALERT */}
+              <button
+                onClick={togglePriceAlert}
+                disabled={priceAlertLoading}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  border: priceAlertActive ? '1.5px solid #d97706' : '1.5px solid rgba(16,185,129,0.3)',
+                  background: priceAlertActive ? '#fef3c7' : 'white',
+                  color: priceAlertActive ? '#92400e' : '#374151',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <span style={{ fontSize: 16 }}>{priceAlertActive ? '🔔' : '🔕'}</span>
+                {priceAlertActive ? 'Price Alert On — Click to Remove' : 'Alert Me When Price Drops'}
+              </button>
+
               {/* MIN ORDER QTY NOTICE */}
               {product.min_order_qty && product.min_order_qty > 1 && (
                 <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">
@@ -1541,6 +1587,39 @@ const addToCart = async () => {
                   </div>
                 </div>
               </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ================= FREQUENTLY BOUGHT TOGETHER ================= */}
+      {fbtProducts.length > 0 && (
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 16px 0' }}>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.01em' }}>Frequently Bought Together</h2>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 24 }}>Customers who bought this also bought</p>
+          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, scrollbarWidth: 'none' }}>
+            {fbtProducts.map((p: any, idx: number) => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                {idx > 0 && <span style={{ fontSize: 22, color: '#047857', fontWeight: 800 }}>+</span>}
+                <a href={`/product/${p.slug || p.id}`} style={{ textDecoration: 'none', width: 164 }}>
+                  <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(16,185,129,0.12)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+                    <img src={p.images?.[0] || '/placeholder.png'} alt={p.name} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
+                    <div style={{ padding: '10px 12px 12px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginBottom: 4, lineHeight: 1.4 }}>{p.name}</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: '#047857' }}>₹{Number(p.price).toLocaleString('en-IN')}</span>
+                        {Number(p.discount_percent) > 0 && <span style={{ fontSize: 10, color: '#ef4444', fontWeight: 700 }}>{p.discount_percent}% off</span>}
+                      </div>
+                      {Number(p.averagerating) > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 3 }}>
+                          <span style={{ fontSize: 10, color: '#f59e0b' }}>★</span>
+                          <span style={{ fontSize: 10, color: '#6b7280' }}>{Number(p.averagerating).toFixed(1)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </a>
+              </div>
             ))}
           </div>
         </div>

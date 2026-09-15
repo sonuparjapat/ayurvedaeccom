@@ -252,12 +252,12 @@ export default function AccountScreen() {
 
   // Add Address modal
   const [showAddAddr, setShowAddAddr] = useState(false)
-  const [addrForm, setAddrForm] = useState({ street: '', city: '', state: '', pincode: '', type: 'Home', email: '' })
+  const [addrForm, setAddrForm] = useState({ street: '', city: '', state: '', pincode: '', type: 'Home', email: '', delivery_instructions: '' })
   const [savingAddr, setSavingAddr] = useState(false)
 
   // Edit Address modal
   const [editingAddr, setEditingAddr] = useState<Address | null>(null)
-  const [editAddrForm, setEditAddrForm] = useState({ street: '', city: '', state: '', pincode: '', type: 'Home', email: '' })
+  const [editAddrForm, setEditAddrForm] = useState({ street: '', city: '', state: '', pincode: '', type: 'Home', email: '', delivery_instructions: '' })
   const [savingEditAddr, setSavingEditAddr] = useState(false)
 
   // Sessions + 2FA
@@ -494,7 +494,7 @@ export default function AccountScreen() {
     try {
       await api.post('/users/address', payload)
       setShowAddAddr(false)
-      setAddrForm(prev => ({ street: '', city: '', state: '', pincode: '', type: 'Home', email: user?.email || '' }))
+      setAddrForm(prev => ({ street: '', city: '', state: '', pincode: '', type: 'Home', email: user?.email || '', delivery_instructions: '' }))
       fetchAddresses()
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to save address')
@@ -503,7 +503,7 @@ export default function AccountScreen() {
 
   const openEditAddr = (addr: Address) => {
     setEditingAddr(addr)
-    setEditAddrForm({ street: addr.street, city: addr.city, state: addr.state, pincode: addr.pincode, type: addr.type || 'Home', email: user?.email || '' })
+    setEditAddrForm({ street: addr.street, city: addr.city, state: addr.state, pincode: addr.pincode, type: addr.type || 'Home', email: user?.email || '', delivery_instructions: (addr as any).delivery_instructions || '' })
   }
 
   const saveEditAddr = async () => {
@@ -914,6 +914,9 @@ export default function AccountScreen() {
                   </View>
                   <Text style={ss.addrStreet}>{addr.street}</Text>
                   <Text style={ss.addrLine}>{addr.city}, {addr.state} — {addr.pincode}</Text>
+                  {(addr as any).delivery_instructions ? (
+                    <Text style={{ fontSize: 11, color: Colors.sage, marginTop: 4 }}>📋 {(addr as any).delivery_instructions}</Text>
+                  ) : null}
                 </View>
                 <View style={{ gap: 6 }}>
                   <TouchableOpacity onPress={() => openEditAddr(addr)} style={ss.addrActionBtn}>
@@ -1158,6 +1161,19 @@ export default function AccountScreen() {
                 </View>
               ))}
 
+              <View style={{ marginBottom: 12 }}>
+                <Text style={mf.label}>Delivery Instructions (optional)</Text>
+                <TextInput
+                  style={[mf.input, { height: 64, textAlignVertical: 'top' }]}
+                  placeholder="e.g. Ring bell, leave at door, call on arrival"
+                  placeholderTextColor={Colors.textDim}
+                  value={addrForm.delivery_instructions}
+                  onChangeText={t => setAddrForm(prev => ({ ...prev, delivery_instructions: t }))}
+                  multiline
+                  autoCapitalize="sentences"
+                />
+              </View>
+
               <TouchableOpacity onPress={addAddress} disabled={savingAddr} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 4 }}>
                 <LinearGradient colors={[Colors.forest, Colors.moss]} style={ms.confirmBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                   <Text style={ms.confirmText}>{savingAddr ? 'Saving...' : '✓  Save Address'}</Text>
@@ -1224,6 +1240,19 @@ export default function AccountScreen() {
                   />
                 </View>
               ))}
+
+              <View style={{ marginBottom: 12 }}>
+                <Text style={mf.label}>Delivery Instructions (optional)</Text>
+                <TextInput
+                  style={[mf.input, { height: 64, textAlignVertical: 'top' }]}
+                  placeholder="e.g. Ring bell, leave at door, call on arrival"
+                  placeholderTextColor={Colors.textDim}
+                  value={editAddrForm.delivery_instructions}
+                  onChangeText={t => setEditAddrForm(prev => ({ ...prev, delivery_instructions: t }))}
+                  multiline
+                  autoCapitalize="sentences"
+                />
+              </View>
 
               <TouchableOpacity onPress={saveEditAddr} disabled={savingEditAddr} style={{ borderRadius: 14, overflow: 'hidden', marginTop: 4 }}>
                 <LinearGradient colors={[Colors.forest, Colors.moss]} style={ms.confirmBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>

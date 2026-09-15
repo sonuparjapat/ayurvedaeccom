@@ -1257,3 +1257,50 @@ Revoking a session signs out that device immediately — the next API request fr
 
 Every API response now includes an `X-Request-Id` header. If you report an issue to support, providing this ID helps trace exactly what happened on the server.
 
+
+---
+
+## Delivery Instructions
+
+When adding or editing a delivery address, you can leave special instructions for the delivery person:
+
+1. Go to **My Account → My Addresses**
+2. Click **Add New Address** or the edit icon on an existing address
+3. Fill in the address fields
+4. In the **Delivery Instructions** box, type any special notes (e.g. "Ring bell twice", "Leave at door", "Call on arrival")
+5. Save — the instructions appear on your address card with a 📋 icon
+
+Delivery instructions are also shown on mobile under Account → Addresses.
+
+---
+
+## Frequently Bought Together
+
+On every product page you may see a **"Frequently Bought Together"** section showing products that other customers commonly purchase alongside this item. These recommendations come from real order history — not just browsing.
+
+- Click (or tap on mobile) any product card to go to its page
+- The section only appears when there is enough co-purchase data
+
+---
+
+## Price Drop Alert
+
+Never miss a price drop again:
+
+1. Visit any product page
+2. Click **"Alert Me When Price Drops"** (🔕 bell button, below the delivery check section on web; above trust badges on mobile)
+3. The button turns active 🔔 — you're now watching this product
+4. When the price drops, you'll receive an email notification with a direct link to the product
+5. Click the button again at any time to remove the alert
+
+**Note:** You must be logged in to set a price alert.
+
+---
+
+## How Everything Works Together
+
+A complete map of all system features, flows, and connections is available here:
+
+**https://claude.ai/artifact/DoKqyJ5BVFKphd9HWqEdcx**
+
+This interactive diagram covers the full shopping journey, how login and security work, what happens in the background, and a searchable list of all API endpoints.

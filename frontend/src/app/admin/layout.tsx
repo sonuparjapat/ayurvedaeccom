@@ -48,6 +48,7 @@ import {
   Trophy,
   Sparkles,
   Hash,
+  Network,
 } from 'lucide-react'
 import axios from '@/lib/axios'
 import { useAuth } from '@/context/auth-context'
@@ -549,6 +550,10 @@ export default function AdminLayout({
 
           <MenuItem href="/admin/docs/testing" icon={<FlaskConical size={18} />}>
             Testing Guide
+          </MenuItem>
+
+          <MenuItem href="/admin/docs/system-map" icon={<Network size={18} />}>
+            System Map
           </MenuItem>
 
         </nav>

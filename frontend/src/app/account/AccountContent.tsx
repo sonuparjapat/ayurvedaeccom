@@ -184,8 +184,8 @@ const {loginuserdata}=useAuth()
   email:loginuserdata?.email||"",
   is_default: false,
   phone:loginuserdata?.phone||"",
-  name:loginuserdata?.name||''
-
+  name:loginuserdata?.name||'',
+  delivery_instructions: '',
 });
 useEffect(() => {
   if (initial) {
@@ -196,7 +196,8 @@ useEffect(() => {
       state: initial.state || "",
       pincode: initial.pincode || "",
       is_default: Boolean(initial.is_default),
-      email:initial?.email||""
+      email:initial?.email||"",
+      delivery_instructions: initial.delivery_instructions || "",
     });
   }
 }, [initial]);
@@ -222,6 +223,13 @@ useEffect(() => {
         <input className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white" placeholder="PIN Code" value={form.pincode} onChange={e => setForm({ ...form, pincode: e.target.value })} />
           <input className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white" placeholder="Enter Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
       </div>
+      <textarea
+        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white resize-none"
+        placeholder="Delivery instructions (optional) — e.g. Ring bell, leave at door, call on arrival"
+        rows={2}
+        value={form.delivery_instructions}
+        onChange={e => setForm({ ...form, delivery_instructions: e.target.value })}
+      />
       <label className="flex items-center gap-2 cursor-pointer select-none">
         <div onClick={() =>
   setForm(prev => ({
@@ -1800,6 +1808,9 @@ const handleSaveAddress = async (data: any) => {
                           </div>
                           <p className="text-sm text-gray-800 font-medium">{addr.street}</p>
                           <p className="text-sm text-gray-500">{addr.city}, {addr.state} - {addr.pincode}</p>
+                          {(addr as any).delivery_instructions && (
+                            <p className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 mt-2 flex items-start gap-1.5"><span>📋</span>{(addr as any).delivery_instructions}</p>
+                          )}
 
                           {editingAddressId === addr.id ? (
                             <div className="mt-4">

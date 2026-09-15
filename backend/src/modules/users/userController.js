@@ -148,7 +148,8 @@ exports.addAddress = async (req, res) => {
       state,
       pincode,
       isDefault,
-      email
+      email,
+      delivery_instructions,
     } = req.body;
 
 
@@ -179,8 +180,8 @@ exports.addAddress = async (req, res) => {
       const result = await client.query(
         `
         INSERT INTO user_addresses
-        (user_id,type,street,city,state,pincode,email,is_default)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+        (user_id,type,street,city,state,pincode,email,is_default,delivery_instructions)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
         RETURNING *
         `,
         [
@@ -192,6 +193,7 @@ exports.addAddress = async (req, res) => {
           pincode,
           email,
           isDefault || false,
+          delivery_instructions || null,
         ]
       );
 
@@ -271,7 +273,8 @@ exports.updateAddress = async (req, res) => {
       state,
       pincode,
       isDefault,
-      email
+      email,
+      delivery_instructions,
     } = req.body;
 
 
@@ -302,9 +305,10 @@ exports.updateAddress = async (req, res) => {
           pincode=$5,
           is_default=$6,
           updated_at=NOW(),
-          email=$7
+          email=$7,
+          delivery_instructions=$8
 
-        WHERE id=$8 AND user_id=$9
+        WHERE id=$9 AND user_id=$10
         RETURNING *
         `,
         [
@@ -315,6 +319,7 @@ exports.updateAddress = async (req, res) => {
           pincode,
           isDefault || false,
           email,
+          delivery_instructions || null,
           id,
           userId,
         ]

@@ -1631,3 +1631,99 @@ exports.revokeWishlistShareLink = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to revoke' })
   }
 }
+
+/* ─────────────────────────────────────────────────────────
+   FREQUENTLY BOUGHT TOGETHER
+   Finds top-3 products co-purchased with the given product
+   by querying order_items pairs on the same order.
+───────────────────────────────────────────────────────── */
+exports.getBoughtTogether = async (req, res) => {
+  try {
+    const productId = await resolveProductId(req.params.id)
+    if (!productId) return res.status(404).json({ success: false, message: 'Product not found' })
+
+    const result = await pool.query(
+      `SELECT p.id, p.name, p.price, p.images, p.averagerating, p.reviewcount, p.slug,
+              p.inventory, p.discount_percent,
+              COUNT(*) AS co_count
+       FROM order_items oi1
+       JOIN order_items oi2 ON oi2.order_id = oi1.order_id AND oi2.product_id != $1
+       JOIN products p ON p.id = oi2.product_id
+       WHERE oi1.product_id = $1
+         AND p.is_active = TRUE
+         AND p.inventory > 0
+       GROUP BY p.id, p.name, p.price, p.images, p.averagerating, p.reviewcount, p.slug,
+                p.inventory, p.discount_percent
+       ORDER BY co_count DESC
+       LIMIT 4`,
+      [productId]
+    )
+
+    res.json({ success: true, data: result.rows })
+  } catch (err) {
+    console.error('[getBoughtTogether]', err.message)
+    res.status(500).json({ success: false, message: 'Failed to load recommendations' })
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   PRICE DROP ALERTS
+───────────────────────────────────────────────────────── */
+exports.setPriceAlert = async (req, res) => {
+  const userId = req.user?.id
+  if (!userId) return res.status(401).json({ success: false, message: 'Login required' })
+  try {
+    const productId = await resolveProductId(req.params.id)
+    if (!productId) return res.status(404).json({ success: false, message: 'Product not found' })
+
+    const priceRow = await pool.query(`SELECT price FROM products WHERE id=$1`, [productId])
+    const currentPrice = priceRow.rows[0]?.price || null
+
+    await pool.query(
+      `INSERT INTO price_alerts (user_id, product_id, price_at_alert)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, product_id)
+       DO UPDATE SET price_at_alert = EXCLUDED.price_at_alert, notified_at = NULL`,
+      [userId, productId, currentPrice]
+    )
+    res.json({ success: true, message: "We'll notify you when the price drops!" })
+  } catch (err) {
+    console.error('[setPriceAlert]', err.message)
+    res.status(500).json({ success: false, message: 'Failed to set price alert' })
+  }
+}
+
+exports.removePriceAlert = async (req, res) => {
+  const userId = req.user?.id
+  if (!userId) return res.status(401).json({ success: false, message: 'Login required' })
+  try {
+    const productId = await resolveProductId(req.params.id)
+    if (!productId) return res.status(404).json({ success: false, message: 'Product not found' })
+
+    await pool.query(
+      `DELETE FROM price_alerts WHERE user_id=$1 AND product_id=$2`,
+      [userId, productId]
+    )
+    res.json({ success: true, message: 'Price alert removed' })
+  } catch (err) {
+    console.error('[removePriceAlert]', err.message)
+    res.status(500).json({ success: false, message: 'Failed to remove price alert' })
+  }
+}
+
+exports.getPriceAlertStatus = async (req, res) => {
+  const userId = req.user?.id
+  if (!userId) return res.json({ success: true, active: false })
+  try {
+    const productId = await resolveProductId(req.params.id)
+    if (!productId) return res.json({ success: true, active: false })
+
+    const r = await pool.query(
+      `SELECT id FROM price_alerts WHERE user_id=$1 AND product_id=$2`,
+      [userId, productId]
+    )
+    res.json({ success: true, active: r.rowCount > 0 })
+  } catch (err) {
+    res.json({ success: true, active: false })
+  }
+}

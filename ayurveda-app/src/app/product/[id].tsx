@@ -396,7 +396,14 @@ export default function ProductDetailScreen() {
   // Related products
   const [relatedProducts, setRelatedProducts] = useState<any[]>([])
 
-  // Frequently Bought Together (bundles)
+  // Frequently Bought Together (order history based)
+  const [fbtProducts, setFbtProducts] = useState<any[]>([])
+
+  // Price drop alert
+  const [priceAlertActive, setPriceAlertActive] = useState(false)
+  const [priceAlertLoading, setPriceAlertLoading] = useState(false)
+
+  // Curated product bundles
   const [bundles, setBundles] = useState<any[]>([])
   const [bundleAdding, setBundleAdding] = useState<string | null>(null)
 
@@ -436,6 +443,8 @@ export default function ProductDetailScreen() {
     // fetchProduct is called by useFocusEffect (which also fires on mount) — no duplicate call here
     api.get(`/shop/variants/${id}`).then(r => setVariants(r.data?.variants || [])).catch(() => {})
     api.get(`/shop/related/${id}`).then(r => setRelatedProducts(r.data?.products || [])).catch(() => {})
+    api.get(`/shop/products/${id}/bought-together`).then(r => setFbtProducts(r.data?.data || [])).catch(() => {})
+    api.get(`/shop/products/${id}/price-alert`).then(r => setPriceAlertActive(r.data?.active || false)).catch(() => {})
     api.get(`/bundles/by-product/${id}`).then(r => setBundles(r.data?.bundles || [])).catch(() => {})
     api.get(`/qa/product/${id}`).then(r => setQuestions(r.data?.questions || [])).catch(() => {})
     api.get('/flash-sales/active').then(r => {
@@ -608,6 +617,26 @@ export default function ProductDetailScreen() {
         uri: a.uri, name: a.fileName || `photo_${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg',
       }))
       setMyImages(prev => [...prev, ...picked].slice(0, 5 - myExistingImages.length))
+    }
+  }
+
+  const togglePriceAlert = async () => {
+    if (!user) { setAuthOpen(true); return }
+    setPriceAlertLoading(true)
+    try {
+      if (priceAlertActive) {
+        await api.delete(`/shop/products/${id}/price-alert`)
+        setPriceAlertActive(false)
+        toast.success('Price alert removed')
+      } else {
+        await api.post(`/shop/products/${id}/price-alert`)
+        setPriceAlertActive(true)
+        toast.success("We'll notify you when the price drops!")
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to update price alert')
+    } finally {
+      setPriceAlertLoading(false)
     }
   }
 
@@ -1070,6 +1099,24 @@ export default function ProductDetailScreen() {
             )}
           </View>
 
+          {/* Price Drop Alert */}
+          <TouchableOpacity
+            onPress={togglePriceAlert}
+            disabled={priceAlertLoading}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, marginBottom: 12,
+              backgroundColor: priceAlertActive ? '#fef3c7' : Colors.mint,
+              borderWidth: 1.5,
+              borderColor: priceAlertActive ? '#d97706' : Colors.sage + '40',
+            }}
+          >
+            <Text style={{ fontSize: 16 }}>{priceAlertActive ? '🔔' : '🔕'}</Text>
+            <Text style={{ fontFamily: Fonts.medium, fontSize: 13, color: priceAlertActive ? '#92400e' : Colors.forest, flex: 1 }}>
+              {priceAlertLoading ? 'Updating...' : priceAlertActive ? 'Price Alert On — Tap to Remove' : 'Alert Me When Price Drops'}
+            </Text>
+          </TouchableOpacity>
+
           {/* Trust pills */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 20 }}>
             {[['🚚', 'Fast Delivery', '24-48 hrs'], ['🧪', 'Lab Tested', 'Certified'], ['↩️', '7-Day Return', 'Easy'], ['🌿', '100% Organic', 'Certified']].map(([e, t, s]) => (
@@ -1385,6 +1432,42 @@ export default function ProductDetailScreen() {
                     </TouchableOpacity>
                   )
                 })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* ── Frequently Bought Together ──────────────────── */}
+          {fbtProducts.length > 0 && (
+            <View style={{ marginTop: 24, marginBottom: 8 }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 16, color: Colors.forest, marginBottom: 4 }}>
+                Frequently Bought Together
+              </Text>
+              <Text style={{ fontFamily: Fonts.regular, fontSize: 12, color: Colors.textDim, marginBottom: 12 }}>
+                Customers who bought this also bought
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, alignItems: 'center' }}>
+                {fbtProducts.map((fp: any, idx: number) => (
+                  <View key={fp.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {idx > 0 && <Text style={{ fontSize: 18, color: Colors.sage, fontFamily: Fonts.bold }}>+</Text>}
+                    <TouchableOpacity
+                      onPress={() => router.push(`/product/${fp.slug || fp.id}` as any)}
+                      style={{ width: 140, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: Colors.sage + '25' }}
+                      activeOpacity={0.85}
+                    >
+                      <Image source={{ uri: fp.images?.[0] || '' }} style={{ width: '100%', height: 110 }} resizeMode="cover" />
+                      <View style={{ padding: 8 }}>
+                        <Text numberOfLines={2} style={{ fontFamily: Fonts.medium, fontSize: 11, color: Colors.dark, marginBottom: 4, lineHeight: 15 }}>{fp.name}</Text>
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 13, color: Colors.forest }}>₹{Number(fp.price).toLocaleString('en-IN')}</Text>
+                        {Number(fp.averagerating) > 0 && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 }}>
+                            <Text style={{ fontSize: 10, color: '#f59e0b' }}>★</Text>
+                            <Text style={{ fontFamily: Fonts.medium, fontSize: 10, color: Colors.textDim }}>{Number(fp.averagerating).toFixed(1)}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                ))}
               </ScrollView>
             </View>
           )}

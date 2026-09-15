@@ -2523,3 +2523,89 @@ Registered at the very top of the Express middleware chain (before compression).
 - `handleRevokeSession()` / `handleToggle2FA()` call respective API endpoints
 - Security modal: change-password shortcut, 2FA toggle, active sessions list with revoke buttons
 - "🛡️ Security" quick link added to Quick Access list
+
+---
+
+## Phase 4 — User Interaction Features (2026-09-15)
+
+### Feature 1: Delivery Instructions on Address
+
+**DB Migration (009)**
+- `ALTER TABLE user_addresses ADD COLUMN IF NOT EXISTS delivery_instructions TEXT`
+- Applied via `runSafeColumnMigrations()` in `backend/src/database/init.js`
+
+**Backend (`backend/src/modules/users/userController.js`)**
+- `addAddress`: reads `delivery_instructions` from body, inserts as 9th param
+- `updateAddress`: same field, updates as 8th param
+
+**Web (`frontend/src/app/account/AccountContent.tsx`)**
+- `AddressForm`: added `delivery_instructions` to form state and `useEffect` initial sync
+- Textarea field below the email input: "Delivery instructions (optional)"
+- Address card display shows instructions with 📋 emoji when present
+
+**Mobile (`ayurveda-app/src/app/account/index.tsx`)**
+- `addrForm` and `editAddrForm` state now include `delivery_instructions`
+- `openEditAddr` populates `delivery_instructions` from saved address
+- Both Add and Edit modals have a multiline TextInput for delivery instructions
+- Address card shows instructions below the city/state/pincode line
+
+---
+
+### Feature 2: Frequently Bought Together
+
+**Backend (`backend/src/modules/products/product.controller.js`)**
+- `exports.getBoughtTogether`: queries `order_items` pairs on the same order, returns top-4 co-purchased products with name, price, images, averagerating, slug
+- Route: `GET /shop/products/:id/bought-together` (no auth required)
+
+**Web (`frontend/src/app/product/[id]/page.tsx`)**
+- `fbtProducts` state + fetch on mount: `GET /shop/products/:id/bought-together`
+- Horizontal scrollable "+" separated product cards section rendered below "You May Also Like"
+
+**Mobile (`ayurveda-app/src/app/product/[id].tsx`)**
+- Same state + fetch
+- Horizontal `ScrollView` with "+" separator between product cards, below Related Products section
+
+---
+
+### Feature 3: Price Drop Alert
+
+**DB Migration (010)**
+```sql
+CREATE TABLE IF NOT EXISTS price_alerts (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  target_price NUMERIC(10,2),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notified_at TIMESTAMPTZ,
+  UNIQUE(user_id, product_id)
+);
+```
+
+**Backend (`backend/src/modules/products/product.controller.js`)**
+- `setPriceAlert`: `POST /shop/products/:id/price-alert` (auth) — upserts alert row
+- `removePriceAlert`: `DELETE /shop/products/:id/price-alert` (auth) — deletes row
+- `getPriceAlertStatus`: `GET /shop/products/:id/price-alert` — returns `{ active: bool }`
+
+**Cron (`backend/src/workers/securityCleanupWorker.js`)**
+- `runPriceDropAlerts()`: runs every 6 hours, queries pending alerts, emails users, marks `notified_at`
+- `startSecurityCleanupWorker()` now calls `runPriceDropAlerts()` + schedules every 6h
+
+**Web (`frontend/src/app/product/[id]/page.tsx`)**
+- `priceAlertActive` + `priceAlertLoading` state
+- `togglePriceAlert()` toggles alert on/off with toast feedback
+- Bell button displayed below pincode section: 🔔/🔕 with active state styling
+
+**Mobile (`ayurveda-app/src/app/product/[id].tsx`)**
+- Same state + `togglePriceAlert()` handler
+- `TouchableOpacity` button above trust pills with amber highlight when active
+
+---
+
+## System Architecture Diagram (2026-09-15)
+
+An interactive system map covering all layers, flows, and API endpoints is published at:
+
+**https://claude.ai/artifact/DoKqyJ5BVFKphd9HWqEdcx**
+
+Tabs: Architecture Overview · Auth Flow · Shopping Flow · Security Stack · Background Workers · API Reference (filterable, 60+ endpoints)
