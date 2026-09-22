@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { io } from 'socket.io-client'
 import * as ImagePicker from 'expo-image-picker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ReviewImageViewer } from '../../components/ui/ReviewImageViewer'
@@ -420,6 +421,7 @@ export default function ProductDetailScreen() {
   const [notifyEmail, setNotifyEmail] = useState('')
   const [notifyLoading, setNotifyLoading] = useState(false)
   const [notifyDone, setNotifyDone] = useState(false)
+  const [viewerCount, setViewerCount] = useState(0)
 
   const scrollHandler = useAnimatedScrollHandler(e => { scrollY.value = e.contentOffset.y })
   const headerBg = useAnimatedStyle(() => ({
@@ -436,6 +438,18 @@ export default function ProductDetailScreen() {
       if (product && String(data.product_id) === String(product.id)) fetchProduct()
     })
   }, [product?.id])
+
+  // Live viewer count via socket
+  useEffect(() => {
+    if (!id) return
+    const API = (process.env.EXPO_PUBLIC_API_URL || 'https://api.oroganix.com').replace('/api', '')
+    const socket = io(API, { transports: ['websocket', 'polling'] })
+    socket.emit('product:view', { productId: id })
+    socket.on('product:viewers', ({ productId, count }: { productId: string; count: number }) => {
+      if (String(productId) === String(id)) setViewerCount(count)
+    })
+    return () => { socket.disconnect() }
+  }, [id])
 
   useEffect(() => {
     if (!id) return
@@ -757,6 +771,11 @@ export default function ProductDetailScreen() {
             <View style={ss.catTag}>
               <Text style={ss.catTagText}>{product.category_name || 'Organic'}</Text>
             </View>
+            {viewerCount >= 2 && (
+              <View style={[ss.catTag, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+                <Text style={[ss.catTagText, { color: '#15803d' }]}>👁 {viewerCount} viewing</Text>
+              </View>
+            )}
             {product.inventory === 0
               ? <View style={[ss.catTag, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}>
                   <Text style={[ss.catTagText, { color: '#ef4444' }]}>Out of Stock</Text>
@@ -789,8 +808,8 @@ export default function ProductDetailScreen() {
             </View>
             <Text style={ss.reviewCount}>({product.reviewcount} reviews)</Text>
             {product.total_sold != null && product.total_sold > 0 && (
-              <View style={{ backgroundColor: Colors.mint, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 0.5, borderColor: '#bbf7d0' }}>
-                <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: Colors.sage }}>{product.total_sold}+ sold</Text>
+              <View style={{ backgroundColor: '#fef3c7', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 0.5, borderColor: '#fde68a' }}>
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 10, color: '#92400e' }}>🔥 {product.total_sold}+ sold</Text>
               </View>
             )}
           </View>

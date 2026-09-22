@@ -3,7 +3,6 @@ import BottomNav from '../../components/BottomNav'
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Keyboard,
   Pressable,
   ScrollView,
@@ -14,8 +13,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { Image as ExpoImage } from 'expo-image'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import { impact, Haptics } from '../../utils/haptics'
 import api from '../../api/axios'
 import { Colors, Fonts } from '../../constants/theme'
 
@@ -116,6 +118,7 @@ export default function SearchScreen() {
 
   const handleSelect = (item: Suggestion) => {
     Keyboard.dismiss()
+    impact(Haptics.ImpactFeedbackStyle.Light)
     saveRecent(item.name)
     if (item._type === 'category') {
       router.push(`/category/${item.slug || item.id}`)
@@ -125,6 +128,7 @@ export default function SearchScreen() {
   }
 
   const handleRecentSelect = (term: string) => {
+    impact(Haptics.ImpactFeedbackStyle.Light)
     setQuery(term)
     fetchSuggestions(term)
   }
@@ -182,33 +186,35 @@ export default function SearchScreen() {
           keyExtractor={(item, i) => `${item._type}-${item.id}-${i}`}
           keyboardShouldPersistTaps="handled"
           ItemSeparatorComponent={() => <View style={s.separator} />}
-          renderItem={({ item }) => (
-            <Pressable style={s.row} onPress={() => handleSelect(item)}>
-              {item._type === 'product' && item.image ? (
-                <Image source={{ uri: item.image }} style={s.thumb} />
-              ) : (
-                <View style={s.iconBox}>
-                  <Text style={s.iconEmoji}>{item._type === 'category' ? '🌿' : '📦'}</Text>
-                </View>
-              )}
-              <View style={s.rowText}>
-                {item._type === 'product' && item.brand && (
-                  <Text style={{ fontFamily: Fonts.medium, fontSize: 10, color: Colors.textDim, marginBottom: 1 }}>{item.brand}</Text>
+          renderItem={({ item, index }) => (
+            <Animated.View entering={FadeInDown.delay(index * 40).duration(300)}>
+              <Pressable style={s.row} onPress={() => handleSelect(item)}>
+                {item._type === 'product' && item.image ? (
+                  <ExpoImage source={{ uri: item.image }} style={s.thumb} contentFit="cover" transition={150} />
+                ) : (
+                  <View style={s.iconBox}>
+                    <Text style={s.iconEmoji}>{item._type === 'category' ? '🌿' : '📦'}</Text>
+                  </View>
                 )}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={s.rowName} numberOfLines={1}>{item.name}</Text>
-                  {item.is_bestseller && (
-                    <View style={{ backgroundColor: '#f0e4bc', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-                      <Text style={{ fontFamily: Fonts.bold, fontSize: 8, color: '#92400e' }}>Bestseller</Text>
-                    </View>
+                <View style={s.rowText}>
+                  {item._type === 'product' && item.brand && (
+                    <Text style={{ fontFamily: Fonts.medium, fontSize: 10, color: Colors.textDim, marginBottom: 1 }}>{item.brand}</Text>
                   )}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={s.rowName} numberOfLines={1}>{item.name}</Text>
+                    {item.is_bestseller && (
+                      <View style={{ backgroundColor: '#f0e4bc', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                        <Text style={{ fontFamily: Fonts.bold, fontSize: 8, color: '#92400e' }}>Bestseller</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={s.rowMeta}>
+                    {item._type === 'category' ? 'Category' : item.price ? `₹${Number(item.price).toLocaleString('en-IN')}` : 'Product'}
+                  </Text>
                 </View>
-                <Text style={s.rowMeta}>
-                  {item._type === 'category' ? 'Category' : item.price ? `₹${Number(item.price).toLocaleString('en-IN')}` : 'Product'}
-                </Text>
-              </View>
-              <Text style={s.chevron}>›</Text>
-            </Pressable>
+                <Text style={s.chevron}>›</Text>
+              </Pressable>
+            </Animated.View>
           )}
         />
       )}
@@ -239,7 +245,7 @@ export default function SearchScreen() {
             {TRENDING_TERMS.map((term, i) => (
               <TouchableOpacity
                 key={i}
-                onPress={() => { setQuery(term.label); fetchSuggestions(term.label) }}
+                onPress={() => { impact(Haptics.ImpactFeedbackStyle.Light); setQuery(term.label); fetchSuggestions(term.label) }}
                 style={s.trendingChip}
                 activeOpacity={0.75}
               >

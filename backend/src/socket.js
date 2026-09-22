@@ -5,6 +5,40 @@ const jwt = require('jsonwebtoken');
 let io = null;
 let connectedCount = 0;
 
+// product viewer tracking: Map<productId, Map<socketId, expiresAt>>
+const productViewers = new Map();
+const VIEWER_TTL_MS = 3 * 60 * 1000; // 3 minutes
+
+function trackViewer(productId, socketId) {
+  if (!productViewers.has(productId)) productViewers.set(productId, new Map());
+  const viewers = productViewers.get(productId);
+  viewers.set(socketId, Date.now() + VIEWER_TTL_MS);
+  return getLiveViewerCount(productId);
+}
+
+function removeViewer(socketId) {
+  for (const [pid, viewers] of productViewers.entries()) {
+    if (viewers.has(socketId)) {
+      viewers.delete(socketId);
+      if (viewers.size === 0) productViewers.delete(pid);
+      return pid;
+    }
+  }
+  return null;
+}
+
+function getLiveViewerCount(productId) {
+  const viewers = productViewers.get(productId);
+  if (!viewers) return 0;
+  const now = Date.now();
+  let count = 0;
+  for (const [sid, exp] of viewers.entries()) {
+    if (exp < now) viewers.delete(sid);
+    else count++;
+  }
+  return count;
+}
+
 function getLiveStats() {
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
@@ -66,9 +100,24 @@ function initSocket(httpServer) {
       if (ticketId) socket.leave(`ticket_${ticketId}`);
     });
 
+    // Product viewer presence
+    socket.on('product:view', ({ productId } = {}) => {
+      if (!productId) return;
+      const pid = String(productId);
+      socket.join(`product_${pid}`);
+      const count = trackViewer(pid, socket.id);
+      io.to(`product_${pid}`).emit('product:viewers', { productId: pid, count });
+    });
+
     socket.on('disconnect', () => {
       connectedCount = Math.max(0, connectedCount - 1);
       io.to('admin_room').emit('server_stats', getLiveStats());
+      // Notify remaining viewers when someone leaves
+      const pid = removeViewer(socket.id);
+      if (pid) {
+        const count = getLiveViewerCount(pid);
+        io.to(`product_${pid}`).emit('product:viewers', { productId: pid, count });
+      }
     });
   });
 

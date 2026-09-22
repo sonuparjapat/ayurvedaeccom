@@ -11,7 +11,9 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CompareBar } from "@/components/compare/CompareBar"
 import { AyushDisclaimer } from "@/components/layout/AyushDisclaimer"
 import { ScrollProgress } from "@/components/ui/scroll-progress"
-import { BackToTop } from "@/components/ui/back-to-top";
+import { BackToTop } from "@/components/ui/back-to-top"
+import { NavigationProgress } from "@/components/ui/navigation-progress"
+import { PageTransition } from "@/components/ui/page-transition"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -105,18 +107,32 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Preconnect for Google Fonts — avoids blocking render */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap"
+        />
         <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
+        {/* PWA service worker — only registered in production builds */}
+        <Script id="sw-register" strategy="afterInteractive">{`
+          if ('serviceWorker' in navigator && location.protocol === 'https:') {
+            navigator.serviceWorker.register('/sw.js').catch(() => {})
+          }
+        `}</Script>
       </head>
       <AuthProvider>
         <body
           suppressHydrationWarning   // ✅ THIS FIXES YOUR ERROR
           className={`${inter.variable} font-sans antialiased bg-background text-foreground relative z-0`}
         >
+          <NavigationProgress />
           <ScrollProgress />
           <PageTracker />
           <AyushDisclaimer />
           <ErrorBoundary>
-          {children}
+            <PageTransition>{children}</PageTransition>
           </ErrorBoundary>
   <Suspense fallback={null}><AuthSheet /></Suspense>
   <Suspense fallback={null}><CompareBar /></Suspense>

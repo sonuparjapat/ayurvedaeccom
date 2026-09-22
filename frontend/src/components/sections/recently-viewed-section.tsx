@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import axios from '@/lib/axios'
 import { ShoppingCart, Heart, Clock } from 'lucide-react'
@@ -72,10 +73,12 @@ function RecentCard({ product }: { product: RecentProduct }) {
     >
       <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
         <div className="relative overflow-hidden bg-gray-50" style={{ height: 200 }}>
-          <img
+          <Image
             src={getImage(product.images)}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="200px"
           />
           {discount > 0 && (
             <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500 text-white">

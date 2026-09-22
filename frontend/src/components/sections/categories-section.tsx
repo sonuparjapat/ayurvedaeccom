@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { useAuth, type Category } from '@/context/auth-context';
@@ -191,7 +192,7 @@ function CategoryCard({
                   transitionTimingFunction: 'cubic-bezier(0.22,1,0.36,1)',
                 }}
               >
-       <img src={category.image_url} alt={category.name} className="w-12 h-12 object-cover rounded-full" />
+       <Image src={category.image_url} alt={category.name} width={48} height={48} className="object-cover rounded-full" />
               </div>
             </div>
 

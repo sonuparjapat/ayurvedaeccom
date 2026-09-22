@@ -24,6 +24,7 @@ import {
   Sun,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/auth-context'
 import axios from '@/lib/axios'
@@ -1062,7 +1063,7 @@ const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_deli
                             {item._type === 'category' ? (
                               <div className="search-result-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e8f5ee', fontSize: 18 }}>🌿</div>
                             ) : (
-                              <img src={item?.images?.[0] || '/placeholder.png'} className="search-result-img" alt={item.name} />
+                              <Image src={item?.images?.[0] || '/placeholder.png'} width={40} height={40} className="search-result-img object-cover" alt={item.name} />
                             )}
                             <div className="search-result-info">
                               <div className="search-result-name">{item.name}</div>
@@ -1451,7 +1452,7 @@ const freeDeliveryLimit = Number((settings||[]).find((s:any)=>s.key==='free_deli
                             {item._type === 'category' ? (
                               <div className="search-result-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e8f5ee', fontSize: 18 }}>🌿</div>
                             ) : (
-                              <img src={item?.images?.[0] || '/placeholder.png'} className="search-result-img" alt={item.name} />
+                              <Image src={item?.images?.[0] || '/placeholder.png'} width={40} height={40} className="search-result-img object-cover" alt={item.name} />
                             )}
                             <div className="search-result-info">
                               <div className="search-result-name">{item.name}</div>

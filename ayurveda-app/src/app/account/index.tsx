@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import BottomNav from '../../components/BottomNav'
 import {
-  ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, Share, StatusBar,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, Share, StatusBar,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
+import { Image as ExpoImage } from 'expo-image'
 import * as Location from 'expo-location'
 import * as ImagePicker from 'expo-image-picker'
 import { toast } from '../../components/ui/Toast'
@@ -101,6 +102,22 @@ function OrderCardSkeleton() {
 // ─── ORDER CARD ───────────────────────────────────────────────────────────────
 function OrderCard({ order, index }: { order: Order; index: number }) {
   const status = ORDER_STATUS[order.status] ?? ORDER_STATUS[0]
+  const [reordering, setReordering] = useState(false)
+
+  const handleReorder = async (e: any) => {
+    e.stopPropagation?.()
+    setReordering(true)
+    try {
+      await Promise.all(order.items.map(item =>
+        api.post('/cart', { productId: (item as any).product_id || (item as any).id, quantity: item.quantity }).catch(() => {})
+      ))
+      toast.success('Items added to cart!')
+      router.push('/cart')
+    } catch {
+      toast.error('Could not reorder. Try again.')
+    } finally { setReordering(false) }
+  }
+
   return (
     <TouchableOpacity
       onPress={() => router.push(`/order/${order.id}` as any)}
@@ -171,9 +188,23 @@ function OrderCard({ order, index }: { order: Order; index: number }) {
         )}
 
         <View style={oc.footer}>
-          <Text style={oc.totalLabel}>Total Paid</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View>
+            <Text style={oc.totalLabel}>Total Paid</Text>
             <Text style={oc.total}>₹{parseFloat(order.total_amount).toFixed(2)}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {order.status === 5 && (
+              <TouchableOpacity
+                onPress={handleReorder}
+                disabled={reordering}
+                activeOpacity={0.8}
+                style={{ backgroundColor: reordering ? Colors.border : Colors.forest, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 }}
+              >
+                <Text style={{ fontFamily: Fonts.bold, fontSize: 11, color: '#fff' }}>
+                  {reordering ? 'Adding...' : '↺ Reorder'}
+                </Text>
+              </TouchableOpacity>
+            )}
             <Text style={{ color: Colors.textDim, fontSize: 16 }}>›</Text>
           </View>
         </View>
@@ -582,7 +613,7 @@ export default function AccountScreen() {
         <Animated.View entering={FadeIn.delay(100)} style={ss.avatarRow}>
           <TouchableOpacity onPress={() => { setShowEditProfile(true) }} activeOpacity={0.8} style={{ position: 'relative' }}>
             {(user as any)?.avatar ? (
-              <Image source={{ uri: (user as any).avatar }} style={ss.avatarImg} />
+              <ExpoImage source={{ uri: (user as any).avatar }} style={ss.avatarImg} contentFit="cover" transition={200} />
             ) : (
               <LinearGradient colors={[Colors.sage, Colors.gold]} style={ss.avatar}>
                 <Text style={ss.avatarText}>{initials}</Text>
@@ -949,7 +980,7 @@ export default function AccountScreen() {
               <View style={{ alignItems: 'center', marginBottom: 20 }}>
                 <TouchableOpacity onPress={pickAvatar} activeOpacity={0.8} style={{ position: 'relative' }}>
                   {avatarUri || (user as any)?.avatar ? (
-                    <Image source={{ uri: avatarUri || (user as any).avatar }} style={ms.avatarLarge} />
+                    <ExpoImage source={{ uri: avatarUri || (user as any).avatar }} style={ms.avatarLarge} contentFit="cover" transition={200} />
                   ) : (
                     <LinearGradient colors={[Colors.sage, Colors.gold]} style={ms.avatarLarge}>
                       <Text style={{ color: '#fff', fontFamily: Fonts.bold, fontSize: 32 }}>{initials}</Text>

@@ -10,6 +10,7 @@ import {
   Sheet, SheetContent, SheetTrigger
 } from '@/components/ui/sheet'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/auth-context'
@@ -332,8 +333,8 @@ export function CartSheet() {
                     exit={{ opacity: 0, x: 24, scale: 0.96 }}
                     transition={{ delay: index * 0.04, duration: 0.28 }}
                   >
-                    <div className="cart-item-img">
-                      <img src={getImage(item.images)} alt={item.name} />
+                    <div className="cart-item-img" style={{ position: 'relative', overflow: 'hidden' }}>
+                      <Image src={getImage(item.images)} alt={item.name} fill className="object-cover" sizes="80px" />
                     </div>
                     <div className="cart-item-info">
                       <div>
@@ -344,19 +345,21 @@ export function CartSheet() {
                         <div className="cart-qty-wrap">
                           <button
                             className="cart-qty-btn"
+                            aria-label={`Decrease quantity of ${item.name}`}
                             onClick={() => updateQuantity(item.product_id, item.quantity - 1, item.inventory)}
                           >
                             <Minus size={12} />
                           </button>
-                          <span className="cart-qty-val">{item.quantity}</span>
+                          <span className="cart-qty-val" aria-label={`Quantity: ${item.quantity}`}>{item.quantity}</span>
                           <button
                             className="cart-qty-btn"
+                            aria-label={`Increase quantity of ${item.name}`}
                             onClick={() => updateQuantity(item.product_id, item.quantity + 1, item.inventory)}
                           >
                             <Plus size={12} />
                           </button>
                         </div>
-                        <button className="cart-remove-btn" onClick={() => removeFromCart(item.product_id)}>
+                        <button className="cart-remove-btn" aria-label={`Remove ${item.name} from cart`} onClick={() => removeFromCart(item.product_id)}>
                           <Trash2 size={13} />
                         </button>
                       </div>

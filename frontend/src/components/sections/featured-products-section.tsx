@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import axios from '@/lib/axios'
 import { Star, ShoppingCart, Heart, Zap, Tag, Package } from 'lucide-react'
@@ -124,11 +125,13 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
         />
         {/* Image */}
         <div className="relative overflow-hidden bg-gray-50" style={{ aspectRatio: '1/1' }}>
-          <img
+          <Image
             src={product.images?.[0] || '/placeholder.png'}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500"
+            fill
+            className="object-cover transition-transform duration-500"
             style={{ transform: hovered ? 'scale(1.08)' : 'scale(1)' }}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           />
 
           {/* Badges */}

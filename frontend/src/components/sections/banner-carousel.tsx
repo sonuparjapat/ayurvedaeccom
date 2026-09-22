@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import axios from '@/lib/axios'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -98,11 +99,14 @@ export function BannerCarousel() {
         >
           {/* Background image overlay */}
           {s.image_url && (
-            <img
+            <Image
               src={s.image_url}
               alt={s.title}
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ opacity: 0.25, mixBlendMode: 'luminosity' }}
+              fill
+              className="object-cover"
+              style={{ opacity: 0.25, mixBlendMode: 'luminosity' as const }}
+              sizes="100vw"
+              priority={i === 0}
             />
           )}
 

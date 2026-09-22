@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import NextImage from 'next/image'
 import { io } from 'socket.io-client'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -193,6 +194,9 @@ export default function ProductDetailPage() {
   const atcBtnRef = useRef<HTMLDivElement>(null)
   const [stickyAtc, setStickyAtc] = useState(false)
 
+  // Live viewer count
+  const [viewerCount, setViewerCount] = useState(0)
+
   const { handleCart, opencart, setOpencart, totalCartProducts, fetchCart, cartdata, cartloading, loginuserdata,getwishlist,wishlistdata,reviewsData,loadReviews
   } = useAuth()
 
@@ -318,6 +322,12 @@ const handlepagechage=(page:number)=>{
       if (String(productId) === String(id)) {
         setProduct(prev => prev ? { ...prev, inventory } : prev)
       }
+    })
+
+    // Viewer count — announce presence and listen for count updates
+    socket.emit('product:view', { productId: id })
+    socket.on('product:viewers', ({ productId, count }: { productId: string; count: number }) => {
+      if (String(productId) === String(id)) setViewerCount(count)
     })
 
     socket.on('flash_product_sold_out', ({ saleId, productId }: { saleId: number; productId: number }) => {
@@ -670,10 +680,13 @@ const addToCart = async () => {
                 style={{background: 'white', boxShadow: '0 24px 80px rgba(16,185,129,0.14), 0 8px 30px rgba(0,0,0,0.08), 0 0 0 1px rgba(16,185,129,0.08)'}}
                 onClick={() => setLightbox({ images: product.images, idx: activeImg })}
               >
-                <img
+                <NextImage
                   src={product.images[activeImg]}
                   alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
+                  fill
+                  className="object-cover group-hover:scale-110 transition-all duration-700"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  priority
                 />
 
                 {/* Zoom hint overlay */}
@@ -702,6 +715,8 @@ const addToCart = async () => {
 
                <button
                         onClick={(e) => { e.stopPropagation(); toggleLike(String(product.id)) }}
+                        aria-label={liked ? 'Remove from wishlist' : 'Add to wishlist'}
+                        aria-pressed={liked}
                         className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
                         style={{
                           background: 'rgba(255,255,255,0.92)',
@@ -738,10 +753,12 @@ const addToCart = async () => {
                     }`}
                   >
 
-                    <img
+                    <NextImage
                       src={img}
                       alt={`${product.name} - image ${i + 1}`}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="80px"
                     />
 
                   </button>
@@ -804,8 +821,8 @@ const addToCart = async () => {
                           ({product.reviewcount})
                         </span>
                         {product.total_sold != null && product.total_sold > 0 && (
-                          <span className="text-xs font-semibold text-gray-500 ml-2">
-                            {product.total_sold}+ sold
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 6, padding: '2px 8px', marginLeft: 8 }}>
+                            🔥 {product.total_sold}+ sold
                           </span>
                         )}
                       </div>
@@ -853,6 +870,14 @@ const addToCart = async () => {
               </div>
 
 
+
+              {/* LIVE VIEWERS */}
+              {viewerCount >= 2 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 0 2px rgba(34,197,94,0.3)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#15803d' }}>{viewerCount} people are viewing this right now</span>
+                </div>
+              )}
 
               {/* STOCK URGENCY */}
               {effectiveInventory > 0 && effectiveInventory <= 10 && (
@@ -1106,6 +1131,7 @@ const addToCart = async () => {
 
                     <Button
                       variant="ghost"
+                      aria-label="Decrease quantity"
                       onClick={() => setQty(q => Math.max(1, q - 1))}
                     >
                       <Minus size={18} />
@@ -1114,11 +1140,13 @@ const addToCart = async () => {
                     <Input
                       readOnly
                       value={qty}
+                      aria-label={`Quantity: ${qty}`}
                       className="w-16 text-center border-0"
                     />
 
                     <Button
                       variant="ghost"
+                      aria-label="Increase quantity"
                       onClick={() => setQty(q => Math.min(effectiveInventory, q + 1))}
                     >
                       <Plus size={18} />
@@ -1487,7 +1515,7 @@ const addToCart = async () => {
                         <p style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 2 }}>{bundle.name}</p>
                         {savePct > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#6ee7b7', background: 'rgba(255,255,255,0.15)', borderRadius: 20, padding: '2px 8px', letterSpacing: '0.06em' }}>SAVE {savePct}%</span>}
                       </div>
-                      {bundle.image_url && <img src={bundle.image_url} alt={bundle.name} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />}
+                      {bundle.image_url && <NextImage src={bundle.image_url} alt={bundle.name} width={40} height={40} style={{ borderRadius: 8, objectFit: 'cover' }} />}
                     </div>
 
                     {/* Products in bundle */}
@@ -1497,10 +1525,12 @@ const addToCart = async () => {
                           <div key={p.product_id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             {i > 0 && <span style={{ color: '#10b981', fontSize: 16, fontWeight: 700 }}>+</span>}
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                              <img
+                              <NextImage
                                 src={p.images?.[0] || '/placeholder.png'}
                                 alt={p.name}
-                                style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover', border: '1px solid rgba(16,185,129,0.15)' }}
+                                width={52}
+                                height={52}
+                                style={{ borderRadius: 10, objectFit: 'cover', border: '1px solid rgba(16,185,129,0.15)' }}
                               />
                               <p style={{ fontSize: 9, color: '#6b7280', marginTop: 4, textAlign: 'center', maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</p>
                               {p.quantity > 1 && <p style={{ fontSize: 9, color: '#10b981', fontWeight: 700 }}>×{p.quantity}</p>}
@@ -1568,8 +1598,8 @@ const addToCart = async () => {
                   onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 12px 40px rgba(16,185,129,0.14)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 20px rgba(0,0,0,0.07)' }}
                 >
-                  <div style={{overflow: 'hidden'}}>
-                    <img src={p.images?.[0] || '/placeholder.png'} alt={p.name} style={{ width: '100%', height: 168, objectFit: 'cover', display: 'block', transition: 'transform 0.4s ease' }} />
+                  <div style={{ overflow: 'hidden', position: 'relative', height: 168 }}>
+                    <NextImage src={p.images?.[0] || '/placeholder.png'} alt={p.name} fill className="object-cover" style={{ transition: 'transform 0.4s ease' }} sizes="188px" />
                   </div>
                   <div style={{ padding: '12px 14px 14px' }}>
                     {p.is_bestseller && <div style={{ fontSize: 9, fontWeight: 700, color: '#92400e', background: '#fef3c7', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 20, padding: '2px 8px', display: 'inline-block', marginBottom: 6, letterSpacing: '0.06em' }}>BESTSELLER</div>}
@@ -1767,9 +1797,11 @@ const addToCart = async () => {
               <div className="flex gap-2 flex-wrap mb-2">
                 {wExistingImages.map((url, i) => (
                   <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200">
-                    <img
+                    <NextImage
                       src={url} alt="existing"
-                      className="w-full h-full object-cover cursor-pointer"
+                      fill
+                      className="object-cover cursor-pointer"
+                      sizes="80px"
                       onClick={() => setLightbox({ images: [...wExistingImages, ...wImages.map(x => x.preview)], idx: i })}
                     />
                     <button
@@ -1873,7 +1905,7 @@ const addToCart = async () => {
                   <div className="flex gap-2 flex-wrap mt-3">
                     {r.images.map((img: any, imgIdx: number) => (
                       <button key={img} onClick={() => setLightbox({ images: r.images, idx: imgIdx })} className="focus:outline-none">
-                        <img src={img} alt="review" className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition-opacity cursor-zoom-in" />
+                        <NextImage src={img} alt="review" width={80} height={80} className="rounded-xl object-cover border border-gray-100 hover:opacity-90 transition-opacity cursor-zoom-in" />
                       </button>
                     ))}
                   </div>
@@ -2004,7 +2036,7 @@ const addToCart = async () => {
                 width: 48, height: 48, borderRadius: 12, overflow: 'hidden',
                 flexShrink: 0, border: '1px solid rgba(26,58,42,0.1)',
               }}>
-                <img src={product.images[0]} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <NextImage src={product.images[0]} alt={product.name} fill className="object-cover" sizes="48px" />
               </div>
             )}
 

@@ -67,8 +67,6 @@ export function HeroSection() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap');
-
         :root {
           --forest:      #0f3d2e;
           --forest-mid:  #134d38;
@@ -366,7 +364,16 @@ export function HeroSection() {
       <section className="hero-root">
 
         <div className="hero-video-wrap">
-          <video className="hero-video" src="/videos/hero-bg.mp4" autoPlay muted loop playsInline preload="auto" />
+          <video
+            className="hero-video"
+            src="/videos/hero-bg.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/videos/hero-poster.jpg"
+          />
           <div className="hero-video-overlay" />
         </div>
 

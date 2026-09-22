@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Zap, AlertTriangle, ArrowRight, Flame } from 'lucide-react'
 import axiosInstance from '@/lib/axios'
@@ -117,14 +118,16 @@ function ProductCard({ p, isExhausted }: { p: FlashProduct; isExhausted: boolean
         {/* Image */}
         <div style={{ height: 130, background: 'rgba(0,0,0,0.2)', position: 'relative', overflow: 'hidden' }}>
           {p.image ? (
-            <img
+            <Image
               src={p.image}
               alt={p.product_name}
+              fill
+              className="object-cover"
               style={{
-                width: '100%', height: '100%', objectFit: 'cover',
                 transition: 'transform 0.4s ease',
                 transform: hovered ? 'scale(1.08)' : 'scale(1)',
               }}
+              sizes="160px"
             />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, opacity: 0.5 }}>⚡</div>

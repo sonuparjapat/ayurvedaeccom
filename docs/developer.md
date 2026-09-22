@@ -2,6 +2,80 @@
 
 ---
 
+## Admin Logging & Audit Trail (2026-09-22)
+
+### What was missing — and is now fixed
+
+| Gap | Fix |
+|-----|-----|
+| `addAdminLog` never called for daily admin actions (product/user CRUD) | Wired into `create`, `update`, `remove`, `createUser`, `updateUser`, `adminDeleteUser` — all actions now appear in `GET /admin/logs` |
+| No email delivery record | New `email_logs` table + `emailLogger.js` — every status-change email now logged; accessible at `GET /admin/email-logs` |
+| No inventory change audit | New `stock_logs` table + `stockLogger.js` — every manual stock change logged with before/after values; accessible at `GET /admin/stock-logs` |
+| Errors only in Winston files | `logger.js` now maintains an in-memory ring buffer (last 200 errors); `GET /admin/error-logs` returns them + tails the error log file if `LOG_DIR` is set |
+
+### Migration files (run in sequence)
+
+```
+backend/src/migrations/005_email_logs.sql
+backend/src/migrations/006_stock_logs.sql
+```
+
+### New utility files
+
+| File | Purpose |
+|------|---------|
+| `backend/src/utils/emailLogger.js` | `logEmail({type, email, name, subject, orderId, userId, status})` — fire-and-forget, never throws |
+| `backend/src/utils/stockLogger.js` | `logStock({productId, productName, adminId, oldInventory, newInventory, reason})` — fire-and-forget |
+
+### New API endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/admin/email-logs` | Email delivery history; filter by `type`, `status`, `search`, `order_id`, `date_from`, `date_to` |
+| GET | `/admin/stock-logs` | Inventory change history; filter by `product_id`, `admin_id`, `reason`, date range |
+| GET | `/admin/error-logs` | Last N application errors from memory buffer (+ log file if `LOG_DIR` env is set) |
+
+### How `admin_logs` coverage now works
+
+- **Before**: only bulk-upload jobs logged to `admin_logs`. Product edits, order updates, user changes were invisible.
+- **After**: product create / update / deactivate, user create / update / deactivate all call `addAdminLog(...)` — they appear in `GET /admin/logs`.
+- Order status changes still use the dedicated `order_status_logs` table (already had full coverage with admin ID + transition stored).
+
+---
+
+## UX / UI Improvements (2026-09-22)
+
+### Web frontend
+
+| File | What was added |
+|------|----------------|
+| `src/app/not-found.tsx` | Branded 404 page — Ayurvedic gradient, 🌿 icon, links back to Home + Products |
+| `src/app/error.tsx` | Branded 500/error page — amber gradient, "Try Again" reset button, digest ID shown |
+| `src/app/sitemap.ts` | Dynamic sitemap — static routes + fetches products (500) + blogs (200) from API |
+| `src/app/robots.ts` | robots.txt — allows `/`, disallows `/admin /api/ /checkout /cart /_next/` |
+| `src/components/ui/page-transition.tsx` | framer-motion fade+slide transition on every route change (0.18s) |
+| `src/app/layout.tsx` | `<PageTransition>` wraps `{children}` inside ErrorBoundary |
+| `src/app/product/[id]/page.tsx` | Quantity +/- buttons now have `aria-label`; wishlist button has `aria-pressed`; sold badge styled amber 🔥 |
+| `src/components/cart/cart-sheet.tsx` | Quantity + remove buttons now have descriptive `aria-label` attributes |
+
+### Mobile app
+
+| File | What was added |
+|------|----------------|
+| `ayurveda-app/src/app/product/[id].tsx` | Sold badge updated to amber/fire style to match web |
+| `ayurveda-app/src/app/search/index.tsx` | Replaced `Image` → `ExpoImage` for cached thumbnails; `FadeInDown` stagger on suggestion rows; haptic feedback on result/trending/recent tap |
+| `ayurveda-app/src/app/products/index.tsx` | Added `total_sold` 🔥 badge on product listing cards |
+| `ayurveda-app/src/app/index.tsx` | Added "New Arrivals ✨" section (fetches latest 8 by `created_at desc`); included in pull-to-refresh |
+| `ayurveda-app/src/app/account/index.tsx` | Replaced `Image` → `ExpoImage` for avatar; added **↺ Reorder** button on delivered orders — re-adds all order items to cart in one tap |
+
+### Already-implemented items (no changes needed)
+- Checkout progress indicator — 3-step wizard already in `src/app/checkout/page.tsx`
+- Push notifications — `src/utils/pushNotifications.ts` + `_layout.tsx` bootstrap
+- Review images on mobile — `expo-image-picker` already wired in product detail
+- Order tracking timeline — `src/app/order/[id].tsx` already has `StatusTimeline` component
+
+---
+
 ## IP Blocking System (2026-09-10)
 
 ### Attack vectors addressed
@@ -2609,3 +2683,75 @@ An interactive system map covering all layers, flows, and API endpoints is publi
 **https://claude.ai/artifact/DoKqyJ5BVFKphd9HWqEdcx**
 
 Tabs: Architecture Overview · Auth Flow · Shopping Flow · Security Stack · Background Workers · API Reference (filterable, 60+ endpoints)
+
+---
+
+## Mobile Home Screen Animation Polish (2026-09-22)
+
+### Changes in `ayurveda-app/src/app/index.tsx`
+
+**CTA banners — staggered FadeInDown entry**
+- Deals, Shop by Brand, Dosha Quiz, and Play & Win banners each wrapped in `<Animated.View entering={FadeInDown.delay(N*100).duration(500)}>` with 100ms stagger between them
+- Delays: 0ms → 100ms → 200ms → 300ms (Play & Win, logged-in only)
+- No new imports needed — `FadeInDown` already imported from `react-native-reanimated`
+
+**Seasonal Picks cards — FadeInRight + haptic**
+- Each seasonal product card wrapped in `<Animated.View entering={FadeInRight.delay(i*80).duration(400)}>` for horizontal stagger
+- `onPress` on each card now calls `impact(Haptics.ImpactFeedbackStyle.Light)` before navigation
+- Consistent with the existing ProductCard haptic pattern
+
+**Final CTA button — spring press scale**
+- "Shop the Collection" button converted from `TouchableOpacity` to `AnimPressable` (already defined as `Animated.createAnimatedComponent(Pressable)` at line 28)
+- `ctaScale = useSharedValue(1)` added in `HomeScreen` component
+- `onPressIn`: scale → 0.94 with spring damping 12 + medium haptic
+- `onPressOut`: scale → 1.0 with spring damping 10
+
+---
+
+## Score Improvement Batch 1 (2026-09-22)
+
+### 1. Image Optimization — Next.js `<Image>` component
+
+`next.config.ts` already had `formats: ['image/avif','image/webp']` and S3 `remotePatterns` configured but no component was using the optimizer. Converted all raw `<img>` tags to `next/image` across:
+
+- `components/sections/featured-products-section.tsx` — product grid
+- `components/sections/categories-section.tsx` — category icons (48×48, fixed dimensions)
+- `components/sections/banner-carousel.tsx` — hero overlay (`fill` + `priority` on first slide)
+- `components/sections/blog-preview-section.tsx` — cover images (`fill`)
+- `components/sections/recently-viewed-section.tsx` — product thumbnails
+- `components/sections/flash-sale-banner.tsx` — product images
+- `components/layout/header.tsx` — search result thumbnails (40×40)
+- `components/cart/cart-sheet.tsx` — cart item thumbnails
+- `app/products/ProductPagecontent.tsx` — both list and grid card images
+- `app/product/[id]/page.tsx` — main image (`priority`), thumbnail strip, bundle images, related products, review thumbnails, sticky ATC thumbnail
+
+Blob preview URLs (user uploaded review images) and logo (dynamic, unknown origin) kept as raw `<img>`.
+
+Every `<Image>` has an appropriate `sizes` prop so Next.js serves the smallest needed resolution.
+
+### 2. PWA Manifest + Service Worker
+
+**`frontend/src/app/manifest.ts`** — Next.js App Router native manifest with name, short_name, icons, shortcuts (Shop, Cart), theme_color `#1a5c38`.
+
+**`frontend/public/sw.js`** — Custom service worker:
+- Pre-caches shell pages (`/`, `/products`, `/cart`, `/wishlist`, `/account`) on install
+- S3 images: **cache-first** strategy (rarely change, 30-day TTL in Next.js config)
+- Same-origin pages/assets: **stale-while-revalidate** (serves cached, updates in background)
+- Never intercepts: `/api/`, `/admin`, sockets, non-S3 external URLs
+
+Registered in `layout.tsx` via `<Script id="sw-register" strategy="afterInteractive">` — only on HTTPS.
+
+### 3. Live Viewer Count
+
+**Backend (`backend/src/socket.js`)**:
+- In-memory `productViewers: Map<productId, Map<socketId, expiresAt>>` with 3-minute TTL per connection
+- `socket.on('product:view', ...)` — join `product_<id>` room, track socket, broadcast count to room
+- `socket.on('disconnect', ...)` — remove from tracker, re-broadcast updated count
+
+**Web (`frontend/src/app/product/[id]/page.tsx`)**:
+- `viewerCount` state, emits `product:view` on mount in the existing socket effect
+- Shows green badge "N people are viewing this right now" when count ≥ 2
+
+**Mobile (`ayurveda-app/src/app/product/[id].tsx`)**:
+- Same socket emit pattern (separate socket connection per screen)
+- Shows `👁 N viewing` tag in the existing tag row when count ≥ 2

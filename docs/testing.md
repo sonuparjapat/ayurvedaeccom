@@ -2,6 +2,98 @@
 
 ---
 
+## Admin Logging — Verification (2026-09-22)
+
+> Prerequisite: run migrations `005_email_logs.sql` and `006_stock_logs.sql` against the database.
+
+### Activity Log (admin_logs)
+1. Log in as admin.
+2. Create a new product via `POST /admin/products`. **Expected**: a new row in `admin_logs` with `action='create'`, `module='products'`.
+3. Edit that product's price and inventory via `PUT /admin/products/:id`. **Expected**: a new row with `action='update'`, `details` contains `price_old`, `price_new`, `inventory_old`, `inventory_new`.
+4. Deactivate the product via `DELETE /admin/products/:id`. **Expected**: row with `action='deactivate'`, `module='products'`.
+5. Create a user via `POST /admin/create`. **Expected**: row with `action='create'`, `module='users'`.
+6. Update the user's role. **Expected**: row with `action='update'`, `module='users'`.
+7. Deactivate a user via `DELETE /admin/user/:id`. **Expected**: row with `action='deactivate'`, `module='users'`.
+8. `GET /admin/logs` — all 7 rows visible.
+
+### Email Delivery Log
+1. Update an order's status to `3` (Shipped) as admin. **Expected**: `GET /admin/email-logs` shows an entry with `email_type='order_status_3'` and the customer's email.
+2. Update to `5` (Delivered). **Expected**: entry with `email_type='order_status_5'`.
+3. Filter by `order_id=<id>` — only that order's emails appear.
+4. Filter by `date_from=<today>` — shows today's sends only.
+5. Confirm `status='sent'` on successful sends.
+
+### Stock Change Log
+1. Edit a product and change its inventory from (e.g.) 50 to 30 via `PUT /admin/products/:id`. **Expected**: `GET /admin/stock-logs` shows entry with `old_inventory=50`, `new_inventory=30`, `change_amount=-20`, `reason='manual_update'`, `admin_name` populated.
+2. Increase inventory from 30 to 100. **Expected**: entry with `change_amount=70`.
+3. If inventory unchanged, **no** new stock_logs entry created.
+4. Filter by `product_id=<id>` — only that product's history.
+
+### Error Log Viewer
+1. `GET /admin/error-logs?limit=10` — returns JSON with `memory_errors` array and `source='memory'`.
+2. Trigger a deliberate 500 error (e.g. call an endpoint with bad data). **Expected**: error appears in the next call to `/admin/error-logs`.
+3. If `LOG_DIR` is set: `source='file+memory'` and `file_errors` populated from the current day's log file.
+
+---
+
+## UX / UI Improvements — Verification (2026-09-22)
+
+### 404 page
+1. Navigate to `/this-page-does-not-exist`.
+2. **Expected**: branded Ayurvedic 404 page with 🌿 icon, gradient, "Back to Home" and "Shop Products" buttons.
+3. Click "Back to Home" → lands on `/`.
+
+### Error page (`error.tsx`)
+1. To test: temporarily throw in a client component; visit that page.
+2. **Expected**: branded 500 page with "Try Again" button and Error ID.
+3. Click "Try Again" → calls React's `reset()` and re-renders.
+
+### Page transition
+1. Navigate from Home → any product page.
+2. **Expected**: page fades in with a slight upward slide (0.18s). Green bar sweeps at top.
+
+### Mobile — Search screen
+1. Open the search screen, type "ashwagandha".
+2. **Expected**: results appear with a staggered `FadeInDown` animation (each row enters ~40ms after the previous).
+3. Tap any suggestion → **Expected**: light haptic tap, navigates to product/category.
+4. Tap a trending chip → **Expected**: haptic tap, fills query, shows results.
+5. Thumbnails in results should load smoothly (ExpoImage caching vs. plain RN Image).
+
+### Mobile — New Arrivals section
+1. Open home screen.
+2. **Expected**: "New Arrivals ✨" horizontal row appears between Featured Products and Recently Viewed.
+3. Pull to refresh → **Expected**: New Arrivals updates along with other sections.
+
+### Mobile — Reorder button
+1. Navigate to Account → Orders tab, find a **Delivered** order.
+2. **Expected**: green **↺ Reorder** button visible in the order card footer.
+3. Tap Reorder → **Expected**: all items added to cart, toast "Items added to cart!", navigation to cart.
+4. Pending/Shipped orders → **Expected**: no Reorder button shown.
+
+### Mobile — Sold badge on listing
+1. Navigate to Browse (products listing).
+2. **Expected**: products with `total_sold > 0` show "🔥 X+ sold" amber badge in card.
+
+### Sold badge (web + mobile)
+1. Open any product that has `total_sold > 0` in the DB.
+2. **Expected (web)**: amber 🔥 badge next to rating: "🔥 X+ sold".
+3. **Expected (mobile)**: same amber badge in product header.
+
+### Sitemap & robots
+1. Visit `https://oroganix.com/sitemap.xml` → **Expected**: XML listing home, product pages, blog pages.
+2. Visit `https://oroganix.com/robots.txt` → **Expected**: `Disallow: /admin`, `Sitemap:` line present.
+
+### Accessibility — product page
+1. Tab through the product page quantity controls.
+2. **Expected**: each button announces correctly in a screen reader ("Decrease quantity", "Increase quantity").
+3. Tab to the wishlist heart button → **Expected**: announces "Add to wishlist" / "Remove from wishlist" with `aria-pressed` state.
+
+### Accessibility — cart sheet
+1. Open cart, tab through items.
+2. **Expected**: quantity buttons announce "Decrease quantity of {product name}", remove button announces "Remove {product name} from cart".
+
+---
+
 ## IP Blocking System — Verification (2026-09-10)
 
 ### Auto-block on rate limit
@@ -2572,3 +2664,42 @@ Visual reference for all flows being tested:
 **https://claude.ai/artifact/DoKqyJ5BVFKphd9HWqEdcx**
 
 Use the Auth Flow, Shopping Flow, and Security Stack tabs as reference when writing test cases for those areas.
+
+---
+
+## Mobile Home — Animation Regression (2026-09-22)
+
+**CTA banners**
+- Scroll past blog section; verify Deals, Shop by Brand, Dosha Quiz banners each fade+slide in with ~100ms stagger between them
+- If user is logged in: Play & Win banner also animates in at ~300ms delay
+
+**Seasonal Picks**
+- API tag `winter`/`summer`/`monsoon`/`autumn` must return products; if empty, section is hidden (no crash)
+- When products present: cards slide in right-to-left stagger; each tap triggers light haptic + navigates to product
+
+**Final CTA**
+- Tap "Shop the Collection" → button compresses to ~94% scale, haptic fires, navigates to /products
+- On release: bounces back to full size smoothly (spring)
+
+---
+
+## Score Improvement Batch 1 — Test Cases (2026-09-22)
+
+### Image Optimization
+- Open `/products` in Chrome DevTools (Network tab, filter: Img). All product images should have `Content-Type: image/webp` or `image/avif` (not `image/jpeg`)
+- Confirm response headers include `Cache-Control: public, max-age=2592000` (30 days) from Next.js image optimizer
+- Open `/product/:id` — main image should load with `priority` (no lazy-load deferral); thumbnails should load at 80px resolution, not full S3 resolution
+
+### PWA Manifest
+- Chrome > DevTools > Application > Manifest — should show Oroganix name, theme_color `#1a5c38`, start_url `/`
+- DevTools > Application > Service Workers — `sw.js` should be registered and `Status: activated and running`
+- Navigate to `/products`, disconnect network in DevTools, navigate back — page should load from cache (show cached content, no blank screen)
+
+### Live Viewer Count
+- Open same product page in two separate browser tabs — both should show "2 people are viewing this right now" badge
+- Close one tab — badge should update to 1 and disappear after a few seconds
+- Badge should never show for count of 1 (only ≥ 2)
+- Mobile: same product on mobile should show `👁 N viewing` tag in the tag row
+
+### Service Worker Cache Invalidation
+- After deploying a code change, rename `SHELL_CACHE` to `oroganix-shell-v2` in `sw.js` — old cache will be deleted on activate, users get fresh content

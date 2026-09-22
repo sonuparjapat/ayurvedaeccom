@@ -307,4 +307,13 @@ router.get('/roles', auth, admin, controller.getRoles)
 /* ─── PAYMENT LOGS ─── */
 router.get('/payment-logs', auth, admin, controller.getPaymentLogs)
 
+/* ─── EMAIL DELIVERY LOG ─── */
+router.get('/email-logs', auth, admin, controller.getEmailLogs)
+
+/* ─── STOCK CHANGE LOG ─── */
+router.get('/stock-logs', auth, admin, controller.getStockLogs)
+
+/* ─── ERROR LOG VIEWER ─── */
+router.get('/error-logs', auth, admin, controller.getErrorLogs)
+
 module.exports = router

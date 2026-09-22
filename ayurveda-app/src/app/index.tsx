@@ -785,6 +785,8 @@ function FlashSaleSection({ sale }: { sale: any }) {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets()
   const scrollY = useSharedValue(0)
+  const ctaScale = useSharedValue(1)
+  const ctaBtnStyle = useAnimatedStyle(() => ({ transform: [{ scale: ctaScale.value }] }))
   const user = useStore(s => s.user)
   const cartCount = useStore(s => s.cartCount)
 
@@ -811,6 +813,7 @@ export default function HomeScreen() {
       }))
 
   const [products, setProducts] = useState<Product[]>([])
+  const [newArrivals, setNewArrivals] = useState<Product[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [banners, setBanners] = useState<BannerSlide[]>([])
   const [activeCoupon, setActiveCoupon] = useState<ActiveCoupon | null>(null)
@@ -849,6 +852,9 @@ export default function HomeScreen() {
     }).catch(() => {})
     api.get('/blog/public', { params: { page: 1, limit: 3 } })
       .then(r => setBlogPosts(r.data?.posts || r.data?.data || []))
+      .catch(() => {})
+    api.get('/shop/public', { params: { limit: 8, sort: 'created_at', order: 'desc' } })
+      .then(r => setNewArrivals(r.data?.products || []))
       .catch(() => {})
     // Seasonal picks — detect Indian season by month
     const month = new Date().getMonth() + 1
@@ -979,6 +985,7 @@ export default function HomeScreen() {
         api.get('/shop/reviews', { params: { rating: 5, limit: 6, page: 1 } }).then(r => setReviews(r.data?.data || [])),
         api.get('/flash-sales/active').then(r => { const s = r.data?.sales || []; if (s.length) setFlashSale(s[0]) }),
         api.get('/blog/public', { params: { page: 1, limit: 3 } }).then(r => setBlogPosts(r.data?.posts || r.data?.data || [])),
+        api.get('/shop/public', { params: { limit: 8, sort: 'created_at', order: 'desc' } }).then(r => setNewArrivals(r.data?.products || [])),
         (() => { const m = new Date().getMonth() + 1; const s = m >= 11 || m <= 2 ? 'winter' : m >= 3 && m <= 5 ? 'summer' : m >= 6 && m <= 9 ? 'monsoon' : 'autumn'; return api.get('/shop/products', { params: { tag: s, limit: 10 } }).then(r => setSeasonalProducts(r.data?.products || [])) })(),
         new Promise(res => { fetchFeatured(activeCatId); setTimeout(res, 800) }),
       ])
@@ -1090,6 +1097,16 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* New Arrivals */}
+        {newArrivals.length > 0 && (
+          <View style={{ paddingVertical: 20 }}>
+            <SectionHeader title="New Arrivals ✨" onSeeAll={() => router.push('/products')} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}>
+              {newArrivals.map((p, i) => <ProductCard key={p.id} item={p} index={i} />)}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Recently Viewed */}
         {recentlyViewed.length > 0 && (
           <View style={{ paddingVertical: 20 }}>
@@ -1138,53 +1155,61 @@ export default function HomeScreen() {
         )}
 
         {/* Deals CTA */}
-        <TouchableOpacity onPress={() => router.push('/deals' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
-          <LinearGradient colors={['#7c1d1d', '#dc2626']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={{ fontSize: 36 }}>⚡</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Today's Deals & Offers</Text>
-              <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>Flash sales, discounts & exclusive offers</Text>
-            </View>
-            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Shop by Brand CTA */}
-        <TouchableOpacity onPress={() => router.push('/brand' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
-          <LinearGradient colors={['#0c2340', '#1e4080']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={{ fontSize: 36 }}>🏷️</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Shop by Brand</Text>
-              <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 18 }}>Browse products from your favourite Ayurvedic brands.</Text>
-            </View>
-            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Dosha Quiz CTA */}
-        <TouchableOpacity onPress={() => router.push('/quiz' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
-          <LinearGradient colors={['#0a1f14', '#1a4228']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={{ fontSize: 36 }}>🌿</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Discover Your Dosha</Text>
-              <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 18 }}>Take our free 2-min Ayurvedic quiz to find your body type.</Text>
-            </View>
-            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Play & Win — only for logged-in users */}
-        {!!user?.id && (
-          <TouchableOpacity onPress={() => router.push('/games' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 20, overflow: 'hidden' }}>
-            <LinearGradient colors={['#1a0a2e', '#3b1f6e']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={{ fontSize: 36 }}>🎮</Text>
+        <Animated.View entering={FadeInDown.delay(0).duration(500)}>
+          <TouchableOpacity onPress={() => router.push('/deals' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
+            <LinearGradient colors={['#7c1d1d', '#dc2626']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Text style={{ fontSize: 36 }}>⚡</Text>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Play & Win Rewards</Text>
-                <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 18 }}>Scratch cards, spin wheel & more. Win wallet credits & coupons!</Text>
+                <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Today's Deals & Offers</Text>
+                <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>Flash sales, discounts & exclusive offers</Text>
               </View>
               <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
             </LinearGradient>
           </TouchableOpacity>
+        </Animated.View>
+
+        {/* Shop by Brand CTA */}
+        <Animated.View entering={FadeInDown.delay(100).duration(500)}>
+          <TouchableOpacity onPress={() => router.push('/brand' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
+            <LinearGradient colors={['#0c2340', '#1e4080']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Text style={{ fontSize: 36 }}>🏷️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Shop by Brand</Text>
+                <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 18 }}>Browse products from your favourite Ayurvedic brands.</Text>
+              </View>
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Dosha Quiz CTA */}
+        <Animated.View entering={FadeInDown.delay(200).duration(500)}>
+          <TouchableOpacity onPress={() => router.push('/quiz' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
+            <LinearGradient colors={['#0a1f14', '#1a4228']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Text style={{ fontSize: 36 }}>🌿</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Discover Your Dosha</Text>
+                <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 18 }}>Take our free 2-min Ayurvedic quiz to find your body type.</Text>
+              </View>
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Play & Win — only for logged-in users */}
+        {!!user?.id && (
+          <Animated.View entering={FadeInDown.delay(300).duration(500)}>
+            <TouchableOpacity onPress={() => router.push('/games' as any)} activeOpacity={0.88} style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 20, overflow: 'hidden' }}>
+              <LinearGradient colors={['#1a0a2e', '#3b1f6e']} style={{ flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <Text style={{ fontSize: 36 }}>🎮</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: Fonts.bold, color: '#fff', fontSize: 15, marginBottom: 3 }}>Play & Win Rewards</Text>
+                  <Text style={{ fontFamily: Fonts.regular, color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 18 }}>Scratch cards, spin wheel & more. Win wallet credits & coupons!</Text>
+                </View>
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22 }}>›</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
         )}
 
         {/* Seasonal Picks */}
@@ -1204,9 +1229,9 @@ export default function HomeScreen() {
                   const img = Array.isArray(p.images) ? p.images[0] : null
                   const disc = p.compareprice && p.price < p.compareprice ? Math.round(((p.compareprice - p.price) / p.compareprice) * 100) : null
                   return (
+                    <Animated.View key={p.id} entering={FadeInRight.delay(i * 80).duration(400)}>
                     <TouchableOpacity
-                      key={p.id}
-                      onPress={() => router.push(`/product/${(p as any).slug || p.id}` as any)}
+                      onPress={() => { impact(Haptics.ImpactFeedbackStyle.Light); router.push(`/product/${(p as any).slug || p.id}` as any) }}
                       activeOpacity={0.85}
                       style={{ width: 140, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 0.5, borderColor: Colors.border }}
                     >
@@ -1229,6 +1254,7 @@ export default function HomeScreen() {
                         </View>
                       </View>
                     </TouchableOpacity>
+                    </Animated.View>
                   )
                 })}
               </ScrollView>
@@ -1267,11 +1293,16 @@ export default function HomeScreen() {
             <Text style={ss.finalCtaText}>
               Join <Text style={{ color: Colors.emerald, fontFamily: Fonts.bold }}>10,000+</Text> customers living healthier.
             </Text>
-            <TouchableOpacity onPress={() => router.push('/products')} activeOpacity={0.85}>
+            <AnimPressable
+              onPressIn={() => { ctaScale.value = withSpring(0.94, { damping: 12 }); impact(Haptics.ImpactFeedbackStyle.Medium) }}
+              onPressOut={() => { ctaScale.value = withSpring(1, { damping: 10 }) }}
+              onPress={() => router.push('/products')}
+              style={ctaBtnStyle}
+            >
               <LinearGradient colors={['#059669', '#0d9488']} style={ss.finalCtaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                 <Text style={ss.finalCtaBtnText}>🛍️  Shop the Collection</Text>
               </LinearGradient>
-            </TouchableOpacity>
+            </AnimPressable>
           </View>
 
           {/* Ayush Disclaimer */}

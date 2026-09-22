@@ -1725,6 +1725,43 @@ async function runSafeColumnMigrations() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_price_alerts_product ON price_alerts(product_id)`,
     `CREATE INDEX IF NOT EXISTS idx_price_alerts_user ON price_alerts(user_id)`,
+
+    // email delivery log — tracks every transactional email sent
+    `CREATE TABLE IF NOT EXISTS email_logs (
+       id              BIGSERIAL    PRIMARY KEY,
+       email_type      VARCHAR(80)  NOT NULL,
+       recipient_email VARCHAR(255) NOT NULL,
+       recipient_name  VARCHAR(255),
+       subject         TEXT,
+       order_id        INTEGER      REFERENCES orders(id)  ON DELETE SET NULL,
+       user_id         INTEGER      REFERENCES users(id)   ON DELETE SET NULL,
+       status          VARCHAR(20)  NOT NULL DEFAULT 'sent',
+       error_message   TEXT,
+       sent_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_email_logs_recipient ON email_logs(recipient_email)`,
+    `CREATE INDEX IF NOT EXISTS idx_email_logs_order_id  ON email_logs(order_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_email_logs_user_id   ON email_logs(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_email_logs_sent_at   ON email_logs(sent_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_email_logs_type      ON email_logs(email_type)`,
+
+    // stock / inventory change audit log
+    `CREATE TABLE IF NOT EXISTS stock_logs (
+       id            BIGSERIAL    PRIMARY KEY,
+       product_id    INTEGER      NOT NULL REFERENCES products(id)         ON DELETE CASCADE,
+       product_name  VARCHAR(255),
+       variant_id    INTEGER      REFERENCES product_variants(id)          ON DELETE SET NULL,
+       admin_id      INTEGER      REFERENCES users(id)                     ON DELETE SET NULL,
+       old_inventory INTEGER      NOT NULL,
+       new_inventory INTEGER      NOT NULL,
+       change_amount INTEGER      NOT NULL,
+       reason        VARCHAR(100) NOT NULL DEFAULT 'manual_update',
+       note          TEXT,
+       created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_stock_logs_product_id ON stock_logs(product_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_stock_logs_admin_id   ON stock_logs(admin_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_stock_logs_created_at ON stock_logs(created_at DESC)`,
   ]
   for (const sql of migrations) {
     const c = await pool.connect()

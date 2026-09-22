@@ -1,16 +1,24 @@
+import dynamic from 'next/dynamic'
+import Link from 'next/link'
+
+// Above-fold: eager imports
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { HeroSection } from '@/components/sections/hero-section'
-import { BannerCarousel } from '@/components/sections/banner-carousel'
 import { OfferStrip } from '@/components/sections/offer-strip'
-import { FeaturesSection } from '@/components/sections/features-section'
-import { CategoriesSection } from '@/components/sections/categories-section'
-import { TestimonialsSection } from '@/components/sections/testimonials-section'
 import { FlashSaleBanner } from '@/components/sections/flash-sale-banner'
+import { CategoriesSection } from '@/components/sections/categories-section'
 import { FeaturedProductsSection } from '@/components/sections/featured-products-section'
-import { RecentlyViewedSection } from '@/components/sections/recently-viewed-section'
-import { BlogPreviewSection } from '@/components/sections/blog-preview-section'
-import Link from 'next/link'
+
+// Below-fold: lazy loaded — don't block initial render
+const SectionSkeleton = ({ height = 320 }: { height?: number }) => (
+  <div style={{ height, background: '#f9faf7' }} />
+)
+const BannerCarousel = dynamic(() => import('@/components/sections/banner-carousel').then(m => ({ default: m.BannerCarousel })), { ssr: false, loading: () => <SectionSkeleton height={280} /> })
+const RecentlyViewedSection = dynamic(() => import('@/components/sections/recently-viewed-section').then(m => ({ default: m.RecentlyViewedSection })), { ssr: false })
+const BlogPreviewSection = dynamic(() => import('@/components/sections/blog-preview-section').then(m => ({ default: m.BlogPreviewSection })), { ssr: false, loading: () => <SectionSkeleton height={480} /> })
+const FeaturesSection = dynamic(() => import('@/components/sections/features-section').then(m => ({ default: m.FeaturesSection })), { ssr: false, loading: () => <SectionSkeleton height={480} /> })
+const TestimonialsSection = dynamic(() => import('@/components/sections/testimonials-section').then(m => ({ default: m.TestimonialsSection })), { ssr: false, loading: () => <SectionSkeleton height={560} /> })
 
 export default function Home() {
   return (

@@ -2,6 +2,55 @@
 
 ---
 
+## Admin Logging & Audit Trail (2026-09-22)
+
+### Activity Log (`/admin/logs`)
+Every time an admin creates, updates, or deactivates a product or user, the action is now automatically recorded. Superadmins can review who did what and when.
+
+### Email Delivery Log (`/admin/email-logs`)
+Every order status email (shipped, delivered, cancelled, etc.) is now tracked. If a customer says they didn't receive an email, search by their email address or order number to confirm whether it was sent and when.
+- Filter by email type (e.g. `order_status_3` for "Shipped"), status (`sent` / `failed`), date range, or order ID.
+
+### Stock Change Log (`/admin/stock-logs`)
+Every time an admin manually edits a product's inventory, the before and after values are recorded along with the admin's name and timestamp. This makes it easy to audit unexpected stock discrepancies.
+
+### Error Log Viewer (`/admin/error-logs`)
+The last 200 application errors are visible directly from the admin panel without needing SSH access to the server. If `LOG_DIR` is configured, it also tails the latest error log file.
+
+---
+
+## Website Features (2026-09-22)
+
+### 404 & Error pages
+- Visiting a broken link shows a branded Ayurvedic 404 page with "Back to Home" and "Shop Products" buttons.
+- If the site encounters an unexpected error a 500 page appears with a **Try Again** button and an Error ID (share this with support).
+
+### Page loading bar
+- A thin green bar sweeps across the top of the browser on every page navigation — this is normal and confirms the page is loading.
+
+### Smooth page transitions
+- Pages fade in and slide up slightly when navigating — this gives a fluid, app-like feel.
+
+### Mobile app — New features
+
+**New Arrivals section**: The home screen now has a "New Arrivals ✨" row showing the 8 most recently added products.
+
+**Reorder from account**: On any delivered order, tap **↺ Reorder** to add all items from that order back to your cart in one tap, then you're taken straight to checkout.
+
+**Search improvements**: Search result thumbnails now load faster with caching. Typing triggers a staggered animation as results appear. Tapping any result, trending chip, or recent search now gives a haptic tap response.
+
+**Sold badge on product listing**: Every product card in the Browse / listing screen now shows the 🔥 sold count badge when available.
+
+### Product page social proof
+- Products that have been sold before show a **🔥 X+ sold** amber badge next to the rating — this tells you the product is popular.
+- When 2 or more people are viewing a product simultaneously, a **green pulse** badge appears: "N people are viewing this right now".
+
+### SEO (sitemap + robots)
+- `/sitemap.xml` is auto-generated with all product and blog pages.
+- `/robots.txt` is auto-generated and restricts search engine access to private pages.
+
+---
+
 ## Admin — IP Security (2026-09-10)
 
 Go to **Admin → IP Security** to see all blocked IPs.
@@ -1304,3 +1353,28 @@ A complete map of all system features, flows, and connections is available here:
 **https://claude.ai/artifact/DoKqyJ5BVFKphd9HWqEdcx**
 
 This interactive diagram covers the full shopping journey, how login and security work, what happens in the background, and a searchable list of all API endpoints.
+
+---
+
+## Mobile App — Home Screen Animations (2026-09-22)
+
+The mobile home screen now includes polished entry animations throughout:
+
+- **CTA banners** (Deals, Shop by Brand, Discover Your Dosha, Play & Win) slide in one after another with a cascade effect as you scroll to them
+- **Seasonal Picks** product cards fan in from the right, each staggered so they appear card by card
+- **"Shop the Collection" button** gently shrinks and bounces back when tapped, with a haptic pulse confirming the tap
+
+No user action required — animations play automatically and respect device motion settings.
+
+---
+
+## Performance & Trust Features (2026-09-22)
+
+### Faster image loading (web)
+All product and category images now load in the most efficient format your browser supports (WebP or AVIF instead of JPEG/PNG). Images are also served at the exact size displayed — a small thumbnail no longer downloads a full-resolution file. Repeat visits are even faster because images stay cached.
+
+### Works offline (web)
+After your first visit the site remembers key pages. If your internet drops briefly you can still view your cart, wishlist, and product pages you've already loaded. The app will sync any changes when you're back online.
+
+### "X people viewing now" badge
+On any product detail page, if other shoppers are currently viewing the same product, you'll see a live green badge showing the count. This updates in real time as people arrive and leave.

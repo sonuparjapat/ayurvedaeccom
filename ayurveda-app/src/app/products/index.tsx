@@ -30,7 +30,7 @@ interface Product {
   inventory: number; category_name: string
   averagerating: number; reviewcount: number
   brand?: string; is_bestseller?: boolean; tags?: string[]
-  unit?: string
+  unit?: string; total_sold?: number
 }
 
 const SORTS = [
@@ -132,6 +132,11 @@ function ProductCard({ p, index, addingId, addToCart, toggleWish, wishlist, inCa
             {p.unit && <Text style={{ fontSize: 10, color: Colors.textDim, fontFamily: Fonts.regular }}>({p.unit})</Text>}
             {p.compareprice && <Text style={ss.mrp}>₹{p.compareprice}</Text>}
           </View>
+          {p.total_sold != null && p.total_sold > 0 && (
+            <View style={{ backgroundColor: '#fef3c7', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 4 }}>
+              <Text style={{ fontFamily: Fonts.bold, fontSize: 9, color: '#92400e' }}>🔥 {p.total_sold}+ sold</Text>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
 

@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import axios from '@/lib/axios'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -990,7 +991,7 @@ const addToCart = async (id: string) => {
                           style={{ background: 'white', border: '1px solid rgba(184,134,11,0.1)', boxShadow: '0 2px 12px rgba(44,31,14,0.05)' }}
                         >
                           <div className="relative w-44 sm:w-56 flex-shrink-0 card-img-wrap rounded-l-3xl" style={{ background: 'var(--warm-white)', overflow: 'hidden' }}>
-                            <img src={getImageUrl(product.images)} alt={product.name} className="w-full h-full object-cover" />
+                            <Image src={getImageUrl(product.images)} alt={product.name} fill className="object-cover" sizes="(max-width: 640px) 176px, 224px" />
                             {isOutOfStock && (
                               <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(26,10,3,0.6)' }}>
                                 <span className="text-white text-xs font-semibold tracking-wider uppercase">Unavailable</span>
@@ -1072,10 +1073,12 @@ const addToCart = async (id: string) => {
                             overflow: 'hidden',
                           }}
                         >
-                          <img
+                          <Image
                             src={getImageUrl(product.images)}
                             alt={product.name}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                           />
 
                           {/* Gradient overlay */}

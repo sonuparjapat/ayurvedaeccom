@@ -1,27 +1,24 @@
-import { MetadataRoute } from 'next'
+import type { MetadataRoute } from 'next'
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com'
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://oroganix.com'
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
-        userAgent: 'Googlebot',
-        allow: '/',
-        disallow: ['/admin/', '/checkout/', '/account/', '/cart/', '/orders/', '/wishlist/', '/support/', '/adminauth/', '/api/'],
-      },
-      {
-        userAgent: 'Bingbot',
-        allow: '/',
-        disallow: ['/admin/', '/checkout/', '/account/', '/cart/', '/orders/', '/wishlist/', '/support/', '/adminauth/', '/api/'],
-      },
-      {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin/', '/checkout/', '/account/', '/cart/', '/orders/', '/wishlist/', '/support/', '/adminauth/', '/api/'],
+        disallow: [
+          '/admin',
+          '/api/',
+          '/account/orders/',
+          '/checkout',
+          '/cart',
+          '/_next/',
+        ],
       },
     ],
-    sitemap: `${BASE_URL}/sitemap.xml`,
-    host: BASE_URL,
+    sitemap: `${SITE}/sitemap.xml`,
+    host: SITE,
   }
 }

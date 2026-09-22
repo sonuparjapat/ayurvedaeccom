@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import axios from '@/lib/axios'
 import Link from 'next/link'
 import { Calendar, ArrowRight, BookOpen, Clock } from 'lucide-react'
@@ -78,10 +79,12 @@ export function BlogPreviewSection() {
                 {/* Cover */}
                 <div className="aspect-video overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #1a3a2a, #2d5a3d)' }}>
                   {post.cover_image ? (
-                    <img
+                    <Image
                       src={post.cover_image}
                       alt={post.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      sizes="(max-width: 768px) 100vw, 33vw"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">

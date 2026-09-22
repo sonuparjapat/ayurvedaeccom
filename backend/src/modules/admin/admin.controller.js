@@ -2,6 +2,10 @@ const pool = require('../../config/db')
 const bcrypt = require("bcryptjs")
 const validator = require("validator")
 const { v4: uuid } = require('uuid')
+const { addAdminLog } = require('../../utils/adminLogger')
+const { logEmail } = require('../../utils/emailLogger')
+const { logStock } = require('../../utils/stockLogger')
+const appLogger = require('../../utils/logger')
 const { deleteFromCloud } = require('../../config/cloudinary')
 const orderstatus=require("../../utils/orderstatusmap")
 const {
@@ -152,6 +156,8 @@ exports.createUser = async (req, res) => {
        6. Success Response
     ========================= */
 
+    addAdminLog({ adminId: req.user?.id, action: 'create', module: 'users', details: { created_user_id: result.rows[0].id, email, role: finalRole }, ip: req.ip })
+
     res.status(201).json({
       success: true,
       message: "User created successfully",
@@ -245,6 +251,8 @@ exports.updateUser = async (req, res) => {
 
     await pool.query(query, values)
 
+    addAdminLog({ adminId: req.user?.id, action: 'update', module: 'users', details: { target_user_id: id, fields: Object.keys(req.body) }, ip: req.ip })
+
     res.json({ success: true })
 
   } catch (err) {
@@ -268,7 +276,7 @@ exports.adminDeleteUser = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Cannot delete a superadmin' })
     }
     await pool.query(`UPDATE users SET is_active=false, updated_at=NOW() WHERE id=$1`, [id])
-    console.log(`[ADMIN DELETE USER] User #${id} deactivated by admin #${req.user.id}`)
+    addAdminLog({ adminId: req.user?.id, action: 'deactivate', module: 'users', details: { target_user_id: id, target_role: target.rows[0].role }, ip: req.ip })
     res.json({ success: true, message: 'User deactivated' })
   } catch (err) {
     console.error('[ADMIN DELETE USER]', err)
@@ -764,6 +772,8 @@ if (req.files?.length) {
 
     ])
 
+    addAdminLog({ adminId: req.user?.id, action: 'create', module: 'products', details: { name, sku: sku || null, price: Number(price), inventory: Number(inventory), status: status || 'draft' }, ip: req.ip })
+
     res.json({
       success: true,
       message: 'Product created'
@@ -1107,8 +1117,16 @@ const finalImages = [
       return res.status(404).json({ message:'Not found' })
     }
 
-    // Back-in-stock push + email notifications
+    // Audit logs for product update
+    addAdminLog({ adminId: req.user?.id, action: 'update', module: 'products', details: { product_id: id, name: body.name, price_old: oldPrice, price_new: Number(body.price), inventory_old: oldInventory, inventory_new: Number(body.inventory) }, ip: req.ip })
+
+    // Stock change log (only when inventory actually changed)
     const newInventory = Number(body.inventory);
+    if (body.inventory !== undefined && newInventory !== oldInventory) {
+      logStock({ productId: id, productName: body.name || result.rows[0]?.name, adminId: req.user?.id, oldInventory, newInventory, reason: 'manual_update' })
+    }
+
+    // Back-in-stock push + email notifications
     if (oldInventory === 0 && newInventory > 0) {
       try {
         const notifs = await pool.query(
@@ -1250,6 +1268,7 @@ exports.remove = async (req,res)=>{
       return res.status(404).json({ success: false, message: 'Product not found' })
     }
 
+    addAdminLog({ adminId: req.user?.id, action: 'deactivate', module: 'products', details: { product_id: req.params.id }, ip: req.ip })
     res.json({ success: true, message: 'Product deactivated — it is now hidden from the storefront' })
   } catch (err) {
     console.error('[Deactivate Product]', err)
@@ -1793,6 +1812,7 @@ if (currentStatus == 3 && (!order.courier_name || !order.tracking_number)) {
           sendOrderStatusMail({ email, name, orderId: id, status });
         }
         const statusLabel = orderstatus[status] || String(status)
+        logEmail({ type: `order_status_${status}`, email, name, subject: `Order #${id} — ${statusLabel}`, orderId: id, userId: user_id, status: 'sent' })
         emitToUser(user_id, 'order_status_updated', {
           order_id: id,
           status,
@@ -3444,6 +3464,141 @@ exports.getPaymentLogs = async (req, res) => {
     })
   } catch (err) {
     console.error('[getPaymentLogs]', err.message)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   EMAIL DELIVERY LOG
+═══════════════════════════════════════════════════════ */
+exports.getEmailLogs = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, search = '', type = '', status = '', date_from = '', date_to = '', order_id = '' } = req.query
+    const pageNum = Math.max(1, parseInt(page))
+    const limitNum = Math.min(200, parseInt(limit) || 50)
+    const offset = (pageNum - 1) * limitNum
+
+    const conditions = []
+    const values = []
+    let i = 1
+
+    if (search) {
+      values.push(`%${search}%`)
+      conditions.push(`(el.recipient_email ILIKE $${i} OR el.recipient_name ILIKE $${i} OR el.subject ILIKE $${i})`)
+      i++
+    }
+    if (type) { values.push(type); conditions.push(`el.email_type = $${i++}`) }
+    if (status) { values.push(status); conditions.push(`el.status = $${i++}`) }
+    if (order_id) { values.push(parseInt(order_id)); conditions.push(`el.order_id = $${i++}`) }
+    if (date_from) { values.push(date_from); conditions.push(`el.sent_at >= $${i++}::date`) }
+    if (date_to) { values.push(date_to); conditions.push(`el.sent_at < ($${i++}::date + INTERVAL '1 day')`) }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+
+    const [dataRes, countRes] = await Promise.all([
+      pool.query(
+        `SELECT el.*, u.name AS user_name FROM email_logs el LEFT JOIN users u ON u.id = el.user_id ${where} ORDER BY el.sent_at DESC LIMIT $${i} OFFSET $${i + 1}`,
+        [...values, limitNum, offset]
+      ),
+      pool.query(`SELECT COUNT(*) FROM email_logs el ${where}`, values),
+    ])
+
+    res.json({
+      success: true,
+      logs: dataRes.rows,
+      total: parseInt(countRes.rows[0].count),
+      page: pageNum,
+      pages: Math.ceil(parseInt(countRes.rows[0].count) / limitNum),
+    })
+  } catch (err) {
+    console.error('[getEmailLogs]', err.message)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   STOCK CHANGE LOG
+═══════════════════════════════════════════════════════ */
+exports.getStockLogs = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, search = '', product_id = '', admin_id = '', reason = '', date_from = '', date_to = '' } = req.query
+    const pageNum = Math.max(1, parseInt(page))
+    const limitNum = Math.min(200, parseInt(limit) || 50)
+    const offset = (pageNum - 1) * limitNum
+
+    const conditions = []
+    const values = []
+    let i = 1
+
+    if (search) { values.push(`%${search}%`); conditions.push(`sl.product_name ILIKE $${i++}`) }
+    if (product_id) { values.push(parseInt(product_id)); conditions.push(`sl.product_id = $${i++}`) }
+    if (admin_id) { values.push(parseInt(admin_id)); conditions.push(`sl.admin_id = $${i++}`) }
+    if (reason) { values.push(reason); conditions.push(`sl.reason = $${i++}`) }
+    if (date_from) { values.push(date_from); conditions.push(`sl.created_at >= $${i++}::date`) }
+    if (date_to) { values.push(date_to); conditions.push(`sl.created_at < ($${i++}::date + INTERVAL '1 day')`) }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+
+    const [dataRes, countRes] = await Promise.all([
+      pool.query(
+        `SELECT sl.*, u.name AS admin_name, p.name AS product_name_live
+         FROM stock_logs sl
+         LEFT JOIN users u ON u.id = sl.admin_id
+         LEFT JOIN products p ON p.id = sl.product_id
+         ${where}
+         ORDER BY sl.created_at DESC LIMIT $${i} OFFSET $${i + 1}`,
+        [...values, limitNum, offset]
+      ),
+      pool.query(`SELECT COUNT(*) FROM stock_logs sl ${where}`, values),
+    ])
+
+    res.json({
+      success: true,
+      logs: dataRes.rows,
+      total: parseInt(countRes.rows[0].count),
+      page: pageNum,
+      pages: Math.ceil(parseInt(countRes.rows[0].count) / limitNum),
+    })
+  } catch (err) {
+    console.error('[getStockLogs]', err.message)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   ERROR LOG VIEWER (in-memory buffer + optional file tail)
+═══════════════════════════════════════════════════════ */
+exports.getErrorLogs = async (req, res) => {
+  try {
+    const n = Math.min(parseInt(req.query.limit) || 50, 200)
+    const errors = appLogger.recentErrors ? appLogger.recentErrors(n) : []
+
+    // Optionally tail log files if LOG_DIR is set
+    let fileLogs = []
+    if (process.env.LOG_DIR) {
+      try {
+        const fs = require('fs')
+        const path = require('path')
+        const today = new Date().toISOString().slice(0, 10)
+        const errorFile = path.join(process.env.LOG_DIR, `error-${today}.log`)
+        if (fs.existsSync(errorFile)) {
+          const lines = fs.readFileSync(errorFile, 'utf8').trim().split('\n').filter(Boolean)
+          fileLogs = lines.slice(-n).reverse().map(l => {
+            try { return JSON.parse(l) } catch { return { message: l } }
+          })
+        }
+      } catch {}
+    }
+
+    res.json({
+      success: true,
+      source: process.env.LOG_DIR ? 'file+memory' : 'memory',
+      memory_errors: errors,
+      file_errors: fileLogs,
+      total: errors.length + fileLogs.length,
+    })
+  } catch (err) {
+    console.error('[getErrorLogs]', err.message)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
