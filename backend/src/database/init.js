@@ -60,7 +60,7 @@ const initDB = async () => {
     phone_verified_at TIMESTAMP,
 
     /* ================= OTP LOGIN SYSTEM ================= */
-    otp_code VARCHAR(10),
+    otp_code VARCHAR(100),
     otp_type VARCHAR(20),
     otp_expiry TIMESTAMP,
     otp_attempts INT DEFAULT 0,
@@ -1651,6 +1651,9 @@ async function runSafeColumnMigrations() {
     // HSN snapshot on order_items (GST compliance — freeze HSN at purchase time)
     `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS hsn_code VARCHAR(30)`,
     `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS gst_percent NUMERIC(5,2)`,
+
+    // otp_code was VARCHAR(10) but HMAC-SHA256 hashes are 64 chars — widen it
+    `ALTER TABLE users ALTER COLUMN otp_code TYPE VARCHAR(100)`,
 
     // 002 — verification token expiry (24-hour email verification links)
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expiry TIMESTAMPTZ`,
